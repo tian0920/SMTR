@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "policy_name": "FrozenNoShareContinuationPolicy",
+  "policy_version": "1",
+  "policy_kind": "frozen_no_share",
+  "source_critic_checkpoint_path": null,
+  "source_critic_checkpoint_sha256": null,
+  "source_critic_estimand_policy_fingerprint": null,
+  "tau_lcb_threshold": null,
+  "negative_risk_ucb_threshold": null,
+  "reject_low_support": null,
+  "candidate_traversal_version": "1",
+  "candidate_proposer_version": "1",
+  "feature_encoder_schema_version": null,
+  "created_at": "2026-07-03T20:47:42.268044Z",
+  "fingerprint": "d66ee477e5e07085fafde56ac32c77565924c64143931cb9a0bcd848c8b45b48"
+}

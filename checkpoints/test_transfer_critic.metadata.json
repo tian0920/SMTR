@@ -1,0 +1,37 @@
+{
+  "bootstrap_seeds": [
+    2029167940,
+    1342382291,
+    1469265225,
+    1926751965,
+    1241873584
+  ],
+  "class_distribution_test": {
+    "neutral_failure": 1,
+    "neutral_success": 1,
+    "positive": 1
+  },
+  "class_distribution_train": {
+    "negative": 3,
+    "neutral_failure": 2,
+    "neutral_success": 2,
+    "positive": 2
+  },
+  "critic_version": "four_outcome_bootstrap_v1",
+  "encoder_schema_version": "1.0",
+  "feature_policy_no_payload_steps": true,
+  "n_bootstrap": 5,
+  "n_features": 512,
+  "prefix_size_distribution_test": {
+    "0": 2,
+    "1": 1
+  },
+  "prefix_size_distribution_train": {
+    "0": 5,
+    "1": 2,
+    "2": 2
+  },
+  "support_threshold": 0.11855263825508038,
+  "test_record_count": 3,
+  "train_record_count": 9
+}

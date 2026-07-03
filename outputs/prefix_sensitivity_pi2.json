@@ -1,0 +1,7 @@
+{
+  "direction_accuracy": 0.5,
+  "fraction_prediction_invariant_when_ground_truth_changes": 0.01,
+  "matched_pair_count": 100,
+  "mean_abs_delta_tau_error": 0.16175404666111795,
+  "warnings": []
+}

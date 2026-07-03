@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "policy_name": "FrozenCriticSequentialContinuationPolicy",
+  "policy_version": "1",
+  "policy_kind": "frozen_critic_sequential",
+  "source_critic_checkpoint_path": "checkpoints/critic_pi0.joblib",
+  "source_critic_checkpoint_sha256": "a84230b041ac9eaf5fc0c93cd50070e62f32d67aac9ed36314b42f3f1080f13b",
+  "source_critic_estimand_policy_fingerprint": "d66ee477e5e07085fafde56ac32c77565924c64143931cb9a0bcd848c8b45b48",
+  "tau_lcb_threshold": 0.0,
+  "negative_risk_ucb_threshold": 0.2,
+  "reject_low_support": true,
+  "candidate_traversal_version": "1",
+  "candidate_proposer_version": "1",
+  "feature_encoder_schema_version": "1.0",
+  "created_at": "2026-07-03T20:48:07.572114Z",
+  "fingerprint": "452e7fe06f37f34e79f5282879a80e16e6551539fc7a62b298609e08442ea373"
+}

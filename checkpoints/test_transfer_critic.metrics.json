@@ -1,0 +1,29 @@
+{
+  "four_class_accuracy": 1.0,
+  "low_support_rate": 0.0,
+  "macro_f1": 1.0,
+  "metrics_by_prefix_size": {
+    "0": {
+      "four_class_accuracy": 1.0,
+      "record_count": 2
+    },
+    "1": {
+      "four_class_accuracy": 1.0,
+      "record_count": 1
+    }
+  },
+  "metrics_on_in_support": {
+    "four_class_accuracy": 1.0,
+    "record_count": 3
+  },
+  "metrics_on_low_support": {
+    "record_count": 0
+  },
+  "multiclass_brier_score": 0.2128310354073997,
+  "multiclass_log_loss": 0.466141358049261,
+  "negative_risk_auroc": null,
+  "negative_risk_brier": 0.035152921077467154,
+  "negative_risk_ece": null,
+  "tau_mae": 0.1279139279442796,
+  "tau_sign_accuracy": 0.3333333333333333
+}

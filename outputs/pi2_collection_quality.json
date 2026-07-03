@@ -1,0 +1,24 @@
+{
+  "boundary_explore_share_count": 0,
+  "budget_exhausted_count": 1320,
+  "continuation_decision_count": 13988,
+  "continuation_share_count": 3689,
+  "continuation_share_rate": 0.2637260509007721,
+  "failures": [],
+  "hard_ood_veto_count": 0,
+  "hard_risk_share_rate": 0.0,
+  "prefix_size_distribution": {
+    "0": 162,
+    "1": 160,
+    "2": 158
+  },
+  "record_count": 480,
+  "risk_veto_count": 0,
+  "safe_exploit_share_count": 3689,
+  "transfer_class_distribution": {
+    "negative": 40,
+    "neutral_failure": 238,
+    "neutral_success": 136,
+    "positive": 66
+  }
+}

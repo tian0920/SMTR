@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "policy_name": "FrozenRiskConstrainedExplorationPolicy",
+  "policy_version": "1",
+  "policy_kind": "frozen_risk_constrained_exploration",
+  "source_critic_checkpoint_path": "checkpoints/critic_pi1.joblib",
+  "source_critic_checkpoint_sha256": "f2aaa809174d4471b3ce167a5cfbc762e610911fa8c51739c7899da332a072ed",
+  "source_critic_estimand_policy_fingerprint": "452e7fe06f37f34e79f5282879a80e16e6551539fc7a62b298609e08442ea373",
+  "tau_lcb_threshold": null,
+  "negative_risk_ucb_threshold": null,
+  "reject_low_support": null,
+  "candidate_traversal_version": "1",
+  "candidate_proposer_version": "1",
+  "feature_encoder_schema_version": "1.0",
+  "exploration_config": {
+    "safe_tau_lcb_threshold": 0.0,
+    "safe_negative_risk_ucb_threshold": 0.2,
+    "hard_negative_risk_veto_ucb": 0.35,
+    "boundary_tau_band": 0.15,
+    "soft_ood_multiplier": 1.25,
+    "exploration_round_probability": 0.3,
+    "max_total_shares_per_invocation": 3,
+    "max_exploratory_shares_per_invocation": 1,
+    "reject_explicit_environment_conflict": true
+  },
+  "created_at": "2026-07-03T21:13:53.666731Z",
+  "fingerprint": "18563e8540256d53ae44d91fbd9e847e48ebabbfa34dde3380bfa1f62e3ac87f"
+}

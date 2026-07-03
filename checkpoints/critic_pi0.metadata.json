@@ -1,0 +1,76 @@
+{
+  "base_memory_snapshot_digests": [
+    "1cc5f10dea2499a67e277e9a830b58fdf44f0126b6fcb5872db9f78d1f314a75"
+  ],
+  "bootstrap_seeds": [
+    2029167940,
+    1342382291,
+    1469265225,
+    1926751965,
+    1241873584,
+    1665772334,
+    1790251936,
+    483628757,
+    119253154,
+    644602188,
+    612176793,
+    1875941738,
+    1959843383,
+    11307154,
+    1073283950,
+    1763574598,
+    282266798,
+    1711693563,
+    255728784,
+    1004882659,
+    1753345571,
+    650757180,
+    733587778,
+    597914448,
+    1545052023,
+    547328271,
+    2126996168,
+    955794088,
+    1026816910,
+    1083509134,
+    1251001413
+  ],
+  "checkpoint_sha256": "a84230b041ac9eaf5fc0c93cd50070e62f32d67aac9ed36314b42f3f1080f13b",
+  "class_distribution_test": {
+    "negative": 9,
+    "neutral_failure": 14,
+    "neutral_success": 10,
+    "positive": 15
+  },
+  "class_distribution_train": {
+    "negative": 51,
+    "neutral_failure": 46,
+    "neutral_success": 50,
+    "positive": 45
+  },
+  "collection_round_ids": [
+    "pi0"
+  ],
+  "critic_version": "four_outcome_bootstrap_v1_d66ee477",
+  "encoder_schema_version": "1.0",
+  "estimand_policy_fingerprint": "d66ee477e5e07085fafde56ac32c77565924c64143931cb9a0bcd848c8b45b48",
+  "estimand_policy_name": null,
+  "estimand_policy_version": null,
+  "feature_policy_no_payload_steps": true,
+  "n_bootstrap": 31,
+  "n_features": 512,
+  "prefix_size_distribution_test": {
+    "0": 20,
+    "1": 15,
+    "2": 13
+  },
+  "prefix_size_distribution_train": {
+    "0": 63,
+    "1": 65,
+    "2": 64
+  },
+  "support_threshold": 9.992007221626409e-16,
+  "temporal_integrity_verified": true,
+  "test_record_count": 48,
+  "train_record_count": 192
+}

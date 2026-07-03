@@ -1,0 +1,127 @@
+{
+  "environment_regime": {
+    "groups": {
+      "v1-resource-available": {
+        "class_counts": {
+          "negative": 11,
+          "neutral_failure": 101,
+          "neutral_success": 111,
+          "positive": 17
+        },
+        "class_entropy": 1.5143900246541055,
+        "count": 240,
+        "majority_class_baseline": 0.4625
+      }
+    },
+    "mutual_information_proxy": 0.0,
+    "warnings": []
+  },
+  "prefix_structure_family": {
+    "groups": {
+      "empty": {
+        "class_counts": {
+          "negative": 3,
+          "neutral_failure": 41,
+          "neutral_success": 39,
+          "positive": 5
+        },
+        "class_entropy": 1.4349447243012814,
+        "count": 88,
+        "majority_class_baseline": 0.4659090909090909
+      },
+      "redundant-prefix": {
+        "class_counts": {
+          "negative": 8,
+          "neutral_failure": 60,
+          "neutral_success": 72,
+          "positive": 12
+        },
+        "class_entropy": 1.552746027594826,
+        "count": 152,
+        "majority_class_baseline": 0.47368421052631576
+      }
+    },
+    "mutual_information_proxy": 0.004837808266912713,
+    "warnings": []
+  },
+  "scenario_family": {
+    "groups": {
+      "negative": {
+        "class_counts": {
+          "negative": 11,
+          "neutral_failure": 13,
+          "neutral_success": 30,
+          "positive": 6
+        },
+        "class_entropy": 1.7589579787180691,
+        "count": 60,
+        "majority_class_baseline": 0.5
+      },
+      "neutral_failure": {
+        "class_counts": {
+          "neutral_failure": 60
+        },
+        "class_entropy": -0.0,
+        "count": 60,
+        "majority_class_baseline": 1.0
+      },
+      "neutral_success": {
+        "class_counts": {
+          "neutral_success": 60
+        },
+        "class_entropy": -0.0,
+        "count": 60,
+        "majority_class_baseline": 1.0
+      },
+      "positive": {
+        "class_counts": {
+          "neutral_failure": 28,
+          "neutral_success": 21,
+          "positive": 11
+        },
+        "class_entropy": 1.4919180705922326,
+        "count": 60,
+        "majority_class_baseline": 0.4666666666666667
+      }
+    },
+    "mutual_information_proxy": 0.7016710123265302,
+    "warnings": [
+      "scenario_family=neutral_success nearly determines transfer_class",
+      "scenario_family=neutral_failure nearly determines transfer_class"
+    ]
+  },
+  "target_memory_family": {
+    "groups": {
+      "destructive": {
+        "class_counts": {
+          "negative": 11,
+          "neutral_failure": 8,
+          "neutral_success": 6
+        },
+        "class_entropy": 1.5413152774012364,
+        "count": 25,
+        "majority_class_baseline": 0.44
+      },
+      "neutral": {
+        "class_counts": {
+          "neutral_failure": 93,
+          "neutral_success": 96
+        },
+        "class_entropy": 0.999818246960343,
+        "count": 189,
+        "majority_class_baseline": 0.5079365079365079
+      },
+      "recover": {
+        "class_counts": {
+          "neutral_success": 9,
+          "positive": 17
+        },
+        "class_entropy": 0.9305861291319928,
+        "count": 26,
+        "majority_class_baseline": 0.6538461538461539
+      }
+    },
+    "mutual_information_proxy": 0.46566598312090735,
+    "warnings": []
+  }
+}
