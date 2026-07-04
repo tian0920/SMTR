@@ -51,10 +51,13 @@ class PairedRolloutCollector:
             card.memory_id: card for card in decision_point.memory_store_snapshot.routing_cards
         }
         candidate_card_snapshot = routing_feature_snapshot_from_card(
-            cards_by_id[traversal_plan.target_memory_id]
+            cards_by_id[traversal_plan.target_memory_id],
+            noise_seed=decision_point.run_seed,
         )
         selected_card_snapshots = [
-            routing_feature_snapshot_from_card(cards_by_id[memory_id])
+            routing_feature_snapshot_from_card(
+                cards_by_id[memory_id], noise_seed=decision_point.run_seed
+            )
             for memory_id in traversal_plan.selected_before
         ]
         selected_payload_versions = {

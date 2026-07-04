@@ -26,6 +26,9 @@ class TransferPredictionInput(BaseModel):
 
 class HashingTransferFeatureEncoder:
     schema_version = "1.0"
+    # Class-level default so checkpoints pickled before ``feature_block`` existed
+    # (pre-A-01) still load and default to the full feature set.
+    feature_block = "full"
 
     def __init__(self, *, n_features: int = 512, feature_block: str = "full") -> None:
         self.n_features = n_features
@@ -126,6 +129,7 @@ class HashingTransferFeatureEncoder:
                 )
             )
         )
+        tokens.extend(_pairwise_interaction_tokens(card, selected_cards))
         return sorted(token for token in tokens if self._include_token(token))
 
     def transform(self, items: list[TransferPredictionInput]):
@@ -136,14 +140,15 @@ class HashingTransferFeatureEncoder:
             return True
         is_candidate = token.startswith("cand_")
         is_selected = token.startswith("selected_") or token.startswith("selected_count:")
+        is_interaction = token.startswith("interaction_")
         if self.feature_block == "candidate_only":
             return is_candidate
         if self.feature_block == "selected_set_only":
             return is_selected
         if self.feature_block == "context_only":
-            return not is_candidate and not is_selected
+            return not is_candidate and not is_selected and not is_interaction
         if self.feature_block == "context_plus_candidate":
-            return not is_selected
+            return not is_selected and not is_interaction
         raise ValueError(f"unknown transfer feature block: {self.feature_block}")
 
 
@@ -230,3 +235,104 @@ def _card_count_tokens(prefix: str, card: RoutingFeatureSnapshot) -> list[str]:
         f"{prefix}_paired_negative_bin:{_count_bin(card.paired_negative_transfer_count)}",
         f"{prefix}_paired_neutral_bin:{_count_bin(card.paired_neutral_transfer_count)}",
     ]
+
+
+INTERACTION_SIGNALS = (
+    "env_agree",
+    "env_conflict",
+    "forbidden_conflict",
+    "precond_postcond_overlap",
+    "postcond_postcond_overlap",
+    "role_overlap",
+    "capability_overlap",
+    "task_tag_overlap",
+)
+
+
+def _pair_interaction_signals(
+    candidate: RoutingFeatureSnapshot,
+    selected: RoutingFeatureSnapshot,
+) -> dict[str, int]:
+    """Compute candidate-prefix pairwise interaction signals (A-01).
+
+    All signals are non-negative integer counts derived only from routing-card
+    fields (no payload steps). ``strategy`` is intentionally absent from the card
+    schema to prevent mechanism leakage, so no strategy interaction is computed.
+    """
+    cand_required = candidate.required_environment_facts
+    cand_forbidden = candidate.forbidden_environment_facts
+    sel_required = selected.required_environment_facts
+    sel_forbidden = selected.forbidden_environment_facts
+    env_shared_keys = cand_required.keys() & sel_required.keys()
+    env_agree = sum(1 for key in env_shared_keys if cand_required[key] == sel_required[key])
+    env_conflict = sum(1 for key in env_shared_keys if cand_required[key] != sel_required[key])
+    forbidden_conflict = sum(
+        1 for key in cand_forbidden.keys() & sel_required.keys()
+        if cand_forbidden[key] == sel_required[key]
+    ) + sum(
+        1 for key in cand_required.keys() & sel_forbidden.keys()
+        if cand_required[key] == sel_forbidden[key]
+    )
+    cand_precond = set(_text_tokens(candidate.precondition_summary))
+    cand_postcond = set(_text_tokens(candidate.postcondition_summary))
+    sel_postcond = set(_text_tokens(selected.postcondition_summary))
+    return {
+        "env_agree": env_agree,
+        "env_conflict": env_conflict,
+        "forbidden_conflict": forbidden_conflict,
+        "precond_postcond_overlap": len(cand_precond & sel_postcond),
+        "postcond_postcond_overlap": len(cand_postcond & sel_postcond),
+        "role_overlap": len(
+            set(candidate.compatible_receiver_roles) & set(selected.compatible_receiver_roles)
+        ),
+        "capability_overlap": len(
+            set(candidate.compatible_receiver_capabilities)
+            & set(selected.compatible_receiver_capabilities)
+        ),
+        "task_tag_overlap": len(set(candidate.task_tags) & set(selected.task_tags)),
+    }
+
+
+def _pairwise_interaction_tokens(
+    candidate: RoutingFeatureSnapshot,
+    selected_cards: list[RoutingFeatureSnapshot],
+) -> list[str]:
+    """Emit permutation-invariant candidate-prefix interaction tokens (A-01/A-02).
+
+    For every target-prefix pair we compute :func:`_pair_interaction_signals`, then
+    aggregate each signal across all prefix cards with mean/max/min plus global
+    pair-count, conflict-count and compatibility-count.
+    """
+    if not selected_cards:
+        return []
+    per_signal: dict[str, list[int]] = {name: [] for name in INTERACTION_SIGNALS}
+    conflict_pairs = 0
+    compatible_pairs = 0
+    for selected in selected_cards:
+        signals = _pair_interaction_signals(candidate, selected)
+        for name in INTERACTION_SIGNALS:
+            per_signal[name].append(signals[name])
+        if signals["env_conflict"] > 0 or signals["forbidden_conflict"] > 0:
+            conflict_pairs += 1
+        if any(
+            signals[name] > 0
+            for name in (
+                "env_agree",
+                "precond_postcond_overlap",
+                "postcond_postcond_overlap",
+                "role_overlap",
+                "capability_overlap",
+                "task_tag_overlap",
+            )
+        ):
+            compatible_pairs += 1
+    tokens: list[str] = []
+    for name in INTERACTION_SIGNALS:
+        values = per_signal[name]
+        tokens.append(f"interaction_{name}_mean_bin:{_count_bin(sum(values) / len(values))}")
+        tokens.append(f"interaction_{name}_max_bin:{_count_bin(max(values))}")
+        tokens.append(f"interaction_{name}_min_bin:{_count_bin(min(values))}")
+    tokens.append(f"interaction_pair_count:{_count_bin(len(selected_cards))}")
+    tokens.append(f"interaction_conflict_count:{_count_bin(conflict_pairs)}")
+    tokens.append(f"interaction_compatibility_count:{_count_bin(compatible_pairs)}")
+    return tokens

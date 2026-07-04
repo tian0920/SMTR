@@ -1,0 +1,147 @@
+{
+  "config": {
+    "model": "qwen3.5-35b-a3b",
+    "api_base": "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    "api_key": "sk-8692d980a9e148d3843a64135ae0b0f2",
+    "load_in_8bit": false,
+    "max_tokens": 256,
+    "temperature": 0.0,
+    "description": "Qwen via remote API server (set OPENAI_API_KEY env var or add api_key)"
+  },
+  "total_time": 54.56197190284729,
+  "tests": {
+    "model_loading": {
+      "elapsed": 5.633815765380859,
+      "error": null
+    },
+    "plan_toy_env": {
+      "result": {
+        "plan": [
+          "gather_key",
+          "open_chest",
+          "collect_artifact"
+        ],
+        "is_correct": true,
+        "explanation": "Adheres to the specified valid_sequence for unlocking and retrieving the target artifact."
+      },
+      "elapsed": 4.4338719844818115,
+      "error": null
+    },
+    "plan_tool_env": {
+      "result": {
+        "plan": [
+          "read_file",
+          "run_command",
+          "write_file"
+        ],
+        "is_correct": true
+      },
+      "elapsed": 18.296473264694214,
+      "error": null
+    },
+    "sequential_router": {
+      "result": {
+        "n_decisions": 3,
+        "selected": [],
+        "router_name": "ProductionSequentialRouter"
+      },
+      "elapsed": 1.1731884479522705,
+      "error": null
+    },
+    "safety_guard": {
+      "result": {
+        "n_decisions": 3,
+        "stats": {
+          "in_fallback_mode": false,
+          "safety_guard": {
+            "total_vetoes": 0,
+            "total_shares": 0,
+            "consecutive_vetoes": 0,
+            "conservative_mode": false
+          }
+        }
+      },
+      "elapsed": 0.03422427177429199,
+      "error": null
+    },
+    "multi_seed": {
+      "result": {
+        "results": [
+          {
+            "seed": 7,
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "is_correct": true,
+            "valid_sequence": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ]
+          },
+          {
+            "seed": 42,
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "is_correct": true,
+            "valid_sequence": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ]
+          },
+          {
+            "seed": 123,
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "is_correct": true,
+            "valid_sequence": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ]
+          },
+          {
+            "seed": 256,
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "is_correct": true,
+            "valid_sequence": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ]
+          },
+          {
+            "seed": 999,
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "is_correct": true,
+            "valid_sequence": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ]
+          }
+        ],
+        "success_rate": 1.0
+      },
+      "elapsed": 24.937139987945557,
+      "error": null
+    }
+  }
+}

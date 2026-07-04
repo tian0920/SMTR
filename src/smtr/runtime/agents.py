@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any
 
 from smtr.runtime.environment import ToyEnvironment
@@ -5,7 +6,7 @@ from smtr.runtime.fake_llm import DeterministicFakeLLM
 from smtr.runtime.state import SMTRState
 
 
-def run_planner(state: SMTRState, llm: DeterministicFakeLLM | None = None) -> dict[str, Any]:
+def run_planner(state: SMTRState, llm: Any | None = None) -> dict[str, Any]:
     llm = llm or DeterministicFakeLLM()
     context = state["agent_local_context"]["planner"]
     output = llm.plan(
@@ -18,9 +19,13 @@ def run_planner(state: SMTRState, llm: DeterministicFakeLLM | None = None) -> di
     return {"agent_outputs": agent_outputs}
 
 
-def run_executor(state: SMTRState, llm: DeterministicFakeLLM | None = None) -> dict[str, Any]:
+def run_executor(
+    state: SMTRState,
+    llm: Any | None = None,
+    env_factory: Callable[[int], Any] | None = None,
+) -> dict[str, Any]:
     llm = llm or DeterministicFakeLLM()
-    env = ToyEnvironment(seed=state["run_seed"])
+    env = (env_factory or (lambda seed: ToyEnvironment(seed=seed)))(seed=state["run_seed"])
     env.restore(state["environment_observation"])
     plan = state["agent_outputs"]["planner"]["plan"]
     results = [env.apply({"name": action_name}) for action_name in plan]
@@ -31,7 +36,7 @@ def run_executor(state: SMTRState, llm: DeterministicFakeLLM | None = None) -> d
         "action_results": results,
         "environment_update": final_observation,
         "local_trace": {
-            "source": "toy_environment",
+            "source": getattr(env, "__class__", type(env)).__name__.lower(),
             "visible_payload_count": len(
                 state["agent_local_context"]["executor"].get("visible_payloads", [])
             ),

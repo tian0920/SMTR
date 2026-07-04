@@ -24,7 +24,9 @@ class ExplorationPolicyConfig(BaseModel):
 
 class FrozenRiskConstrainedExplorationPolicy:
     policy_name = "FrozenRiskConstrainedExplorationPolicy"
-    policy_version = "1"
+    # S4: version bumped to "2" after fixing the boundary-explore trigger so that
+    # this frozen policy is a distinct estimand from the buggy v1.
+    policy_version = "2"
 
     def __init__(
         self,
@@ -93,7 +95,20 @@ class FrozenRiskConstrainedExplorationPolicy:
                 negative_risk_ucb <= self.config.hard_negative_risk_veto_ucb
                 and abs(tau_mean) <= self.config.boundary_tau_band
             )
-            trigger = score < self.config.exploration_round_probability
+            # S4 (A-11) fix: the boundary-explore trigger MUST use an independent
+            # random draw. Reusing ``score`` made boundary_explore mathematically
+            # impossible: safe_exploit already claims every low ``score`` case, so the
+            # boundary branch only ran for high ``score`` where ``score < prob`` was
+            # never true. An independent ``trigger_score`` also makes the logged share
+            # propensity (``exploration_round_probability``) match reality for IPS.
+            trigger_score = _stable_unit_interval(
+                self.manifest.fingerprint,
+                "boundary-trigger",
+                str(decision_context.get("receiver_agent_id", "")),
+                candidate_id,
+                str(candidate_position),
+            )
+            trigger = trigger_score < self.config.exploration_round_probability
             selected = eligible and trigger
             action = "share" if selected else "withhold"
             mode = "boundary_explore" if selected else "ordinary_withhold"

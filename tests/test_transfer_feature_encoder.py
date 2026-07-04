@@ -62,3 +62,58 @@ def test_feature_encoder_rejects_steps_field() -> None:
 
     with pytest.raises(ValueError, match="steps"):
         HashingTransferFeatureEncoder().tokens(payload)  # type: ignore[arg-type]
+
+
+def test_feature_encoder_emits_pairwise_interaction_tokens() -> None:
+    tokens = HashingTransferFeatureEncoder().tokens(_item(["a"]))
+
+    interaction_tokens = [token for token in tokens if token.startswith("interaction_")]
+    assert any(
+        token.startswith("interaction_role_overlap_max_bin:") for token in interaction_tokens
+    )
+    assert any(token.startswith("interaction_conflict_count:") for token in interaction_tokens)
+    assert any(
+        token.startswith("interaction_compatibility_count:") for token in interaction_tokens
+    )
+
+
+def test_feature_encoder_has_no_interaction_tokens_when_prefix_empty() -> None:
+    tokens = HashingTransferFeatureEncoder().tokens(_item([]))
+
+    assert all(not token.startswith("interaction_") for token in tokens)
+
+
+def test_interaction_tokens_detect_env_conflict() -> None:
+    candidate = RoutingFeatureSnapshot(
+        memory_id="cand",
+        active_payload_version=1,
+        goal_summary="candidate",
+        required_environment_facts={"door": "open"},
+    )
+    conflicting = RoutingFeatureSnapshot(
+        memory_id="pre",
+        active_payload_version=1,
+        goal_summary="prefix",
+        required_environment_facts={"door": "closed"},
+    )
+    item = TransferPredictionInput(
+        context=build_context_fingerprint(
+            task_id="task",
+            task_tags=["artifact"],
+            receiver_agent_id="planner",
+            receiver_role="planner",
+            receiver_capabilities=["planning"],
+            environment_observation={"scenario": "x"},
+            task_stage="planner",
+            selected_memory_ids=["pre"],
+            episode_id="episode",
+        ),
+        candidate_card=candidate,
+        selected_cards=[conflicting],
+    )
+
+    tokens = HashingTransferFeatureEncoder().tokens(item)
+
+    assert "interaction_env_conflict_max_bin:1" in tokens
+    assert "interaction_conflict_count:1" in tokens
+    assert "interaction_env_agree_max_bin:0" in tokens

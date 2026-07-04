@@ -10,6 +10,12 @@ def selected_set_signature(memory_ids: list[str]) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
 
 
+# Fields excluded from the context fingerprint.  These fields affect action
+# outcomes but are intentionally invisible to the critic so that the
+# scenario-family compositional split is non-trivially separable.
+_FINGERPRINT_EXCLUDED = {"perturbation_offset"}
+
+
 def coerce_fact_value(value: Any) -> FactValue | None:
     if isinstance(value, str | bool | int | float):
         return value
@@ -32,7 +38,7 @@ def build_context_fingerprint(
     environment_facts = {
         key: fact
         for key, value in sorted(environment_observation.items())
-        if (fact := coerce_fact_value(value)) is not None
+        if key not in _FINGERPRINT_EXCLUDED and (fact := coerce_fact_value(value)) is not None
     }
     return ContextFingerprint(
         task_id=task_id,

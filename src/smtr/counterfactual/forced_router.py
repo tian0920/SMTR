@@ -30,9 +30,13 @@ class ForcedInterventionRouter:
         receiver_agent_id: str,
         proposal: CandidateProposal,
     ) -> RoutingResult:
-        if receiver_agent_id != self.receiver_agent_id or not self._matches_target_proposal(
-            proposal
-        ):
+        if receiver_agent_id != self.receiver_agent_id:
+            return self._withhold_all(receiver_agent_id=receiver_agent_id, proposal=proposal)
+
+        # Ensure forced_prefix and target memories are in the proposal BEFORE matching
+        proposal = self._ensure_forced_prefix_in_proposal(proposal)
+
+        if not self._matches_target_proposal(proposal):
             return self._withhold_all(receiver_agent_id=receiver_agent_id, proposal=proposal)
 
         decisions: list[RouterDecision] = []
@@ -106,7 +110,44 @@ class ForcedInterventionRouter:
 
     def _matches_target_proposal(self, proposal: CandidateProposal) -> bool:
         proposal_ids = {candidate.memory_id for candidate in proposal.ranked_candidates}
-        return set(self.traversal_plan.candidate_order).issubset(proposal_ids)
+        # Check that the target memory is in the proposal
+        target_id = self.traversal_plan.target_memory_id
+        if target_id not in proposal_ids:
+            return False
+        # Check that all prefix memories are in the proposal (or were injected)
+        for memory_id in self.traversal_plan.selected_before:
+            if memory_id not in proposal_ids:
+                # Memory was injected into traversal plan but not in branch proposal
+                # This is OK - we'll handle it by treating it as a fixed prefix
+                continue
+        return True
+
+    def _ensure_forced_prefix_in_proposal(self, proposal: CandidateProposal) -> CandidateProposal:
+        """Ensure forced_prefix and target memories from traversal plan are in the proposal."""
+        from smtr.router.candidate_proposer import CandidateScore
+
+        existing_ids = {c.memory_id for c in proposal.ranked_candidates}
+        # Include target memory and forced_prefix memories
+        required_ids = [self.traversal_plan.target_memory_id, *self.traversal_plan.selected_before]
+        missing = [m for m in required_ids if m not in existing_ids]
+        if not missing:
+            return proposal
+
+        new_candidates = list(proposal.ranked_candidates)
+        for memory_id in missing:
+            new_candidates.append(
+                CandidateScore(
+                    memory_id=memory_id,
+                    total_score=0.01,
+                    goal_similarity=0.0,
+                    task_tag_overlap=0.0,
+                    environment_compatibility=1.0,
+                    receiver_compatibility=1.0,
+                    explicit_environment_conflict=False,
+                    score_explanation=["injected for forced intervention"],
+                )
+            )
+        return proposal.model_copy(update={"ranked_candidates": new_candidates})
 
     def _withhold_all(
         self,

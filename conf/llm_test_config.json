@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "description": "LLM test configurations for S7 integration tests",
+  "default_config": "qwen_local",
+  "configs": {
+    "qwen_local": {
+      "description": "Qwen/Qwen3.5-2B local model with 8-bit quantization",
+      "model": "Qwen/Qwen3.5-2B",
+      "api_base": null,
+      "load_in_8bit": true,
+      "max_tokens": 256,
+      "temperature": 0.0
+    },
+    "qwen_local_fp16": {
+      "description": "Qwen/Qwen3.5-2B local model without quantization",
+      "model": "Qwen/Qwen3.5-2B",
+      "api_base": null,
+      "load_in_8bit": false,
+      "max_tokens": 256,
+      "temperature": 0.0
+    },
+    "qwen_api": {
+      "description": "Qwen via local API server",
+      "model": "Qwen/Qwen3.5-2B",
+      "api_base": "http://localhost:8000",
+      "load_in_8bit": false,
+      "max_tokens": 256,
+      "temperature": 0.0
+    },
+    "qwen_remote": {
+      "description": "Qwen via remote API server (set OPENAI_API_KEY env var or add api_key)",
+      "model": "qwen3.5-35b-a3b",
+      "api_base": "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "api_key": "sk-8692d980a9e148d3843a64135ae0b0f2",
+      "load_in_8bit": false,
+      "max_tokens": 256,
+      "temperature": 0.0
+    },
+    "llama_local": {
+      "description": "Meta Llama 3.2 1B local model",
+      "model": "meta-llama/Llama-3.2-1B",
+      "api_base": null,
+      "load_in_8bit": true,
+      "max_tokens": 256,
+      "temperature": 0.0
+    },
+    "openai_gpt4o_mini": {
+      "description": "OpenAI GPT-4o-mini via API",
+      "model": "gpt-4o-mini",
+      "api_base": "https://api.openai.com/v1",
+      "load_in_8bit": false,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    "openai_gpt35": {
+      "description": "OpenAI GPT-3.5-turbo via API",
+      "model": "gpt-3.5-turbo",
+      "api_base": "https://api.openai.com/v1",
+      "load_in_8bit": false,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    "vllm_local": {
+      "description": "vLLM local server",
+      "model": "Qwen/Qwen3.5-2B",
+      "api_base": "http://localhost:8000/v1",
+      "load_in_8bit": false,
+      "max_tokens": 256,
+      "temperature": 0.0
+    },
+    "ollama_local": {
+      "description": "Ollama local server",
+      "model": "qwen2.5:1.5b",
+      "api_base": "http://localhost:11434/v1",
+      "load_in_8bit": false,
+      "max_tokens": 256,
+      "temperature": 0.0
+    }
+  }
+}

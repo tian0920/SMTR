@@ -51,6 +51,16 @@ def build_candidate_traversal_plan(
     candidate_scores = {
         candidate.memory_id: candidate for candidate in proposal.ranked_candidates
     }
+    # If selected_before is explicitly provided (forced_prefix), rearrange
+    # candidate_order to ensure those memories come before the target
+    if selected_before is not None:
+        prefix_memories = [m for m in selected_before if m in candidate_order]
+        other_memories = [
+            m for m in candidate_order
+            if m not in prefix_memories and m != target_memory_id
+        ]
+        candidate_order = prefix_memories + [target_memory_id] + other_memories
+        target_index = candidate_order.index(target_memory_id)
     if selected_before is None and prefix_sampler is not None:
         selected_before = prefix_sampler.sample(
             candidate_order=candidate_order,

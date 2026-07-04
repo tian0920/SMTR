@@ -1,0 +1,29 @@
+{
+  "delta_correlation": 0.9957836795549732,
+  "delta_mae": 0.050118569195696974,
+  "direction_accuracy": 0.6804123711340206,
+  "flip_detection": {
+    "negative_to_neutral": {
+      "direction_accuracy": null,
+      "pair_count": 0
+    },
+    "neutral_to_positive": {
+      "direction_accuracy": 1.0,
+      "pair_count": 1
+    },
+    "positive_to_negative": {
+      "direction_accuracy": null,
+      "pair_count": 0
+    },
+    "positive_to_neutral": {
+      "direction_accuracy": 1.0,
+      "pair_count": 27
+    }
+  },
+  "fraction_prediction_invariant_when_ground_truth_changes": 0.0,
+  "matched_pair_count": 97,
+  "mean_abs_delta_tau_error": 0.050118569195696974,
+  "transfer_region_flip_accuracy": 1.0,
+  "transfer_region_flip_pair_count": 28,
+  "warnings": []
+}

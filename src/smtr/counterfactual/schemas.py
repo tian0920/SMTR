@@ -272,7 +272,17 @@ def transfer_class_from_outcomes(
     return "neutral_failure"
 
 
-def routing_feature_snapshot_from_card(card) -> RoutingFeatureSnapshot:
+def routing_feature_snapshot_from_card(card, *, noise_seed: int | None = None):
+    """Create a routing feature snapshot from a memory routing card.
+
+    When *noise_seed* is provided, small deterministic jitter is added to
+    execution statistics so that records sharing the same underlying memory
+    still produce slightly different feature vectors.  This prevents the
+    critic from memorising a 1-to-1 mapping between memory identity and
+    transfer class (which would make scenario-family splits trivially
+    separable).
+    """
+    jitter = _execution_jitter(card.memory_id, noise_seed)
     return RoutingFeatureSnapshot(
         memory_id=card.memory_id,
         active_payload_version=card.active_payload_version,
@@ -286,9 +296,17 @@ def routing_feature_snapshot_from_card(card) -> RoutingFeatureSnapshot:
         compatible_receiver_capabilities=list(card.compatible_receiver_capabilities),
         execution_success_alpha=card.execution_success_alpha,
         execution_success_beta=card.execution_success_beta,
-        execution_success_count=card.execution_success_count,
-        execution_failure_count=card.execution_failure_count,
-        paired_positive_transfer_count=card.paired_positive_transfer_count,
-        paired_negative_transfer_count=card.paired_negative_transfer_count,
-        paired_neutral_transfer_count=card.paired_neutral_transfer_count,
+        execution_success_count=max(0, card.execution_success_count + jitter),
+        execution_failure_count=max(0, card.execution_failure_count + jitter),
+        paired_positive_transfer_count=max(0, card.paired_positive_transfer_count + jitter),
+        paired_negative_transfer_count=max(0, card.paired_negative_transfer_count + jitter),
+        paired_neutral_transfer_count=max(0, card.paired_neutral_transfer_count + jitter),
     )
+
+
+def _execution_jitter(memory_id: str, seed: int | None) -> int:
+    """Return a small deterministic jitter in {-1, 0, 1} for execution stats."""
+    if seed is None:
+        return 0
+    h = hash((memory_id, seed))
+    return (h % 3) - 1  # -1, 0, or 1

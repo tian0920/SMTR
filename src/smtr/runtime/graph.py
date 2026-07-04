@@ -130,6 +130,8 @@ def build_graph(
     config: RuntimeConfig | None = None,
     decision_point_recorder: DecisionPointRecorder | None = None,
     start_node: str | None = None,
+    llm: Any | None = None,
+    env_factory: Callable[[int], Any] | None = None,
 ):
     memory_pool = memory_pool or build_seed_memory_pool()
     proposer = proposer or DeterministicHybridCandidateProposer()
@@ -148,7 +150,7 @@ def build_graph(
             decision_point_recorder=decision_point_recorder,
         ),
     )
-    graph.add_node("planner", run_planner)
+    graph.add_node("planner", lambda state: run_planner(state, llm=llm))
     graph.add_node(
         "pre_route_executor",
         _pre_route_node(
@@ -160,7 +162,10 @@ def build_graph(
             decision_point_recorder=decision_point_recorder,
         ),
     )
-    graph.add_node("executor", run_executor)
+    graph.add_node(
+        "executor",
+        lambda state: run_executor(state, llm=llm, env_factory=env_factory),
+    )
     graph.add_node(
         "pre_route_critic",
         _pre_route_node(
@@ -184,9 +189,13 @@ def build_graph(
     return graph.compile()
 
 
-def run_demo(seed: int = 7) -> SMTRState:
+def run_demo(
+    seed: int = 7,
+    llm: Any | None = None,
+    env_factory: Callable[[int], Any] | None = None,
+) -> SMTRState:
     env = ToyEnvironment(seed=seed)
-    app = build_graph(config=RuntimeConfig(seed=seed))
+    app = build_graph(config=RuntimeConfig(seed=seed), llm=llm, env_factory=env_factory)
     state = initial_state(
         task="Obtain a target artifact using the valid action sequence.",
         environment_observation=env.observe(),
@@ -205,6 +214,8 @@ def run_episode(
     episode_id: str | None = None,
     task_id: str | None = None,
     decision_point_recorder: DecisionPointRecorder | None = None,
+    llm: Any | None = None,
+    env_factory: Callable[[int], Any] | None = None,
 ) -> SMTRState:
     env = ToyEnvironment(seed=seed)
     state = initial_state(
@@ -219,6 +230,8 @@ def run_episode(
         memory_pool=memory_pool,
         config=RuntimeConfig(seed=seed, top_k=top_k),
         decision_point_recorder=decision_point_recorder,
+        llm=llm,
+        env_factory=env_factory,
     )
     return app.invoke(state)
 
@@ -228,9 +241,16 @@ def run_demo_with_repository(
     repository: SharedMemoryRepository,
     seed: int = 7,
     top_k: int = 4,
+    llm: Any | None = None,
+    env_factory: Callable[[int], Any] | None = None,
 ) -> SMTRState:
     env = ToyEnvironment(seed=seed)
-    app = build_graph(memory_pool=repository, config=RuntimeConfig(seed=seed, top_k=top_k))
+    app = build_graph(
+        memory_pool=repository,
+        config=RuntimeConfig(seed=seed, top_k=top_k),
+        llm=llm,
+        env_factory=env_factory,
+    )
     state = initial_state(
         task="Obtain a target artifact using the valid action sequence.",
         environment_observation=env.observe(),

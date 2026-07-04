@@ -1,0 +1,124 @@
+{
+  "test_summary": {
+    "model": "Qwen/Qwen3.5-2B",
+    "quantization": "8-bit (bitsandbytes)",
+    "gpu": "Tesla T4 (16GB)",
+    "baseline_llm": "DeterministicFakeLLM"
+  },
+  "baseline_demo": {
+    "llm_type": "DeterministicFakeLLM",
+    "task": "Obtain a target artifact using the valid action sequence.",
+    "team_success": true,
+    "team_reward": 1.0,
+    "planner_plan": [
+      "gather_key",
+      "open_chest",
+      "collect_artifact"
+    ],
+    "planner_explanation": "Use the observed valid sequence for task: Obtain a target artifact using the valid action sequence.",
+    "execution_result": "Executed 3/3 actions successfully.",
+    "action_count": 3,
+    "router_trace_count": 3,
+    "time_seconds": 0.025
+  },
+  "real_llm_demo": {
+    "llm_type": "RealLLM (Qwen/Qwen3.5-2B, 8-bit)",
+    "model_load_time": 17.3,
+    "task": "Obtain a target artifact using the valid action sequence.",
+    "team_success": true,
+    "team_reward": 1.0,
+    "planner_plan": [
+      "gather_key",
+      "open_chest",
+      "collect_artifact"
+    ],
+    "planner_explanation": "Execute the valid sequence to locate and retrieve the target artifact from the workbench.",
+    "execution_result": "<think>\nThinking Process:\n\n1.  **Analyze the Request:**\n    *   Input: A list of execution results (JSON-like structure).\n    *   Task: Summarize the results concisely.\n    *   Constraint: Provide a brief summary of what happened.\n\n2.  **Analyze the Input Data:**\n    *   `Results`: A list of three objects.\n    *   Object 1: `action`: \"gather_key\", `ok`: true, `error`: null.\n    *   Object 2: `action`: \"open_chest\", `ok`: true, `error`: null.\n    *   Object 3: `action`: \"collect_artifact\", `ok`: ...",
+    "action_count": 3,
+    "router_trace_count": 3,
+    "time_seconds": 185.443
+  },
+  "tool_env_demo": {
+    "llm_type": "RealLLM (Qwen/Qwen3.5-2B, 8-bit)",
+    "env_type": "ToolEnvironment",
+    "task": "Obtain a target artifact using the valid action sequence.",
+    "team_success": false,
+    "team_reward": 0.0,
+    "planner_plan": [],
+    "planner_explanation": "Failed to parse LLM response",
+    "execution_result": "<think>\nThinking Process:\n\n1.  **Analyze the Request:**\n    *   Input: \"Results: []\" (Empty list).\n    *   Task: Summarize the execution results concisely.\n    *   Constraint: Provide a brief summary of what happened.\n\n2.  **Analyze the Input Data:**\n    *   The input string is `Results: []`.\n    *   This indicates an empty list of results.\n    *   There is no actual data, output, or execution trace provided.\n\n3.  **Determine the Summary:**\n    *   Since there are no results, the summary must re...",
+    "action_count": 0,
+    "router_trace_count": 3,
+    "time_seconds": 181.927
+  },
+  "multi_seed_comparison": [
+    {
+      "seed": 7,
+      "baseline_success": true,
+      "baseline_plan": [
+        "gather_key",
+        "open_chest",
+        "collect_artifact"
+      ],
+      "real_llm_success": false,
+      "real_llm_plan": [],
+      "real_llm_explanation": "Failed to parse LLM response"
+    },
+    {
+      "seed": 42,
+      "baseline_success": true,
+      "baseline_plan": [
+        "gather_key",
+        "open_chest",
+        "collect_artifact"
+      ],
+      "real_llm_success": true,
+      "real_llm_plan": [
+        "gather_key",
+        "open_chest",
+        "collect_artifact"
+      ],
+      "real_llm_explanation": "Execute the valid action sequence to locate the key, open the chest, and collect the target artifact"
+    },
+    {
+      "seed": 123,
+      "baseline_success": true,
+      "baseline_plan": [
+        "gather_key",
+        "open_chest",
+        "collect_artifact"
+      ],
+      "real_llm_success": false,
+      "real_llm_plan": [],
+      "real_llm_explanation": "Failed to parse LLM response"
+    },
+    {
+      "seed": 256,
+      "baseline_success": true,
+      "baseline_plan": [
+        "gather_key",
+        "open_chest",
+        "collect_artifact"
+      ],
+      "real_llm_success": false,
+      "real_llm_plan": [],
+      "real_llm_explanation": "Failed to parse LLM response"
+    },
+    {
+      "seed": 999,
+      "baseline_success": true,
+      "baseline_plan": [
+        "gather_key",
+        "open_chest",
+        "collect_artifact"
+      ],
+      "real_llm_success": true,
+      "real_llm_plan": [
+        "gather_key",
+        "open_chest",
+        "collect_artifact"
+      ],
+      "real_llm_explanation": "Execute the valid sequence to obtain the target artifact from the workbench."
+    }
+  ]
+}

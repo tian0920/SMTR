@@ -1,10 +1,14 @@
 import argparse
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from smtr.counterfactual.candidate_traversal import build_candidate_traversal_plan
-from smtr.counterfactual.continuation_policy import FrozenNoShareContinuationPolicy
 from smtr.counterfactual.decision_points import InMemoryDecisionPointRecorder, canonical_digest
+from smtr.counterfactual.interaction_boundary_sampler import (
+    InteractionBoundaryConfig,
+    InteractionBoundaryPrefixSampler,
+)
 from smtr.counterfactual.paired_rollout import PairedRolloutCollector
 from smtr.counterfactual.policy_round import PolicyRoundLedger
 from smtr.counterfactual.prefix_sampler import (
@@ -14,10 +18,14 @@ from smtr.counterfactual.prefix_sampler import (
     UniformCandidateTargetPolicy,
 )
 from smtr.counterfactual.record_writer import PairedRecordWriter
+from smtr.counterfactual.schemas import DecisionPoint, routing_feature_snapshot_from_card
 from smtr.counterfactual.task_provider import CounterfactualToyTaskProvider
+from smtr.evaluation.compositional_splits import evaluate_compositional_splits
+from smtr.evaluation.feature_ablation import audit_feature_blocks
+from smtr.evaluation.interaction_audit import audit_interaction
 from smtr.evaluation.logging import summarize_run
 from smtr.evaluation.shortcut_diagnostics import shortcut_diagnostics
-from smtr.evaluation.splitters import EvaluationSplitSpec, split_records
+from smtr.memory.execution_evidence import build_context_fingerprint
 from smtr.memory.paired_transfer_evidence import PairedTransferEvidenceIngestor
 from smtr.memory.seed_memories import seed_repository
 from smtr.memory.store import SQLiteSharedMemoryRepository
@@ -29,10 +37,13 @@ from smtr.policy.exploratory_policy import (
 from smtr.policy.fingerprints import file_sha256
 from smtr.policy.manifests import (
     ContinuationPolicyManifest,
-    create_no_share_manifest,
     load_policy_manifest,
     save_policy_manifest,
     with_fingerprint,
+)
+from smtr.policy.no_share_policy import (
+    FrozenNoShareContinuationPolicy,
+    create_no_share_manifest,
 )
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_evaluation import (
@@ -42,9 +53,8 @@ from smtr.router.transfer_evaluation import (
     write_json,
 )
 from smtr.router.transfer_features import (
-    HashingTransferFeatureEncoder,
+    TransferPredictionInput,
     load_paired_records_for_training,
-    prediction_input_from_record,
 )
 from smtr.runtime.environment import ToyEnvironment
 from smtr.runtime.graph import run_demo, run_demo_with_repository, run_episode
@@ -111,6 +121,53 @@ def _demo(seed: int, db: str | None, top_k: int) -> None:
     print(summarize_run(state))
 
 
+def _make_boundary_critic_scorer(*, critic, decision_point, cards_by_id):
+    """Build an A-07.4/5/6 prefix scorer that probes the current critic.
+
+    Scores each (target, prefix) by prediction disagreement between the empty
+    prefix and the candidate prefix (A-07.4), ensemble uncertainty (A-07.5), and
+    closeness of tau_hat to zero (A-07.6). Mechanism-agnostic: it never needs the
+    hidden payload ``strategy``.
+    """
+    context = build_context_fingerprint(
+        task_id=decision_point.task_id,
+        task_tags=decision_point.candidate_proposal.request.task.split(),
+        receiver_agent_id=decision_point.receiver_agent_id,
+        receiver_role=decision_point.receiver_role,
+        receiver_capabilities=decision_point.candidate_proposal.request.receiver_capabilities,
+        environment_observation=decision_point.environment_snapshot,
+        task_stage=decision_point.task_stage,
+        selected_memory_ids=[],
+        episode_id=decision_point.episode_id,
+    )
+    snapshots = {
+        memory_id: routing_feature_snapshot_from_card(card)
+        for memory_id, card in cards_by_id.items()
+    }
+
+    def score(target_id: str, prefix_id: str) -> float:
+        if target_id not in snapshots or prefix_id not in snapshots:
+            return 0.0
+        target_card = snapshots[target_id]
+        prefix_card = snapshots[prefix_id]
+        empty = critic.predict(
+            TransferPredictionInput(
+                context=context, candidate_card=target_card, selected_cards=[]
+            )
+        )
+        with_prefix = critic.predict(
+            TransferPredictionInput(
+                context=context, candidate_card=target_card, selected_cards=[prefix_card]
+            )
+        )
+        disagreement = abs(with_prefix.tau_mean - empty.tau_mean)
+        uncertainty = max(0.0, with_prefix.tau_ucb - with_prefix.tau_lcb)
+        near_zero = max(0.0, 1.0 - abs(with_prefix.tau_mean) / 0.2)
+        return disagreement + 0.5 * uncertainty + 0.25 * near_zero
+
+    return score
+
+
 def _collect_counterfactual(
     *,
     db: str,
@@ -124,14 +181,15 @@ def _collect_counterfactual(
     prefix_mode: str,
     max_prefix_size: int,
     continuation_policy_manifest_path: str | None = None,
+    boundary_critic_checkpoint: str | None = None,
     round_id: str = "adhoc",
     round_index: int = 0,
     require_min_continuation_share_rate: float | None = None,
     require_max_continuation_share_rate: float | None = None,
     require_max_hard_risk_share_rate: float | None = None,
 ) -> None:
-    if scenario_mix != "balanced":
-        raise ValueError("only --scenario-mix balanced is supported")
+    if scenario_mix not in {"balanced", "interaction"}:
+        raise ValueError("only --scenario-mix balanced|interaction is supported")
     repository = SQLiteSharedMemoryRepository(db)
     seed_repository(repository)
     provider = CounterfactualToyTaskProvider()
@@ -162,6 +220,15 @@ def _collect_counterfactual(
             ),
         )
     scenarios = ["positive", "negative", "neutral_success", "neutral_failure"]
+    if scenario_mix == "interaction":
+        scenarios = [
+            *scenarios,
+            "prefix_sensitive",
+            "flip_pos_to_neg",
+            "flip_neg_to_pos",
+            "flip_neu_to_neg",
+            "flip_neu_to_pos",
+        ]
     counts: Counter[str] = Counter()
     prefix_counts: Counter[int] = Counter()
     cross_counts: Counter[tuple[int, str]] = Counter()
@@ -170,10 +237,23 @@ def _collect_counterfactual(
         if target_policy_name == "scenario-designated"
         else UniformCandidateTargetPolicy()
     )
-    prefix_sampler = StratifiedEligiblePrefixSampler(
-        PrefixSamplingConfig(mode=prefix_mode, max_prefix_size=max_prefix_size),
-        prefix_size_counts=prefix_counts,
+    cards_by_id = {card.memory_id: card for card in repository.get_routing_cards()}
+    boundary_critic = (
+        FourOutcomeTransferCritic.load(Path(boundary_critic_checkpoint))
+        if prefix_mode == "interaction-boundary" and boundary_critic_checkpoint
+        else None
     )
+    if prefix_mode == "interaction-boundary":
+        prefix_sampler = InteractionBoundaryPrefixSampler(
+            InteractionBoundaryConfig(max_prefix_size=max_prefix_size),
+            cards_by_id=cards_by_id,
+            prefix_size_counts=prefix_counts,
+        )
+    else:
+        prefix_sampler = StratifiedEligiblePrefixSampler(
+            PrefixSamplingConfig(mode=prefix_mode, max_prefix_size=max_prefix_size),
+            prefix_size_counts=prefix_counts,
+        )
     policy_round = PolicyRoundLedger().begin_round(
         round_id=round_id,
         round_index=round_index,
@@ -209,6 +289,21 @@ def _collect_counterfactual(
             decision_point_recorder=recorder,
         )
         decision_point = _select_decision_point(recorder, task_spec.target_memory_id)
+        # Ensure target and forced_prefix memories are in the candidate proposal
+        missing_ids = [task_spec.target_memory_id]
+        if task_spec.forced_prefix:
+            missing_ids.extend(task_spec.forced_prefix)
+        decision_point = _ensure_memories_in_proposal(
+            decision_point, missing_ids, cards_by_id
+        )
+        if boundary_critic is not None and isinstance(
+            prefix_sampler, InteractionBoundaryPrefixSampler
+        ):
+            prefix_sampler.critic_scorer = _make_boundary_critic_scorer(
+                critic=boundary_critic,
+                decision_point=decision_point,
+                cards_by_id=cards_by_id,
+            )
         plan = build_candidate_traversal_plan(
             proposal=decision_point.candidate_proposal,
             traversal_seed=seed + index,
@@ -217,6 +312,7 @@ def _collect_counterfactual(
             prefix_sampler=prefix_sampler,
             target_selection_seed=seed + 10_000 + index,
             prefix_sampling_seed=seed + 20_000 + index,
+            selected_before=list(task_spec.forced_prefix) if task_spec.forced_prefix else None,
         )
         record = collector.collect(
             decision_point=decision_point,
@@ -274,11 +370,56 @@ def _select_decision_point(
     recorder: InMemoryDecisionPointRecorder,
     target_memory_id: str,
 ):
+    """Select a planner decision point that contains the target memory.
+
+    If no decision point contains the target memory, return the first planner
+    decision point and let the caller inject the target.
+    """
     for point in recorder.decision_points:
         ids = [candidate.memory_id for candidate in point.candidate_proposal.ranked_candidates]
         if point.receiver_agent_id == "planner" and target_memory_id in ids:
             return point
-    raise ValueError(f"no planner decision point contains target memory {target_memory_id}")
+    # Fallback: return first planner decision point
+    for point in recorder.decision_points:
+        if point.receiver_agent_id == "planner":
+            return point
+    raise ValueError(f"no planner decision point found for target memory {target_memory_id}")
+
+
+def _ensure_memories_in_proposal(
+    decision_point: DecisionPoint,
+    memory_ids: list[str],
+    cards_by_id: dict[str, Any],
+) -> DecisionPoint:
+    """Ensure specified memories are in the candidate proposal.
+
+    If a memory is not in the ranked candidates, add it with a minimal score.
+    """
+    from smtr.router.candidate_proposer import CandidateScore
+
+    existing_ids = {c.memory_id for c in decision_point.candidate_proposal.ranked_candidates}
+    missing = [m for m in memory_ids if m not in existing_ids]
+    if not missing:
+        return decision_point
+
+    new_candidates = list(decision_point.candidate_proposal.ranked_candidates)
+    for memory_id in missing:
+        new_candidates.append(
+            CandidateScore(
+                memory_id=memory_id,
+                total_score=0.01,
+                goal_similarity=0.0,
+                task_tag_overlap=0.0,
+                environment_compatibility=1.0,
+                receiver_compatibility=1.0,
+                explicit_environment_conflict=False,
+                score_explanation=["injected for flip scenario"],
+            )
+        )
+    proposal = decision_point.candidate_proposal.model_copy(
+        update={"ranked_candidates": new_candidates}
+    )
+    return decision_point.model_copy(update={"candidate_proposal": proposal})
 
 
 def _inspect_paired_records(
@@ -461,29 +602,7 @@ def _evaluate_transfer_critic(
     records = load_paired_records_for_training(Path(input_path))
     critic = FourOutcomeTransferCritic.load(Path(checkpoint))
     if split_suite in {"strict", "compositional"}:
-        modes = [
-            "episode",
-            "scenario_family",
-            "environment_regime",
-            "target_memory_family",
-            "prefix_structure_family",
-        ]
-        if split_suite == "compositional":
-            modes.extend(["factor_combination", "surface_variant"])
-        metrics = {}
-        for mode in modes:
-            try:
-                train, test, manifest = split_records(
-                    records,
-                    EvaluationSplitSpec(split_mode=mode),
-                )
-                del train
-                metrics[mode] = {
-                    "metrics": evaluate_records(critic, test),
-                    "split_manifest": manifest,
-                }
-            except ValueError as exc:
-                metrics[mode] = {"error": str(exc)}
+        metrics = evaluate_compositional_splits(records, critic, split_suite=split_suite)
     else:
         metrics = evaluate_records(critic, records)
     write_json(Path(output), metrics)
@@ -543,7 +662,7 @@ def _build_exploratory_continuation_policy(
     manifest = with_fingerprint(
         ContinuationPolicyManifest(
             policy_name="FrozenRiskConstrainedExplorationPolicy",
-            policy_version="1",
+            policy_version=FrozenRiskConstrainedExplorationPolicy.policy_version,
             policy_kind="frozen_risk_constrained_exploration",
             source_critic_checkpoint_path=critic_path,
             source_critic_checkpoint_sha256=file_sha256(critic_path),
@@ -673,34 +792,7 @@ def _scan_transfer_feature_leakage(input_path: str, output: str) -> None:
 
 def _audit_feature_blocks(input_path: str, seed: int, n_bootstrap: int, output: str) -> None:
     records = load_paired_records_for_training(Path(input_path))
-    train, test = group_split(records, seed=seed, test_fraction=0.2)
-    blocks = [
-        "context_only",
-        "candidate_only",
-        "selected_set_only",
-        "context_plus_candidate",
-        "full",
-    ]
-    report = {"blocks": {}, "split_manifest": {"train": len(train), "test": len(test)}}
-    for block in blocks:
-        critic = FourOutcomeTransferCritic(
-            encoder=HashingTransferFeatureEncoder(feature_block=block)
-        ).fit(train, seed=seed, n_bootstrap=n_bootstrap)
-        report["blocks"][block] = evaluate_records(critic, test)
-    best_single = max(
-        blocks[:-1],
-        key=lambda block: report["blocks"][block].get("macro_f1") or 0.0,
-    )
-    report["best_single_block"] = best_single
-    report["full_model_gain_over_best_single_block"] = (
-        (report["blocks"]["full"].get("macro_f1") or 0.0)
-        - (report["blocks"][best_single].get("macro_f1") or 0.0)
-    )
-    report["warnings"] = [
-        f"{block} near-perfect shortcut warning"
-        for block in blocks[:-1]
-        if (report["blocks"][block].get("macro_f1") or 0.0) >= 0.90
-    ]
+    report = audit_feature_blocks(records, seed=seed, n_bootstrap=n_bootstrap)
     write_json(Path(output), report)
     print(f"output={output}")
 
@@ -708,61 +800,43 @@ def _audit_feature_blocks(input_path: str, seed: int, n_bootstrap: int, output: 
 def _audit_interaction(input_path: str, checkpoint: str, output: str, mode: str) -> None:
     records = load_paired_records_for_training(Path(input_path))
     critic = FourOutcomeTransferCritic.load(Path(checkpoint))
-    pairs = []
-    for left in records:
-        for right in records:
-            if left.record_id == right.record_id:
-                continue
-            if mode == "prefix":
-                same_context = (
-                    left.evaluation_group_metadata.mechanism_group_id
-                    == right.evaluation_group_metadata.mechanism_group_id
-                )
-            else:
-                same_context = (
-                    left.evaluation_group_metadata.scenario_family
-                    == right.evaluation_group_metadata.scenario_family
-                    and left.evaluation_group_metadata.prefix_structure_family
-                    == right.evaluation_group_metadata.prefix_structure_family
-                    and left.evaluation_group_metadata.surface_variant_id
-                    == right.evaluation_group_metadata.surface_variant_id
-                )
-            different = (
-                left.evaluation_group_metadata.prefix_structure_family
-                != right.evaluation_group_metadata.prefix_structure_family
-                if mode == "prefix"
-                else left.evaluation_group_metadata.target_memory_family
-                != right.evaluation_group_metadata.target_memory_family
-            )
-            if same_context and different:
-                pairs.append((left, right))
-                break
-        if len(pairs) >= 100:
-            break
-    errors = []
-    direction_hits = 0
-    invariant = 0
-    for left, right in pairs:
-        gt_delta = left.marginal_effect - right.marginal_effect
-        pred_delta = (
-            critic.predict(prediction_input_from_record(left)).tau_mean
-            - critic.predict(prediction_input_from_record(right)).tau_mean
-        )
-        errors.append(abs(gt_delta - pred_delta))
-        direction_hits += int((gt_delta > 0) == (pred_delta > 0))
-        invariant += int(gt_delta != 0 and abs(pred_delta) < 0.05)
-    report = {
-        "matched_pair_count": len(pairs),
-        "direction_accuracy": direction_hits / len(pairs) if pairs else None,
-        "mean_abs_delta_tau_error": sum(errors) / len(errors) if errors else None,
-        "fraction_prediction_invariant_when_ground_truth_changes": (
-            invariant / len(pairs) if pairs else None
-        ),
-        "warnings": [] if len(pairs) >= 20 else ["insufficient matched-pair coverage"],
-    }
+    report = audit_interaction(records, critic, mode=mode)
     write_json(Path(output), report)
-    print(f"matched_pair_count={len(pairs)}")
+    print(f"matched_pair_count={report['matched_pair_count']}")
     print(f"output={output}")
+
+
+def _serve_api(host: str, port: int, model: str) -> None:
+    """Start the SMTR API server."""
+    from smtr.runtime.api_server import run_server, set_llm
+    from smtr.runtime.real_llm import RealLLM
+
+    llm = RealLLM(model_name=model)
+    set_llm(llm)
+    print(f"Starting SMTR API server on {host}:{port}")
+    print(f"Model: {model}")
+    run_server(host=host, port=port)
+
+
+def _demo_real(seed: int, model: str, api_base: str | None, use_tool_env: bool) -> None:
+    """Run demo with real LLM."""
+    from smtr.runtime.real_llm import RealLLM
+    from smtr.runtime.tool_environment import ToolEnvironment
+
+    llm = RealLLM(model_name=model, api_base=api_base)
+    env_factory = (lambda s: ToolEnvironment(seed=s)) if use_tool_env else None
+
+    state = run_demo(seed=seed, llm=llm, env_factory=env_factory)
+
+    print(f"Task: {state['task']}")
+    print(f"Team success: {state.get('team_success')}")
+    print(f"Team reward: {state.get('team_reward')}")
+    print(f"Team summary: {state.get('team_summary')}")
+    if state.get("agent_outputs", {}).get("planner"):
+        planner_output = state["agent_outputs"]["planner"]
+        print("\nPlanner output:")
+        print(f"  Plan: {planner_output.get('plan')}")
+        print(f"  Explanation: {planner_output.get('explanation')}")
 
 
 def main() -> None:
@@ -795,13 +869,14 @@ def main() -> None:
     )
     collect_parser.add_argument(
         "--prefix-mode",
-        choices=["empty", "uniform", "stratified"],
+        choices=["empty", "uniform", "stratified", "interaction-boundary"],
         default="empty",
     )
     collect_parser.add_argument("--max-prefix-size", type=int, default=2)
     collect_parser.add_argument("--output", required=True)
     collect_parser.add_argument("--allow-duplicates", action="store_true")
     collect_parser.add_argument("--continuation-policy-manifest")
+    collect_parser.add_argument("--boundary-critic-checkpoint")
     collect_parser.add_argument("--round-id", default="adhoc")
     collect_parser.add_argument("--round-index", type=int, default=0)
     collect_parser.add_argument("--require-min-continuation-share-rate", type=float)
@@ -896,6 +971,17 @@ def main() -> None:
     candidate_audit_parser.add_argument("--checkpoint", required=True)
     candidate_audit_parser.add_argument("--output", required=True)
 
+    serve_api_parser = subparsers.add_parser("serve-api")
+    serve_api_parser.add_argument("--host", default="0.0.0.0")
+    serve_api_parser.add_argument("--port", type=int, default=8000)
+    serve_api_parser.add_argument("--model", default="Qwen/Qwen3.5-2B")
+
+    demo_real_parser = subparsers.add_parser("demo-real")
+    demo_real_parser.add_argument("--seed", type=int, default=7)
+    demo_real_parser.add_argument("--model", default="Qwen/Qwen3.5-2B")
+    demo_real_parser.add_argument("--api-base", help="Remote API base URL")
+    demo_real_parser.add_argument("--use-tool-env", action="store_true")
+
     args = parser.parse_args()
     if args.command == "seed-memories":
         _seed_memories(args.db)
@@ -916,6 +1002,7 @@ def main() -> None:
             prefix_mode=args.prefix_mode,
             max_prefix_size=args.max_prefix_size,
             continuation_policy_manifest_path=args.continuation_policy_manifest,
+            boundary_critic_checkpoint=args.boundary_critic_checkpoint,
             round_id=args.round_id,
             round_index=args.round_index,
             require_min_continuation_share_rate=args.require_min_continuation_share_rate,
@@ -997,6 +1084,15 @@ def main() -> None:
         _audit_interaction(args.input, args.checkpoint, args.output, mode="prefix")
     elif args.command == "audit-candidate-substitution":
         _audit_interaction(args.input, args.checkpoint, args.output, mode="candidate")
+    elif args.command == "serve-api":
+        _serve_api(host=args.host, port=args.port, model=args.model)
+    elif args.command == "demo-real":
+        _demo_real(
+            seed=args.seed,
+            model=args.model,
+            api_base=args.api_base,
+            use_tool_env=args.use_tool_env,
+        )
 
 
 if __name__ == "__main__":

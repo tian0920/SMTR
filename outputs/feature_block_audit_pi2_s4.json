@@ -1,0 +1,178 @@
+{
+  "best_single_block": "context_only",
+  "blocks": {
+    "candidate_only": {
+      "four_class_accuracy": 0.8541666666666666,
+      "low_support_rate": 0.0,
+      "macro_f1": 0.6498772504091653,
+      "metrics_by_prefix_size": {
+        "0": {
+          "four_class_accuracy": 0.6818181818181818,
+          "record_count": 22
+        },
+        "1": {
+          "four_class_accuracy": 0.8461538461538461,
+          "record_count": 26
+        },
+        "2": {
+          "four_class_accuracy": 0.9375,
+          "record_count": 48
+        }
+      },
+      "metrics_on_in_support": {
+        "four_class_accuracy": 0.8541666666666666,
+        "record_count": 96
+      },
+      "metrics_on_low_support": {
+        "record_count": 0
+      },
+      "multiclass_brier_score": 0.20525943677724104,
+      "multiclass_log_loss": 0.31083813359301815,
+      "negative_risk_auroc": 0.9277777777777778,
+      "negative_risk_brier": 0.042847110240461124,
+      "negative_risk_ece": 0.005975235458261181,
+      "tau_mae": 0.20489930544658594,
+      "tau_sign_accuracy": 0.3125
+    },
+    "context_only": {
+      "four_class_accuracy": 0.8541666666666666,
+      "low_support_rate": 0.0,
+      "macro_f1": 0.6498772504091653,
+      "metrics_by_prefix_size": {
+        "0": {
+          "four_class_accuracy": 0.6818181818181818,
+          "record_count": 22
+        },
+        "1": {
+          "four_class_accuracy": 0.8461538461538461,
+          "record_count": 26
+        },
+        "2": {
+          "four_class_accuracy": 0.9375,
+          "record_count": 48
+        }
+      },
+      "metrics_on_in_support": {
+        "four_class_accuracy": 0.8541666666666666,
+        "record_count": 96
+      },
+      "metrics_on_low_support": {
+        "record_count": 0
+      },
+      "multiclass_brier_score": 0.2056385132460753,
+      "multiclass_log_loss": 0.3215939532036995,
+      "negative_risk_auroc": 0.9277777777777777,
+      "negative_risk_brier": 0.04280846606565894,
+      "negative_risk_ece": 0.0060883051338154436,
+      "tau_mae": 0.2058177548093475,
+      "tau_sign_accuracy": 0.3125
+    },
+    "context_plus_candidate": {
+      "four_class_accuracy": 0.8541666666666666,
+      "low_support_rate": 0.0,
+      "macro_f1": 0.6498772504091653,
+      "metrics_by_prefix_size": {
+        "0": {
+          "four_class_accuracy": 0.6818181818181818,
+          "record_count": 22
+        },
+        "1": {
+          "four_class_accuracy": 0.8461538461538461,
+          "record_count": 26
+        },
+        "2": {
+          "four_class_accuracy": 0.9375,
+          "record_count": 48
+        }
+      },
+      "metrics_on_in_support": {
+        "four_class_accuracy": 0.8541666666666666,
+        "record_count": 96
+      },
+      "metrics_on_low_support": {
+        "record_count": 0
+      },
+      "multiclass_brier_score": 0.20520201437127064,
+      "multiclass_log_loss": 0.3075147284361003,
+      "negative_risk_auroc": 0.9277777777777778,
+      "negative_risk_brier": 0.04286509186448507,
+      "negative_risk_ece": 0.005919111786480109,
+      "tau_mae": 0.20466046020727235,
+      "tau_sign_accuracy": 0.3125
+    },
+    "full": {
+      "four_class_accuracy": 0.9270833333333334,
+      "low_support_rate": 0.03125,
+      "macro_f1": 0.900566328907524,
+      "metrics_by_prefix_size": {
+        "0": {
+          "four_class_accuracy": 0.8181818181818182,
+          "record_count": 22
+        },
+        "1": {
+          "four_class_accuracy": 0.8846153846153846,
+          "record_count": 26
+        },
+        "2": {
+          "four_class_accuracy": 1.0,
+          "record_count": 48
+        }
+      },
+      "metrics_on_in_support": {
+        "four_class_accuracy": 0.9247311827956989,
+        "record_count": 93
+      },
+      "metrics_on_low_support": {
+        "four_class_accuracy": 1.0,
+        "record_count": 3
+      },
+      "multiclass_brier_score": 0.09696428620191283,
+      "multiclass_log_loss": 0.15029474301503584,
+      "negative_risk_auroc": 0.9962962962962962,
+      "negative_risk_brier": 0.013789725359295226,
+      "negative_risk_ece": 0.017518794789406752,
+      "tau_mae": 0.1041790955182964,
+      "tau_sign_accuracy": 0.3125
+    },
+    "selected_set_only": {
+      "four_class_accuracy": 0.6979166666666666,
+      "low_support_rate": 0.052083333333333336,
+      "macro_f1": 0.5459711769271031,
+      "metrics_by_prefix_size": {
+        "0": {
+          "four_class_accuracy": 0.4090909090909091,
+          "record_count": 22
+        },
+        "1": {
+          "four_class_accuracy": 0.5769230769230769,
+          "record_count": 26
+        },
+        "2": {
+          "four_class_accuracy": 0.8958333333333334,
+          "record_count": 48
+        }
+      },
+      "metrics_on_in_support": {
+        "four_class_accuracy": 0.6813186813186813,
+        "record_count": 91
+      },
+      "metrics_on_low_support": {
+        "four_class_accuracy": 1.0,
+        "record_count": 5
+      },
+      "multiclass_brier_score": 0.3426293565228649,
+      "multiclass_log_loss": 0.6420389978699571,
+      "negative_risk_auroc": 0.8037037037037037,
+      "negative_risk_brier": 0.05375005470540741,
+      "negative_risk_ece": 0.01910966353199132,
+      "tau_mae": 0.2554771291878009,
+      "tau_sign_accuracy": 0.25
+    }
+  },
+  "full_model_gain_over_best_single_block": 0.25068907849835864,
+  "split_manifest": {
+    "test": 96,
+    "train": 384
+  },
+  "warnings": []
+}
