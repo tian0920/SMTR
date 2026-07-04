@@ -35,9 +35,30 @@ first, then capability overlap.
 
 ## Router
 
-`NoMemoryRouter` is the active baseline. It emits a `withhold` decision for each
-candidate and returns `selected_memory_ids = []`. It does not make causal memory
-transfer decisions.
+`NoMemoryRouter` is the safe baseline. The learned online algorithm is
+implemented by `ProductionSequentialRouter`:
+
+```text
+candidate proposal
+-> random traversal of the proposed candidates
+-> sequential set-conditioned gating
+-> payload-only exposure after selection is complete
+```
+
+Candidate proposal is a replaceable high-recall module; its rank is retained as
+proposal metadata, but the sequential gate uses a reproducible random traversal
+order and does not learn or optimize memory ordering. At each step, the router
+predicts the candidate's conditional effect from the task/agent/environment
+context, the candidate routing card, and the cards already accepted into `S`.
+The default accept rule is strict:
+
+```text
+share iff LCB(tau_hat) > 0 and UCB(eta_hat) <= epsilon
+```
+
+The online router predicts these quantities with the transfer critic. It does
+not run a real share/withhold counterfactual experiment for every online
+candidate.
 
 ## SQLite Store
 
@@ -71,9 +92,9 @@ snapshot and rejects writes, so branch execution cannot update execution
 evidence, routing cards, payload versions, or store revision.
 
 The current continuation policy is frozen no-share. Candidate order is
-randomized for training coverage, not optimized. The collected JSONL records
-contain four-outcome transfer labels and do not serialize procedure payload
-steps.
+randomized for training coverage and matched to online traversal semantics, not
+optimized. The collected JSONL records contain four-outcome transfer labels and
+do not serialize procedure payload steps.
 
 ```bash
 python -m smtr.cli collect-counterfactual \

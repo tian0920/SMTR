@@ -208,6 +208,7 @@ class FallbackRouter:
         proposal,
         cards_by_id=None,
         context=None,
+        traversal_seed: int | None = None,
     ) -> RoutingResult:
         """Make routing decisions with fallback logic.
 
@@ -229,6 +230,7 @@ class FallbackRouter:
             proposal=proposal,
             cards_by_id=cards_by_id,
             context=context,
+            traversal_seed=traversal_seed,
         )
 
         # Apply safety guard checks to each decision
@@ -274,10 +276,17 @@ class FallbackRouter:
                         tau_ucb=decision.tau_ucb,
                         negative_risk_mean=decision.negative_risk_mean,
                         negative_risk_ucb=decision.negative_risk_ucb,
+                        epsilon=decision.epsilon,
+                        accepted=False,
+                        decision_reason=f"safety_guard_{veto_reason.value}",
                         low_support=decision.low_support,
                         decision_mode=f"safety_veto_{veto_reason.value}",
                         support_distance=decision.support_distance,
                         support_threshold=decision.support_threshold,
+                        original_candidate_position=decision.original_candidate_position,
+                        traversal_position=decision.traversal_position,
+                        traversal_seed=decision.traversal_seed,
+                        traversal_order=decision.traversal_order,
                     )
                     guarded_decisions.append(guarded_decision)
             else:
@@ -296,6 +305,7 @@ class FallbackRouter:
         """Switch to conservative fallback configuration."""
         self._in_fallback_mode = True
         conservative_config = SequentialRouterConfig(
+            epsilon=self.fallback_config.conservative_negative_risk_veto,
             tau_threshold=self.fallback_config.conservative_tau_threshold,
             negative_risk_veto=self.fallback_config.conservative_negative_risk_veto,
             max_shares_per_invocation=self.fallback_config.max_shares_in_fallback,

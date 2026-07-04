@@ -42,6 +42,7 @@ class RouterDecision(BaseModel):
         "forced_intervention",
         "frozen_continuation",
         "baseline_router",
+        "production_router",
     ] = "baseline_router"
     policy_fingerprint: str | None = None
     tau_mean: float | None = None
@@ -49,23 +50,20 @@ class RouterDecision(BaseModel):
     tau_ucb: float | None = None
     negative_risk_mean: float | None = None
     negative_risk_ucb: float | None = None
+    epsilon: float | None = None
+    accepted: bool | None = None
+    decision_reason: str | None = None
     low_support: bool | None = None
     behavior_probability_share: float | None = None
-    decision_mode: Literal[
-        "safe_exploit",
-        "boundary_explore",
-        "risk_veto",
-        "hard_ood_veto",
-        "budget_exhausted",
-        "ordinary_withhold",
-        "fixed_prefix",
-        "forced_intervention",
-        "baseline_router",
-    ] | None = None
+    decision_mode: str | None = None
     exploration_eligible: bool | None = None
     exploration_selected: bool | None = None
     support_distance: float | None = None
     support_threshold: float | None = None
+    original_candidate_position: int | None = None
+    traversal_position: int | None = None
+    traversal_seed: int | None = None
+    traversal_order: list[str] | None = None
 
     @model_validator(mode="after")
     def sync_action_and_decision(self) -> "RouterDecision":
@@ -91,3 +89,5 @@ class RouterTraceEntry(BaseModel):
     candidate_scores: dict[str, float]
     decisions: list[RouterDecision]
     selected_memory_ids: list[str]
+    traversal_seed: int | None = None
+    traversal_order: list[str] = Field(default_factory=list)

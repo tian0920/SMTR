@@ -25,6 +25,14 @@ class TransferPredictionInput(BaseModel):
 
 
 class HashingTransferFeatureEncoder:
+    """Deterministic set featurizer for transfer prediction.
+
+    This is a deterministic permutation-invariant set featurizer with pairwise
+    interaction features over routing cards. It is not a learned neural Set
+    Encoder: procedure payloads and ordered steps are explicitly rejected before
+    feature hashing.
+    """
+
     schema_version = "1.0"
     # Class-level default so checkpoints pickled before ``feature_block`` existed
     # (pre-A-01) still load and default to the full feature set.

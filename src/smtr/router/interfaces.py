@@ -33,6 +33,9 @@ class MemoryRouter(Protocol):
         *,
         receiver_agent_id: str,
         proposal: CandidateProposal,
+        cards_by_id: dict[str, MemoryRoutingCard] | None = None,
+        context: object | None = None,
+        traversal_seed: int | None = None,
     ) -> RoutingResult: ...
 
     def decide(

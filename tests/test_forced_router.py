@@ -86,5 +86,30 @@ def test_forced_router_branch_metadata_matches() -> None:
     )
 
     assert share.traversal_plan.candidate_order == withhold.traversal_plan.candidate_order
+    assert share.traversal_plan.traversal_seed == withhold.traversal_plan.traversal_seed
     assert share.continuation_policy.policy_name == withhold.continuation_policy.policy_name
     assert share.continuation_policy.policy_version == withhold.continuation_policy.policy_version
+
+
+def test_forced_router_counterfactual_branches_share_suffix_and_only_target_differs() -> None:
+    policy = FrozenNoShareContinuationPolicy()
+    share = ForcedInterventionRouter(
+        traversal_plan=_plan(),
+        branch_arm="share",
+        continuation_policy=policy,
+        receiver_agent_id="planner",
+    ).decide_from_proposal(receiver_agent_id="planner", proposal=_proposal())
+    withhold = ForcedInterventionRouter(
+        traversal_plan=_plan(),
+        branch_arm="withhold",
+        continuation_policy=policy,
+        receiver_agent_id="planner",
+    ).decide_from_proposal(receiver_agent_id="planner", proposal=_proposal())
+
+    assert [decision.memory_id for decision in share.decisions] == ["a", "b", "c"]
+    assert [decision.memory_id for decision in withhold.decisions] == ["a", "b", "c"]
+    assert share.decisions[2].decision_source == "frozen_continuation"
+    assert withhold.decisions[2].decision_source == "frozen_continuation"
+    assert share.decisions[2].action == withhold.decisions[2].action == "withhold"
+    assert share.selected_memory_ids == ["a", "b"]
+    assert withhold.selected_memory_ids == ["a"]

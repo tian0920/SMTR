@@ -25,7 +25,11 @@ class NoMemoryRouter:
         *,
         receiver_agent_id: str,
         proposal: CandidateProposal,
+        cards_by_id: dict[str, MemoryRoutingCard] | None = None,
+        context=None,
+        traversal_seed: int | None = None,
     ) -> RoutingResult:
+        del cards_by_id, context, traversal_seed
         decisions = [
             RouterDecision(
                 memory_id=candidate.memory_id,
@@ -33,6 +37,8 @@ class NoMemoryRouter:
                 decision="withhold",
                 score=candidate.total_score,
                 reason="baseline_no_memory_router",
+                decision_reason="baseline_no_memory_router",
+                accepted=False,
             )
             for candidate in proposal.ranked_candidates
         ]

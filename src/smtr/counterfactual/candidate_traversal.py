@@ -9,6 +9,23 @@ from smtr.counterfactual.schemas import CandidateTraversalPlan, validate_selecti
 from smtr.router.candidate_proposer import CandidateProposal
 
 
+def randomized_candidate_order(
+    proposal: CandidateProposal,
+    *,
+    traversal_seed: int,
+) -> list[str]:
+    """Return a reproducible random traversal order for a proposal.
+
+    Candidate proposal rank is retained on the proposal as high-recall retrieval
+    metadata. Sequential gating treats order as a randomized nuisance variable,
+    so both offline paired rollout plans and online routing use this same local
+    RNG shuffle instead of global random state.
+    """
+    candidate_order = [candidate.memory_id for candidate in proposal.ranked_candidates]
+    random.Random(traversal_seed).shuffle(candidate_order)
+    return candidate_order
+
+
 def build_candidate_traversal_plan(
     *,
     proposal: CandidateProposal,
@@ -23,8 +40,10 @@ def build_candidate_traversal_plan(
     candidate_ids = [candidate.memory_id for candidate in proposal.ranked_candidates]
     if not candidate_ids:
         raise ValueError("candidate proposal has no candidates")
-    candidate_order = list(candidate_ids)
-    random.Random(traversal_seed).shuffle(candidate_order)
+    candidate_order = randomized_candidate_order(
+        proposal,
+        traversal_seed=traversal_seed,
+    )
     target_selection_seed = (
         traversal_seed + 1 if target_selection_seed is None else target_selection_seed
     )

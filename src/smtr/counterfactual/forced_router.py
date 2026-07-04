@@ -29,7 +29,11 @@ class ForcedInterventionRouter:
         *,
         receiver_agent_id: str,
         proposal: CandidateProposal,
+        cards_by_id=None,
+        context=None,
+        traversal_seed: int | None = None,
     ) -> RoutingResult:
+        del cards_by_id, context, traversal_seed
         if receiver_agent_id != self.receiver_agent_id:
             return self._withhold_all(receiver_agent_id=receiver_agent_id, proposal=proposal)
 

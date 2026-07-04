@@ -5,6 +5,7 @@ from langgraph.graph import END, START, StateGraph
 
 from smtr.config import RuntimeConfig
 from smtr.counterfactual.decision_points import DecisionPointRecorder
+from smtr.memory.execution_evidence import build_context_fingerprint
 from smtr.memory.repository import SharedMemoryRepository
 from smtr.memory.seed_memories import build_seed_memory_pool
 from smtr.router.baseline_router import NoMemoryRouter
@@ -31,6 +32,7 @@ def _pre_route_node(
 ) -> Callable[[SMTRState], dict[str, Any]]:
     def node(state: SMTRState) -> dict[str, Any]:
         cards = memory_pool.get_routing_cards()
+        cards_by_id = {card.memory_id: card for card in cards}
         memory_store_revision = memory_pool.current_revision()
         seed = state["run_seed"] if state.get("run_seed") is not None else config.seed
         request = CandidateRequest(
@@ -60,9 +62,24 @@ def _pre_route_node(
                 memory_store_snapshot=memory_pool.create_read_snapshot(),
                 run_seed=seed,
             )
+        context = build_context_fingerprint(
+            task_id=state["task_id"],
+            task_tags=request.task.split(),
+            receiver_agent_id=receiver_agent,
+            receiver_role=receiver_agent,
+            receiver_capabilities=request.receiver_capabilities,
+            environment_observation=state["environment_observation"],
+            task_stage=receiver_agent,
+            selected_memory_ids=[],
+            episode_id=state["episode_id"],
+        )
+        traversal_seed = seed + _receiver_seed_offset(receiver_agent)
         routing_result = router.decide_from_proposal(
             receiver_agent_id=receiver_agent,
             proposal=proposal,
+            cards_by_id=cards_by_id,
+            context=context,
+            traversal_seed=traversal_seed,
         )
         candidates = routing_result.candidate_proposal.ranked_candidates
         decisions = routing_result.decisions
@@ -101,6 +118,13 @@ def _pre_route_node(
             },
             decisions=decisions,
             selected_memory_ids=selected_ids,
+            traversal_seed=traversal_seed,
+            traversal_order=(
+                routing_result.decisions[0].traversal_order
+                if routing_result.decisions
+                and routing_result.decisions[0].traversal_order is not None
+                else []
+            ),
         )
         router_trace = [*state["router_trace"], trace_entry.model_dump()]
         return {
@@ -120,6 +144,14 @@ def _receiver_capabilities(receiver_agent: str) -> list[str]:
         "executor": ["execution", "tool-use", "resource-reasoning"],
         "critic": ["verification", "rewarding"],
     }.get(receiver_agent, [])
+
+
+def _receiver_seed_offset(receiver_agent: str) -> int:
+    return {
+        "planner": 0,
+        "executor": 10_000,
+        "critic": 20_000,
+    }.get(receiver_agent, 30_000)
 
 
 def build_graph(

@@ -47,6 +47,33 @@
 - 新产物：`data/paired_records_pi3_v22.jsonl`、`checkpoints/critic_pi3_v22.joblib`、
   `outputs/prefix_sensitivity_pi3_v22.json`、`outputs/critic_pi3_compositional_v22.json`。
 
+### 文档同步更新
+
+- `implementation.md`：§9.2（selected-set 过于聚合）、§9.4（scenario split）、§9.5（确定性环境）
+  已划掉并标记为「SMTR 必需 已实现」；§14（验收标准）和 §17（一句话总结）从橙色升级为绿色；
+  §9.1 direction accuracy 数值从 0.50 更新为 0.65。
+- `todo.md`：S6 验收标准全部标记为 ✅ 通过；「重大问题」第 2 项已划掉；
+  S0.1 基线数据标注了 scenario=1.0→0.732、dir_acc=0.50→0.65 的进展。
+
+## 文档对齐：implementation.md 未完成项同步到 todo.md
+
+目标：将 implementation.md 中标记为「未实现/不完全」的橙色项同步到 todo.md，
+确保两份文档的任务跟踪完全对齐。
+
+### 新增 S10 章节（todo.md）
+
+新增 7 项下一阶段待推进任务（N-01…N-07）：
+
+- **N-01** Production 默认路径接入 learned router（impl §6.1 橙色）
+- **N-02** 严格 LCB/UCB 决策（impl §6.10 橙色）
+- **N-03** 随机 permutation 测试（impl §6.9/§6.10 橙色）
+- **N-04** 真实环境外推（impl §9 橙色）
+- **N-05** Selected-set conditional effect 充分学习（impl §9.1 橙色）
+- **N-06** Candidate-substitution 审计覆盖率回归（impl §9.1/§10）
+- **N-07** Hashing-token → 神经 SetEnc（impl §6.8 橙色，A-01.7 阻塞）
+
+同步更新了分类总览、ID 索引和当前进展统计表。
+
 ## B-08：真实 LLM + 真实工具环境集成
 
 目标：接入真实 LLM（Qwen/Qwen3.5-2B，8-bit 量化适配 Tesla T4 16GB）和真实工具环境，

@@ -9,10 +9,12 @@ estimates of tau(m|o,S) to decide whether sharing a memory is beneficial.
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from smtr.counterfactual.candidate_traversal import randomized_candidate_order
 from smtr.counterfactual.schemas import RoutingFeatureSnapshot
 from smtr.memory.schemas import ContextFingerprint, MemoryRoutingCard
 from smtr.router.baseline_router import RoutingResult
 from smtr.router.candidate_proposer import CandidateProposal
+from smtr.router.causal_gate import strict_lcb_ucb_gate
 from smtr.router.traces import CandidateTrace, RouterDecision
 from smtr.router.transfer_critic import FourOutcomeTransferCritic, TransferEstimate
 from smtr.router.transfer_features import TransferPredictionInput
@@ -23,23 +25,29 @@ class SequentialRouterConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    epsilon: float = 0.2
+    """Maximum allowed upper confidence bound for negative transfer risk."""
+
     tau_threshold: float = 0.0
-    """Minimum tau estimate to share a memory."""
+    """Legacy/ablation mean tau threshold, only used when use_legacy_mean_gate=True."""
 
     negative_risk_veto: float = 0.5
-    """Veto share if negative risk exceeds this threshold."""
+    """Legacy/ablation risk veto, only used when use_legacy_mean_gate=True."""
 
     uncertainty_veto: float = 0.3
-    """Veto share if uncertainty (tau_ucb - tau_lcb) exceeds this."""
+    """Optional fail-closed OOD veto on tau interval width."""
 
-    max_shares_per_invocation: int = 3
+    max_shares_per_invocation: int | None = None
     """Maximum number of memories to share per router invocation."""
 
-    epsilon: float = 0.0
-    """Probability of random exploration (epsilon-greedy)."""
+    exploration_epsilon: float = 0.0
+    """Explicit ablation-only epsilon-greedy exploration probability."""
 
     require_positive_tau: bool = True
-    """If True, only share memories with tau_mean > tau_threshold."""
+    """Legacy compatibility flag, only used when use_legacy_mean_gate=True."""
+
+    use_legacy_mean_gate: bool = False
+    """If True, use the old tau_mean/risk-veto rule for ablations only."""
 
     use_support_distance: bool = False
     """If True, veto shares with low support (high support_distance)."""
@@ -113,6 +121,7 @@ class ProductionSequentialRouter:
         proposal: CandidateProposal,
         cards_by_id: dict[str, MemoryRoutingCard] | None = None,
         context: ContextFingerprint | None = None,
+        traversal_seed: int | None = None,
     ) -> RoutingResult:
         """Make sequential routing decisions for all candidates.
 
@@ -130,17 +139,60 @@ class ProductionSequentialRouter:
             return self._fallback_no_share(receiver_agent_id, proposal)
 
         state = SequentialRouterState()
+        traversal_seed = (
+            traversal_seed
+            if traversal_seed is not None
+            else proposal.request.seed
+            if proposal.request.seed is not None
+            else self.seed
+        )
+        traversal_order = randomized_candidate_order(
+            proposal,
+            traversal_seed=traversal_seed,
+        )
+        candidate_by_id = {
+            candidate.memory_id: candidate for candidate in proposal.ranked_candidates
+        }
+        original_position_by_id = {
+            candidate.memory_id: index
+            for index, candidate in enumerate(proposal.ranked_candidates)
+        }
 
-        for position, candidate in enumerate(proposal.ranked_candidates):
-            if state.share_count >= self.config.max_shares_per_invocation:
+        for position, memory_id in enumerate(traversal_order):
+            candidate = candidate_by_id[memory_id]
+            if (
+                self.config.max_shares_per_invocation is not None
+                and state.share_count >= self.config.max_shares_per_invocation
+            ):
                 # Budget exhausted - withhold remaining
                 decision = self._make_decision(
                     candidate=candidate,
                     position=position,
+                    original_position=original_position_by_id[candidate.memory_id],
                     action="withhold",
                     reason="budget_exhausted",
                     decision_mode="budget_exhausted",
                     estimate=None,
+                    traversal_seed=traversal_seed,
+                    traversal_order=traversal_order,
+                    accepted=False,
+                )
+                state.decisions.append(decision)
+                continue
+
+            card_snapshot = self._get_card_snapshot(candidate.memory_id, cards_by_id)
+            if card_snapshot is None:
+                decision = self._make_decision(
+                    candidate=candidate,
+                    position=position,
+                    original_position=original_position_by_id[candidate.memory_id],
+                    action="withhold",
+                    reason="missing_routing_card",
+                    decision_mode="ordinary_withhold",
+                    estimate=None,
+                    traversal_seed=traversal_seed,
+                    traversal_order=traversal_order,
+                    accepted=False,
                 )
                 state.decisions.append(decision)
                 continue
@@ -150,21 +202,28 @@ class ProductionSequentialRouter:
                 candidate=candidate,
                 receiver_agent_id=receiver_agent_id,
                 proposal=proposal,
+                card_snapshot=card_snapshot,
                 selected_cards=state.selected_cards,
                 cards_by_id=cards_by_id,
                 context=context,
+                decision_index=position,
             )
 
             # Make decision based on estimate
             action, reason, mode = self._apply_decision_rules(estimate, state)
+            accepted = action == "share"
 
             decision = self._make_decision(
                 candidate=candidate,
                 position=position,
+                original_position=original_position_by_id[candidate.memory_id],
                 action=action,
                 reason=reason,
                 decision_mode=mode,
                 estimate=estimate,
+                traversal_seed=traversal_seed,
+                traversal_order=traversal_order,
+                accepted=accepted,
             )
             state.decisions.append(decision)
 
@@ -172,12 +231,7 @@ class ProductionSequentialRouter:
             if action == "share":
                 state.selected_memory_ids.append(candidate.memory_id)
                 state.share_count += 1
-                # Add card snapshot to selected set for future predictions
-                card_snapshot = self._get_card_snapshot(
-                    candidate.memory_id, cards_by_id
-                )
-                if card_snapshot is not None:
-                    state.selected_cards.append(card_snapshot)
+                state.selected_cards.append(card_snapshot)
 
         return RoutingResult(
             receiver_agent_id=receiver_agent_id,
@@ -240,6 +294,7 @@ class ProductionSequentialRouter:
             receiver_agent_id=receiver_agent,
             proposal=proposal,
             cards_by_id=cards_by_id,
+            traversal_seed=seed,
         )
 
         return result.decisions, result.selected_memory_ids
@@ -250,25 +305,25 @@ class ProductionSequentialRouter:
         candidate: CandidateTrace,
         receiver_agent_id: str,
         proposal: CandidateProposal,
+        card_snapshot: RoutingFeatureSnapshot,
         selected_cards: list[RoutingFeatureSnapshot],
         cards_by_id: dict[str, MemoryRoutingCard] | None,
         context: ContextFingerprint | None,
+        decision_index: int | None,
     ) -> TransferEstimate | None:
         """Get critic estimate for a candidate given current selected set."""
+        del candidate, cards_by_id
         if self.critic is None:
             return None
 
-        card_snapshot = self._get_card_snapshot(candidate.memory_id, cards_by_id)
-        if card_snapshot is None:
-            return None
-
-        if context is None:
-            # Build minimal context from proposal
-            context = self._build_context_from_proposal(
-                proposal=proposal,
-                receiver_agent_id=receiver_agent_id,
-                selected_memory_ids=[c.memory_id for c in selected_cards],
-            )
+        selected_memory_ids = [card.memory_id for card in selected_cards]
+        context = self._context_for_selected_set(
+            base_context=context,
+            proposal=proposal,
+            receiver_agent_id=receiver_agent_id,
+            selected_memory_ids=selected_memory_ids,
+            decision_index=decision_index,
+        )
 
         prediction_input = TransferPredictionInput(
             context=context,
@@ -288,46 +343,53 @@ class ProductionSequentialRouter:
         Returns:
             Tuple of (action, reason, decision_mode)
         """
+        del state
         if estimate is None:
             return "withhold", "no_critic_estimate", "ordinary_withhold"
-
-        # Check negative risk veto
-        if estimate.negative_risk_ucb > self.config.negative_risk_veto:
-            return "withhold", "negative_risk_veto", "risk_veto"
-
-        # Check uncertainty veto
-        uncertainty = estimate.tau_ucb - estimate.tau_lcb
-        if uncertainty > self.config.uncertainty_veto:
-            return "withhold", "high_uncertainty", "hard_ood_veto"
 
         # Check support distance
         if self.config.use_support_distance and estimate.low_support:
             if estimate.support_distance > self.config.support_threshold:
                 return "withhold", "low_support", "hard_ood_veto"
 
-        # Check tau threshold
-        if self.config.require_positive_tau:
-            if estimate.tau_mean <= self.config.tau_threshold:
-                return "withhold", "tau_below_threshold", "ordinary_withhold"
+        if self.config.use_legacy_mean_gate:
+            if estimate.negative_risk_ucb > self.config.negative_risk_veto:
+                return "withhold", "negative_risk_veto", "risk_veto"
+            uncertainty = estimate.tau_ucb - estimate.tau_lcb
+            if uncertainty > self.config.uncertainty_veto:
+                return "withhold", "high_uncertainty", "hard_ood_veto"
+            if self.config.require_positive_tau:
+                if estimate.tau_mean <= self.config.tau_threshold:
+                    return "withhold", "tau_below_threshold", "ordinary_withhold"
+            if self.config.exploration_epsilon > 0:
+                rng = self._get_rng()
+                if rng.random() < self.config.exploration_epsilon:
+                    return "share", "epsilon_exploration", "boundary_explore"
+            return "share", "critic_guided_share", "safe_exploit"
 
-        # Epsilon-greedy exploration
-        if self.config.epsilon > 0:
-            rng = self._get_rng()
-            if rng.random() < self.config.epsilon:
-                return "share", "epsilon_exploration", "boundary_explore"
-
-        # Share if all checks pass
-        return "share", "critic_guided_share", "safe_exploit"
+        gate = strict_lcb_ucb_gate(estimate, epsilon=self.config.epsilon)
+        if gate.accepted:
+            return "share", gate.reason, "safe_exploit"
+        mode = (
+            "risk_veto"
+            if gate.reason == "negative_risk_ucb_exceeds_epsilon"
+            else "ordinary_withhold"
+        )
+        return "withhold", gate.reason, mode
 
     def _make_decision(
         self,
         *,
         candidate: CandidateTrace,
         position: int,
+        original_position: int | None,
         action: str,
         reason: str,
         decision_mode: str,
         estimate: TransferEstimate | None,
+        traversal_seed: int | None,
+        traversal_order: list[str] | None,
+        accepted: bool,
     ) -> RouterDecision:
         """Create a router decision with critic estimates."""
         return RouterDecision(
@@ -337,16 +399,23 @@ class ProductionSequentialRouter:
             score=candidate.total_score,
             reason=reason,
             candidate_position=position,
-            decision_source="baseline_router",
+            decision_source="production_router",
             tau_mean=estimate.tau_mean if estimate else None,
             tau_lcb=estimate.tau_lcb if estimate else None,
             tau_ucb=estimate.tau_ucb if estimate else None,
             negative_risk_mean=estimate.negative_risk_mean if estimate else None,
             negative_risk_ucb=estimate.negative_risk_ucb if estimate else None,
+            epsilon=self.config.epsilon,
+            accepted=accepted,
+            decision_reason=reason,
             low_support=estimate.low_support if estimate else None,
             decision_mode=decision_mode,
             support_distance=estimate.support_distance if estimate else None,
             support_threshold=estimate.support_threshold if estimate else None,
+            original_candidate_position=original_position,
+            traversal_position=position,
+            traversal_seed=traversal_seed,
+            traversal_order=traversal_order,
         )
 
     def _get_card_snapshot(
@@ -378,16 +447,26 @@ class ProductionSequentialRouter:
             paired_neutral_transfer_count=card.paired_neutral_transfer_count,
         )
 
-    def _build_context_from_proposal(
+    def _context_for_selected_set(
         self,
         *,
+        base_context: ContextFingerprint | None,
         proposal: CandidateProposal,
         receiver_agent_id: str,
         selected_memory_ids: list[str],
+        decision_index: int | None,
     ) -> ContextFingerprint:
-        """Build a context fingerprint from a candidate proposal."""
+        """Build/update context so critic sees the current selected set."""
         from smtr.memory.execution_evidence import selected_set_signature
 
+        if base_context is not None:
+            return base_context.model_copy(
+                update={
+                    "selected_memory_ids": list(selected_memory_ids),
+                    "selected_set_signature": selected_set_signature(selected_memory_ids),
+                    "decision_index": decision_index,
+                }
+            )
         request = proposal.request
         return ContextFingerprint(
             task_id=request.task[:32],
@@ -400,6 +479,7 @@ class ProductionSequentialRouter:
             selected_memory_ids=selected_memory_ids,
             selected_set_signature=selected_set_signature(selected_memory_ids),
             episode_id=f"router_{receiver_agent_id}",
+            decision_index=decision_index,
         )
 
     def _fallback_no_share(
@@ -415,6 +495,8 @@ class ProductionSequentialRouter:
                 decision="withhold",
                 score=candidate.total_score,
                 reason="no_critic_available",
+                decision_reason="no_critic_available",
+                accepted=False,
             )
             for candidate in proposal.ranked_candidates
         ]
