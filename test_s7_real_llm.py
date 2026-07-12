@@ -116,6 +116,22 @@ Available configs in conf/llm_test_config.json:
         "--output", default="outputs/s7_llm_test_results.json",
         help="Output JSON file path (default: outputs/s7_llm_test_results.json)",
     )
+    parser.add_argument(
+        "--task-eval-seeds",
+        default="7,42,123,256,999",
+        help="Comma-separated seeds for end-to-end task execution evaluation",
+    )
+    parser.add_argument(
+        "--task-eval-env",
+        choices=["toy", "tool"],
+        default="toy",
+        help="Environment for end-to-end task execution evaluation",
+    )
+    parser.add_argument(
+        "--skip-task-eval",
+        action="store_true",
+        help="Skip end-to-end task execution evaluation",
+    )
     return parser.parse_args()
 
 
@@ -529,6 +545,26 @@ def test_multi_seed_comparison(llm):
     return {"results": results, "success_rate": n_correct / len(seeds)}
 
 
+def test_task_execution_evaluation(llm, seeds, environment):
+    """Test 7: End-to-end task execution metrics."""
+    from smtr.evaluation.task_evaluation import (
+        TaskEvaluationConfig,
+        evaluate_task_execution,
+    )
+
+    config = TaskEvaluationConfig(seeds=tuple(seeds), environment=environment)
+    report = evaluate_task_execution(llm=llm, config=config)
+    print(f"  Environment: {environment}")
+    print(f"  Episodes: {report['episode_count']}")
+    print(f"  Task success rate: {report['task_success_rate']:.3f}")
+    print(f"  Mean reward: {report['mean_reward']:.3f}")
+    print(f"  Plan match rate: {report['plan_match_rate']:.3f}")
+    print(f"  Action success rate: {report['action_success_rate']:.3f}")
+    if report["failure_errors"]:
+        print(f"  Failure errors: {report['failure_errors']}")
+    return report
+
+
 # --- Main ---
 
 def main():
@@ -588,6 +624,24 @@ def main():
     # Test 6: Multi-seed comparison
     result, elapsed, error = run_test("Multi-Seed Comparison", test_multi_seed_comparison, llm)
     all_results["multi_seed"] = {"result": result, "elapsed": elapsed, "error": error}
+
+    # Test 7: End-to-end task execution evaluation
+    if not args.skip_task_eval:
+        from smtr.evaluation.task_evaluation import parse_seed_list
+
+        task_eval_seeds = parse_seed_list(args.task_eval_seeds)
+        result, elapsed, error = run_test(
+            "Task Execution Evaluation",
+            test_task_execution_evaluation,
+            llm,
+            task_eval_seeds,
+            args.task_eval_env,
+        )
+        all_results["task_execution"] = {
+            "result": result,
+            "elapsed": elapsed,
+            "error": error,
+        }
 
     total_elapsed = timestamp() - total_start
 
