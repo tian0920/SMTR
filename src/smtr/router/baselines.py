@@ -5,11 +5,12 @@ the transfer critic. Used as an ablation baseline to measure the value of
 causal transfer estimation over naive relevance-based sharing.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from pydantic import BaseModel
 
+from smtr.counterfactual.decision_points import canonical_digest
 from smtr.memory.schemas import MemoryRoutingCard
 from smtr.router.baseline_router import RoutingResult
 from smtr.router.candidate_proposer import CandidateProposal
@@ -39,9 +40,9 @@ class RelevanceTopKRouterConfig:
 class BudgetManifestConfig(BaseModel):
     """Configuration for B1-Matched budget sampling."""
 
-    count_distribution: dict[str, float] = {}
+    count_distribution: dict[str, float]
     """P(|S|=k) for k in 0..max_shares."""
-    max_shares: int = 3
+    max_shares: int
     seed: int = 0
 
     class Config:
@@ -210,24 +211,30 @@ class BudgetMatchedTopKRouter:
         manifest_config: BudgetManifestConfig,
         invocation_seed: int = 0,
     ) -> None:
+        if not manifest_config.count_distribution:
+            raise ValueError("B1-Matched requires a non-empty budget distribution")
         self.manifest_config = manifest_config
         self._invocation_counter: dict[str, int] = {}
-        self._base_rng = np.random.default_rng(manifest_config.seed)
         self._invocation_seed = invocation_seed
 
     def _get_budget(self, invocation_key: str) -> int:
         """Get sampled budget for this invocation."""
-        # Deterministic per (base_seed, invocation_key)
         count = self._invocation_counter.get(invocation_key, 0)
         self._invocation_counter[invocation_key] = count + 1
-        # Derive per-invocation RNG seed
-        inv_seed = hash((self._invocation_seed, invocation_key, count)) & 0x7FFFFFFF
+        inv_seed = int(
+            canonical_digest(
+                {
+                    "manifest_seed": self.manifest_config.seed,
+                    "experiment_seed": self._invocation_seed,
+                    "invocation_key": invocation_key,
+                    "invocation_index": count,
+                }
+            )[:8],
+            16,
+        )
         rng = np.random.default_rng(inv_seed)
 
         dist = self.manifest_config.count_distribution
-        if not dist:
-            return self.manifest_config.max_shares
-
         keys = sorted(dist.keys(), key=int)
         probs = np.array([dist[k] for k in keys], dtype=float)
         probs = probs / probs.sum()

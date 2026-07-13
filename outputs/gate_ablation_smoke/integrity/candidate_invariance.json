@@ -1,0 +1,16 @@
+{
+  "run_error_count": 0,
+  "persisted_record_roundtrip": 100.0,
+  "candidate_invariance": 100.0,
+  "snapshot_invariance": 100.0,
+  "all_withhold_consistency": 100.0,
+  "checkpoint_compatibility": 100.0,
+  "prefix_intervention_validation": 100.0,
+  "statistics_consistency": 100.0,
+  "gate_ablation_checkpoint_invariance": 100.0,
+  "gate_ablation_proposal_invariance": 100.0,
+  "gate_ablation_traversal_invariance": 100.0,
+  "gate_ablation_only_gate_differs": true,
+  "workspace_clean": false,
+  "READY_FOR_FORMAL_EXPERIMENT": false
+}

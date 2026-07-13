@@ -1,8 +1,12 @@
 """Tests for B-01: Production Sequential Router."""
 
+import pytest
 
+from smtr.evaluation.ablation_gates import EffectOnlyGate
 from smtr.memory.schemas import ContextFingerprint, MemoryRoutingCard
+from smtr.router.baseline_router import NoMemoryRouter
 from smtr.router.candidate_proposer import CandidateProposal, CandidateRequest, CandidateScore
+from smtr.router.gate_protocol import TransferPointEstimate
 from smtr.router.sequential_router import (
     ProductionSequentialRouter,
     SequentialRouterConfig,
@@ -82,6 +86,12 @@ def _make_critic_with_estimate(
     class MockCritic:
         critic_version = "mock_v1"
 
+        def predict_point(self, item):
+            return TransferPointEstimate(
+                tau_mean=tau_mean,
+                negative_risk_mean=negative_risk,
+            )
+
         def predict(self, item):
             return TransferEstimate(
                 q00_mean=0.1,
@@ -135,24 +145,22 @@ class TestSequentialRouterBasics:
     """Test basic sequential router functionality."""
 
     def test_router_creation_without_critic(self):
-        """Router can be created without a critic."""
-        router = ProductionSequentialRouter()
-        assert router.critic is None
-        assert router.router_name == "ProductionSequentialRouter"
+        """Production router requires a critic."""
+        with pytest.raises(TypeError, match="requires a trained critic"):
+            ProductionSequentialRouter(critic=None)
 
     def test_router_creation_with_config(self):
         """Router accepts custom configuration."""
+        critic = _make_critic_with_estimate(tau_mean=0.3, negative_risk=0.1)
         config = SequentialRouterConfig(
-            tau_threshold=0.2,
             max_shares_per_invocation=5,
         )
-        router = ProductionSequentialRouter(config=config)
-        assert router.config.tau_threshold == 0.2
+        router = ProductionSequentialRouter(critic=critic, config=config)
         assert router.config.max_shares_per_invocation == 5
 
     def test_router_without_critic_withholds_all(self):
-        """Router without critic falls back to no-share."""
-        router = ProductionSequentialRouter()
+        """No-memory baseline is handled by NoMemoryRouter."""
+        router = NoMemoryRouter()
         proposal = _make_proposal(["mem_1", "mem_2", "mem_3"])
         result = router.decide_from_proposal(
             receiver_agent_id="executor",
@@ -179,7 +187,7 @@ class TestSequentialRouterBasics:
     def test_router_with_negative_tau_withholds(self):
         """Router withholds memories with negative tau estimate."""
         critic = _make_critic_with_estimate(
-            tau_mean=0.3,
+            tau_mean=-0.3,
             tau_lcb=-0.2,
             negative_risk=0.1,
         )
@@ -193,7 +201,7 @@ class TestSequentialRouterBasics:
             cards_by_id=cards_by_id,
         )
         assert result.selected_memory_ids == []
-        assert result.decisions[0].reason == "tau_lcb_nonpositive"
+        assert result.decisions[0].reason == "tau_mean_nonpositive"
 
 
 # --- Tests: Decision Rules ---
@@ -217,8 +225,8 @@ class TestSequentialRouterDecisionRules:
         assert result.selected_memory_ids == []
         assert result.decisions[0].decision_mode == "risk_veto"
 
-    def test_uncertainty_veto(self):
-        """Strict gate rejects non-positive tau LCB regardless of positive mean."""
+    def test_formal_gate_ignores_lcb_ucb_diagnostics(self):
+        """Formal SMTR uses point estimates, not LCB/UCB diagnostics."""
         critic = _make_critic_with_estimate(
             tau_mean=0.3,
             negative_risk=0.1,
@@ -235,8 +243,8 @@ class TestSequentialRouterDecisionRules:
             proposal=proposal,
             cards_by_id=cards_by_id,
         )
-        assert result.selected_memory_ids == []
-        assert result.decisions[0].reason == "tau_lcb_nonpositive"
+        assert result.selected_memory_ids == ["mem_1"]
+        assert result.decisions[0].reason == "shared"
 
     def test_max_shares_limit(self):
         """Router respects max shares per invocation."""
@@ -256,11 +264,10 @@ class TestSequentialRouterDecisionRules:
         assert result.decisions[2].decision_mode == "budget_exhausted"
         assert result.decisions[3].decision_mode == "budget_exhausted"
 
-    def test_tau_threshold_configurable(self):
-        """Legacy mean-threshold mode remains explicit ablation behavior."""
-        critic = _make_critic_with_estimate(tau_mean=0.15, negative_risk=0.1)
-        config = SequentialRouterConfig(tau_threshold=0.2, use_legacy_mean_gate=True)
-        router = ProductionSequentialRouter(critic=critic, config=config)
+    def test_effect_only_gate_uses_tau_mean(self):
+        """EffectOnly can share when the risk condition would reject."""
+        critic = _make_critic_with_estimate(tau_mean=0.15, tau_lcb=-0.2, negative_risk=0.9)
+        router = ProductionSequentialRouter(critic=critic, gate=EffectOnlyGate())
         memory_ids = ["mem_1"]
         proposal = _make_proposal(memory_ids)
         cards_by_id = _make_cards_by_id(memory_ids)
@@ -269,10 +276,10 @@ class TestSequentialRouterDecisionRules:
             proposal=proposal,
             cards_by_id=cards_by_id,
         )
-        # tau_mean (0.15) < threshold (0.2), should withhold
-        assert result.selected_memory_ids == []
+        assert result.selected_memory_ids == ["mem_1"]
+        assert result.decisions[0].gate_name == "effect_only_smtr"
 
-    def test_positive_mean_but_nonpositive_lcb_withholds_by_default(self):
+    def test_positive_mean_but_nonpositive_lcb_shares_by_default(self):
         critic = _make_critic_with_estimate(tau_mean=0.4, tau_lcb=0.0)
         router = ProductionSequentialRouter(critic=critic)
         result = router.decide_from_proposal(
@@ -281,22 +288,19 @@ class TestSequentialRouterDecisionRules:
             cards_by_id=_make_cards_by_id(["mem_1"]),
         )
 
-        assert result.selected_memory_ids == []
-        assert result.decisions[0].action == "withhold"
-        assert result.decisions[0].decision_reason == "tau_lcb_nonpositive"
-        assert result.decisions[0].accepted is False
+        assert result.selected_memory_ids == ["mem_1"]
+        assert result.decisions[0].action == "share"
+        assert result.decisions[0].decision_reason == "shared"
+        assert result.decisions[0].accepted is True
 
-    def test_positive_lcb_but_eta_ucb_above_epsilon_withholds(self):
+    def test_positive_mean_but_eta_mean_above_budget_withholds(self):
         critic = _make_critic_with_estimate(
             tau_mean=0.4,
             tau_lcb=0.1,
-            negative_risk=0.1,
+            negative_risk=0.21,
             negative_risk_ucb=0.21,
         )
-        router = ProductionSequentialRouter(
-            critic=critic,
-            config=SequentialRouterConfig(epsilon=0.2),
-        )
+        router = ProductionSequentialRouter(critic=critic)
         result = router.decide_from_proposal(
             receiver_agent_id="executor",
             proposal=_make_proposal(["mem_1"]),
@@ -304,19 +308,16 @@ class TestSequentialRouterDecisionRules:
         )
 
         assert result.selected_memory_ids == []
-        assert result.decisions[0].decision_reason == "negative_risk_ucb_exceeds_epsilon"
+        assert result.decisions[0].decision_reason == "negative_risk_mean_exceeded"
 
-    def test_strict_gate_accepts_positive_lcb_and_eta_ucb_at_epsilon(self):
+    def test_smtr_gate_accepts_eta_mean_at_budget(self):
         critic = _make_critic_with_estimate(
             tau_mean=0.4,
             tau_lcb=0.1,
-            negative_risk=0.1,
+            negative_risk=0.2,
             negative_risk_ucb=0.2,
         )
-        router = ProductionSequentialRouter(
-            critic=critic,
-            config=SequentialRouterConfig(epsilon=0.2),
-        )
+        router = ProductionSequentialRouter(critic=critic)
         result = router.decide_from_proposal(
             receiver_agent_id="executor",
             proposal=_make_proposal(["mem_1"]),
@@ -325,7 +326,7 @@ class TestSequentialRouterDecisionRules:
 
         assert result.selected_memory_ids == ["mem_1"]
         assert result.decisions[0].action == "share"
-        assert result.decisions[0].decision_reason == "accepted"
+        assert result.decisions[0].decision_reason == "shared"
         assert result.decisions[0].epsilon == 0.2
         assert result.decisions[0].accepted is True
 
@@ -387,9 +388,10 @@ class TestSequentialRouterStateTracking:
         )
         decision = result.decisions[0]
         assert decision.tau_mean == 0.25
-        assert decision.tau_lcb == 0.1
-        assert decision.tau_ucb == 0.4
+        assert decision.tau_lcb is None
+        assert decision.tau_ucb is None
         assert decision.negative_risk_mean == 0.15
+        assert decision.robust_diagnostics is None
 
     def test_missing_routing_card_fails_closed(self):
         critic = _make_critic_with_estimate()
@@ -441,7 +443,7 @@ class TestSequentialRouterStateTracking:
             def __init__(self):
                 self.calls = []
 
-            def predict(self, item):
+            def predict_point(self, item):
                 self.calls.append(
                     (
                         item.candidate_card.memory_id,
@@ -449,6 +451,13 @@ class TestSequentialRouterStateTracking:
                         list(item.context.selected_memory_ids),
                     )
                 )
+                accepted = item.candidate_card.memory_id != "b"
+                return TransferPointEstimate(
+                    tau_mean=0.20 if accepted else -0.20,
+                    negative_risk_mean=0.05 if accepted else 0.30,
+                )
+
+            def predict(self, item):
                 accepted = item.candidate_card.memory_id != "b"
                 return TransferEstimate(
                     q00_mean=0.1,
@@ -557,7 +566,7 @@ class TestSequentialRouterEdgeCases:
 
     def test_zero_tau_with_positive_threshold(self):
         """Router withholds when tau equals threshold (not strictly greater)."""
-        critic = _make_critic_with_estimate(tau_mean=0.3, tau_lcb=0.0, negative_risk=0.1)
+        critic = _make_critic_with_estimate(tau_mean=0.0, tau_lcb=0.3, negative_risk=0.1)
         config = SequentialRouterConfig()
         router = ProductionSequentialRouter(critic=critic, config=config)
         memory_ids = ["mem_1"]
@@ -568,16 +577,18 @@ class TestSequentialRouterEdgeCases:
             proposal=proposal,
             cards_by_id=cards_by_id,
         )
-        # tau_lcb == 0.0 is not strictly positive, should withhold
+        # tau_mean == 0.0 is not strictly positive, should withhold
         assert result.selected_memory_ids == []
 
     def test_router_preserves_router_metadata(self):
         """Router includes name and version in result."""
-        router = ProductionSequentialRouter()
+        critic = _make_critic_with_estimate(tau_mean=0.3, negative_risk=0.1)
+        router = ProductionSequentialRouter(critic=critic)
         proposal = _make_proposal(["mem_1"])
         result = router.decide_from_proposal(
             receiver_agent_id="executor",
             proposal=proposal,
+            cards_by_id=_make_cards_by_id(["mem_1"]),
         )
         assert result.router_name == "ProductionSequentialRouter"
         assert result.router_version == "1"

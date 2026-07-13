@@ -1,0 +1,48 @@
+{
+  "db_path": "data/gate_ablation_formal.sqlite",
+  "critic_checkpoint": "checkpoints/critic_full_gate_ablation_v1.joblib",
+  "training_manifest": "data/manifests/gate_ablation_training_v1.json",
+  "budget_manifest": "outputs/budget_manifest_gate_ablation_v1.json",
+  "scenarios": [
+    "positive",
+    "negative",
+    "neutral_success",
+    "neutral_failure"
+  ],
+  "task_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "generation_seeds": [
+    0,
+    1,
+    2
+  ],
+  "traversal_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "top_k": 4,
+  "max_shares_per_invocation": 3,
+  "epsilon": 0.2,
+  "methods": [
+    "B0",
+    "B1-Top1",
+    "B1-Matched",
+    "M0-Full",
+    "G1-MeanGate",
+    "G2-NoRiskGate",
+    "G3-MeanEffectOnly"
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "M0-Full - B0:success": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "success",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B0:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "positive_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B0:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "negative_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B0:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "exposure",
+    "point_estimate": 2.8125,
+    "ci_low": 1.053125,
+    "ci_high": 4.628124999999999,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Top1:success": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "success",
+    "point_estimate": 0.0,
+    "ci_low": -0.375,
+    "ci_high": 0.375,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Top1:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "positive_transfer",
+    "point_estimate": -0.25,
+    "ci_low": -0.5,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Top1:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "negative_transfer",
+    "point_estimate": -0.25,
+    "ci_low": -0.565625,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Top1:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "exposure",
+    "point_estimate": -0.1875,
+    "ci_low": -1.946875,
+    "ci_high": 1.628124999999999,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Matched:success": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "success",
+    "point_estimate": 0.25,
+    "ci_low": 0.0,
+    "ci_high": 0.5656249999999989,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Matched:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "positive_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Matched:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "negative_transfer",
+    "point_estimate": -0.25,
+    "ci_low": -0.565625,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - B1-Matched:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "exposure",
+    "point_estimate": 0.3125,
+    "ci_low": -1.5,
+    "ci_high": 2.4171874999999963,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G1-MeanGate:success": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "success",
+    "point_estimate": -0.0625,
+    "ci_low": -0.1875,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G1-MeanGate:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "positive_transfer",
+    "point_estimate": -0.0625,
+    "ci_low": -0.1875,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G1-MeanGate:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "negative_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G1-MeanGate:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "exposure",
+    "point_estimate": -0.75,
+    "ci_low": -1.8453125,
+    "ci_high": -0.0625,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G2-NoRiskGate:success": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "success",
+    "point_estimate": -0.0625,
+    "ci_low": -0.1875,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G2-NoRiskGate:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "positive_transfer",
+    "point_estimate": -0.0625,
+    "ci_low": -0.1875,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G2-NoRiskGate:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "negative_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G2-NoRiskGate:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "exposure",
+    "point_estimate": -0.8125,
+    "ci_low": -1.8125,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G3-MeanEffectOnly:success": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "success",
+    "point_estimate": 0.0,
+    "ci_low": -0.1875,
+    "ci_high": 0.125,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G3-MeanEffectOnly:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "positive_transfer",
+    "point_estimate": -0.0625,
+    "ci_low": -0.1875,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G3-MeanEffectOnly:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "negative_transfer",
+    "point_estimate": -0.0625,
+    "ci_low": -0.1875,
+    "ci_high": 0.0,
+    "n_base_episodes": 8
+  },
+  "M0-Full - G3-MeanEffectOnly:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "exposure",
+    "point_estimate": -1.4375,
+    "ci_low": -2.4375,
+    "ci_high": -0.40468750000000053,
+    "n_base_episodes": 8
+  }
+}

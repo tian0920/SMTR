@@ -8,8 +8,18 @@
 | `b1_top1` | B1-Top1 | RelevanceTopKRouter | None | None | fixed 1 | No | No |
 | `b1_top3` | B1-Top3 | RelevanceTopKRouter | None | None | fixed 3 | No | No |
 | `b1_matched` | B1-Matched | BudgetMatchedTopKRouter | None | None | validation-matched | No | No |
-| `a1_no_selected_set` | A1-NoSet | ProductionSequentialRouter | critic_no_selected_set_v1 | context_plus_candidate | fixed 3 | No | No |
-| `m0_full` | M0-Full | ProductionSequentialRouter | critic_pi3_v22 | full | fixed 3 | Yes | Yes |
+| `smtr` | SMTR | ProductionSequentialRouter | critic_full_gate_ablation_v1 | full | fixed 3 | Yes | Yes |
+| `effect_only_smtr` | EffectOnly-SMTR | ProductionSequentialRouter | critic_full_gate_ablation_v1 | full | fixed 3 | Yes | Yes |
+
+Formal SMTR shares a candidate memory when:
+
+```text
+tau_mean > 0 and negative_risk_mean <= negative_risk_budget
+```
+
+LCB/UCB confidence-bound routing is no longer the default formal method. The
+optional Robust-SMTR extension lives in `smtr.robust` and must be invoked
+explicitly.
 
 ## Modified Files
 
@@ -18,13 +28,13 @@
 | File | Change |
 |------|--------|
 | `src/smtr/experiment/methods.py` | **New** — Method registry with `MethodSpec`, `METHOD_REGISTRY`, `build_default_specs()` |
-| `src/smtr/experiment/schemas.py` | Added `VALID_METHOD_IDS`, `METHOD_ID_TO_REGISTRY`, `methods`/`a1_critic_checkpoint`/`budget_manifest_path` to `ExperimentConfig` |
+| `src/smtr/experiment/schemas.py` | Added `VALID_METHOD_IDS`, `METHOD_ID_TO_REGISTRY`, `methods`/`negative_risk_budget`/`budget_manifest_path` to `ExperimentConfig` |
 | `src/smtr/experiment/runner.py` | Refactored to support arbitrary method list via `_build_router_for_method()` |
-| `src/smtr/experiment/summary.py` | Updated bootstrap CI to group B1 variants and M0 variants; canonical reason mapping |
-| `src/smtr/router/factory.py` | Added `feature_block` parameter to `build_router()` for A1 ablation |
+| `src/smtr/experiment/summary.py` | Updated bootstrap CI to group formal SMTR comparisons; canonical reason mapping |
+| `src/smtr/router/factory.py` | Added `build_smtr_router()` formal factory |
 | `src/smtr/router/baselines.py` | Added `BudgetMatchedTopKRouter`, `BudgetManifestConfig`; `proposal_rank`/`proposal_score` in decisions |
 | `src/smtr/router/traces.py` | Added `proposal_rank`, `proposal_score` fields to `RouterDecision` |
-| `src/smtr/cli.py` | Added `--methods`, `--a1-critic-checkpoint`, `--budget-manifest-path` to `compare-routers` |
+| `src/smtr/cli.py` | Added `--methods`, `--negative-risk-budget`, `--budget-manifest-path` to `run-experiment`/`compare-routers` |
 
 ### Diagnostics
 

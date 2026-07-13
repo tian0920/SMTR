@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from smtr.experiment.schemas import (
+    BaseEpisodeManifestRecord,
     ComparisonRunRecord,
     ExperimentConfig,
     ExperimentSummary,
@@ -90,6 +91,30 @@ class ExperimentWriter:
             if line.strip():
                 errors.append(json.loads(line))
         return errors
+
+    def write_base_episode_manifest(
+        self,
+        records: list[BaseEpisodeManifestRecord],
+    ) -> None:
+        """Write frozen base episode manifest."""
+        path = self.output_dir / "base_episode_manifest.jsonl"
+        with path.open("w", encoding="utf-8") as f:
+            for record in records:
+                f.write(record.model_dump_json() + "\n")
+
+    def write_invocations(self, runs: list[ComparisonRunRecord]) -> None:
+        """Write one record per routing invocation."""
+        path = self.output_dir / "invocations.jsonl"
+        with path.open("w", encoding="utf-8") as f:
+            for run in runs:
+                for invocation in run.invocations:
+                    payload = {
+                        "base_episode_id": run.base_episode_id,
+                        "method": run.method,
+                        "traversal_seed": run.traversal_seed,
+                        **invocation.model_dump(),
+                    }
+                    f.write(json.dumps(payload, default=str) + "\n")
 
     # --- Next-round ablation output writers ---
 

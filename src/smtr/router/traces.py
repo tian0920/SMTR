@@ -50,6 +50,7 @@ class RouterDecision(BaseModel):
     tau_lcb: float | None = None
     tau_ucb: float | None = None
     negative_risk_mean: float | None = None
+    negative_risk_lcb: float | None = None
     negative_risk_ucb: float | None = None
     epsilon: float | None = None
     accepted: bool | None = None
@@ -57,10 +58,14 @@ class RouterDecision(BaseModel):
     low_support: bool | None = None
     behavior_probability_share: float | None = None
     decision_mode: str | None = None
+    gate_name: str | None = None
+    effect_condition_passed: bool | None = None
+    risk_condition_passed: bool | None = None
     exploration_eligible: bool | None = None
     exploration_selected: bool | None = None
     support_distance: float | None = None
     support_threshold: float | None = None
+    robust_diagnostics: dict[str, float] | None = None
     original_candidate_position: int | None = None
     traversal_position: int | None = None
     traversal_seed: int | None = None
@@ -96,3 +101,8 @@ class RouterTraceEntry(BaseModel):
     selected_memory_ids: list[str]
     traversal_seed: int | None = None
     traversal_order: list[str] = Field(default_factory=list)
+    graph_node: str | None = None
+    receiver_role: str | None = None
+    context_fingerprint_digest: str | None = None
+    candidate_request_digest: str | None = None
+    visible_payload_memory_ids: list[str] = Field(default_factory=list)

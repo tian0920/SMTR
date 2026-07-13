@@ -2,6 +2,7 @@
 
 from smtr.memory.schemas import MemoryRoutingCard
 from smtr.router.candidate_proposer import CandidateProposal, CandidateRequest, CandidateScore
+from smtr.router.gate_protocol import TransferPointEstimate
 from smtr.router.safety_guard import (
     FallbackRouter,
     SafetyGuard,
@@ -105,6 +106,12 @@ def _make_critic_with_estimate(
                 negative_risk_mean=negative_risk,
                 negative_risk_ucb=negative_risk + 0.05,
                 support_distance=support_distance,
+            )
+
+        def predict_point(self, item):
+            return TransferPointEstimate(
+                tau_mean=tau_mean,
+                negative_risk_mean=negative_risk,
             )
 
     return MockCritic()

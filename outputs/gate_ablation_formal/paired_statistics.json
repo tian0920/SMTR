@@ -1,0 +1,218 @@
+{
+  "M0-Full - B0:success": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "success",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B0:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "positive_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B0:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "negative_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B0:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "B0",
+    "metric": "exposure",
+    "point_estimate": 2.2550000000000003,
+    "ci_low": 1.8582916666666667,
+    "ci_high": 2.658458333333333,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Top1:success": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "success",
+    "point_estimate": 0.0,
+    "ci_low": -0.125,
+    "ci_high": 0.125,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Top1:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "positive_transfer",
+    "point_estimate": -0.25,
+    "ci_low": -0.325,
+    "ci_high": -0.175,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Top1:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "negative_transfer",
+    "point_estimate": -0.25,
+    "ci_low": -0.325,
+    "ci_high": -0.175,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Top1:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Top1",
+    "metric": "exposure",
+    "point_estimate": -0.745,
+    "ci_low": -1.1417083333333333,
+    "ci_high": -0.3415416666666668,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Matched:success": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "success",
+    "point_estimate": 0.016666666666666666,
+    "ci_low": -0.06666666666666667,
+    "ci_high": 0.09166666666666666,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Matched:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "positive_transfer",
+    "point_estimate": -0.09166666666666666,
+    "ci_low": -0.15,
+    "ci_high": -0.041666666666666664,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Matched:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "negative_transfer",
+    "point_estimate": -0.10833333333333334,
+    "ci_low": -0.16666666666666666,
+    "ci_high": -0.058333333333333334,
+    "n_base_episodes": 120
+  },
+  "M0-Full - B1-Matched:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "B1-Matched",
+    "metric": "exposure",
+    "point_estimate": -0.05333333333333332,
+    "ci_low": -0.5201250000000001,
+    "ci_high": 0.45512499999999984,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G1-MeanGate:success": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "success",
+    "point_estimate": -0.07,
+    "ci_low": -0.1,
+    "ci_high": -0.04333333333333334,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G1-MeanGate:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "positive_transfer",
+    "point_estimate": -0.07,
+    "ci_low": -0.1,
+    "ci_high": -0.04333333333333334,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G1-MeanGate:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "negative_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G1-MeanGate:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "G1-MeanGate",
+    "metric": "exposure",
+    "point_estimate": -0.9849999999999999,
+    "ci_low": -1.2733333333333332,
+    "ci_high": -0.7416250000000001,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G2-NoRiskGate:success": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "success",
+    "point_estimate": -0.07,
+    "ci_low": -0.1,
+    "ci_high": -0.04333333333333334,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G2-NoRiskGate:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "positive_transfer",
+    "point_estimate": -0.07,
+    "ci_low": -0.1,
+    "ci_high": -0.04333333333333334,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G2-NoRiskGate:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "negative_transfer",
+    "point_estimate": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G2-NoRiskGate:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "G2-NoRiskGate",
+    "metric": "exposure",
+    "point_estimate": -0.9349999999999999,
+    "ci_low": -1.228375,
+    "ci_high": -0.6866666666666668,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G3-MeanEffectOnly:success": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "success",
+    "point_estimate": -0.04000000000000001,
+    "ci_low": -0.07666666666666666,
+    "ci_high": -0.006666666666666669,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G3-MeanEffectOnly:positive_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "positive_transfer",
+    "point_estimate": -0.07,
+    "ci_low": -0.1,
+    "ci_high": -0.04333333333333334,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G3-MeanEffectOnly:negative_transfer": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "negative_transfer",
+    "point_estimate": -0.030000000000000002,
+    "ci_low": -0.05,
+    "ci_high": -0.013333333333333334,
+    "n_base_episodes": 120
+  },
+  "M0-Full - G3-MeanEffectOnly:exposure": {
+    "method_a": "M0-Full",
+    "method_b": "G3-MeanEffectOnly",
+    "metric": "exposure",
+    "point_estimate": -1.635,
+    "ci_low": -1.9967916666666665,
+    "ci_high": -1.2816666666666665,
+    "n_base_episodes": 120
+  }
+}

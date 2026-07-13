@@ -1,4 +1,5 @@
 import argparse
+import json
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -21,12 +22,17 @@ from smtr.counterfactual.record_writer import PairedRecordWriter
 from smtr.counterfactual.schemas import DecisionPoint, routing_feature_snapshot_from_card
 from smtr.counterfactual.task_provider import CounterfactualToyTaskProvider
 from smtr.evaluation.compositional_splits import evaluate_compositional_splits
+from smtr.evaluation.experiment_integrity import audit_experiment_integrity
 from smtr.evaluation.feature_ablation import audit_feature_blocks
+from smtr.evaluation.gate_diagnostics import compute_gate_diagnostics
 from smtr.evaluation.interaction_audit import audit_interaction
 from smtr.evaluation.logging import summarize_run
+from smtr.evaluation.paired_statistics import compute_group_bootstrap_ci
 from smtr.evaluation.shortcut_diagnostics import shortcut_diagnostics
 from smtr.experiment.runner import ComparisonRunner
 from smtr.experiment.schemas import ExperimentConfig
+from smtr.experiment.summary import compute_summary
+from smtr.experiment.writer import ExperimentWriter
 from smtr.memory.execution_evidence import build_context_fingerprint
 from smtr.memory.paired_transfer_evidence import PairedTransferEvidenceIngestor
 from smtr.memory.seed_memories import seed_repository
@@ -874,8 +880,8 @@ def _compare_routers(args: argparse.Namespace) -> None:
     from pathlib import Path
 
     # Validate arguments
-    if args.episodes <= 0:
-        raise ValueError("--episodes must be > 0")
+    if args.scenario_replicates <= 0:
+        raise ValueError("--scenario-replicates must be > 0")
     if args.top_k <= 0:
         raise ValueError("--top-k must be > 0")
     if args.max_shares_per_invocation is not None and args.max_shares_per_invocation < 0:
@@ -885,10 +891,6 @@ def _compare_routers(args: argparse.Namespace) -> None:
     if args.critic_checkpoint and not Path(args.critic_checkpoint).exists():
         raise ValueError(
             f"critic checkpoint not found: {args.critic_checkpoint}"
-        )
-    if args.a1_critic_checkpoint and not Path(args.a1_critic_checkpoint).exists():
-        raise ValueError(
-            f"A1 critic checkpoint not found: {args.a1_critic_checkpoint}"
         )
     if args.budget_manifest_path and not Path(args.budget_manifest_path).exists():
         raise ValueError(
@@ -904,17 +906,18 @@ def _compare_routers(args: argparse.Namespace) -> None:
     config = ExperimentConfig(
         db_path=args.db,
         critic_checkpoint=args.critic_checkpoint,
-        episodes=args.episodes,
         task_seeds=args.task_seeds,
         generation_seeds=args.generation_seeds,
         traversal_seeds=args.traversal_seeds,
+        scenario_replicates=args.scenario_replicates,
         top_k=args.top_k,
         max_shares_per_invocation=args.max_shares_per_invocation,
+        negative_risk_budget=args.negative_risk_budget,
         output_dir=args.output_dir,
         overwrite=args.overwrite,
+        fail_fast=not args.continue_on_error,
         scenario=args.scenario,
         methods=args.methods,
-        a1_critic_checkpoint=args.a1_critic_checkpoint,
         budget_manifest_path=args.budget_manifest_path,
     )
 
@@ -923,7 +926,8 @@ def _compare_routers(args: argparse.Namespace) -> None:
 
     # Print summary for all methods
     print(f"experiment_id={runner.experiment_id}")
-    print(f"episodes={summary.b0.episode_count}")
+    print(f"n_base_episodes={summary.n_base_episodes}")
+    print(f"n_traversal_runs={summary.n_traversal_runs}")
     for method_id, method_summary in summary.methods.items():
         print(f"\n{method_id}:")
         print(f"  success_rate={method_summary.success_rate:.3f}")
@@ -932,15 +936,163 @@ def _compare_routers(args: argparse.Namespace) -> None:
             print(f"  negative_transfer_rate={method_summary.negative_transfer_rate:.3f}")
         if method_summary.share_decision_rate is not None:
             print(f"  share_decision_rate={method_summary.share_decision_rate:.3f}")
-        if method_summary.tau_lcb_rejection_rate is not None:
-            print(f"  tau_lcb_rejection_rate={method_summary.tau_lcb_rejection_rate:.3f}")
+        if method_summary.tau_mean_rejection_rate is not None:
+            print(
+                "  tau_mean_rejection_rate="
+                f"{method_summary.tau_mean_rejection_rate:.3f}"
+            )
+        if method_summary.negative_risk_mean_rejection_rate is not None:
+            print(
+                "  negative_risk_mean_rejection_rate="
+                f"{method_summary.negative_risk_mean_rejection_rate:.3f}"
+            )
         if method_summary.success_delta_vs_b0 is not None:
             print(f"  delta_vs_b0={method_summary.success_delta_vs_b0:+.3f}")
         if method_summary.other_reason_counts:
             print(f"  other_rejection_reasons={method_summary.other_reason_counts}")
-    if summary.experiment_invalid:
+    if not summary.experiment_valid:
         print(f"\nWARNING: experiment invalid — {summary.invalid_reason}")
     print(f"\noutput_dir={args.output_dir}")
+
+
+def _run_gate_ablation(args: argparse.Namespace) -> None:
+    """Run the formal SMTR risk-condition ablation method set."""
+    methods = [
+        "B0",
+        "B1-Top1",
+        "B1-Matched",
+        "SMTR",
+        "EffectOnly-SMTR",
+    ]
+    output_dir = Path(args.output_dir)
+    if output_dir.exists() and not args.overwrite:
+        raise FileExistsError(f"output directory already exists: {output_dir}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    scenario_output_dir = output_dir / "_scenarios"
+    scenario_output_dir.mkdir(exist_ok=True)
+    runs = []
+    errors = []
+    base_manifest_lines: list[str] = []
+    for scenario in args.scenarios:
+        config = ExperimentConfig(
+            db_path=args.db,
+            critic_checkpoint=args.critic_checkpoint,
+            task_seeds=args.task_seeds,
+            generation_seeds=args.generation_seeds,
+            traversal_seeds=args.traversal_seeds,
+            scenario_replicates=args.scenario_replicates,
+            top_k=args.top_k,
+            max_shares_per_invocation=args.max_shares_per_invocation,
+            negative_risk_budget=args.negative_risk_budget,
+            output_dir=str(scenario_output_dir / scenario),
+            overwrite=True,
+            fail_fast=args.fail_fast,
+            scenario=scenario,
+            methods=methods,
+            budget_manifest_path=args.budget_manifest,
+            bootstrap_n=args.bootstrap_n,
+        )
+        runner = ComparisonRunner(config)
+        runner.run()
+        writer = ExperimentWriter(config.output_dir, overwrite=True)
+        runs.extend(writer.load_runs())
+        errors.extend(writer.load_errors())
+        manifest_path = Path(config.output_dir) / "base_episode_manifest.jsonl"
+        if manifest_path.exists():
+            base_manifest_lines.extend(manifest_path.read_text(encoding="utf-8").splitlines())
+
+    aggregate_config = {
+        "db_path": args.db,
+        "critic_checkpoint": args.critic_checkpoint,
+        "training_manifest": args.training_manifest,
+        "budget_manifest": args.budget_manifest,
+        "scenarios": args.scenarios,
+        "task_seeds": args.task_seeds,
+        "generation_seeds": args.generation_seeds,
+        "traversal_seeds": args.traversal_seeds,
+        "top_k": args.top_k,
+        "max_shares_per_invocation": args.max_shares_per_invocation,
+        "negative_risk_budget": args.negative_risk_budget,
+        "methods": methods,
+    }
+    (output_dir / "config.json").write_text(
+        json.dumps(aggregate_config, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "base_episode_manifest.jsonl").write_text(
+        "\n".join(base_manifest_lines) + ("\n" if base_manifest_lines else ""),
+        encoding="utf-8",
+    )
+    (output_dir / "runs.jsonl").write_text(
+        "".join(run.model_dump_json() + "\n" for run in runs),
+        encoding="utf-8",
+    )
+    (output_dir / "errors.jsonl").write_text(
+        "".join(json.dumps(error, default=str) + "\n" for error in errors),
+        encoding="utf-8",
+    )
+    invocation_lines = []
+    for run in runs:
+        for invocation in run.invocations:
+            invocation_lines.append(
+                json.dumps(
+                    {
+                        "base_episode_id": run.base_episode_id,
+                        "method": run.method,
+                        "traversal_seed": run.traversal_seed,
+                        **invocation.model_dump(),
+                    },
+                    default=str,
+                )
+            )
+    (output_dir / "invocations.jsonl").write_text(
+        "\n".join(invocation_lines) + ("\n" if invocation_lines else ""),
+        encoding="utf-8",
+    )
+    summary_config = ExperimentConfig(
+        db_path=args.db,
+        critic_checkpoint=args.critic_checkpoint,
+        output_dir=str(output_dir),
+        methods=methods,
+        negative_risk_budget=args.negative_risk_budget,
+        budget_manifest_path=args.budget_manifest,
+        bootstrap_n=args.bootstrap_n,
+    )
+    summary = compute_summary(runs, summary_config)
+    (output_dir / "summary.json").write_text(
+        summary.model_dump_json(indent=2) + "\n",
+        encoding="utf-8",
+    )
+    gate_diagnostics = {
+        method: diagnostic.model_dump()
+        for method, diagnostic in compute_gate_diagnostics(
+            runs,
+            epsilon=args.negative_risk_budget,
+        ).items()
+    }
+    paired = compute_group_bootstrap_ci(
+        runs,
+        method_pairs=[
+            ("SMTR", "B0"),
+            ("SMTR", "B1-Top1"),
+            ("SMTR", "B1-Matched"),
+            ("SMTR", "EffectOnly-SMTR"),
+        ],
+        bootstrap_seed=config.bootstrap_seed,
+        bootstrap_n=config.bootstrap_n,
+    )
+    (output_dir / "gate_diagnostics.json").write_text(
+        json.dumps(gate_diagnostics, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "paired_statistics.json").write_text(
+        json.dumps(paired, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    print(f"experiment_id={runner.experiment_id}")
+    print(f"n_base_episodes={summary.n_base_episodes}")
+    print(f"n_traversal_runs={summary.n_traversal_runs}")
+    print(f"output_dir={output_dir}")
 
 
 def main() -> None:
@@ -1100,10 +1252,12 @@ def main() -> None:
     demo_real_parser.add_argument("--critic-checkpoint")
     demo_real_parser.add_argument("--max-shares-per-invocation", type=int)
 
-    compare_parser = subparsers.add_parser("compare-routers")
+    compare_parser = subparsers.add_parser(
+        "compare-routers",
+        aliases=["run-experiment"],
+    )
     compare_parser.add_argument("--db", required=True)
     compare_parser.add_argument("--critic-checkpoint")
-    compare_parser.add_argument("--episodes", type=int, default=20)
     compare_parser.add_argument("--task-seeds", type=int, nargs="+", default=[0])
     compare_parser.add_argument(
         "--generation-seeds", type=int, nargs="+", default=[0]
@@ -1111,8 +1265,10 @@ def main() -> None:
     compare_parser.add_argument(
         "--traversal-seeds", type=int, nargs="+", default=[0, 1, 2]
     )
+    compare_parser.add_argument("--scenario-replicates", type=int, default=1)
     compare_parser.add_argument("--top-k", type=int, default=4)
     compare_parser.add_argument("--max-shares-per-invocation", type=int, default=3)
+    compare_parser.add_argument("--negative-risk-budget", type=float, default=0.2)
     compare_parser.add_argument("--output-dir", required=True)
     compare_parser.add_argument("--overwrite", action="store_true")
     compare_parser.add_argument(
@@ -1127,20 +1283,66 @@ def main() -> None:
     compare_parser.add_argument(
         "--methods",
         nargs="+",
-        choices=["B0", "B1", "B1-Top1", "B1-Top3", "B1-Matched", "A1-NoSet", "M0", "M0-Full"],
+        choices=[
+            "B0",
+            "B1-Top1",
+            "B1-Top3",
+            "B1-Matched",
+            "SMTR",
+            "EffectOnly-SMTR",
+        ],
         default=None,
-        help="Methods to compare (default: B0 B1 M0 for legacy, or all 6 for ablation)",
-    )
-    compare_parser.add_argument(
-        "--a1-critic-checkpoint",
-        default=None,
-        help="Path to A1-NoSet critic checkpoint (no-selected-set ablation)",
+        help="Methods to compare (default: B0/B1-Matched/SMTR)",
     )
     compare_parser.add_argument(
         "--budget-manifest-path",
         default=None,
         help="Path to B1-Matched budget manifest JSON",
     )
+    compare_parser.add_argument(
+        "--continue-on-error",
+        action="store_true",
+        help="Development only: write infrastructure failures to errors.jsonl.",
+    )
+
+    integrity_parser = subparsers.add_parser("audit-experiment-integrity")
+    integrity_parser.add_argument("--experiment-dir", required=True)
+    integrity_parser.add_argument("--m0-checkpoint", required=True)
+    integrity_parser.add_argument("--a1-checkpoint")
+    integrity_parser.add_argument("--output-dir", required=True)
+
+    gate_parser = subparsers.add_parser("run-gate-ablation")
+    gate_parser.add_argument("--db", default="data/smtr_memory.sqlite")
+    gate_parser.add_argument("--critic-checkpoint", required=True)
+    gate_parser.add_argument("--training-manifest")
+    gate_parser.add_argument("--budget-manifest", required=True)
+    gate_parser.add_argument(
+        "--scenarios",
+        nargs="+",
+        choices=[
+            "positive",
+            "negative",
+            "neutral_success",
+            "neutral_failure",
+            "prefix_sensitive",
+            "flip_pos_to_neg",
+            "flip_neg_to_pos",
+            "flip_neu_to_neg",
+            "flip_neu_to_pos",
+        ],
+        default=["positive"],
+    )
+    gate_parser.add_argument("--task-seeds", type=int, nargs="+", default=[0, 1])
+    gate_parser.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
+    gate_parser.add_argument("--traversal-seeds", type=int, nargs="+", default=[0, 1])
+    gate_parser.add_argument("--scenario-replicates", type=int, default=1)
+    gate_parser.add_argument("--top-k", type=int, default=4)
+    gate_parser.add_argument("--max-shares-per-invocation", type=int, default=3)
+    gate_parser.add_argument("--negative-risk-budget", type=float, default=0.2)
+    gate_parser.add_argument("--output-dir", required=True)
+    gate_parser.add_argument("--overwrite", action="store_true")
+    gate_parser.add_argument("--fail-fast", action="store_true", default=True)
+    gate_parser.add_argument("--bootstrap-n", type=int, default=1000)
 
     args = parser.parse_args()
     if args.command == "seed-memories":
@@ -1263,8 +1465,39 @@ def main() -> None:
             critic_checkpoint=args.critic_checkpoint,
             max_shares_per_invocation=args.max_shares_per_invocation,
         )
-    elif args.command == "compare-routers":
+    elif args.command in {"compare-routers", "run-experiment"}:
         _compare_routers(args)
+    elif args.command == "audit-experiment-integrity":
+        summary = audit_experiment_integrity(
+            experiment_dir=args.experiment_dir,
+            m0_checkpoint=args.m0_checkpoint,
+            a1_checkpoint=args.a1_checkpoint,
+        )
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        names = [
+            "integrity_summary",
+            "candidate_invariance",
+            "snapshot_invariance",
+            "no_share_consistency",
+            "checkpoint_compatibility",
+            "persistence_roundtrip",
+            "prefix_intervention_validation",
+            "statistics_consistency",
+        ]
+        for name in names:
+            (output_dir / f"{name}.json").write_text(
+                json.dumps(summary, indent=2, default=str) + "\n",
+                encoding="utf-8",
+            )
+        (output_dir / "report.md").write_text(
+            "# Experiment Integrity Audit\n\n"
+            f"READY_FOR_FORMAL_EXPERIMENT: {summary['READY_FOR_FORMAL_EXPERIMENT']}\n",
+            encoding="utf-8",
+        )
+        print(f"READY_FOR_FORMAL_EXPERIMENT={summary['READY_FOR_FORMAL_EXPERIMENT']}")
+    elif args.command == "run-gate-ablation":
+        _run_gate_ablation(args)
 
 
 if __name__ == "__main__":

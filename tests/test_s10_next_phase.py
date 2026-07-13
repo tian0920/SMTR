@@ -16,6 +16,7 @@ import pytest
 
 from smtr.counterfactual.candidate_traversal import randomized_candidate_order
 from smtr.router.candidate_proposer import CandidateProposal, CandidateRequest, CandidateScore
+from smtr.router.gate_protocol import TransferPointEstimate
 from smtr.router.sequential_router import ProductionSequentialRouter, SequentialRouterConfig
 from smtr.router.transfer_critic import TransferEstimate
 from smtr.runtime.environment import ToyEnvironment
@@ -199,6 +200,13 @@ class _MockCritic:
 
     critic_version = "n12_test_v1"
 
+    def predict_point(self, item):
+        accept = item.candidate_card.memory_id == "mem_execute_tool_chain"
+        return TransferPointEstimate(
+            tau_mean=0.25 if accept else -0.25,
+            negative_risk_mean=0.05 if accept else 0.3,
+        )
+
     def predict(self, item):
         accept = item.candidate_card.memory_id == "mem_execute_tool_chain"
         return TransferEstimate(
@@ -227,7 +235,7 @@ def test_n12_production_router_with_critic_makes_routing_decisions() -> None:
     critic = _MockCritic()
     router = ProductionSequentialRouter(
         critic=critic,
-        config=SequentialRouterConfig(epsilon=0.2),
+        config=SequentialRouterConfig(),
     )
     env = ToyEnvironment(seed=7)
     app = build_graph(
@@ -291,7 +299,7 @@ def test_n12_production_router_records_traversal_seed() -> None:
     critic = _MockCritic()
     router = ProductionSequentialRouter(
         critic=critic,
-        config=SequentialRouterConfig(epsilon=0.2),
+        config=SequentialRouterConfig(),
     )
     env = ToyEnvironment(seed=7)
     app = build_graph(

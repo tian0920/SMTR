@@ -4,7 +4,7 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 
 from smtr.config import RuntimeConfig
-from smtr.counterfactual.decision_points import DecisionPointRecorder
+from smtr.counterfactual.decision_points import DecisionPointRecorder, canonical_digest
 from smtr.memory.execution_evidence import build_context_fingerprint
 from smtr.memory.repository import SharedMemoryRepository
 from smtr.memory.seed_memories import build_seed_memory_pool
@@ -34,7 +34,7 @@ def _pre_route_node(
         cards = memory_pool.get_routing_cards()
         cards_by_id = {card.memory_id: card for card in cards}
         memory_store_revision = memory_pool.current_revision()
-        seed = state["run_seed"] if state.get("run_seed") is not None else config.seed
+        seed = config.seed
         request = CandidateRequest(
             task=state["task"],
             task_stage=receiver_agent,
@@ -73,6 +73,8 @@ def _pre_route_node(
             selected_memory_ids=[],
             episode_id=state["episode_id"],
         )
+        context_fingerprint_digest = canonical_digest(context.model_dump(mode="json"))
+        candidate_request_digest = canonical_digest(request.model_dump(mode="json"))
         traversal_seed = seed + _receiver_seed_offset(receiver_agent)
         routing_result = router.decide_from_proposal(
             receiver_agent_id=receiver_agent,
@@ -87,6 +89,7 @@ def _pre_route_node(
         selected_payloads = [
             payload.model_dump() for payload in memory_pool.get_selected_payloads(selected_ids)
         ]
+        visible_payload_memory_ids = [payload["memory_id"] for payload in selected_payloads]
 
         agent_local_context = {
             agent: dict(context) for agent, context in state["agent_local_context"].items()
@@ -125,6 +128,11 @@ def _pre_route_node(
                 and routing_result.decisions[0].traversal_order is not None
                 else []
             ),
+            graph_node=f"pre_route_{receiver_agent}",
+            receiver_role=receiver_agent,
+            context_fingerprint_digest=context_fingerprint_digest,
+            candidate_request_digest=candidate_request_digest,
+            visible_payload_memory_ids=visible_payload_memory_ids,
         )
         router_trace = [*state["router_trace"], trace_entry.model_dump()]
         return {

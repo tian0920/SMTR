@@ -1,88 +1,98 @@
-"""Tests for prefix formation trace."""
+"""Tests for invocation-local prefix traces."""
 
-import pytest
-
-from smtr.experiment.prefix_trace import (
-    PrefixTraceSummary,
-    compute_prefix_trace,
-)
-from smtr.experiment.candidate_diagnostics import (
-    SCENARIO_PREFIX_MEMORIES,
-    SCENARIO_TARGET_MEMORY,
-)
+from smtr.experiment.prefix_trace import compute_prefix_traces
+from smtr.experiment.schemas import ComparisonRunRecord, DecisionRecord, RoutingInvocationRecord
 
 
-class TestPrefixTrace:
-    """Test prefix formation trace computation."""
+def _run(invocations):
+    return ComparisonRunRecord(
+        experiment_id="exp",
+        base_episode_id="base",
+        episode_id="base",
+        task_instance_id="base",
+        method="M0-Full",
+        router_name="ProductionSequentialRouter",
+        task_seed=0,
+        environment_seed=0,
+        generation_seed=0,
+        memory_snapshot_id="snap",
+        environment_snapshot_digest="env",
+        invocations=invocations,
+    )
 
-    def _make_run(self, scenario: str, prefix_selected: bool, target_shared: bool):
-        """Create a mock run for prefix scenario."""
-        target = SCENARIO_TARGET_MEMORY.get(scenario, "target")
-        prefix_mems = SCENARIO_PREFIX_MEMORIES.get(scenario, [])
 
-        # Build decisions: prefix first, then target
-        decisions = []
-        for pm in prefix_mems:
-            decisions.append({
-                "memory_id": pm,
-                "action": "share" if prefix_selected else "withhold",
-                "reason": "test",
-                "candidate_position": 0,
-                "proposal_rank": 1,
-                "tau_mean": 0.5,
-                "tau_lcb": 0.3,
-                "negative_risk_ucb": 0.1,
-            })
-        decisions.append({
-            "memory_id": target,
-            "action": "share" if target_shared else "withhold",
-            "reason": "test",
-            "candidate_position": 1,
-            "proposal_rank": 2,
-            "tau_mean": 0.6,
-            "tau_lcb": 0.4,
-            "negative_risk_ucb": 0.1,
-        })
+def test_prefix_trace_uses_same_invocation_selected_before():
+    invocation = RoutingInvocationRecord(
+        invocation_id="inv",
+        graph_node="pre_route_planner",
+        receiver_agent_id="planner",
+        receiver_role="planner",
+        context_fingerprint_digest="ctx",
+        candidate_request_digest="req",
+        candidate_memory_ids=["prefix", "target"],
+        candidate_scores=[0.9, 0.8],
+        proposal_order=["prefix", "target"],
+        traversal_order=["prefix", "target"],
+        decisions=[
+            DecisionRecord(
+                decision_index=0,
+                memory_id="prefix",
+                action="share",
+                reason="accepted",
+                traversal_position=0,
+                selected_before_digest="empty",
+            ),
+            DecisionRecord(
+                decision_index=1,
+                memory_id="target",
+                action="share",
+                reason="accepted",
+                traversal_position=1,
+                selected_before_memory_ids=["prefix"],
+                selected_before_digest="prefix",
+            ),
+        ],
+        selected_memory_ids=["prefix", "target"],
+        visible_payload_memory_ids=["prefix", "target"],
+    )
+    traces = compute_prefix_traces(
+        [_run([invocation])],
+        target_memory_id="target",
+        required_prefix_memory_ids=["prefix"],
+    )
+    assert len(traces) == 1
+    assert traces[0].required_prefix_in_same_invocation_candidates is True
+    assert traces[0].required_prefix_selected_before_target is True
+    assert traces[0].target_evaluated_under_required_prefix is True
 
-        all_mems = prefix_mems + [target]
-        return {
-            "method": "M0-Full",
-            "episode_id": "ep0",
-            "candidate_memory_ids": all_mems,
-            "team_success": target_shared and prefix_selected,
-            "router_trace": [
-                {"agent": "planner", "decisions": decisions},
-            ],
-        }
 
-    def test_prefix_sensitive_with_correct_prefix(self):
-        """Prefix trace detects correct prefix selection."""
-        run = self._make_run("prefix_sensitive", prefix_selected=True, target_shared=True)
-        result = compute_prefix_trace([run], scenario="prefix_sensitive", method="M0-Full")
-        assert result.n_episodes == 1
-        assert result.prefix_selection_success_rate == 1.0
-        assert result.success_given_correct_prefix == 1.0
-
-    def test_prefix_sensitive_with_rejected_prefix(self):
-        """Prefix trace detects rejected prefix."""
-        run = self._make_run("prefix_sensitive", prefix_selected=False, target_shared=False)
-        result = compute_prefix_trace([run], scenario="prefix_sensitive", method="M0-Full")
-        assert result.prefix_selection_success_rate == 0.0
-        assert result.success_without_correct_prefix == 0.0
-
-    def test_non_prefix_scenario_returns_empty(self):
-        """Non-prefix scenario returns empty summary."""
-        result = compute_prefix_trace([], scenario="positive", method="M0-Full")
-        assert result.n_episodes == 0
-        assert result.traces == []
-
-    def test_prefix_candidate_recall(self):
-        """Prefix candidate recall is 1.0 when all prefix memories are in candidates."""
-        run = self._make_run("flip_pos_to_neg", prefix_selected=True, target_shared=False)
-        result = compute_prefix_trace([run], scenario="flip_pos_to_neg", method="M0-Full")
-        assert result.prefix_candidate_recall == 1.0
-
-    def test_empty_runs(self):
-        """Empty runs return default summary."""
-        result = compute_prefix_trace([], scenario="prefix_sensitive", method="M0-Full")
-        assert result.n_episodes == 0
+def test_empty_required_prefix_is_not_marked_correct():
+    invocation = RoutingInvocationRecord(
+        invocation_id="inv",
+        graph_node="pre_route_planner",
+        receiver_agent_id="planner",
+        receiver_role="planner",
+        context_fingerprint_digest="ctx",
+        candidate_request_digest="req",
+        candidate_memory_ids=["target"],
+        candidate_scores=[0.8],
+        proposal_order=["target"],
+        traversal_order=["target"],
+        decisions=[
+            DecisionRecord(
+                decision_index=0,
+                memory_id="target",
+                action="withhold",
+                reason="tau_lcb_nonpositive",
+                traversal_position=0,
+                selected_before_digest="empty",
+            )
+        ],
+    )
+    traces = compute_prefix_traces(
+        [_run([invocation])],
+        target_memory_id="target",
+        required_prefix_memory_ids=[],
+    )
+    assert traces[0].required_prefix_in_same_invocation_candidates is False
+    assert traces[0].target_evaluated_under_required_prefix is False

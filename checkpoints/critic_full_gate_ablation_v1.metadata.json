@@ -1,0 +1,21 @@
+{
+  "checkpoint_schema_version": "critic_checkpoint_v2",
+  "critic_class": "FourOutcomeTransferCritic",
+  "encoder_class": "HashingTransferFeatureEncoder",
+  "feature_block": "full",
+  "uses_selected_set": true,
+  "uses_pairwise_interactions": true,
+  "class_order": [
+    "q00",
+    "q01",
+    "q10",
+    "q11"
+  ],
+  "training_records_sha256": "0d18f93ed31ba1e59d1e85ae90ef155a970abaca868996315a60754e55bc6d21",
+  "split_manifest_sha256": "0400f22f02d298ac31474eddc356a78de0d99ab3a124dd07be45284ef4c703cb",
+  "continuation_policy_fingerprint": "59e48da83268b977ed89cb1f379ee309cf748a7218b32987f5a9b9b8ba01e286",
+  "ensemble_size": 31,
+  "hashing_dimension": 512,
+  "supports_point_prediction": true,
+  "supports_member_predictions": true
+}

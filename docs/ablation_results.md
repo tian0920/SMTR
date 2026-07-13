@@ -1,5 +1,9 @@
 # SMTR Ablation Experiment Results (Round 2)
 
+> invalidated_by_evaluation_refactor: this report was generated with the legacy
+> episode-level schema and prefix matched-pair analysis. Do not use it as a
+> formal mechanism validation result.
+
 ## 1. Experiment Setup
 
 | Component | Detail |

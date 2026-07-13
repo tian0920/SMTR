@@ -5,11 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from smtr.router.transfer_features import HashingTransferFeatureEncoder, TransferPredictionInput
-from smtr.router.transfer_critic import FourOutcomeTransferCritic
-from smtr.memory.schemas import ContextFingerprint
 from smtr.counterfactual.schemas import RoutingFeatureSnapshot
-
+from smtr.memory.schemas import ContextFingerprint
+from smtr.router.transfer_critic import FourOutcomeTransferCritic
+from smtr.router.transfer_features import HashingTransferFeatureEncoder, TransferPredictionInput
 
 A1_CHECKPOINT = Path("checkpoints/critic_no_selected_set_v1.joblib")
 A1_METADATA = Path("checkpoints/critic_no_selected_set_v1.metadata.json")
@@ -77,7 +76,11 @@ class TestA1FeatureBlock:
         encoder = HashingTransferFeatureEncoder(feature_block="context_plus_candidate")
         item = _make_prediction_input()
         tokens = encoder.tokens(item)
-        context_tokens = [t for t in tokens if t.startswith("task_tag:") or t.startswith("receiver_role:")]
+        context_tokens = [
+            t
+            for t in tokens
+            if t.startswith("task_tag:") or t.startswith("receiver_role:")
+        ]
         assert len(context_tokens) > 0
 
     def test_has_candidate_tokens(self):
@@ -109,12 +112,13 @@ class TestA1Checkpoint:
         assert metadata["pairwise_features_enabled"] is False
         assert metadata["train_record_count"] == 160  # Same as M0
 
-    def test_feature_block_override(self):
-        """A1 checkpoint can be loaded with feature_block override."""
+    def test_feature_block_override_removed(self):
+        """Factory no longer mutates checkpoint feature blocks."""
         from smtr.router.factory import build_router
-        router = build_router(
-            mode="learned",
-            critic_checkpoint=str(A1_CHECKPOINT),
-            feature_block="context_plus_candidate",
-        )
-        assert router is not None
+
+        with pytest.raises(TypeError):
+            build_router(
+                mode="learned",
+                critic_checkpoint=str(A1_CHECKPOINT),
+                feature_block="context_plus_candidate",
+            )

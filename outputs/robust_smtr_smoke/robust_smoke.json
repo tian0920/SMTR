@@ -1,0 +1,7 @@
+{
+  "method": "Robust-SMTR",
+  "team_success": false,
+  "invocation_count": 3,
+  "robust_decision_count": 12,
+  "confidence_level": 0.9
+}

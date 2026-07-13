@@ -9,6 +9,8 @@ import os
 import re
 from typing import Any
 
+torch = None
+
 
 class RealLLM:
     """LLM adapter supporting local model or remote API."""
@@ -52,6 +54,7 @@ class RealLLM:
 
     def _load_local_model(self, *, model_name: str, load_in_8bit: bool) -> None:
         """Load model locally with transformers + optional 8-bit quantization."""
+        global torch
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
@@ -70,7 +73,11 @@ class RealLLM:
 
     def _generate_locally(self, prompt: str) -> str:
         """Generate using local model."""
-        import torch
+        global torch
+        if torch is None:
+            import torch as torch_module
+
+            torch = torch_module
 
         inputs = self._tokenizer(prompt, return_tensors="pt")
         inputs = {k: v.to(self._model.device) for k, v in inputs.items()}

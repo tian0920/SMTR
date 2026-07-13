@@ -1,0 +1,15 @@
+{
+  "count_distribution": {
+    "0": 0.5111,
+    "1": 0.2593,
+    "2": 0.1333,
+    "3": 0.0963
+  },
+  "critic_checkpoint_digest": "critic_full_gate_ablation_v1",
+  "manifest_version": "2.0",
+  "max_shares_per_invocation": 3,
+  "method": "B1-Matched",
+  "seed": 7,
+  "source_split": "validation",
+  "total_invocations": 3240
+}

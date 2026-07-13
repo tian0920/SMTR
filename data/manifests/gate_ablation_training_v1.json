@@ -1,0 +1,20 @@
+{
+  "bootstrap_group_key": "episode_id",
+  "checkpoint_metadata_path": "checkpoints/critic_full_gate_ablation_v1.metadata.json",
+  "checkpoint_metadata_sha256": "c4be900425a5e0d8cb57b284e9e271624a5f11a00d134f87427e60afa2ca9092",
+  "checkpoint_path": "checkpoints/critic_full_gate_ablation_v1.joblib",
+  "checkpoint_sha256": "1455986cc68a485db69fbacd383ba18f3739f989942fc21a4d4ef6431482567a",
+  "continuation_policy_fingerprint": "59e48da83268b977ed89cb1f379ee309cf748a7218b32987f5a9b9b8ba01e286",
+  "ensemble_size": 31,
+  "feature_block": "full",
+  "feature_schema_version": "1.0",
+  "hashing_dimension": 512,
+  "manifest_version": "2.0",
+  "records_path": "data/paired_records_pi3_v22.jsonl",
+  "records_sha256": "0d18f93ed31ba1e59d1e85ae90ef155a970abaca868996315a60754e55bc6d21",
+  "split_manifest_path": "data/manifests/gate_ablation_split_v1.json",
+  "split_manifest_sha256": "0400f22f02d298ac31474eddc356a78de0d99ab3a124dd07be45284ef4c703cb",
+  "training_seed": 0,
+  "uses_pairwise_interactions": true,
+  "uses_selected_set": true
+}

@@ -9,20 +9,21 @@ defense-in-depth against negative transfer.
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
-from smtr.router.baseline_router import RoutingResult
+from smtr.router.baseline_router import NoMemoryRouter, RoutingResult
 from smtr.router.sequential_router import (
     ProductionSequentialRouter,
     SequentialRouterConfig,
     SequentialRouterDecision,
 )
+from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
 from smtr.router.transfer_critic import FourOutcomeTransferCritic, TransferEstimate
 
 
-class SafetyVetoReason(str, Enum):
+class SafetyVetoReason(StrEnum):
     """Reasons for safety guard veto."""
 
     NONE = "none"
@@ -152,9 +153,6 @@ class FallbackRouterConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    conservative_tau_threshold: float = 0.2
-    """Higher tau threshold for conservative mode."""
-
     conservative_negative_risk_veto: float = 0.3
     """Lower negative risk threshold for conservative mode."""
 
@@ -193,10 +191,18 @@ class FallbackRouter:
         self._in_fallback_mode = False
         self._primary_router = self._create_router(self.normal_config)
 
-    def _create_router(self, config: SequentialRouterConfig) -> ProductionSequentialRouter:
+    def _create_router(
+        self,
+        config: SequentialRouterConfig,
+        *,
+        negative_risk_budget: float = 0.2,
+    ):
         """Create a sequential router with the given config."""
+        if self.critic is None:
+            return NoMemoryRouter()
         return ProductionSequentialRouter(
             critic=self.critic,
+            gate=SMTRGate(SMTRGateConfig(negative_risk_budget=negative_risk_budget)),
             config=config,
             seed=self.seed,
         )
@@ -249,7 +255,11 @@ class FallbackRouter:
                     tau_lcb=decision.tau_lcb or 0.0,
                     tau_ucb=decision.tau_ucb or 0.0,
                     negative_risk_mean=decision.negative_risk_mean or 0.0,
-                    negative_risk_ucb=decision.negative_risk_ucb or 0.0,
+                    negative_risk_ucb=(
+                        decision.negative_risk_ucb
+                        if decision.negative_risk_ucb is not None
+                        else decision.negative_risk_mean or 0.0
+                    ),
                     support_distance=decision.support_distance or 0.0,
                     support_threshold=decision.support_threshold or 0.5,
                     low_support=decision.low_support or False,
@@ -305,13 +315,12 @@ class FallbackRouter:
         """Switch to conservative fallback configuration."""
         self._in_fallback_mode = True
         conservative_config = SequentialRouterConfig(
-            epsilon=self.fallback_config.conservative_negative_risk_veto,
-            tau_threshold=self.fallback_config.conservative_tau_threshold,
-            negative_risk_veto=self.fallback_config.conservative_negative_risk_veto,
             max_shares_per_invocation=self.fallback_config.max_shares_in_fallback,
-            require_positive_tau=True,
         )
-        self._primary_router = self._create_router(conservative_config)
+        self._primary_router = self._create_router(
+            conservative_config,
+            negative_risk_budget=self.fallback_config.conservative_negative_risk_veto,
+        )
 
     def _exit_fallback_mode(self) -> None:
         """Exit fallback mode and return to normal configuration."""

@@ -50,15 +50,62 @@ proposal metadata, but the sequential gate uses a reproducible random traversal
 order and does not learn or optimize memory ordering. At each step, the router
 predicts the candidate's conditional effect from the task/agent/environment
 context, the candidate routing card, and the cards already accepted into `S`.
-The default accept rule is strict:
+The formal SMTR accept rule uses point estimates:
+
+```text
+share iff tau_hat(m | o, S) > 0 and eta_hat(m | o, S) <= epsilon
+```
+
+SMTR estimates the set-conditioned expected transfer effect and
+negative-transfer probability for each candidate memory. A memory is shared
+when its estimated marginal transfer effect is positive and its estimated
+negative-transfer probability is within a user-specified risk budget. The
+online router predicts these point quantities with the transfer critic. It does
+not run a real share/withhold counterfactual experiment for every online
+candidate.
+
+`ProductionSequentialRouter` requires a trained critic at construction time.
+No-memory baselines must use `NoMemoryRouter`; a learned router without a critic
+is an infrastructure error, not an algorithmic no-share result. Loaded critic
+checkpoints are immutable training artifacts: their `feature_block` is validated
+against the requested method and is never changed at runtime.
+
+Current ablation method IDs are:
+
+- `B0`: `NoMemoryRouter`.
+- `B1-Top1` / `B1-Top3`: relevance-only baselines.
+- `B1-Matched`: validation-calibrated exposure baseline.
+- `SMTR`: full set-conditioned critic with the formal mean-effect/mean-risk gate.
+- `EffectOnly-SMTR`: optional risk-condition ablation.
+
+### Robust-SMTR Extension
+
+Robust-SMTR is not the default formal method. It lives in the independent
+`smtr.robust` package and must be invoked explicitly. Robust-SMTR uses
+confidence bounds:
 
 ```text
 share iff LCB(tau_hat) > 0 and UCB(eta_hat) <= epsilon
 ```
 
-The online router predicts these quantities with the transfer critic. It does
-not run a real share/withhold counterfactual experiment for every online
-candidate.
+The main formal experiments do not load or report Robust-SMTR by default; it is
+reserved for future distribution-shift, low-support, and high-stakes deployment
+studies. The formal SMTR and Robust-SMTR extensions can share the same critic
+checkpoint, but gate policy parameters are runtime policy configuration, not
+checkpoint training metadata.
+
+Experiment records distinguish a base episode from traversal repetitions. A
+base episode is the task specification, generation seed, and replicate. A
+traversal run is a base episode, method, and traversal seed. Runtime exceptions
+go to `errors.jsonl`; they are never serialized as `team_success=false` runs.
+Policy-level transfer labels compare a completed method run with the same base
+episode's B0 outcome. Target-level causal effects require paired intervention
+evidence and must not be inferred from scenario names.
+
+Prefix-sensitive claims require strict prefix intervention audit records with
+all four branches (`S0/S1` by share/withhold target). Invocation-level traces
+record candidates, traversal order, selected-before IDs, and visible payload IDs
+at decision time; post-hoc cross-agent prefix reconstruction is invalid.
 
 ## SQLite Store
 

@@ -1,0 +1,34 @@
+{
+  "db_path": "data/smtr_decoupled_smoke.sqlite",
+  "critic_checkpoint": "checkpoints/critic_full_gate_ablation_v1.joblib",
+  "task_seeds": [
+    0,
+    1
+  ],
+  "generation_seeds": [
+    0
+  ],
+  "traversal_seeds": [
+    0,
+    1
+  ],
+  "scenario_replicates": 1,
+  "top_k": 4,
+  "max_shares_per_invocation": 3,
+  "negative_risk_budget": 0.2,
+  "output_dir": "outputs/smtr_decoupled_smoke",
+  "overwrite": true,
+  "fail_fast": true,
+  "bootstrap_seed": 42,
+  "bootstrap_n": 1000,
+  "scenario": "positive",
+  "methods": [
+    "B0",
+    "B1-Top1",
+    "B1-Matched",
+    "SMTR",
+    "EffectOnly-SMTR"
+  ],
+  "a1_critic_checkpoint": null,
+  "budget_manifest_path": "outputs/budget_manifest_gate_ablation_v1.json"
+}

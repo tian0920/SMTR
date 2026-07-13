@@ -1,5 +1,6 @@
 from smtr.config import RuntimeConfig
 from smtr.memory.seed_memories import build_seed_memory_pool
+from smtr.router.gate_protocol import TransferPointEstimate
 from smtr.router.sequential_router import ProductionSequentialRouter, SequentialRouterConfig
 from smtr.router.transfer_critic import TransferEstimate
 from smtr.runtime.environment import ToyEnvironment
@@ -76,8 +77,15 @@ def test_production_router_runtime_receives_cards_context_and_exposes_only_paylo
         def __init__(self):
             self.calls = []
 
-        def predict(self, item):
+        def predict_point(self, item):
             self.calls.append(item)
+            accept = item.candidate_card.memory_id == "mem_execute_tool_chain"
+            return TransferPointEstimate(
+                tau_mean=0.25 if accept else -0.30,
+                negative_risk_mean=0.05 if accept else 0.35,
+            )
+
+        def predict(self, item):
             accept = item.candidate_card.memory_id == "mem_execute_tool_chain"
             return TransferEstimate(
                 q00_mean=0.10,
@@ -99,7 +107,7 @@ def test_production_router_runtime_receives_cards_context_and_exposes_only_paylo
     critic = IdBasedCritic()
     router = ProductionSequentialRouter(
         critic=critic,
-        config=SequentialRouterConfig(epsilon=0.2),
+        config=SequentialRouterConfig(),
     )
     env = ToyEnvironment(seed=7)
     app = build_graph(
@@ -127,9 +135,9 @@ def test_production_router_runtime_receives_cards_context_and_exposes_only_paylo
     accepted = [d for d in executor_trace["decisions"] if d["action"] == "share"]
     rejected = [d for d in executor_trace["decisions"] if d["action"] == "withhold"]
     assert [d["memory_id"] for d in accepted] == ["mem_execute_tool_chain"]
-    assert accepted[0]["decision_reason"] == "accepted"
+    assert accepted[0]["decision_reason"] == "shared"
     assert rejected
-    assert any(d["decision_reason"] == "tau_lcb_nonpositive" for d in rejected)
+    assert any(d["decision_reason"] == "tau_mean_nonpositive" for d in rejected)
     assert executor_trace["traversal_order"]
     assert set(executor_trace["traversal_order"]) == {
         candidate["memory_id"] for candidate in executor_trace["candidates"]

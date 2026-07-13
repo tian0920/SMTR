@@ -85,7 +85,7 @@ def compute_paired_comparisons(
     Args:
         runs: All run record dicts from the experiment.
         pairs: List of (method_a, method_b) pairs to compare.
-            Defaults to M0-Full vs each baseline.
+            Defaults to SMTR vs each formal baseline.
         bootstrap_seed: Random seed for bootstrap.
         n_bootstrap: Number of bootstrap iterations.
 
@@ -94,10 +94,10 @@ def compute_paired_comparisons(
     """
     if pairs is None:
         pairs = [
-            ("M0-Full", "B1-Top1"),
-            ("M0-Full", "B1-Top3"),
-            ("M0-Full", "B1-Matched"),
-            ("M0-Full", "A1-NoSet"),
+            ("SMTR", "B1-Top1"),
+            ("SMTR", "B1-Top3"),
+            ("SMTR", "B1-Matched"),
+            ("SMTR", "EffectOnly-SMTR"),
         ]
 
     rng = np.random.default_rng(bootstrap_seed)

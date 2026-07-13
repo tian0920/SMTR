@@ -96,14 +96,14 @@ def compute_candidate_diagnostics(
     runs: list[dict[str, Any]],
     *,
     scenario: str,
-    method: str = "M0-Full",
+    method: str = "SMTR",
 ) -> CandidateDiagnosticsSummary:
     """Compute candidate-level diagnostics for a scenario + method.
 
     Args:
         runs: List of run record dicts (from runs.jsonl) for the given method.
         scenario: Counterfactual scenario name.
-        method: Method name to filter (default: M0-Full).
+        method: Method name to filter (default: SMTR).
 
     Returns:
         CandidateDiagnosticsSummary with all metrics.

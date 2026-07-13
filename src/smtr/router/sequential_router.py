@@ -14,46 +14,20 @@ from smtr.counterfactual.schemas import RoutingFeatureSnapshot
 from smtr.memory.schemas import ContextFingerprint, MemoryRoutingCard
 from smtr.router.baseline_router import RoutingResult
 from smtr.router.candidate_proposer import CandidateProposal
-from smtr.router.causal_gate import strict_lcb_ucb_gate
+from smtr.router.gate_protocol import RoutingGate, TransferPointEstimate
+from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
 from smtr.router.traces import CandidateTrace, RouterDecision
-from smtr.router.transfer_critic import FourOutcomeTransferCritic, TransferEstimate
+from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import TransferPredictionInput
 
 
 class SequentialRouterConfig(BaseModel):
-    """Configuration for the sequential router."""
+    """Operational configuration for the sequential router."""
 
     model_config = ConfigDict(frozen=True)
 
-    epsilon: float = 0.2
-    """Maximum allowed upper confidence bound for negative transfer risk."""
-
-    tau_threshold: float = 0.0
-    """Legacy/ablation mean tau threshold, only used when use_legacy_mean_gate=True."""
-
-    negative_risk_veto: float = 0.5
-    """Legacy/ablation risk veto, only used when use_legacy_mean_gate=True."""
-
-    uncertainty_veto: float = 0.3
-    """Optional fail-closed OOD veto on tau interval width."""
-
     max_shares_per_invocation: int | None = None
     """Maximum number of memories to share per router invocation."""
-
-    exploration_epsilon: float = 0.0
-    """Explicit ablation-only epsilon-greedy exploration probability."""
-
-    require_positive_tau: bool = True
-    """Legacy compatibility flag, only used when use_legacy_mean_gate=True."""
-
-    use_legacy_mean_gate: bool = False
-    """If True, use the old tau_mean/risk-veto rule for ablations only."""
-
-    use_support_distance: bool = False
-    """If True, veto shares with low support (high support_distance)."""
-
-    support_threshold: float = 0.5
-    """Maximum support distance to allow sharing."""
 
 
 class SequentialRouterDecision(RouterDecision):
@@ -66,6 +40,9 @@ class SequentialRouterDecision(RouterDecision):
     negative_risk_ucb: float | None = None
     support_distance: float | None = None
     decision_mode: str | None = None
+    gate_name: str | None = None
+    effect_condition_passed: bool | None = None
+    risk_condition_passed: bool | None = None
 
 
 class SequentialRouterState(BaseModel):
@@ -98,11 +75,18 @@ class ProductionSequentialRouter:
     def __init__(
         self,
         *,
-        critic: FourOutcomeTransferCritic | None = None,
+        critic: FourOutcomeTransferCritic,
+        gate: RoutingGate | None = None,
         config: SequentialRouterConfig | None = None,
         seed: int = 0,
     ) -> None:
+        if critic is None:
+            raise TypeError(
+                "ProductionSequentialRouter requires a trained critic; "
+                "use NoMemoryRouter for the no-memory baseline"
+            )
         self.critic = critic
+        self.gate = gate or SMTRGate(SMTRGateConfig())
         self.config = config or SequentialRouterConfig()
         self.seed = seed
         self._rng = None
@@ -134,10 +118,6 @@ class ProductionSequentialRouter:
         Returns:
             RoutingResult with decisions and selected memory IDs
         """
-        if self.critic is None:
-            # Fall back to no-share if no critic available
-            return self._fallback_no_share(receiver_agent_id, proposal)
-
         state = SequentialRouterState()
         traversal_seed = (
             traversal_seed
@@ -170,8 +150,10 @@ class ProductionSequentialRouter:
                     position=position,
                     original_position=original_position_by_id[candidate.memory_id],
                     action="withhold",
-                    reason="budget_exhausted",
+                    reason="share_budget_exceeded",
                     decision_mode="budget_exhausted",
+                    effect_condition_passed=None,
+                    risk_condition_passed=None,
                     estimate=None,
                     traversal_seed=traversal_seed,
                     traversal_order=traversal_order,
@@ -189,6 +171,8 @@ class ProductionSequentialRouter:
                     action="withhold",
                     reason="missing_routing_card",
                     decision_mode="ordinary_withhold",
+                    effect_condition_passed=None,
+                    risk_condition_passed=None,
                     estimate=None,
                     traversal_seed=traversal_seed,
                     traversal_order=traversal_order,
@@ -197,7 +181,7 @@ class ProductionSequentialRouter:
                 state.decisions.append(decision)
                 continue
 
-            # Get critic estimate for this candidate
+            # Get critic point estimate for this candidate.
             estimate = self._estimate_transfer_effect(
                 candidate=candidate,
                 receiver_agent_id=receiver_agent_id,
@@ -209,8 +193,9 @@ class ProductionSequentialRouter:
                 decision_index=position,
             )
 
-            # Make decision based on estimate
-            action, reason, mode = self._apply_decision_rules(estimate, state)
+            action, reason, mode, effect_ok, risk_ok = self._apply_decision_rules(
+                estimate
+            )
             accepted = action == "share"
 
             decision = self._make_decision(
@@ -220,6 +205,8 @@ class ProductionSequentialRouter:
                 action=action,
                 reason=reason,
                 decision_mode=mode,
+                effect_condition_passed=effect_ok,
+                risk_condition_passed=risk_ok,
                 estimate=estimate,
                 traversal_seed=traversal_seed,
                 traversal_order=traversal_order,
@@ -310,12 +297,9 @@ class ProductionSequentialRouter:
         cards_by_id: dict[str, MemoryRoutingCard] | None,
         context: ContextFingerprint | None,
         decision_index: int | None,
-    ) -> TransferEstimate | None:
+    ) -> TransferPointEstimate | None:
         """Get critic estimate for a candidate given current selected set."""
         del candidate, cards_by_id
-        if self.critic is None:
-            return None
-
         selected_memory_ids = [card.memory_id for card in selected_cards]
         context = self._context_for_selected_set(
             base_context=context,
@@ -331,51 +315,42 @@ class ProductionSequentialRouter:
             selected_cards=selected_cards,
         )
 
-        return self.critic.predict(prediction_input)
+        return self.critic.predict_point(prediction_input)
 
     def _apply_decision_rules(
         self,
-        estimate: TransferEstimate | None,
-        state: SequentialRouterState,
-    ) -> tuple[str, str, str]:
-        """Apply decision rules to determine share/withhold action.
+        estimate: TransferPointEstimate | None,
+    ) -> tuple[str, str, str, bool | None, bool | None]:
+        """Apply the configured gate to determine share/withhold action.
 
         Returns:
             Tuple of (action, reason, decision_mode)
         """
-        del state
         if estimate is None:
-            return "withhold", "no_critic_estimate", "ordinary_withhold"
+            raise RuntimeError("critic did not return a transfer estimate")
 
-        # Check support distance
-        if self.config.use_support_distance and estimate.low_support:
-            if estimate.support_distance > self.config.support_threshold:
-                return "withhold", "low_support", "hard_ood_veto"
-
-        if self.config.use_legacy_mean_gate:
-            if estimate.negative_risk_ucb > self.config.negative_risk_veto:
-                return "withhold", "negative_risk_veto", "risk_veto"
-            uncertainty = estimate.tau_ucb - estimate.tau_lcb
-            if uncertainty > self.config.uncertainty_veto:
-                return "withhold", "high_uncertainty", "hard_ood_veto"
-            if self.config.require_positive_tau:
-                if estimate.tau_mean <= self.config.tau_threshold:
-                    return "withhold", "tau_below_threshold", "ordinary_withhold"
-            if self.config.exploration_epsilon > 0:
-                rng = self._get_rng()
-                if rng.random() < self.config.exploration_epsilon:
-                    return "share", "epsilon_exploration", "boundary_explore"
-            return "share", "critic_guided_share", "safe_exploit"
-
-        gate = strict_lcb_ucb_gate(estimate, epsilon=self.config.epsilon)
-        if gate.accepted:
-            return "share", gate.reason, "safe_exploit"
+        gate_decision = self.gate.decide(estimate)
+        if gate_decision.share:
+            return (
+                "share",
+                gate_decision.reason,
+                "safe_exploit",
+                gate_decision.effect_condition_passed,
+                gate_decision.risk_condition_passed,
+            )
         mode = (
             "risk_veto"
-            if gate.reason == "negative_risk_ucb_exceeds_epsilon"
+            if gate_decision.reason
+            in {"negative_risk_ucb_exceeded", "negative_risk_mean_exceeded"}
             else "ordinary_withhold"
         )
-        return "withhold", gate.reason, mode
+        return (
+            "withhold",
+            gate_decision.reason,
+            mode,
+            gate_decision.effect_condition_passed,
+            gate_decision.risk_condition_passed,
+        )
 
     def _make_decision(
         self,
@@ -386,7 +361,9 @@ class ProductionSequentialRouter:
         action: str,
         reason: str,
         decision_mode: str,
-        estimate: TransferEstimate | None,
+        effect_condition_passed: bool | None,
+        risk_condition_passed: bool | None,
+        estimate: TransferPointEstimate | None,
         traversal_seed: int | None,
         traversal_order: list[str] | None,
         accepted: bool,
@@ -400,18 +377,33 @@ class ProductionSequentialRouter:
             reason=reason,
             candidate_position=position,
             decision_source="production_router",
-            tau_mean=estimate.tau_mean if estimate else None,
-            tau_lcb=estimate.tau_lcb if estimate else None,
-            tau_ucb=estimate.tau_ucb if estimate else None,
-            negative_risk_mean=estimate.negative_risk_mean if estimate else None,
-            negative_risk_ucb=estimate.negative_risk_ucb if estimate else None,
-            epsilon=self.config.epsilon,
+            tau_mean=getattr(estimate, "tau_mean", None) if estimate else None,
+            tau_lcb=getattr(estimate, "tau_lcb", None) if estimate else None,
+            tau_ucb=getattr(estimate, "tau_ucb", None) if estimate else None,
+            negative_risk_mean=(
+                getattr(estimate, "negative_risk_mean", None) if estimate else None
+            ),
+            negative_risk_lcb=(
+                getattr(estimate, "negative_risk_lcb", None) if estimate else None
+            ),
+            negative_risk_ucb=(
+                getattr(estimate, "negative_risk_ucb", None) if estimate else None
+            ),
+            epsilon=_gate_negative_risk_budget(self.gate),
             accepted=accepted,
             decision_reason=reason,
-            low_support=estimate.low_support if estimate else None,
+            low_support=getattr(estimate, "low_support", None) if estimate else None,
             decision_mode=decision_mode,
-            support_distance=estimate.support_distance if estimate else None,
-            support_threshold=estimate.support_threshold if estimate else None,
+            gate_name=self.gate.gate_name,
+            effect_condition_passed=effect_condition_passed,
+            risk_condition_passed=risk_condition_passed,
+            support_distance=(
+                getattr(estimate, "support_distance", None) if estimate else None
+            ),
+            support_threshold=(
+                getattr(estimate, "support_threshold", None) if estimate else None
+            ),
+            robust_diagnostics=_robust_diagnostics_from_estimate(estimate),
             original_candidate_position=original_position,
             traversal_position=position,
             traversal_seed=traversal_seed,
@@ -482,34 +474,6 @@ class ProductionSequentialRouter:
             decision_index=decision_index,
         )
 
-    def _fallback_no_share(
-        self,
-        receiver_agent_id: str,
-        proposal: CandidateProposal,
-    ) -> RoutingResult:
-        """Fall back to no-share when critic is not available."""
-        decisions = [
-            RouterDecision(
-                memory_id=candidate.memory_id,
-                action="withhold",
-                decision="withhold",
-                score=candidate.total_score,
-                reason="no_critic_available",
-                decision_reason="no_critic_available",
-                accepted=False,
-            )
-            for candidate in proposal.ranked_candidates
-        ]
-        return RoutingResult(
-            receiver_agent_id=receiver_agent_id,
-            candidate_proposal=proposal,
-            decisions=decisions,
-            selected_memory_ids=[],
-            router_name=self.router_name,
-            router_version=self.router_version,
-        )
-
-
 def _extract_task_tags(task: str) -> set[str]:
     """Extract task tags from task description."""
     tokens = set(task.lower().split())
@@ -523,3 +487,26 @@ def _extract_task_tags(task: str) -> set[str]:
     if {"judge", "verify", "check", "critic"} & tokens:
         tags.add("verification")
     return tags
+
+
+def _gate_negative_risk_budget(gate: RoutingGate) -> float | None:
+    config = getattr(gate, "config", None)
+    budget = getattr(config, "negative_risk_budget", None)
+    return float(budget) if budget is not None else None
+
+
+def _robust_diagnostics_from_estimate(
+    estimate: TransferPointEstimate | None,
+) -> dict[str, float] | None:
+    if estimate is None:
+        return None
+    required = (
+        "confidence_level",
+        "tau_lcb",
+        "tau_ucb",
+        "negative_risk_lcb",
+        "negative_risk_ucb",
+    )
+    if not all(hasattr(estimate, field) for field in required):
+        return None
+    return {field: float(getattr(estimate, field)) for field in required}

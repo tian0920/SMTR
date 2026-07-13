@@ -1,0 +1,35 @@
+{
+  "db_path": "data/gate_ablation_smoke.sqlite",
+  "critic_checkpoint": "checkpoints/critic_full_gate_ablation_v1.joblib",
+  "task_seeds": [
+    0,
+    1
+  ],
+  "generation_seeds": [
+    0
+  ],
+  "traversal_seeds": [
+    0,
+    1
+  ],
+  "scenario_replicates": 1,
+  "top_k": 4,
+  "max_shares_per_invocation": 3,
+  "output_dir": "outputs/gate_ablation_smoke/_scenarios/neutral_success",
+  "overwrite": true,
+  "fail_fast": true,
+  "bootstrap_seed": 42,
+  "bootstrap_n": 100,
+  "scenario": "neutral_success",
+  "methods": [
+    "B0",
+    "B1-Top1",
+    "B1-Matched",
+    "M0-Full",
+    "G1-MeanGate",
+    "G2-NoRiskGate",
+    "G3-MeanEffectOnly"
+  ],
+  "a1_critic_checkpoint": null,
+  "budget_manifest_path": "outputs/budget_manifest_gate_ablation_v1.json"
+}
