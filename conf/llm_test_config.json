@@ -29,9 +29,9 @@
     },
     "qwen_remote": {
       "description": "Qwen via remote API server (set OPENAI_API_KEY env var or add api_key)",
-      "model": "qwen3.5-35b-a3b",
+      "model": "qwen3.7-plus",
       "api_base": "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
-      "api_key": "sk-8692d980a9e148d3843a64135ae0b0f2",
+      "api_key": "sk-86cc88eac82b40d1bd7f97904a6c92fd",
       "load_in_8bit": false,
       "max_tokens": 256,
       "temperature": 0.0

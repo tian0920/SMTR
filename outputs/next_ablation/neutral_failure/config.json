@@ -1,0 +1,39 @@
+{
+  "db_path": "data/smtr_memory_v2.sqlite",
+  "critic_checkpoint": "checkpoints/critic_pi3_v22.joblib",
+  "episodes": 40,
+  "task_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "generation_seeds": [
+    0,
+    1
+  ],
+  "traversal_seeds": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "top_k": 4,
+  "max_shares_per_invocation": 3,
+  "output_dir": "outputs/next_ablation/neutral_failure",
+  "overwrite": true,
+  "bootstrap_seed": 42,
+  "bootstrap_n": 1000,
+  "scenario": "neutral_failure",
+  "methods": [
+    "B0",
+    "B1-Top1",
+    "B1-Top3",
+    "B1-Matched",
+    "A1-NoSet",
+    "M0-Full"
+  ],
+  "a1_critic_checkpoint": "checkpoints/critic_no_selected_set_v1.joblib",
+  "budget_manifest_path": "outputs/budget_manifest.json"
+}

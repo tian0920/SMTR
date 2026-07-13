@@ -225,9 +225,15 @@ def run_demo(
     seed: int = 7,
     llm: Any | None = None,
     env_factory: Callable[[int], Any] | None = None,
+    router: MemoryRouter | None = None,
 ) -> SMTRState:
     env = ToyEnvironment(seed=seed)
-    app = build_graph(config=RuntimeConfig(seed=seed), llm=llm, env_factory=env_factory)
+    app = build_graph(
+        config=RuntimeConfig(seed=seed),
+        llm=llm,
+        env_factory=env_factory,
+        router=router,
+    )
     state = initial_state(
         task="Obtain a target artifact using the valid action sequence.",
         environment_observation=env.observe(),
@@ -248,6 +254,7 @@ def run_episode(
     decision_point_recorder: DecisionPointRecorder | None = None,
     llm: Any | None = None,
     env_factory: Callable[[int], Any] | None = None,
+    router: MemoryRouter | None = None,
 ) -> SMTRState:
     env = ToyEnvironment(seed=seed)
     state = initial_state(
@@ -264,6 +271,7 @@ def run_episode(
         decision_point_recorder=decision_point_recorder,
         llm=llm,
         env_factory=env_factory,
+        router=router,
     )
     return app.invoke(state)
 
@@ -275,6 +283,7 @@ def run_demo_with_repository(
     top_k: int = 4,
     llm: Any | None = None,
     env_factory: Callable[[int], Any] | None = None,
+    router: MemoryRouter | None = None,
 ) -> SMTRState:
     env = ToyEnvironment(seed=seed)
     app = build_graph(
@@ -282,6 +291,7 @@ def run_demo_with_repository(
         config=RuntimeConfig(seed=seed, top_k=top_k),
         llm=llm,
         env_factory=env_factory,
+        router=router,
     )
     state = initial_state(
         task="Obtain a target artifact using the valid action sequence.",

@@ -1,0 +1,14 @@
+{
+  "method": "M0",
+  "max_shares_per_invocation": 3,
+  "count_distribution": {
+    "0": 0.5111,
+    "1": 0.2593,
+    "2": 0.1333,
+    "3": 0.0963
+  },
+  "total_invocations": 3240,
+  "validation_split_digest": "b0_b1_m0_all_scenarios",
+  "critic_checkpoint_digest": "critic_pi3_v22",
+  "seed": 7
+}

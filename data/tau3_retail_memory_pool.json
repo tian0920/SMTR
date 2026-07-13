@@ -1,0 +1,115 @@
+{
+  "routing_cards": [
+    {
+      "memory_id": "retail_cancel_order",
+      "goal_summary": "Cancel a pending order for a customer",
+      "task_tags": ["cancel", "order", "pending"],
+      "receiver_role": "executor",
+      "sender_agent_id": "memory_store",
+      "relevance_score": 0.9,
+      "created_at": "2025-01-01T00:00:00"
+    },
+    {
+      "memory_id": "retail_return_exchange",
+      "goal_summary": "Process return or exchange for delivered orders",
+      "task_tags": ["return", "exchange", "delivered", "order"],
+      "receiver_role": "executor",
+      "sender_agent_id": "memory_store",
+      "relevance_score": 0.9,
+      "created_at": "2025-01-01T00:00:00"
+    },
+    {
+      "memory_id": "retail_authenticate_user",
+      "goal_summary": "Authenticate user identity via email or name + zip code",
+      "task_tags": ["authenticate", "user", "email", "identity"],
+      "receiver_role": "executor",
+      "sender_agent_id": "memory_store",
+      "relevance_score": 0.95,
+      "created_at": "2025-01-01T00:00:00"
+    },
+    {
+      "memory_id": "retail_modify_pending_order",
+      "goal_summary": "Modify shipping address, payment method, or item options for pending orders",
+      "task_tags": ["modify", "pending", "order", "address", "payment"],
+      "receiver_role": "executor",
+      "sender_agent_id": "memory_store",
+      "relevance_score": 0.85,
+      "created_at": "2025-01-01T00:00:00"
+    },
+    {
+      "memory_id": "retail_transfer_to_human",
+      "goal_summary": "Transfer user to human agent when request cannot be handled",
+      "task_tags": ["transfer", "human_agent", "escalation"],
+      "receiver_role": "executor",
+      "sender_agent_id": "memory_store",
+      "relevance_score": 0.7,
+      "created_at": "2025-01-01T00:00:00"
+    }
+  ],
+  "payloads": [
+    {
+      "memory_id": "retail_cancel_order",
+      "goal": "Cancel a pending order",
+      "steps": [
+        "Verify order status is 'pending' using get_order tool",
+        "Ask user for cancellation reason: must be 'no longer needed' or 'ordered by mistake'",
+        "List cancellation details including order ID and refund timeline",
+        "Get explicit user confirmation (yes) before proceeding",
+        "Call cancel_order tool with order_id and reason",
+        "Inform user: gift card refunds immediately, other methods 5-7 business days"
+      ],
+      "preconditions": ["order status is pending", "user is authenticated"],
+      "postconditions": ["order status changed to cancelled", "refund initiated"]
+    },
+    {
+      "memory_id": "retail_return_exchange",
+      "goal": "Process return or exchange for delivered orders",
+      "steps": [
+        "Verify order status is 'delivered' using get_order tool",
+        "Identify which items to return or exchange",
+        "For exchange: check availability of replacement items",
+        "List return/exchange details and get explicit user confirmation",
+        "Call appropriate return_items or exchange_items tool",
+        "Inform user about refund timeline or exchange shipping"
+      ],
+      "preconditions": ["order status is delivered", "user is authenticated"],
+      "postconditions": ["items returned or exchanged", "refund or replacement initiated"]
+    },
+    {
+      "memory_id": "retail_authenticate_user",
+      "goal": "Authenticate user identity at conversation start",
+      "steps": [
+        "Ask user for their email address",
+        "Call get_user tool with email to locate user ID",
+        "If email not found, ask for name + zip code as alternative",
+        "Confirm user identity before proceeding with any actions"
+      ],
+      "preconditions": ["conversation just started"],
+      "postconditions": ["user identity verified", "user_id known"]
+    },
+    {
+      "memory_id": "retail_modify_pending_order",
+      "goal": "Modify a pending order's address, payment, or items",
+      "steps": [
+        "Verify order status is 'pending' using get_order tool",
+        "Determine what to modify: shipping address, payment method, or item options",
+        "For item modifications: collect all changes before calling modify_order (can only be called once per order)",
+        "List modification details and get explicit user confirmation",
+        "Call modify_order tool with the changes"
+      ],
+      "preconditions": ["order status is pending", "user is authenticated"],
+      "postconditions": ["order modified successfully"]
+    },
+    {
+      "memory_id": "retail_transfer_to_human",
+      "goal": "Transfer user to human agent",
+      "steps": [
+        "Confirm the request cannot be handled within policy scope",
+        "Call transfer_to_human_agents tool",
+        "Send message: 'YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.'"
+      ],
+      "preconditions": ["request is outside agent capability"],
+      "postconditions": ["user transferred to human agent"]
+    }
+  ]
+}

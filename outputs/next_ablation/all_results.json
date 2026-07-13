@@ -1,0 +1,3458 @@
+[
+  {
+    "scenario": "positive",
+    "runtime_seconds": 27.87,
+    "methods": {
+      "B0": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.0146
+      },
+      "B1-Top1": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 1.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.0,
+        "avg_selected_per_episode": 1.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 1.0,
+        "mean_runtime": 0.0164
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 7.0,
+        "avg_selected_per_episode": 7.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0154
+      },
+      "B1-Matched": {
+        "success_rate": 0.5,
+        "positive_transfer_rate": 0.5,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.5,
+        "avg_selected_per_episode": 1.5,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.5,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.5,
+        "mean_runtime": 0.0149
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0123
+      },
+      "M0-Full": {
+        "success_rate": 0.2,
+        "positive_transfer_rate": 0.2,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.4,
+        "avg_selected_per_episode": 1.4,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.8,
+        "all_withhold_rate": 0.6,
+        "share_decision_rate": 0.2,
+        "tau_lcb_rejection_rate": 0.3333,
+        "delta_vs_b0": 0.2,
+        "mean_runtime": 0.0506
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 0.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 0.4,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 128,
+            "rate": 0.4
+          },
+          {
+            "name": "task_succeeds",
+            "count": 64,
+            "rate": 0.2
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "negative",
+    "runtime_seconds": 27.45,
+    "methods": {
+      "B0": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.0138
+      },
+      "B1-Top1": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 1.0,
+        "avg_selected_per_episode": 1.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0144
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 7.0,
+        "avg_selected_per_episode": 7.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0151
+      },
+      "B1-Matched": {
+        "success_rate": 0.5,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.5,
+        "avg_selected_per_invocation": 1.5,
+        "avg_selected_per_episode": 1.5,
+        "neutral_success_rate": 0.5,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -0.5,
+        "mean_runtime": 0.0142
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0119
+      },
+      "M0-Full": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": 0.0,
+        "tau_lcb_rejection_rate": 1.0,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0506
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 1.0,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 0.0,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 0.0,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 0.0,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 1.0,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 40,
+            "rate": 0.5
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 320,
+            "rate": 1.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "neutral_success",
+    "runtime_seconds": 28.09,
+    "methods": {
+      "B0": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.0139
+      },
+      "B1-Top1": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.0,
+        "avg_selected_per_episode": 1.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0147
+      },
+      "B1-Top3": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 7.0,
+        "avg_selected_per_episode": 7.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0152
+      },
+      "B1-Matched": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.5,
+        "avg_selected_per_episode": 1.5,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0143
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0124
+      },
+      "M0-Full": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.6,
+        "avg_selected_per_episode": 1.6,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": 0.3,
+        "tau_lcb_rejection_rate": 0.7,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.052
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 320,
+            "rate": 1.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "neutral_failure",
+    "runtime_seconds": 27.71,
+    "methods": {
+      "B0": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.0141
+      },
+      "B1-Top1": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.0,
+        "avg_selected_per_episode": 1.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.015
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 7.0,
+        "avg_selected_per_episode": 7.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0156
+      },
+      "B1-Matched": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.5,
+        "avg_selected_per_episode": 1.5,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0149
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0125
+      },
+      "M0-Full": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.8,
+        "avg_selected_per_episode": 1.8,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": 0.3,
+        "tau_lcb_rejection_rate": 0.6833,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0504
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 0.0,
+        "neutral_exposure_rate": 1.0
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "prefix_sensitive",
+    "runtime_seconds": 29.14,
+    "methods": {
+      "B0": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.014
+      },
+      "B1-Top1": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 1.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.0,
+        "avg_selected_per_episode": 1.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 1.0,
+        "mean_runtime": 0.0156
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 5.0,
+        "avg_selected_per_episode": 5.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0157
+      },
+      "B1-Matched": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.5,
+        "avg_selected_per_episode": 1.5,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0155
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0127
+      },
+      "M0-Full": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 2.4,
+        "avg_selected_per_episode": 2.4,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": 0.5,
+        "tau_lcb_rejection_rate": 0.4833,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.054
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 0.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 1.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 1.0,
+        "prefix_selection_success_rate": 0.5,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 1.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 1.0,
+        "prefix_selection_success_rate": 1.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 1.0,
+        "prefix_selection_success_rate": 1.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "flip_pos_to_neg",
+    "runtime_seconds": 27.74,
+    "methods": {
+      "B0": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.014
+      },
+      "B1-Top1": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 3.0,
+        "avg_selected_per_episode": 3.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0148
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 8.0,
+        "avg_selected_per_episode": 8.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0153
+      },
+      "B1-Matched": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 2.0,
+        "avg_selected_per_episode": 2.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0145
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0121
+      },
+      "M0-Full": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": 0.0,
+        "tau_lcb_rejection_rate": 1.0,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0511
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 1.0,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 1.0,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 1.0,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 1.0,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": 1.0,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": 1.0,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 80,
+            "rate": 1.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 320,
+            "rate": 1.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "flip_neg_to_pos",
+    "runtime_seconds": 27.38,
+    "methods": {
+      "B0": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.014
+      },
+      "B1-Top1": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 3.0,
+        "avg_selected_per_episode": 3.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0144
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 8.0,
+        "avg_selected_per_episode": 8.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0149
+      },
+      "B1-Matched": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 2.0,
+        "avg_selected_per_episode": 2.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0144
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0126
+      },
+      "M0-Full": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 2.6,
+        "avg_selected_per_episode": 2.6,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.6,
+        "share_decision_rate": 0.2667,
+        "tau_lcb_rejection_rate": 0.3167,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0498
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 0.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 0.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 0.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 1.0,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": 1.0,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": 0.4,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": 1.0,
+        "neutral_exposure_rate": 0.0
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "flip_neu_to_neg",
+    "runtime_seconds": 27.78,
+    "methods": {
+      "B0": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.0137
+      },
+      "B1-Top1": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 3.0,
+        "avg_selected_per_episode": 3.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0147
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 8.0,
+        "avg_selected_per_episode": 8.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.015
+      },
+      "B1-Matched": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 2.0,
+        "avg_selected_per_episode": 2.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0142
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 1.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0126
+      },
+      "M0-Full": {
+        "success_rate": 0.2,
+        "positive_transfer_rate": 0.2,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 1.2,
+        "avg_selected_per_episode": 1.2,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.8,
+        "all_withhold_rate": 0.6,
+        "share_decision_rate": 0.1333,
+        "tau_lcb_rejection_rate": 0.7333,
+        "delta_vs_b0": 0.2,
+        "mean_runtime": 0.0509
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.2
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 64,
+            "rate": 0.2
+          }
+        ]
+      }
+    }
+  },
+  {
+    "scenario": "flip_neu_to_pos",
+    "runtime_seconds": 27.76,
+    "methods": {
+      "B0": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": null,
+        "negative_transfer_rate": null,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": null,
+        "neutral_failure_rate": null,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": null,
+        "mean_runtime": 0.0145
+      },
+      "B1-Top1": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 3.0,
+        "avg_selected_per_episode": 3.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0153
+      },
+      "B1-Top3": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 8.0,
+        "avg_selected_per_episode": 8.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0159
+      },
+      "B1-Matched": {
+        "success_rate": 1.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.0,
+        "avg_selected_per_invocation": 2.0,
+        "avg_selected_per_episode": 2.0,
+        "neutral_success_rate": 1.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": 0.0,
+        "mean_runtime": 0.0145
+      },
+      "A1-NoSet": {
+        "success_rate": 0.0,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 1.0,
+        "avg_selected_per_invocation": 0.0,
+        "avg_selected_per_episode": 0.0,
+        "neutral_success_rate": 0.0,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 1.0,
+        "share_decision_rate": null,
+        "tau_lcb_rejection_rate": null,
+        "delta_vs_b0": -1.0,
+        "mean_runtime": 0.0121
+      },
+      "M0-Full": {
+        "success_rate": 0.8,
+        "positive_transfer_rate": 0.0,
+        "negative_transfer_rate": 0.2,
+        "avg_selected_per_invocation": 1.2,
+        "avg_selected_per_episode": 1.2,
+        "neutral_success_rate": 0.8,
+        "neutral_failure_rate": 0.0,
+        "all_withhold_rate": 0.6,
+        "share_decision_rate": 0.1333,
+        "tau_lcb_rejection_rate": 0.7333,
+        "delta_vs_b0": -0.2,
+        "mean_runtime": 0.0508
+      }
+    },
+    "candidate_diagnostics": {
+      "A1-NoSet": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B0": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Matched": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top1": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "B1-Top3": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      },
+      "M0-Full": {
+        "positive_target_recall_at_k": null,
+        "negative_target_recall_at_k": null,
+        "router_positive_recall": null,
+        "harmful_memory_rejection": null,
+        "positive_transfer_precision": null,
+        "neutral_exposure_rate": null
+      }
+    },
+    "prefix_trace": {
+      "A1-NoSet": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "B0": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      },
+      "B1-Matched": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      },
+      "B1-Top1": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 1.0
+      },
+      "B1-Top3": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.0
+      },
+      "M0-Full": {
+        "prefix_candidate_recall": 0.0,
+        "prefix_selection_success_rate": 0.0,
+        "success_given_correct_prefix": 0.0,
+        "success_without_correct_prefix": 0.8
+      }
+    },
+    "bottleneck_funnel": {
+      "A1-NoSet": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B0": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Matched": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top1": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "B1-Top3": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 80,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      },
+      "M0-Full": {
+        "stages": [
+          {
+            "name": "ground_truth_opportunity",
+            "count": 320,
+            "rate": 1.0
+          },
+          {
+            "name": "target_prefix_recalled",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_traversal_order",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "correct_prefix_selected",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "target_correctly_routed",
+            "count": 0,
+            "rate": 0.0
+          },
+          {
+            "name": "task_succeeds",
+            "count": 0,
+            "rate": 0.0
+          }
+        ]
+      }
+    }
+  }
+]

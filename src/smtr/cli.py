@@ -25,6 +25,8 @@ from smtr.evaluation.feature_ablation import audit_feature_blocks
 from smtr.evaluation.interaction_audit import audit_interaction
 from smtr.evaluation.logging import summarize_run
 from smtr.evaluation.shortcut_diagnostics import shortcut_diagnostics
+from smtr.experiment.runner import ComparisonRunner
+from smtr.experiment.schemas import ExperimentConfig
 from smtr.memory.execution_evidence import build_context_fingerprint
 from smtr.memory.paired_transfer_evidence import PairedTransferEvidenceIngestor
 from smtr.memory.seed_memories import seed_repository
@@ -45,6 +47,7 @@ from smtr.policy.no_share_policy import (
     FrozenNoShareContinuationPolicy,
     create_no_share_manifest,
 )
+from smtr.router.factory import build_router
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_evaluation import (
     distribution,
@@ -97,14 +100,28 @@ def _list_memories(db: str) -> None:
         )
 
 
-def _demo(seed: int, db: str | None, top_k: int) -> None:
+def _demo(
+    seed: int,
+    db: str | None,
+    top_k: int,
+    router_mode: str = "no-memory",
+    critic_checkpoint: str | None = None,
+    max_shares_per_invocation: int | None = None,
+) -> None:
+    router = build_router(
+        mode=router_mode,
+        critic_checkpoint=critic_checkpoint,
+        max_shares_per_invocation=max_shares_per_invocation,
+    )
     initial_observation = ToyEnvironment(seed=seed).observe()
     if db:
         repository = SQLiteSharedMemoryRepository(db)
         seed_repository(repository)
-        state = run_demo_with_repository(repository=repository, seed=seed, top_k=top_k)
+        state = run_demo_with_repository(
+            repository=repository, seed=seed, top_k=top_k, router=router
+        )
     else:
-        state = run_demo(seed=seed)
+        state = run_demo(seed=seed, router=router)
 
     print(f"Task: {state['task']}")
     print(f"Environment observation: {initial_observation}")
@@ -818,15 +835,28 @@ def _serve_api(host: str, port: int, model: str) -> None:
     run_server(host=host, port=port)
 
 
-def _demo_real(seed: int, model: str, api_base: str | None, use_tool_env: bool) -> None:
+def _demo_real(
+    seed: int,
+    model: str,
+    api_base: str | None,
+    use_tool_env: bool,
+    router_mode: str = "no-memory",
+    critic_checkpoint: str | None = None,
+    max_shares_per_invocation: int | None = None,
+) -> None:
     """Run demo with real LLM."""
     from smtr.runtime.real_llm import RealLLM
     from smtr.runtime.tool_environment import ToolEnvironment
 
     llm = RealLLM(model_name=model, api_base=api_base)
     env_factory = (lambda s: ToolEnvironment(seed=s)) if use_tool_env else None
+    router = build_router(
+        mode=router_mode,
+        critic_checkpoint=critic_checkpoint,
+        max_shares_per_invocation=max_shares_per_invocation,
+    )
 
-    state = run_demo(seed=seed, llm=llm, env_factory=env_factory)
+    state = run_demo(seed=seed, llm=llm, env_factory=env_factory, router=router)
 
     print(f"Task: {state['task']}")
     print(f"Team success: {state.get('team_success')}")
@@ -837,6 +867,80 @@ def _demo_real(seed: int, model: str, api_base: str | None, use_tool_env: bool) 
         print("\nPlanner output:")
         print(f"  Plan: {planner_output.get('plan')}")
         print(f"  Explanation: {planner_output.get('explanation')}")
+
+
+def _compare_routers(args: argparse.Namespace) -> None:
+    """Run ablation comparison experiment."""
+    from pathlib import Path
+
+    # Validate arguments
+    if args.episodes <= 0:
+        raise ValueError("--episodes must be > 0")
+    if args.top_k <= 0:
+        raise ValueError("--top-k must be > 0")
+    if args.max_shares_per_invocation is not None and args.max_shares_per_invocation < 0:
+        raise ValueError("--max-shares-per-invocation must be >= 0")
+    if not args.traversal_seeds:
+        raise ValueError("--traversal-seeds must not be empty")
+    if args.critic_checkpoint and not Path(args.critic_checkpoint).exists():
+        raise ValueError(
+            f"critic checkpoint not found: {args.critic_checkpoint}"
+        )
+    if args.a1_critic_checkpoint and not Path(args.a1_critic_checkpoint).exists():
+        raise ValueError(
+            f"A1 critic checkpoint not found: {args.a1_critic_checkpoint}"
+        )
+    if args.budget_manifest_path and not Path(args.budget_manifest_path).exists():
+        raise ValueError(
+            f"budget manifest not found: {args.budget_manifest_path}"
+        )
+    output_dir = Path(args.output_dir)
+    if output_dir.exists() and not args.overwrite:
+        raise FileExistsError(
+            f"output directory already exists: {output_dir}; "
+            "use --overwrite to replace"
+        )
+
+    config = ExperimentConfig(
+        db_path=args.db,
+        critic_checkpoint=args.critic_checkpoint,
+        episodes=args.episodes,
+        task_seeds=args.task_seeds,
+        generation_seeds=args.generation_seeds,
+        traversal_seeds=args.traversal_seeds,
+        top_k=args.top_k,
+        max_shares_per_invocation=args.max_shares_per_invocation,
+        output_dir=args.output_dir,
+        overwrite=args.overwrite,
+        scenario=args.scenario,
+        methods=args.methods,
+        a1_critic_checkpoint=args.a1_critic_checkpoint,
+        budget_manifest_path=args.budget_manifest_path,
+    )
+
+    runner = ComparisonRunner(config)
+    summary = runner.run()
+
+    # Print summary for all methods
+    print(f"experiment_id={runner.experiment_id}")
+    print(f"episodes={summary.b0.episode_count}")
+    for method_id, method_summary in summary.methods.items():
+        print(f"\n{method_id}:")
+        print(f"  success_rate={method_summary.success_rate:.3f}")
+        print(f"  avg_selected={method_summary.avg_selected_size:.1f}")
+        if method_summary.negative_transfer_rate is not None:
+            print(f"  negative_transfer_rate={method_summary.negative_transfer_rate:.3f}")
+        if method_summary.share_decision_rate is not None:
+            print(f"  share_decision_rate={method_summary.share_decision_rate:.3f}")
+        if method_summary.tau_lcb_rejection_rate is not None:
+            print(f"  tau_lcb_rejection_rate={method_summary.tau_lcb_rejection_rate:.3f}")
+        if method_summary.success_delta_vs_b0 is not None:
+            print(f"  delta_vs_b0={method_summary.success_delta_vs_b0:+.3f}")
+        if method_summary.other_reason_counts:
+            print(f"  other_rejection_reasons={method_summary.other_reason_counts}")
+    if summary.experiment_invalid:
+        print(f"\nWARNING: experiment invalid — {summary.invalid_reason}")
+    print(f"\noutput_dir={args.output_dir}")
 
 
 def main() -> None:
@@ -853,6 +957,13 @@ def main() -> None:
     demo_parser.add_argument("--seed", type=int, default=7)
     demo_parser.add_argument("--db")
     demo_parser.add_argument("--top-k", type=int, default=4)
+    demo_parser.add_argument(
+        "--router-mode",
+        choices=["no-memory", "relevance-topk", "learned"],
+        default="no-memory",
+    )
+    demo_parser.add_argument("--critic-checkpoint")
+    demo_parser.add_argument("--max-shares-per-invocation", type=int)
 
     collect_parser = subparsers.add_parser("collect-counterfactual")
     collect_parser.add_argument("--db", required=True)
@@ -981,6 +1092,55 @@ def main() -> None:
     demo_real_parser.add_argument("--model", default="Qwen/Qwen3.5-2B")
     demo_real_parser.add_argument("--api-base", help="Remote API base URL")
     demo_real_parser.add_argument("--use-tool-env", action="store_true")
+    demo_real_parser.add_argument(
+        "--router-mode",
+        choices=["no-memory", "relevance-topk", "learned"],
+        default="no-memory",
+    )
+    demo_real_parser.add_argument("--critic-checkpoint")
+    demo_real_parser.add_argument("--max-shares-per-invocation", type=int)
+
+    compare_parser = subparsers.add_parser("compare-routers")
+    compare_parser.add_argument("--db", required=True)
+    compare_parser.add_argument("--critic-checkpoint")
+    compare_parser.add_argument("--episodes", type=int, default=20)
+    compare_parser.add_argument("--task-seeds", type=int, nargs="+", default=[0])
+    compare_parser.add_argument(
+        "--generation-seeds", type=int, nargs="+", default=[0]
+    )
+    compare_parser.add_argument(
+        "--traversal-seeds", type=int, nargs="+", default=[0, 1, 2]
+    )
+    compare_parser.add_argument("--top-k", type=int, default=4)
+    compare_parser.add_argument("--max-shares-per-invocation", type=int, default=3)
+    compare_parser.add_argument("--output-dir", required=True)
+    compare_parser.add_argument("--overwrite", action="store_true")
+    compare_parser.add_argument(
+        "--scenario",
+        choices=[
+            "positive", "negative", "neutral_success", "neutral_failure",
+            "prefix_sensitive", "flip_pos_to_neg", "flip_neg_to_pos",
+            "flip_neu_to_neg", "flip_neu_to_pos",
+        ],
+        help="Use counterfactual scenario task instead of default toy task",
+    )
+    compare_parser.add_argument(
+        "--methods",
+        nargs="+",
+        choices=["B0", "B1", "B1-Top1", "B1-Top3", "B1-Matched", "A1-NoSet", "M0", "M0-Full"],
+        default=None,
+        help="Methods to compare (default: B0 B1 M0 for legacy, or all 6 for ablation)",
+    )
+    compare_parser.add_argument(
+        "--a1-critic-checkpoint",
+        default=None,
+        help="Path to A1-NoSet critic checkpoint (no-selected-set ablation)",
+    )
+    compare_parser.add_argument(
+        "--budget-manifest-path",
+        default=None,
+        help="Path to B1-Matched budget manifest JSON",
+    )
 
     args = parser.parse_args()
     if args.command == "seed-memories":
@@ -988,7 +1148,14 @@ def main() -> None:
     elif args.command == "list-memories":
         _list_memories(args.db)
     elif args.command == "demo":
-        _demo(seed=args.seed, db=args.db, top_k=args.top_k)
+        _demo(
+            seed=args.seed,
+            db=args.db,
+            top_k=args.top_k,
+            router_mode=args.router_mode,
+            critic_checkpoint=args.critic_checkpoint,
+            max_shares_per_invocation=args.max_shares_per_invocation,
+        )
     elif args.command == "collect-counterfactual":
         _collect_counterfactual(
             db=args.db,
@@ -1092,7 +1259,12 @@ def main() -> None:
             model=args.model,
             api_base=args.api_base,
             use_tool_env=args.use_tool_env,
+            router_mode=args.router_mode,
+            critic_checkpoint=args.critic_checkpoint,
+            max_shares_per_invocation=args.max_shares_per_invocation,
         )
+    elif args.command == "compare-routers":
+        _compare_routers(args)
 
 
 if __name__ == "__main__":

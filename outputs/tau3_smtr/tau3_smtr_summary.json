@@ -1,0 +1,24 @@
+{
+  "count": 3,
+  "successes": 2,
+  "success_rate": 0.6666666666666666,
+  "mean_reward": 0.6666666666666666,
+  "total_reward": 2.0,
+  "per_task": [
+    {
+      "task_id": "5",
+      "success": true,
+      "reward": 1.0
+    },
+    {
+      "task_id": "9",
+      "success": false,
+      "reward": 0.0
+    },
+    {
+      "task_id": "12",
+      "success": true,
+      "reward": 1.0
+    }
+  ]
+}

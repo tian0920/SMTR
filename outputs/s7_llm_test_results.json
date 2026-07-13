@@ -1,6 +1,6 @@
 {
   "config": {
-    "model": "qwen3.5-35b-a3b",
+    "model": "qwen3.5-plus",
     "api_base": "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
     "api_key": "sk-8692d980a9e148d3843a64135ae0b0f2",
     "load_in_8bit": false,
@@ -8,10 +8,10 @@
     "temperature": 0.0,
     "description": "Qwen via remote API server (set OPENAI_API_KEY env var or add api_key)"
   },
-  "total_time": 54.56197190284729,
+  "total_time": 243.3291642665863,
   "tests": {
     "model_loading": {
-      "elapsed": 5.633815765380859,
+      "elapsed": 5.025671005249023,
       "error": null
     },
     "plan_toy_env": {
@@ -22,21 +22,21 @@
           "collect_artifact"
         ],
         "is_correct": true,
-        "explanation": "Adheres to the specified valid_sequence for unlocking and retrieving the target artifact."
+        "explanation": "Follows the valid sequence required to access and collect the target artifact based on environment constraints and memory."
       },
-      "elapsed": 4.4338719844818115,
+      "elapsed": 12.869270324707031,
       "error": null
     },
     "plan_tool_env": {
       "result": {
         "plan": [
-          "read_file",
-          "run_command",
-          "write_file"
+          "call read_file with path=/workspace/config.json",
+          "call run_command with command=process",
+          "call write_file with path=/workspace/output.json"
         ],
-        "is_correct": true
+        "is_correct": false
       },
-      "elapsed": 18.296473264694214,
+      "elapsed": 17.283985137939453,
       "error": null
     },
     "sequential_router": {
@@ -45,7 +45,7 @@
         "selected": [],
         "router_name": "ProductionSequentialRouter"
       },
-      "elapsed": 1.1731884479522705,
+      "elapsed": 0.7515628337860107,
       "error": null
     },
     "safety_guard": {
@@ -61,7 +61,7 @@
           }
         }
       },
-      "elapsed": 0.03422427177429199,
+      "elapsed": 0.0265963077545166,
       "error": null
     },
     "multi_seed": {
@@ -140,7 +140,179 @@
         ],
         "success_rate": 1.0
       },
-      "elapsed": 24.937139987945557,
+      "elapsed": 92.24567985534668,
+      "error": null
+    },
+    "task_execution": {
+      "result": {
+        "episode_count": 5,
+        "task_success_count": 5,
+        "task_success_rate": 1.0,
+        "mean_reward": 1.0,
+        "plan_match_count": 5,
+        "plan_match_rate": 1.0,
+        "total_actions": 15,
+        "successful_actions": 15,
+        "action_success_rate": 1.0,
+        "mean_actions_per_episode": 3,
+        "mean_successful_actions_per_episode": 3,
+        "failure_errors": {},
+        "episodes": [
+          {
+            "episode_id": "toy-episode-7",
+            "task_id": "toy-task-7",
+            "seed": 7,
+            "task": "Obtain a target artifact using the valid action sequence.",
+            "team_success": true,
+            "team_reward": 1.0,
+            "team_summary": "Target artifact obtained.",
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "expected_plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "plan_matches_expected": true,
+            "action_count": 3,
+            "successful_action_count": 3,
+            "action_errors": [],
+            "selected_memory_ids_by_agent": {
+              "planner": [],
+              "executor": [],
+              "critic": []
+            }
+          },
+          {
+            "episode_id": "toy-episode-42",
+            "task_id": "toy-task-42",
+            "seed": 42,
+            "task": "Obtain a target artifact using the valid action sequence.",
+            "team_success": true,
+            "team_reward": 1.0,
+            "team_summary": "Target artifact obtained.",
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "expected_plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "plan_matches_expected": true,
+            "action_count": 3,
+            "successful_action_count": 3,
+            "action_errors": [],
+            "selected_memory_ids_by_agent": {
+              "planner": [],
+              "executor": [],
+              "critic": []
+            }
+          },
+          {
+            "episode_id": "toy-episode-123",
+            "task_id": "toy-task-123",
+            "seed": 123,
+            "task": "Obtain a target artifact using the valid action sequence.",
+            "team_success": true,
+            "team_reward": 1.0,
+            "team_summary": "Target artifact obtained.",
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "expected_plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "plan_matches_expected": true,
+            "action_count": 3,
+            "successful_action_count": 3,
+            "action_errors": [],
+            "selected_memory_ids_by_agent": {
+              "planner": [],
+              "executor": [],
+              "critic": []
+            }
+          },
+          {
+            "episode_id": "toy-episode-256",
+            "task_id": "toy-task-256",
+            "seed": 256,
+            "task": "Obtain a target artifact using the valid action sequence.",
+            "team_success": true,
+            "team_reward": 1.0,
+            "team_summary": "Target artifact obtained.",
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "expected_plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "plan_matches_expected": true,
+            "action_count": 3,
+            "successful_action_count": 3,
+            "action_errors": [],
+            "selected_memory_ids_by_agent": {
+              "planner": [],
+              "executor": [],
+              "critic": []
+            }
+          },
+          {
+            "episode_id": "toy-episode-999",
+            "task_id": "toy-task-999",
+            "seed": 999,
+            "task": "Obtain a target artifact using the valid action sequence.",
+            "team_success": true,
+            "team_reward": 1.0,
+            "team_summary": "Target artifact obtained.",
+            "plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "expected_plan": [
+              "gather_key",
+              "open_chest",
+              "collect_artifact"
+            ],
+            "plan_matches_expected": true,
+            "action_count": 3,
+            "successful_action_count": 3,
+            "action_errors": [],
+            "selected_memory_ids_by_agent": {
+              "planner": [],
+              "executor": [],
+              "critic": []
+            }
+          }
+        ],
+        "config": {
+          "seeds": [
+            7,
+            42,
+            123,
+            256,
+            999
+          ],
+          "environment": "toy",
+          "task": "Obtain a target artifact using the valid action sequence.",
+          "top_k": 4
+        }
+      },
+      "elapsed": 115.10599970817566,
       "error": null
     }
   }

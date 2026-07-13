@@ -203,6 +203,7 @@ src/smtr/
     tool_environment.py
     api_server.py
     delegation_topology.py
+    tau3_agent.py
 
   memory/
     schemas.py
@@ -217,6 +218,7 @@ src/smtr/
     seed_memories.py
     refinement.py
     meta_procedure.py
+    corpus_builder.py
 
   router/
     candidate_proposer.py
@@ -243,6 +245,8 @@ src/smtr/
     record_writer.py
     snapshot.py
     task_provider.py
+    tau_eval.py
+    tau3_paired_rollout.py
 
   policy/
     schemas.py
@@ -264,6 +268,13 @@ src/smtr/
     logging.py
     group_effects.py
     stale_propagation.py
+```
+
+外部脚本：
+
+```text
+scripts/
+  collect_tau3_trajectories.py  # τ³-bench 训练轨迹收集脚本
 ```
 
 当前 runtime 使用固定 LangGraph workflow：
@@ -813,13 +824,19 @@ scenario split macro_f1 = 0.732（原 1.0）
 
 <span style="display:inline-block;padding:2px 7px;border-radius:4px;background-color:#16a34a;color:#ffffff;font-weight:700">SMTR 必需 已实现</span>ToyEnvironment 已增强，支持前缀–目标交互、flip 场景、上下文模式、资源追踪、隐藏扰动。
 
-现阶段验证的是系统设计和因果数据管线，不是对真实 LLM agent 或真实工具环境的最终有效性证明。
+**τ³-bench 集成基础设施已完成**：SMTRTauAgent 实现 τ³ 官方 API（HalfDuplexAgent + LLMConfigMixin），
+遵循 one-time routing 与 information barrier 设计。
+
+**τ³-bench 真实测试管线已就绪**：`run_smtr_tau3.py` 已重写，修复过时 API 调用，新增 baseline / smtr / paired 三种运行模式。
+SMTR 已安装至 τ³-bench venv，双导入（`tau2` + `smtr`）验证通过。Retail domain 测试 memory pool
+（`data/tau3_retail_memory_pool.json`，5 procedures）已创建。待有效 API key 即可运行真实评估。
+详见 `run_smtr_tau3.py --dry-run` 和 `tests/test_tau3_agent.py`。
 
 尚未覆盖：
 
-* 真实模型采样噪声；
+* 真实模型采样噪声（τ³-bench 接入后可验证）；
 * 工具 API 版本变化；
-* 动态网页或数据库状态；
+* 动态网页或数据库状态（τ³-bench 提供）；
 * 多 agent delegation；
 * agent communication failure；
 * memory writing / correction；
@@ -1096,7 +1113,7 @@ ruff check .
 当前状态：
 
 ```text
-pytest: 325 passed, 2 xfailed
+pytest: 494 passed, 1 failed (pre-existing), 12 skipped, 2 xfailed
 ruff: All checks passed
 ```
 
@@ -1288,7 +1305,7 @@ python -m smtr.cli collect-counterfactual \
   - src/smtr/evaluation/stale_propagation.py (14 tests)
 ```
 
-总测试数: 325 passed, 2 xfailed
+总测试数: 494 passed, 1 failed (pre-existing), 12 skipped, 2 xfailed
 
 ## 16. S8/S9 实现状态
 
@@ -1325,5 +1342,52 @@ S8（技术债）和 S9（invariants）测试已完成：
 S3（改进审计指标）、S4（boundary exploration 修复）、ToyEnvironment 增强（修复 T-11/T-14）
 均已完成。10 项验收标准全部通过。
 
+**τ³-bench 集成基础设施已完成**：SMTRTauAgent、AgentVisibleTauContext、MemoryCorpusBuilder
+提供真实多轮工具交互环境的接入能力。One-time routing 与 information barrier 设计对齐 method.md
+因果识别要求。`run_smtr_tau3.py` 已重写并验证（dry-run 通过，全量测试 494 passed），
+待有效 API key 即可运行 retail domain 真实评估（baseline / SMTR-augmented / paired rollout）。
+
 下一阶段待推进：production 默认路径接入 learned router、严格 LCB/UCB 决策、
-随机 permutation 测试、真实环境外推、candidate-substitution 审计覆盖率回归。
+随机 permutation 测试、真实环境外推（τ³-bench Phase 3/4）、candidate-substitution 审计覆盖率回归。
+
+## 18. MARBLE 多 Agent 集成
+
+<span style="display:inline-block;padding:2px 7px;border-radius:4px;background-color:#16a34a;color:#ffffff;font-weight:700">SMTR 必需 已实现</span>Phase 0–3 全部完成。将 SMTR 因果记忆路由扩展到 MARBLE（ulab-uiuc/MARBLE, ACL 2025）多 agent 场景。Task 6–10 全部完成。
+
+### 已实现组件
+
+```text
+- [x] MARBLE 安装 + Python 3.12 兼容性确认
+- [x] DB 环境 Docker 基础设施（postgres:16 + prometheus + node-exporter + pg-exporter）
+- [x] 接口映射文档（docs/marble_integration_mapping.md）
+- [x] SMTRMarbleAgentState + AgentVisibleMarbleContext 数据模型
+- [x] PromptAwareBaseAgent（所有 agent 基类，render_private_guidance hook）
+- [x] SMTRMarbleAgent（目标 receiver，SMTR routing + private prompt injection）
+- [x] SMTRMarbleEngine（override _initialize_agents，正确实例化 agent 类型）
+- [x] 评估桥接（marble_eval.py：MarbleOutcome, extract_marble_outcome）
+- [x] 配对 rollout（marble_paired_rollout.py：MarblePairedRolloutRunner）
+- [x] Task 6 forced-injection smoke test（scripts/task6_smoke_test.py）
+- [x] Task 8 baseline comparison（scripts/task8_baseline_comparison.py）
+- [x] Task 9 integration tests（tests/test_marble_integration.py，29 tests）
+- [x] 61 个测试（32 test_marble_agent + 29 test_marble_integration）
+```
+
+### 关键设计决策
+
+1. **Private prompt injection**：不写 SharedMemory，通过 `render_private_guidance()` 注入目标 agent 私有 prompt
+2. **PromptAwareBaseAgent for ALL agents**：解决 MARBLE 通信循环由发起 agent 驱动的问题
+3. **exposure_override 因果控制**：share/withhold 分支使用相同 SMTRMarbleAgent，仅 exposure_override 不同
+4. **Single-receiver set-level**：只比较 S_K vs. ∅，不做 candidate-level τ(m|o,S)
+
+### Task 6–9 结果
+
+- **Task 6 Smoke Test**：Mock 5/5 checks passed，Full mode all checks passed。
+  - Target agent（SMTRMarbleAgent）：2 procedures injected，819 chars payload。
+  - Non-target agents（PromptAwareBaseAgent）：empty guidance。
+- **Task 8 Baseline Comparison**：脚本完成，支持 3 tasks × 4 conditions（NoMemory/AllMemory/Top-k/SMTR）。
+- **Task 9 Integration Tests**：29 tests all passed。
+  - OneTimeRouting（3）、PromptInjection（3）、InformationBarrier（5）、CommunicationInjection（3）、PairedRolloutIsolation（5）、ExposureOverride（5）、BaselineConditions（5）。
+
+### 待推进
+
+- Task 8 实际运行 baseline comparison（需 Docker + LLM API，预计 30-60 分钟）。

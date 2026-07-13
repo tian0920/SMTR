@@ -1,0 +1,23 @@
+{
+  "db_path": "data/memory_compare_scenario_smoke.sqlite",
+  "critic_checkpoint": "checkpoints/critic_pi0.joblib",
+  "episodes": 20,
+  "task_seeds": [
+    0
+  ],
+  "generation_seeds": [
+    0
+  ],
+  "traversal_seeds": [
+    0,
+    1,
+    2
+  ],
+  "top_k": 4,
+  "max_shares_per_invocation": 3,
+  "output_dir": "outputs/b0_b1_m0_scenario_smoke",
+  "overwrite": false,
+  "bootstrap_seed": 42,
+  "bootstrap_n": 1000,
+  "scenario": "positive"
+}

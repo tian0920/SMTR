@@ -43,6 +43,7 @@ class RouterDecision(BaseModel):
         "frozen_continuation",
         "baseline_router",
         "production_router",
+        "relevance_topk_router",
     ] = "baseline_router"
     policy_fingerprint: str | None = None
     tau_mean: float | None = None
@@ -64,6 +65,10 @@ class RouterDecision(BaseModel):
     traversal_position: int | None = None
     traversal_seed: int | None = None
     traversal_order: list[str] | None = None
+    proposal_rank: int | None = None
+    """1-based rank in the proposer's relevance ranking."""
+    proposal_score: float | None = None
+    """Relevance score from the proposer."""
 
     @model_validator(mode="after")
     def sync_action_and_decision(self) -> "RouterDecision":

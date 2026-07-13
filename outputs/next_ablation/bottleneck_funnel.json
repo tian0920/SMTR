@@ -1,0 +1,1856 @@
+{
+  "positive": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 128,
+          "rate": 0.4
+        },
+        {
+          "name": "task_succeeds",
+          "count": 64,
+          "rate": 0.2
+        }
+      ]
+    }
+  },
+  "negative": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 40,
+          "rate": 0.5
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 320,
+          "rate": 1.0
+        }
+      ]
+    }
+  },
+  "neutral_success": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 320,
+          "rate": 1.0
+        }
+      ]
+    }
+  },
+  "neutral_failure": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    }
+  },
+  "prefix_sensitive": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    }
+  },
+  "flip_pos_to_neg": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 80,
+          "rate": 1.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 320,
+          "rate": 1.0
+        }
+      ]
+    }
+  },
+  "flip_neg_to_pos": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    }
+  },
+  "flip_neu_to_neg": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 64,
+          "rate": 0.2
+        }
+      ]
+    }
+  },
+  "flip_neu_to_pos": {
+    "A1-NoSet": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B0": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Matched": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top1": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "B1-Top3": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 80,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    },
+    "M0-Full": {
+      "stages": [
+        {
+          "name": "ground_truth_opportunity",
+          "count": 320,
+          "rate": 1.0
+        },
+        {
+          "name": "target_prefix_recalled",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_traversal_order",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "correct_prefix_selected",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "target_correctly_routed",
+          "count": 0,
+          "rate": 0.0
+        },
+        {
+          "name": "task_succeeds",
+          "count": 0,
+          "rate": 0.0
+        }
+      ]
+    }
+  }
+}

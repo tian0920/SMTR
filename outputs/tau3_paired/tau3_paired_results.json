@@ -1,0 +1,821 @@
+[
+  {
+    "task_id": "5",
+    "domain": "retail",
+    "seed": 42,
+    "share_result": {
+      "outcome": {
+        "success": false,
+        "reward": 0.0,
+        "task_id": "5",
+        "domain": "retail",
+        "reward_info": {
+          "reward": 0.0,
+          "db_check": {
+            "db_match": false,
+            "db_reward": 0.0
+          },
+          "env_assertions": [],
+          "action_checks": [
+            {
+              "action": {
+                "action_id": "5_0",
+                "requestor": "assistant",
+                "name": "find_user_id_by_name_zip",
+                "arguments": {
+                  "first_name": "Mei",
+                  "last_name": "Kovacs",
+                  "zip": "28236"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_1",
+                "requestor": "assistant",
+                "name": "get_user_details",
+                "arguments": {
+                  "user_id": "mei_kovacs_8020"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_2",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W6390527"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_3",
+                "requestor": "assistant",
+                "name": "get_product_details",
+                "arguments": {
+                  "product_id": "6817146515"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_4",
+                "requestor": "assistant",
+                "name": "return_delivered_order_items",
+                "arguments": {
+                  "order_id": "#W6390527",
+                  "item_ids": [
+                    "8538875209"
+                  ],
+                  "payment_method_id": "paypal_7644869"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "write"
+            }
+          ],
+          "nl_assertions": [],
+          "communicate_checks": null,
+          "reward_basis": [
+            "DB",
+            "NL_ASSERTION"
+          ],
+          "reward_breakdown": {
+            "DB": 0.0,
+            "NL_ASSERTION": 1.0
+          },
+          "info": {
+            "env": null,
+            "nl": {
+              "note": "No nl_assertions to evaluate"
+            },
+            "communicate": {
+              "note": "No communicate_info to evaluate"
+            },
+            "action": null
+          }
+        },
+        "metadata": {
+          "domain": "retail",
+          "task_id": "5"
+        }
+      },
+      "termination_reason": "user_stop",
+      "num_messages": 26,
+      "messages": [],
+      "error": null
+    },
+    "withhold_result": {
+      "outcome": {
+        "success": true,
+        "reward": 1.0,
+        "task_id": "5",
+        "domain": "retail",
+        "reward_info": {
+          "reward": 1.0,
+          "db_check": {
+            "db_match": true,
+            "db_reward": 1.0
+          },
+          "env_assertions": [],
+          "action_checks": [
+            {
+              "action": {
+                "action_id": "5_0",
+                "requestor": "assistant",
+                "name": "find_user_id_by_name_zip",
+                "arguments": {
+                  "first_name": "Mei",
+                  "last_name": "Kovacs",
+                  "zip": "28236"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_1",
+                "requestor": "assistant",
+                "name": "get_user_details",
+                "arguments": {
+                  "user_id": "mei_kovacs_8020"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_2",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W6390527"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_3",
+                "requestor": "assistant",
+                "name": "get_product_details",
+                "arguments": {
+                  "product_id": "6817146515"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "5_4",
+                "requestor": "assistant",
+                "name": "return_delivered_order_items",
+                "arguments": {
+                  "order_id": "#W6390527",
+                  "item_ids": [
+                    "8538875209"
+                  ],
+                  "payment_method_id": "paypal_7644869"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "write"
+            }
+          ],
+          "nl_assertions": [],
+          "communicate_checks": null,
+          "reward_basis": [
+            "DB",
+            "NL_ASSERTION"
+          ],
+          "reward_breakdown": {
+            "DB": 1.0,
+            "NL_ASSERTION": 1.0
+          },
+          "info": {
+            "env": null,
+            "nl": {
+              "note": "No nl_assertions to evaluate"
+            },
+            "communicate": {
+              "note": "No communicate_info to evaluate"
+            },
+            "action": null
+          }
+        },
+        "metadata": {
+          "domain": "retail",
+          "task_id": "5"
+        }
+      },
+      "termination_reason": "user_stop",
+      "num_messages": 28,
+      "messages": [],
+      "error": null
+    },
+    "y_share": 0,
+    "y_withhold": 1,
+    "transfer_class": "negative",
+    "selected_memory_ids": [],
+    "routing_trace": [],
+    "data_source": "tau_bench"
+  },
+  {
+    "task_id": "9",
+    "domain": "retail",
+    "seed": 42,
+    "share_result": {
+      "outcome": {
+        "success": false,
+        "reward": 0.0,
+        "task_id": "9",
+        "domain": "retail",
+        "reward_info": {
+          "reward": 0.0,
+          "db_check": {
+            "db_match": false,
+            "db_reward": 0.0
+          },
+          "env_assertions": [],
+          "action_checks": [
+            {
+              "action": {
+                "action_id": "9_0",
+                "requestor": "assistant",
+                "name": "find_user_id_by_name_zip",
+                "arguments": {
+                  "first_name": "Mei",
+                  "last_name": "Kovacs",
+                  "zip": "28236"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_1",
+                "requestor": "assistant",
+                "name": "get_user_details",
+                "arguments": {
+                  "user_id": "mei_kovacs_8020"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_2",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W6390527"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_3",
+                "requestor": "assistant",
+                "name": "get_product_details",
+                "arguments": {
+                  "product_id": "8310926033"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_4",
+                "requestor": "assistant",
+                "name": "get_product_details",
+                "arguments": {
+                  "product_id": "6817146515"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_5",
+                "requestor": "assistant",
+                "name": "exchange_delivered_order_items",
+                "arguments": {
+                  "order_id": "#W6390527",
+                  "item_ids": [
+                    "8384507844"
+                  ],
+                  "new_item_ids": [
+                    "7624783998"
+                  ],
+                  "payment_method_id": "paypal_7644869"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "write"
+            }
+          ],
+          "nl_assertions": [],
+          "communicate_checks": null,
+          "reward_basis": [
+            "DB",
+            "NL_ASSERTION"
+          ],
+          "reward_breakdown": {
+            "DB": 0.0,
+            "NL_ASSERTION": 1.0
+          },
+          "info": {
+            "env": null,
+            "nl": {
+              "note": "No nl_assertions to evaluate"
+            },
+            "communicate": {
+              "note": "No communicate_info to evaluate"
+            },
+            "action": null
+          }
+        },
+        "metadata": {
+          "domain": "retail",
+          "task_id": "9"
+        }
+      },
+      "termination_reason": "user_stop",
+      "num_messages": 22,
+      "messages": [],
+      "error": null
+    },
+    "withhold_result": {
+      "outcome": {
+        "success": false,
+        "reward": 0.0,
+        "task_id": "9",
+        "domain": "retail",
+        "reward_info": {
+          "reward": 0.0,
+          "db_check": {
+            "db_match": false,
+            "db_reward": 0.0
+          },
+          "env_assertions": [],
+          "action_checks": [
+            {
+              "action": {
+                "action_id": "9_0",
+                "requestor": "assistant",
+                "name": "find_user_id_by_name_zip",
+                "arguments": {
+                  "first_name": "Mei",
+                  "last_name": "Kovacs",
+                  "zip": "28236"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_1",
+                "requestor": "assistant",
+                "name": "get_user_details",
+                "arguments": {
+                  "user_id": "mei_kovacs_8020"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_2",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W6390527"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_3",
+                "requestor": "assistant",
+                "name": "get_product_details",
+                "arguments": {
+                  "product_id": "8310926033"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_4",
+                "requestor": "assistant",
+                "name": "get_product_details",
+                "arguments": {
+                  "product_id": "6817146515"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "9_5",
+                "requestor": "assistant",
+                "name": "exchange_delivered_order_items",
+                "arguments": {
+                  "order_id": "#W6390527",
+                  "item_ids": [
+                    "8384507844"
+                  ],
+                  "new_item_ids": [
+                    "7624783998"
+                  ],
+                  "payment_method_id": "paypal_7644869"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": false,
+              "action_reward": 0.0,
+              "tool_type": "write"
+            }
+          ],
+          "nl_assertions": [],
+          "communicate_checks": null,
+          "reward_basis": [
+            "DB",
+            "NL_ASSERTION"
+          ],
+          "reward_breakdown": {
+            "DB": 0.0,
+            "NL_ASSERTION": 1.0
+          },
+          "info": {
+            "env": null,
+            "nl": {
+              "note": "No nl_assertions to evaluate"
+            },
+            "communicate": {
+              "note": "No communicate_info to evaluate"
+            },
+            "action": null
+          }
+        },
+        "metadata": {
+          "domain": "retail",
+          "task_id": "9"
+        }
+      },
+      "termination_reason": "user_stop",
+      "num_messages": 18,
+      "messages": [],
+      "error": null
+    },
+    "y_share": 0,
+    "y_withhold": 0,
+    "transfer_class": "neutral_failure",
+    "selected_memory_ids": [],
+    "routing_trace": [],
+    "data_source": "tau_bench"
+  },
+  {
+    "task_id": "12",
+    "domain": "retail",
+    "seed": 42,
+    "share_result": {
+      "outcome": {
+        "success": false,
+        "reward": 0.0,
+        "task_id": "12",
+        "domain": "retail",
+        "reward_info": {
+          "reward": 0.0,
+          "db_check": {
+            "db_match": false,
+            "db_reward": 0.0
+          },
+          "env_assertions": [],
+          "action_checks": [
+            {
+              "action": {
+                "action_id": "12_0",
+                "requestor": "assistant",
+                "name": "find_user_id_by_email",
+                "arguments": {
+                  "email": "mia.garcia2723@example.com"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_1",
+                "requestor": "assistant",
+                "name": "get_user_details",
+                "arguments": {
+                  "user_id": "mia_garcia_4516"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_2",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W5490111"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_3",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W7387996"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_4",
+                "requestor": "assistant",
+                "name": "transfer_to_human_agents",
+                "arguments": {
+                  "summary": "The user prefers PayPal for refund, but the agent cannot help."
+                },
+                "info": null,
+                "compare_args": []
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "generic"
+            }
+          ],
+          "nl_assertions": [],
+          "communicate_checks": null,
+          "reward_basis": [
+            "DB",
+            "NL_ASSERTION"
+          ],
+          "reward_breakdown": {
+            "DB": 0.0,
+            "NL_ASSERTION": 1.0
+          },
+          "info": {
+            "env": null,
+            "nl": {
+              "note": "No nl_assertions to evaluate"
+            },
+            "communicate": {
+              "note": "No communicate_info to evaluate"
+            },
+            "action": null
+          }
+        },
+        "metadata": {
+          "domain": "retail",
+          "task_id": "12"
+        }
+      },
+      "termination_reason": "user_stop",
+      "num_messages": 26,
+      "messages": [],
+      "error": null
+    },
+    "withhold_result": {
+      "outcome": {
+        "success": true,
+        "reward": 1.0,
+        "task_id": "12",
+        "domain": "retail",
+        "reward_info": {
+          "reward": 1.0,
+          "db_check": {
+            "db_match": true,
+            "db_reward": 1.0
+          },
+          "env_assertions": [],
+          "action_checks": [
+            {
+              "action": {
+                "action_id": "12_0",
+                "requestor": "assistant",
+                "name": "find_user_id_by_email",
+                "arguments": {
+                  "email": "mia.garcia2723@example.com"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_1",
+                "requestor": "assistant",
+                "name": "get_user_details",
+                "arguments": {
+                  "user_id": "mia_garcia_4516"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_2",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W5490111"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_3",
+                "requestor": "assistant",
+                "name": "get_order_details",
+                "arguments": {
+                  "order_id": "#W7387996"
+                },
+                "info": null,
+                "compare_args": null
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "read"
+            },
+            {
+              "action": {
+                "action_id": "12_4",
+                "requestor": "assistant",
+                "name": "transfer_to_human_agents",
+                "arguments": {
+                  "summary": "The user prefers PayPal for refund, but the agent cannot help."
+                },
+                "info": null,
+                "compare_args": []
+              },
+              "action_match": true,
+              "action_reward": 1.0,
+              "tool_type": "generic"
+            }
+          ],
+          "nl_assertions": [],
+          "communicate_checks": null,
+          "reward_basis": [
+            "DB",
+            "NL_ASSERTION"
+          ],
+          "reward_breakdown": {
+            "DB": 1.0,
+            "NL_ASSERTION": 1.0
+          },
+          "info": {
+            "env": null,
+            "nl": {
+              "note": "No nl_assertions to evaluate"
+            },
+            "communicate": {
+              "note": "No communicate_info to evaluate"
+            },
+            "action": null
+          }
+        },
+        "metadata": {
+          "domain": "retail",
+          "task_id": "12"
+        }
+      },
+      "termination_reason": "user_stop",
+      "num_messages": 20,
+      "messages": [],
+      "error": null
+    },
+    "y_share": 0,
+    "y_withhold": 1,
+    "transfer_class": "negative",
+    "selected_memory_ids": [],
+    "routing_trace": [],
+    "data_source": "tau_bench"
+  }
+]

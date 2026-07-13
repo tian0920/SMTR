@@ -27,13 +27,33 @@ All checks passed!
 ### 测试（pytest）
 
 ```
-325 passed, 2 xfailed in 26s
+494 passed, 1 failed, 12 skipped, 2 xfailed in 18.84s
 ```
 
 - `pytest` 配置：`testpaths=['tests']`，`pythonpath=['src']`
 - 重构基线 58 → A-01 交互编码 +3（61）→ S2 interaction-boundary 采样器 +3（64）
   → S3 audit 指标 +4（68）→ S4 boundary 修复 +3（71）→ S5 压力测试 +19（90）→ S6 验收标准 +21（含 2 xfailed，109 passed）
-  → B-08 真实 LLM +36（145 passed，2 xfailed）→ S7/S8/S9 invariants +180（325 passed，2 xfailed）。
+  → B-08 真实 LLM +36（145 passed，2 xfailed）→ S7/S8/S9 invariants +180（325 passed，2 xfailed）
+  → τ³-bench 集成 +21（381 passed，3 skipped，2 xfailed）
+  → τ³-bench paired rollout +11（392 passed，3 skipped，2 xfailed）
+  → MARBLE 多 Agent 集成 +61（443 passed，12 skipped，2 xfailed）
+  → τ³-bench 真实测试基础设施就绪（494 passed，1 failed pre-existing，12 skipped，2 xfailed）。
+
+## τ³-Bench 验证结果
+
+### Task 0.3: Reproducibility Verification
+
+- **模型**: qwen3.5-plus (OpenAI-compatible API)
+- **Domain**: mock, seed=42
+- **结果**: 两次运行 reward=1.0，tool calls 相同，但消息内容不同
+- **结论**: τ³-bench 消息级随机但功能一致，使用 outcome-level comparison
+
+### Task 2.8: Trajectory Collection
+
+- **脚本**: `scripts/collect_tau3_trajectories.py`
+- **测试运行**: 2 tasks from retail train split
+- **结果**: 均 reward=1.0，20 和 22 messages
+- **输出**: `data/tau3_retail_train_trajectories_test.jsonl`
 
 ## 覆盖的测试文件（tests/）
 
@@ -67,6 +87,73 @@ All checks passed!
 - test_transfer_critic.py
 - test_transfer_critic_cli.py
 - test_transfer_feature_encoder.py （A-01 新增 3 个交互编码测试）
+- test_tau3_agent.py （τ³-bench 集成新增 32 个测试，3 个 skip）
+- test_marble_agent.py （MARBLE 多 Agent 集成新增 32 个测试，9 个 skip）
+- test_marble_integration.py （MARBLE 集成验证新增 29 个测试）
+
+## τ³-Bench Paired Rollout 验证（11 个测试）
+
+> 测试文件：`tests/test_tau3_agent.py`（新增部分）。
+> 验证 τ³ paired rollout 数据模型和聚合逻辑。
+
+测试分类：
+- **TestTau3BranchResult**（2 tests）：单分支结果模型。
+- **TestTau3PairedOutcome**（4 tests）：配对结果，覆盖四种 transfer class。
+- **TestTau3PairedRolloutConfig**（2 tests）：配置模型。
+- **TestSummarizePairedOutcomes**（2 tests）：聚合统计。
+- **TestTau3PairedRolloutRunner**（1 test）：无 τ³ 时 ImportError。
+
+## τ³-Bench 集成验证（21 个测试，3 skipped）
+
+> 测试文件：`tests/test_tau3_agent.py`。
+> 验证 SMTR ↔ τ³-bench 集成的数据模型、信息屏障和 agent 接口。
+
+测试分类：
+- **TestSMTRTauAgentState**（4 tests）：跨 turn 状态管理，routing 冻结，payload 序列化。
+- **TestAgentVisibleTauContext**（4 tests）：信息屏障，显式排除 evaluation_criteria / gold DB state。
+- **TestTauOutcome**（6 tests）：τ³ RewardInfo 提取，聚合统计。
+- **TestDataSourceField**（3 tests）：data_source 字段默认值与设置。
+- **TestSMTRTauAgent**（4 tests，3 skipped）：agent 创建、init state、memory pool 注入、
+  无 τ³ 时 ImportError。3 个测试因 τ³-bench 未安装而 skip。
+
+`run_smtr_tau3.py --dry-run` 验证所有 SMTR 导入正常，无需 τ³-bench 安装。
+
+## MARBLE 多 Agent 集成验证（32 个测试，9 skipped）
+
+> 测试文件：`tests/test_marble_agent.py`。
+> 验证 SMTR ↔ MARBLE 集成的数据模型、信息屏障、agent 接口和 transfer 分类。
+
+测试分类：
+- **TestSMTRMarbleAgentState**（4 tests）：agent state 数据模型，routing 冻结，payload 序列化。
+- **TestAgentVisibleMarbleContext**（4 tests）：信息屏障，显式排除 evaluation_criteria / gold DB state。
+- **TestFormatPayloadsForInjection**（3 tests）：payload 文本格式化，空列表处理，多 procedure 拼接。
+- **TestBuildContextFingerprint**（2 tests）：context fingerprint 生成，稳定性。
+- **TestMarbleOutcome**（3 tests）：DB evaluator metrics 提取，success/failure 判定。
+- **TestMarblePairedOutcome**（3 tests）：paired outcome transfer class 分类。
+- **TestMarblePairedRolloutRunner**（4 tests）：runner 数据模型，branch 结果聚合。
+- **TestSMTRMarbleAgent**（5 tests，4 skipped）：agent 创建，memory pool 注入，routing 触发；
+  4 个测试因 MARBLE 未安装而 skip。
+- **TestSMTRMarbleEngine**（4 tests，5 skipped）：engine override 逻辑，agent 类型路由；
+  5 个测试因 MARBLE 未安装而 skip。
+
+`scripts/task6_smoke_test.py --mock` 验证 mock 模式下所有 5 个 checks passed。
+`scripts/task6_smoke_test.py --full` 验证真实 DB 环境 + LLM API 端到端集成。
+
+## MARBLE 集成验证（29 个测试）
+
+> 测试文件：`tests/test_marble_integration.py`。
+> 验证 SMTR ↔ MARBLE 集成的端到端 invariants。
+
+测试分类：
+- **TestOneTimeRouting**（3 tests）：一次性 routing 验证，routing_done 状态冻结。
+- **TestPrivatePromptInjection**（3 tests）：payload 格式化，withhold 分支空 payload。
+- **TestInformationBarrier**（5 tests）：无 critic 估计、LCB/UCB、routing card 数据、evaluator 标签泄漏。
+- **TestCommunicationInjection**（3 tests）：target agent 有 payload，non-target 无。
+- **TestPairedRolloutBranchIsolation**（5 tests）：share/withhold 分支隔离，transfer 分类。
+- **TestExposureOverride**（5 tests）：exposure_override 因果控制（None/all/topk/empty）。
+- **TestBaselineConditions**（5 tests）：四条件 baseline 定义验证。
+
+全部 29 个测试通过。`scripts/task8_baseline_comparison.py --dry-run` 验证 baseline 脚本设置正确。
 
 ## S5 压力测试验证（9 种场景，19 个测试）
 

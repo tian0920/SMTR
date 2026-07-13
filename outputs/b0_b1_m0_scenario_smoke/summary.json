@@ -1,0 +1,98 @@
+{
+  "b0": {
+    "method": "B0",
+    "episode_count": 20,
+    "success_rate": 0.0,
+    "avg_selected_size": 0.0,
+    "median_selected_size": 0.0,
+    "all_withhold_rate": 1.0,
+    "avg_candidate_count": 4.0,
+    "mean_runtime": 0.009887957099635969,
+    "positive_transfer_rate": null,
+    "negative_transfer_rate": null,
+    "neutral_success_rate": null,
+    "neutral_failure_rate": null,
+    "success_delta_vs_b0": null,
+    "share_decision_rate": null,
+    "tau_lcb_rejection_rate": null,
+    "negative_risk_ucb_rejection_rate": null,
+    "share_budget_rejection_rate": null,
+    "low_support_rejection_rate": null,
+    "no_critic_rejection_rate": null,
+    "other_reason_counts": {}
+  },
+  "b1": {
+    "method": "B1",
+    "episode_count": 20,
+    "success_rate": 0.0,
+    "avg_selected_size": 7.0,
+    "median_selected_size": 7.0,
+    "all_withhold_rate": 0.0,
+    "avg_candidate_count": 4.0,
+    "mean_runtime": 0.010859262249141466,
+    "positive_transfer_rate": 0.0,
+    "negative_transfer_rate": 0.0,
+    "neutral_success_rate": 0.0,
+    "neutral_failure_rate": 1.0,
+    "success_delta_vs_b0": 0.0,
+    "share_decision_rate": null,
+    "tau_lcb_rejection_rate": null,
+    "negative_risk_ucb_rejection_rate": null,
+    "share_budget_rejection_rate": null,
+    "low_support_rejection_rate": null,
+    "no_critic_rejection_rate": null,
+    "other_reason_counts": {}
+  },
+  "m0": {
+    "method": "M0",
+    "episode_count": 60,
+    "success_rate": 1.0,
+    "avg_selected_size": 5.0,
+    "median_selected_size": 5.0,
+    "all_withhold_rate": 0.0,
+    "avg_candidate_count": 4.0,
+    "mean_runtime": 0.05890751641660851,
+    "positive_transfer_rate": 1.0,
+    "negative_transfer_rate": 0.0,
+    "neutral_success_rate": 0.0,
+    "neutral_failure_rate": 0.0,
+    "success_delta_vs_b0": 1.0,
+    "share_decision_rate": 0.6666666666666666,
+    "tau_lcb_rejection_rate": 0.0,
+    "negative_risk_ucb_rejection_rate": 0.0,
+    "share_budget_rejection_rate": 0.08333333333333333,
+    "low_support_rejection_rate": 0.0,
+    "no_critic_rejection_rate": 0.0,
+    "other_reason_counts": {
+      "tau_lcb_nonpositive": 180
+    }
+  },
+  "m0_vs_b1": {
+    "success_difference": 1.0,
+    "negative_transfer_rate_difference": 0.0,
+    "positive_transfer_rate_difference": 1.0,
+    "average_selected_count_difference": -2.0
+  },
+  "bootstrap_ci": {
+    "bootstrap_seed": 42,
+    "n_bootstrap": 1000,
+    "n_groups": 20,
+    "b0_success_rate": {
+      "mean": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    "b1_success_rate": {
+      "mean": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    "m0_success_rate": {
+      "mean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0
+    }
+  },
+  "experiment_invalid": false,
+  "invalid_reason": null
+}

@@ -1,0 +1,31 @@
+{
+  "count": 3,
+  "transfer_class_distribution": {
+    "negative": 2,
+    "neutral_failure": 1
+  },
+  "share_success_rate": 0.0,
+  "withhold_success_rate": 0.6666666666666666,
+  "positive_transfer_precision": 0.0,
+  "negative_transfer_rate": 0.6666666666666666,
+  "per_task": [
+    {
+      "task_id": "5",
+      "y_share": 0,
+      "y_withhold": 1,
+      "transfer_class": "negative"
+    },
+    {
+      "task_id": "9",
+      "y_share": 0,
+      "y_withhold": 0,
+      "transfer_class": "neutral_failure"
+    },
+    {
+      "task_id": "12",
+      "y_share": 0,
+      "y_withhold": 1,
+      "transfer_class": "negative"
+    }
+  ]
+}

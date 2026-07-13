@@ -1,0 +1,28 @@
+{
+  "db_path": "data/memory_compare_all_scenarios.sqlite",
+  "critic_checkpoint": "checkpoints/critic_pi3_v22.joblib",
+  "episodes": 20,
+  "task_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "generation_seeds": [
+    0,
+    1
+  ],
+  "traversal_seeds": [
+    0,
+    1,
+    2
+  ],
+  "top_k": 4,
+  "max_shares_per_invocation": 3,
+  "output_dir": "outputs/b0_b1_m0_all_scenarios/neutral_failure",
+  "overwrite": true,
+  "bootstrap_seed": 42,
+  "bootstrap_n": 1000,
+  "scenario": "neutral_failure"
+}

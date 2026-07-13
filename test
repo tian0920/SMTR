@@ -1,0 +1,433 @@
+在当前 SMTR 仓库中，运行下一轮端到端消融实验。
+
+## 研究问题
+
+本轮实验回答三个问题：
+
+1. M0 相比 relevance baseline 的优势，是否只是因为分享更少？
+2. selected-set conditioning 是否在端到端 prefix-sensitive routing 中产生实际价值？
+3. M0 的正迁移召回瓶颈发生在 proposer、router、prefix formation，还是 agent execution？
+
+## 比较方法
+
+运行：
+
+```text
+B0            No Memory
+B1-Top1       Relevance Top-1
+B1-Top3       Relevance Top-3
+B1-Matched    Relevance with validation-matched M0 budget
+A1-NoSet      SMTR without selected-set features
+M0-Full       Full SMTR
+```
+
+---
+
+## 一、开始前审计
+
+先检查并报告：
+
+1. 当前 git commit。
+2. 工作区状态。
+3. M0 checkpoint：
+
+   * 路径；
+   * digest；
+   * feature block；
+     -训练 records；
+   * split manifest；
+   * critic version。
+4. A1 checkpoint：
+
+   * 路径；
+   * digest；
+     -确认 `uses_selected_set=false`；
+     -确认与 M0 使用相同训练数据和 split。
+5. B1-Matched budget manifest：
+
+   * validation split；
+   * M0 checkpoint digest；
+   * selected-count 分布；
+     -生成 seed。
+6. memory database snapshot。
+7. proposer 配置。
+8. top-k 和每次 invocation 最大分享数。
+9. M0 和 A1 使用相同 gate。
+10. rejection reason 分类测试已通过。
+
+如果 A1 与 M0 没有使用相同训练 split，停止实验并修复。
+
+如果 B1-Matched 使用 test M0 结果决定预算，停止实验并修复。
+
+---
+
+## 二、实验配置
+
+优先复用上一轮场景：
+
+```text
+positive
+negative
+neutral_success
+neutral_failure
+prefix_sensitive
+flip_pos_to_neg
+flip_neg_to_pos
+flip_neu_to_neg
+flip_neu_to_pos
+```
+
+配置：
+
+```text
+episodes per scenario = 40
+task seeds = [0,1,2,3,4]
+generation seeds = [0,1]
+traversal seeds = [0,1,2,3,4]
+top_k = 4
+max shares per invocation = 3
+```
+
+如果成本过高，可先运行：
+
+```text
+episodes per scenario = 20
+traversal seeds = [0,1,2]
+```
+
+作为 smoke test。
+
+正式实验不得少于：
+
+```text
+20 base episodes per scenario
+3 traversal seeds
+```
+
+所有方法共享：
+
+```text
+task
+environment initial snapshot
+memory snapshot
+proposer
+top-k
+receiver
+generation seed
+```
+
+M0 和 A1 对同一个 base episode 使用相同 traversal seed。
+
+B0、B1-Top1、B1-Top3 如果确定性，不要重复执行以人为扩大样本量。
+
+---
+
+## 三、主要结果
+
+为每个场景和总体宏平均报告：
+
+| Method | Success | PosTR | NegTR | Avg selected/invocation | Avg selected/episode |
+| ------ | ------: | ----: | ----: | ----------------------: | -------------------: |
+
+其中 PosTR、NegTR 是相对 B0 的 policy-level paired transfer。
+
+另报告：
+
+```text
+neutral_success_rate
+neutral_failure_rate
+all_withhold_rate
+runtime_per_episode
+```
+
+---
+
+## 四、公平预算比较
+
+重点比较：
+
+```text
+M0 vs B1-Top1
+M0 vs B1-Top3
+M0 vs B1-Matched
+```
+
+报告：
+
+```text
+success difference
+negative-transfer difference
+positive-transfer difference
+average selected difference
+```
+
+使用 paired group bootstrap 95% CI。
+
+如果 M0 与 B1-Matched 选择数量相近但 M0 仍有更低 NegTR 或更高 Success，才可以认为优势主要来自 transfer-aware selection，而不仅是更少分享。
+
+---
+
+## 五、selected-set 消融
+
+重点比较：
+
+```text
+M0-Full vs A1-NoSet
+```
+
+在以下场景分别报告：
+
+```text
+prefix_sensitive
+flip_pos_to_neg
+flip_neg_to_pos
+flip_neu_to_neg
+flip_neu_to_pos
+```
+
+指标：
+
+```text
+task success
+policy-level positive transfer
+policy-level negative transfer
+target-level positive recall
+harmful target rejection
+target evaluated under correct prefix
+target share under correct prefix
+```
+
+另运行严格 prefix matched-pair audit，报告：
+
+```text
+delta-tau correlation
+delta-tau MAE
+effect direction accuracy
+transfer-region flip accuracy
+positive-to-negative accuracy
+negative-to-positive accuracy
+neutral-to-negative accuracy
+neutral-to-positive accuracy
+```
+
+### 结论规则
+
+只有当 M0 在 matched-prefix 指标和端到端 prefix 场景中都优于 A1，才能认为 selected-set conditioning 被有效验证。
+
+如果 M0 与 A1 接近，则不能声称 prefix-sensitive mechanism 已经成立。
+
+---
+
+## 六、瓶颈分解
+
+为每个正迁移或 prefix-dependent 场景计算：
+
+### Stage 1：Proposer recall
+
+```text
+positive_target_recall_at_4
+required_prefix_recall_at_4
+```
+
+### Stage 2：Traversal/order
+
+```text
+required_prefix_traversed_before_target_rate
+```
+
+### Stage 3：Prefix selection
+
+```text
+required_prefix_selected_rate
+```
+
+### Stage 4：Target routing
+
+```text
+target_share_given_correct_prefix
+target_withhold_given_negative_prefix
+```
+
+### Stage 5：Execution
+
+```text
+task_success_given_correct_target_selection
+```
+
+构造漏斗：
+
+```text
+ground-truth opportunity
+→ target/prefix recalled
+→ correct traversal order
+→ correct prefix selected
+→ target correctly routed
+→ task succeeds
+```
+
+对每个阶段给出 count 和 rate。
+
+---
+
+## 七、rejection reason 分析
+
+为 M0 和 A1 分别报告：
+
+```text
+shared
+tau_lcb_nonpositive
+negative_risk_ucb_exceeded
+low_support
+share_budget_exceeded
+other
+```
+
+验证比例和为 1。
+
+比较 M0 与 A1：
+
+* 是否因为 selected set 使 (\tau_{\text{LCB}}) 改变；
+* 是否因为 selected set 使 negative-risk UCB 改变；
+* 哪些 prefix 场景发生 gate decision flip。
+
+找出 matched case：
+
+```text
+A1 share, M0 withhold
+A1 withhold, M0 share
+```
+
+并报告：
+
+```text
+candidate card metadata
+selected-before-target IDs
+A1 prediction
+M0 prediction
+ground-truth effect
+final task outcome
+```
+
+不要展示 payload steps。
+
+---
+
+## 八、统计规范
+
+bootstrap unit 必须是基础 episode：
+
+```text
+scenario
+task seed
+generation seed
+episode instance
+```
+
+多个 traversal seed 必须作为同一基础 episode 下的整组数据重采样。
+
+报告：
+
+```text
+mean
+95% paired bootstrap CI
+number of base episodes
+number of traversal runs
+```
+
+重点 paired comparisons：
+
+```text
+M0 - B1-Top1
+M0 - B1-Top3
+M0 - B1-Matched
+M0 - A1-NoSet
+```
+
+不得将单个 router decision 当作独立样本做主要显著性检验。
+
+---
+
+## 九、输出文件
+
+保存：
+
+```text
+outputs/next_ablation/config.json
+outputs/next_ablation/runs.jsonl
+outputs/next_ablation/decisions.jsonl
+outputs/next_ablation/prefix_traces.jsonl
+outputs/next_ablation/summary.json
+outputs/next_ablation/scenario_slices.json
+outputs/next_ablation/bottleneck_funnel.json
+outputs/next_ablation/paired_comparisons.json
+outputs/next_ablation/report.md
+```
+
+`report.md` 至少包含：
+
+1. 实验设置；
+2. 公平性检查；
+3. 主结果；
+4. matched-budget 比较；
+5. M0 vs A1；
+6. prefix matched-pair audit；
+7. proposer/router/execution 漏斗；
+8. rejection reason；
+9. 代表性失败案例；
+10. 谨慎结论。
+
+---
+
+## 十、解释标准
+
+不要预设 M0 必须最好。
+
+### 若 M0 优于 B1-Matched
+
+说明 transfer-aware routing 的价值不能仅由低分享率解释。
+
+### 若 M0 与 B1-Matched 接近
+
+说明此前优势主要可能来自保守选择或较低曝光，需要进一步改进 critic。
+
+### 若 M0 优于 A1
+
+并且优势集中在 prefix/flip 场景，可支持 selected-set conditioning。
+
+### 若 M0 与 A1 接近
+
+说明当前 set features 没有转化为端到端价值。
+
+### 若 proposer recall 很低
+
+优先改 proposer，不应把失败归因于 critic。
+
+### 若 recall 高但 router positive recall 低
+
+说明 critic 或 gate 过于保守。
+
+### 若 target 正确路由但执行仍失败
+
+说明 agent 使用 memory 的能力或 procedure 本身存在问题。
+
+---
+
+## 十一、最终回复要求
+
+最终回复必须包含：
+
+* 实际执行命令；
+* 实验规模；
+* checkpoint 和 manifest；
+* 主表；
+* paired CI；
+* matched-budget 结论；
+* M0 vs A1 结论；
+  -瓶颈漏斗；
+* rejection reason；
+  -关键失败案例；
+* 是否支持 selected-set conditioning；
+* 输出文件路径；
+* 尚未解决的工程或实验限制。
+
+请实际运行实验并生成结果，不要只给出实验建议。

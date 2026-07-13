@@ -115,6 +115,57 @@ neutral_failure  = (Y_share=0, Y_withhold=0)
 
 ---
 
+## τ³-Bench 集成：剩余待办
+
+**背景**：τ³-bench 基础设施已完成（Phase 0-2），paired rollout runner 已实现（Task 3.9），reproducibility 和 trajectory collection 脚本已验证。
+
+### τ³-01 收集 paired rollout 数据 `[方法必需 / 急需]`
+
+**问题**：Task 3.9 实现了 `Tau3PairedRolloutRunner`，但尚未在 τ³ retail domain 上实际运行 paired rollout 收集 Y^(1) vs Y^(0) 数据。
+
+**需要完成**
+
+- **τ³-01.1** 扩展 `scripts/collect_tau3_trajectories.py` 支持 paired rollout 模式（share vs withhold）。
+- **τ³-01.2** 在 retail train/dev split 上运行 paired rollout，收集 `{task_id, y_share, y_withhold, transfer_class}` 记录。
+- **τ³-01.3** 验证 paired rollout 的 branch isolation：share/withhold 分支除 memory injection 外完全相同。
+
+**完成标准**
+
+- 至少收集 50+ paired rollout 记录，覆盖 positive/negative/neutral 三种 transfer class。
+- 输出 `data/tau3_paired_rollout_records.jsonl`。
+
+### τ³-02 训练 τ³ critic `[方法必需 / 急需]`
+
+**问题**：当前 critic 仅在 toy environment 上训练。需要在 τ³ paired data 上训练 transfer critic 以验证方法在外部 benchmark 上的泛化性。
+
+**需要完成**
+
+- **τ³-02.1** 使用 τ³ paired rollout 数据训练 critic（必须用 train/dev split，eval split 保持 held-out）。
+- **τ³-02.2** 在 held-out eval split 上评估 critic 的 τ/η 预测准确率。
+- **τ³-02.3** 报告 prefix sensitivity、flip accuracy 等指标，与 toy environment 结果对比。
+
+**完成标准**
+
+- `checkpoints/critic_tau3_retail.joblib` 生成。
+- eval split 上的 transfer direction accuracy > 0.6。
+
+### τ³-03 接入 SMTRTauAgent 进行 memory injection `[方法必需 / 可选]`
+
+**问题**：当前 trajectory collection 使用 τ³ 标准 LLMAgent（无 memory injection）。需要接入 SMTRTauAgent 以验证 memory injection 对 τ³ 任务结果的影响。
+
+**需要完成**
+
+- **τ³-03.1** 解决 SMTRTauAgent 在 τ³-bench 环境中的依赖问题（langgraph 等）。
+- **τ³-03.2** 实现 memory injection 接口：将 SMTR memory pool 中的 selected memories 注入 agent context。
+- **τ³-03.3** 运行 paired rollout 对比：share（注入 memory）vs withhold（不注入）。
+
+**完成标准**
+
+- SMTRTauAgent 能在 τ³ retail domain 上运行完整 episode。
+- paired rollout 能检测到 memory injection 的因果效应（y_share ≠ y_withhold）。
+
+---
+
 ## 不在第一版待办范围
 
 以下事项有价值，但不是 `method.md` 第一版方法必需问题，不在本清单追踪：
@@ -129,3 +180,43 @@ neutral_failure  = (Y_share=0, Y_withhold=0)
 - token budget、latency budget、verify 动作。
 - memory ordering optimization。
 - 构建新 benchmark 或大规模 benchmark 扩展。
+
+---
+
+## MARBLE 多 Agent 集成
+
+**背景**：将 SMTR 因果记忆路由 τ^π(m|o,S) 扩展到 MARBLE（ulab-uiuc/MARBLE, ACL 2025）多 agent 场景。Phase 0–3 代码已完成，Task 6 smoke test 已验证。
+
+### ~~MARBLE-01 DB 环境 forced-injection smoke test~~ `[已完成]`
+
+**状态**：✅ 已完成。`scripts/task6_smoke_test.py` 实现了 mock 和 full 两种模式。
+
+**验证结果**：
+- Mock 模式：5/5 checks passed。
+- Full 模式：所有 checks passed（target agent 2 procedures injected，819 chars；non-target agents empty guidance）。
+- 单元测试：32 tests in `tests/test_marble_agent.py`。
+
+### ~~MARBLE-02 Baseline comparison~~ `[已完成 / 待运行]`
+
+**状态**：✅ 脚本完成。`scripts/task8_baseline_comparison.py` 实现了四条件对比。
+
+**实现内容**：
+- 四条件：NoMemory（exposure_override=[]）、AllMemory（exposure_override=[all_ids]）、Semantic Top-k（exposure_override=[top_k_ids]）、SMTR（exposure_override=None）。
+- 3 个 DB task：LOCK_CONTENTION / VACUUM / REDUNDANT_INDEX。
+- 支持 `--dry-run`、`--tasks`、`--conditions` 参数。
+
+**待运行**：实际运行需 Docker + LLM API，预计 30-60 分钟。
+
+### ~~MARBLE-03 Integration tests~~ `[已完成]`
+
+**状态**：✅ 已完成。`tests/test_marble_integration.py` 实现了 29 个测试。
+
+**验证结果**：
+- TestOneTimeRouting（3 tests）：一次性 routing 验证。
+- TestPrivatePromptInjection（3 tests）：payload 注入验证。
+- TestInformationBarrier（5 tests）：信息屏障验证。
+- TestCommunicationInjection（3 tests）：通信注入验证。
+- TestPairedRolloutBranchIsolation（5 tests）：paired rollout 分支隔离验证。
+- TestExposureOverride（5 tests）：exposure_override 因果控制验证。
+- TestBaselineConditions（5 tests）：baseline 条件定义验证。
+- 全部 29 tests passed。

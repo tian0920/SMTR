@@ -155,6 +155,7 @@ class EvaluationGroupMetadata(BaseModel):
     factor_combination_id: str = "unknown"
     surface_variant_id: str = "default"
     mechanism_group_id: str = "unknown"
+    data_source: str = "toy"
 
 
 class ContinuationBehaviorMetadata(BaseModel):
@@ -226,6 +227,7 @@ class PairedInterventionRecord(BaseModel):
         "neutral_success",
         "neutral_failure",
     ]
+    data_source: str = "toy"
     created_at: datetime = Field(default_factory=utc_now)
 
     @model_validator(mode="after")

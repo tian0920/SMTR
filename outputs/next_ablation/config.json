@@ -1,0 +1,41 @@
+{
+  "methods": [
+    "B0",
+    "B1-Top1",
+    "B1-Top3",
+    "B1-Matched",
+    "A1-NoSet",
+    "M0-Full"
+  ],
+  "scenarios": [
+    "positive",
+    "negative",
+    "neutral_success",
+    "neutral_failure",
+    "prefix_sensitive",
+    "flip_pos_to_neg",
+    "flip_neg_to_pos",
+    "flip_neu_to_neg",
+    "flip_neu_to_pos"
+  ],
+  "episodes": 40,
+  "task_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "generation_seeds": [
+    0,
+    1
+  ],
+  "traversal_seeds": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "top_k": 4,
+  "max_shares_per_invocation": 3
+}
