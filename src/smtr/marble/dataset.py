@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import subprocess
 from collections import Counter
 from functools import lru_cache
 from pathlib import Path
@@ -53,7 +55,18 @@ class MarbleDatasetManifest(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    schema_version: str = "database_dataset_v1"
+    dataset_name: str = "MARBLE MultiAgentBench"
     marble_root: str
+    marble_commit: str = "unknown"
+    smtr_commit: str = "unknown"
+    dataset_relative_path: str | None = None
+    dataset_absolute_path: str | None = None
+    dataset_sha256: str | None = None
+    ordered_task_ids: list[str] = Field(default_factory=list)
+    task_schema_summary: dict[str, Any] = Field(default_factory=dict)
+    associated_files: dict[str, str] = Field(default_factory=dict)
+    created_at: str | None = None
     total_tasks: int
     scenario_counts: dict[str, int]
     source_file_digests: dict[str, str]
@@ -100,10 +113,7 @@ def discover_marble_benchmark_tasks(
                     )
                 )
                 count_for_scenario += 1
-                if (
-                    limit_per_scenario is not None
-                    and count_for_scenario >= limit_per_scenario
-                ):
+                if limit_per_scenario is not None and count_for_scenario >= limit_per_scenario:
                     break
     return records
 
@@ -122,8 +132,43 @@ def build_marble_dataset_manifest(
         limit_per_scenario=limit_per_scenario,
     )
     source_paths = sorted({Path(task.source_path) for task in tasks})
+    database_path = marble_root / MARBLE_BENCHMARK_FILES["database"]
+    database_only = scenarios == {"database"}
+    task_ids = [task.task_id for task in tasks]
+    if database_only:
+        duplicates = sorted(task_id for task_id, count in Counter(task_ids).items() if count > 1)
+        if duplicates:
+            raise ValueError(f"duplicate MARBLE task IDs: {duplicates}")
+        for task in tasks:
+            if not task.task_id or not task.task_content_digest or not task.init_sql_digest:
+                raise ValueError(
+                    f"MARBLE task {task.task_id!r} lacks task content or environment.init_sql"
+                )
+    associated = _database_associated_files(marble_root) if database_only else {}
     return MarbleDatasetManifest(
+        dataset_name=(
+            "MARBLE MultiAgentBench database" if database_only else "MARBLE MultiAgentBench"
+        ),
         marble_root=str(marble_root),
+        marble_commit=_git_commit(marble_root),
+        smtr_commit=_git_commit(Path(__file__).resolve().parents[3]),
+        dataset_relative_path=(str(MARBLE_BENCHMARK_FILES["database"]) if database_only else None),
+        dataset_absolute_path=str(database_path) if database_only else None,
+        dataset_sha256=_file_sha256(database_path) if database_only else None,
+        ordered_task_ids=task_ids,
+        task_schema_summary=(
+            {
+                "task_id": "top-level integer/string, normalized to string",
+                "instruction": "task.content",
+                "database_initialization": "environment.init_sql",
+                "reference_fields": ["task.labels", "task.root_causes"],
+                "evaluator_configuration": ["task.number_of_labels_pred", "task.output_format"],
+            }
+            if database_only
+            else {}
+        ),
+        associated_files=associated,
+        created_at=_git_commit_timestamp(marble_root),
         total_tasks=len(tasks),
         scenario_counts=dict(sorted(Counter(task.scenario for task in tasks).items())),
         source_file_digests={str(path): _file_sha256(path) for path in source_paths},
@@ -160,14 +205,20 @@ def _task_record_from_raw(
     source_path: Path,
     source_line: int,
 ) -> MarbleTaskManifestRecord:
-    task = raw.get("task") if isinstance(raw.get("task"), dict) else {}
-    environment = raw.get("environment") if isinstance(raw.get("environment"), dict) else {}
-    agents = raw.get("agents") if isinstance(raw.get("agents"), list) else []
-    relationships = raw.get("relationships") if isinstance(raw.get("relationships"), list) else []
+    raw_task = raw.get("task")
+    raw_environment = raw.get("environment")
+    raw_agents = raw.get("agents")
+    raw_relationships = raw.get("relationships")
+    task: dict[str, Any] = raw_task if isinstance(raw_task, dict) else {}
+    environment: dict[str, Any] = raw_environment if isinstance(raw_environment, dict) else {}
+    agents: list[Any] = raw_agents if isinstance(raw_agents, list) else []
+    relationships: list[Any] = raw_relationships if isinstance(raw_relationships, list) else []
     scenario = str(raw.get("scenario") or dataset)
     task_id = _stable_task_id(raw=raw, environment=environment, source_line=source_line)
     task_content = task.get("content")
     init_sql = environment.get("init_sql")
+    if not isinstance(task_content, str) or not task_content.strip():
+        raise ValueError(f"task at {source_path}:{source_line} lacks task.content")
     return MarbleTaskManifestRecord(
         dataset=dataset,
         scenario=scenario,
@@ -184,6 +235,9 @@ def _task_record_from_raw(
             "communication": raw.get("communication"),
             "metrics": raw.get("metrics", {}),
             "output": raw.get("output", {}),
+            "schema_family_digest": (
+                canonical_digest(_schema_statements(init_sql)) if init_sql else None
+            ),
         },
         agent_count=len(agents),
         relationship_count=len(relationships),
@@ -220,6 +274,16 @@ def _optional_str(value: Any) -> str | None:
     return str(value)
 
 
+def _schema_statements(init_sql: str) -> list[str]:
+    prefixes = ("create ", "alter ", "create index", "create unique index")
+    without_comments = re.sub(r"--[^\n]*", "", init_sql)
+    return sorted(
+        " ".join(statement.lower().split())
+        for statement in without_comments.split(";")
+        if statement.strip().lower().startswith(prefixes)
+    )
+
+
 def _file_sha256(path: Path) -> str:
     hasher = hashlib.sha256()
     with path.open("rb") as handle:
@@ -231,3 +295,35 @@ def _file_sha256(path: Path) -> str:
 @lru_cache(maxsize=32)
 def _cached_file_sha256(path: str) -> str:
     return _file_sha256(Path(path))
+
+
+def _git_commit(root: Path) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() if result.returncode == 0 else "unknown"
+
+
+def _git_commit_timestamp(root: Path) -> str | None:
+    result = subprocess.run(
+        ["git", "-C", str(root), "show", "-s", "--format=%cI", "HEAD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() or None
+
+
+def _database_associated_files(marble_root: Path) -> dict[str, str]:
+    relative_paths = [
+        Path("marble/environments/db_env.py"),
+        Path("marble/environments/db_env_docker/anomaly_trigger/formalize_anomalies.py"),
+    ]
+    return {
+        str(path): _file_sha256(marble_root / path)
+        for path in relative_paths
+        if (marble_root / path).is_file()
+    }

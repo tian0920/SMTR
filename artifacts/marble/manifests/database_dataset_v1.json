@@ -1,0 +1,3989 @@
+{
+  "associated_files": {
+    "marble/environments/db_env.py": "1a9aebef53eac4c93e040d0f34837cebc371a8e32217a105c3bce351142ebc8f",
+    "marble/environments/db_env_docker/anomaly_trigger/formalize_anomalies.py": "203704e41a74ab1a07e618e55dd90c0221bb825a3c0e32b83a3635d7652904c7"
+  },
+  "created_at": "2025-08-02T23:37:06-05:00",
+  "dataset_absolute_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+  "dataset_name": "MARBLE MultiAgentBench database",
+  "dataset_relative_path": "multiagentbench/database/database_main.jsonl",
+  "dataset_sha256": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+  "marble_commit": "8d60fa17b5596b44458a52d4296061b9fc13d6f2",
+  "marble_root": "/home/ecs-user/MARBLE",
+  "ordered_task_ids": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "29",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39",
+    "40",
+    "41",
+    "42",
+    "43",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50",
+    "51",
+    "52",
+    "53",
+    "54",
+    "55",
+    "56",
+    "57",
+    "58",
+    "59",
+    "60",
+    "61",
+    "62",
+    "63",
+    "64",
+    "65",
+    "66",
+    "67",
+    "68",
+    "69",
+    "70",
+    "71",
+    "72",
+    "73",
+    "74",
+    "75",
+    "76",
+    "77",
+    "78",
+    "79",
+    "80",
+    "81",
+    "82",
+    "83",
+    "84",
+    "85",
+    "86",
+    "87",
+    "88",
+    "89",
+    "90",
+    "91",
+    "92",
+    "93",
+    "94",
+    "95",
+    "96",
+    "97",
+    "98",
+    "99",
+    "100"
+  ],
+  "scenario_counts": {
+    "database": 100
+  },
+  "schema_version": "database_dataset_v1",
+  "smtr_commit": "45a4924eedf7285ae65e22fad00486a85cb39f8c",
+  "source_file_digests": {
+    "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631"
+  },
+  "task_schema_summary": {
+    "database_initialization": "environment.init_sql",
+    "evaluator_configuration": [
+      "task.number_of_labels_pred",
+      "task.output_format"
+    ],
+    "instruction": "task.content",
+    "reference_fields": [
+      "task.labels",
+      "task.root_causes"
+    ],
+    "task_id": "top-level integer/string, normalized to string"
+  },
+  "tasks": [
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 1,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0b551725d7099b39e736bc121beffa6705669346abecd99f31f20479b27568f1",
+      "task_digest": "2f14d4ea5cfd9ad94b0899f1493324985b1bc09167eef876050f3cf7b1a5a1df",
+      "task_id": "1"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 2,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "04aa89fa13bd02ed55967c4942851b3f8b304c1f2d568358a995721812b7f548",
+      "task_digest": "fd9464232d611c274b234f72f41e3fff6b700af967ac7545e018d89117c3cda0",
+      "task_id": "2"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 3,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "4ecec19b571a864ed1e7b5ef99c4ee66694a6a1ccaf23a2ad7ee9a1ab021f4be",
+      "task_digest": "ddb303918e8a2abe6f46a20310b8475f69439e8b19d964591ad56900eb0dbcd2",
+      "task_id": "3"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 4,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "02843da8a5ed08d10f19b02db04a0cd8a16e224f3ebfcde04b1485b9350884e8",
+      "task_digest": "a1d768fa6a4dad78990dfdb572c0b5565b9ec4dfc1349c8db1a45d68096f75e7",
+      "task_id": "4"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 5,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dde0774b39429182fca29e8986e60ed1690d8f814b11a2684328d133d2da0d0f",
+      "task_digest": "42b95901bb3d0a6bbc31829143830c257d5782073f111092966c75d70f8a631a",
+      "task_id": "5"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 6,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "143f464568313c9b765c2c402d9cb9e966e23bf81a7fbb55bad775fed11b0ac6",
+      "task_digest": "aa880dd681e03fcf657f0f940960ceef3558a6a704342c36d168e4907e03660a",
+      "task_id": "6"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 7,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0b551725d7099b39e736bc121beffa6705669346abecd99f31f20479b27568f1",
+      "task_digest": "ba0fe89a8184f39371874c5314f6e28c2bb1a76a3ed0586e104a122dce62cc14",
+      "task_id": "7"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 8,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b92a748b7b240923b5c35bd4c27a386b7d18b58f7d111f9d432d890ddfc17c3b",
+      "task_digest": "39574859d793324e7b71213ec209913c8240b691f5e9802ddc2cf60a68ef05b3",
+      "task_id": "8"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ffab3bfbab7450e0fd4619bfe179b3d409684fa1675097b98bd5b6a52a4411c9",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 9,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "de0a17ff02f795dad6597393c5206e1d26008c69f2d2f75f4901dacb449fc461",
+      "task_digest": "d2502875d6a54d5fec9602bac10e70f4fe24f625d70da4b9dbd2b0bf5876158b",
+      "task_id": "9"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 10,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dd3ba3cb1e0cc1fb0a22a90830560fc8e495e460a42a01bed348043be0d8dea3",
+      "task_digest": "d536badc1a7e2c6107e35c2eb16434578da2057fa94fe94be0e49510fc232038",
+      "task_id": "10"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 11,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b92a748b7b240923b5c35bd4c27a386b7d18b58f7d111f9d432d890ddfc17c3b",
+      "task_digest": "ea47393c1fddd7cc682acd06d332562bed64e27525c081ec135699a2bc685fee",
+      "task_id": "11"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 12,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b92a748b7b240923b5c35bd4c27a386b7d18b58f7d111f9d432d890ddfc17c3b",
+      "task_digest": "4b432bd317a0d7102d28d0154ebeec9a2d71614af46b4d4244102d9656f631f6",
+      "task_id": "12"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 13,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "4ecec19b571a864ed1e7b5ef99c4ee66694a6a1ccaf23a2ad7ee9a1ab021f4be",
+      "task_digest": "a188ebea6e991744b72f16fc732d66444bdbfc7c62f576801e85cf7f09847177",
+      "task_id": "13"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ffab3bfbab7450e0fd4619bfe179b3d409684fa1675097b98bd5b6a52a4411c9",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 14,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "de0a17ff02f795dad6597393c5206e1d26008c69f2d2f75f4901dacb449fc461",
+      "task_digest": "808fb365eab5e28ab1869d66da9f556cfabd464109520c6efaa95ac684267057",
+      "task_id": "14"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 15,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "02843da8a5ed08d10f19b02db04a0cd8a16e224f3ebfcde04b1485b9350884e8",
+      "task_digest": "6b8adb099cde7309a1b542ebf5344edd87fb7313cf52f651763777e943c498f2",
+      "task_id": "15"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 16,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "82a312bb819e84dacbee10b4d0f1b38bb2e7d6694d8eeb389a7c8e9f4efa2719",
+      "task_digest": "e165b76a42349460bbaab3f30f49f3adb0521893bf300467c986df68229abbc1",
+      "task_id": "16"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 17,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "4ecec19b571a864ed1e7b5ef99c4ee66694a6a1ccaf23a2ad7ee9a1ab021f4be",
+      "task_digest": "58d064b1390f4ea3521671d2d9dfa9a9b556887928c60a1449a0210d243be63b",
+      "task_id": "17"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 18,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0b551725d7099b39e736bc121beffa6705669346abecd99f31f20479b27568f1",
+      "task_digest": "a7e546bace2dec6567407321a02a3eef8f5ee3ae46a996c382e1df2fc08babe4",
+      "task_id": "18"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ffab3bfbab7450e0fd4619bfe179b3d409684fa1675097b98bd5b6a52a4411c9",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 19,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "de0a17ff02f795dad6597393c5206e1d26008c69f2d2f75f4901dacb449fc461",
+      "task_digest": "2750202ee5c07c7da5dc0dc4f4a947bd74356403ff836b8ae70dbc975c4c5ad4",
+      "task_id": "19"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 20,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "02843da8a5ed08d10f19b02db04a0cd8a16e224f3ebfcde04b1485b9350884e8",
+      "task_digest": "5a1cff5182c23d7f33aeb752c6122eb0d622ec1168f0cca75848c33358dfd912",
+      "task_id": "20"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 21,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dd3ba3cb1e0cc1fb0a22a90830560fc8e495e460a42a01bed348043be0d8dea3",
+      "task_digest": "684231ce26c3c666253c85864b283c27f44b94318655c9b537e0c792ce593f73",
+      "task_id": "21"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 22,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "143f464568313c9b765c2c402d9cb9e966e23bf81a7fbb55bad775fed11b0ac6",
+      "task_digest": "f9c6d303db31f7db961cc3cf007620ff7da25cb7ca74b84f3350836c2c581fba",
+      "task_id": "22"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 23,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "82a312bb819e84dacbee10b4d0f1b38bb2e7d6694d8eeb389a7c8e9f4efa2719",
+      "task_digest": "63a7d383c9b12c376f82020a5344ac8e40e76b2ef23a608764e894b709bc65f0",
+      "task_id": "23"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 24,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "82a312bb819e84dacbee10b4d0f1b38bb2e7d6694d8eeb389a7c8e9f4efa2719",
+      "task_digest": "900115013d4e235da4b38f55a771795b37b4e5cf4c71054cfcfe78c966a71520",
+      "task_id": "24"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 25,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "04aa89fa13bd02ed55967c4942851b3f8b304c1f2d568358a995721812b7f548",
+      "task_digest": "a3369ab395c63c122a06cf1e607374a4c8ea6aa444ec5b394735d40e8313cec8",
+      "task_id": "25"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 26,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b92a748b7b240923b5c35bd4c27a386b7d18b58f7d111f9d432d890ddfc17c3b",
+      "task_digest": "1822bba0c5af9afb33d147ed263e1de5ea84d057c7be292680cf8c4c04839a47",
+      "task_id": "26"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 27,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dd3ba3cb1e0cc1fb0a22a90830560fc8e495e460a42a01bed348043be0d8dea3",
+      "task_digest": "4a0efd9dae3994c2ab0a9d57f07b52f589bfffed8a67d3b4d4955f4a46db0328",
+      "task_id": "27"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 28,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "04aa89fa13bd02ed55967c4942851b3f8b304c1f2d568358a995721812b7f548",
+      "task_digest": "49b7c4c559019a798c74084a366933c1ca2667527845ee59e3f04be305a0ea4e",
+      "task_id": "28"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 29,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b92a748b7b240923b5c35bd4c27a386b7d18b58f7d111f9d432d890ddfc17c3b",
+      "task_digest": "29699353bbb77f4fab6d51bce85c32f44962c3f74c1e1c0ce66d9db12c43f4d4",
+      "task_id": "29"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 30,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "143f464568313c9b765c2c402d9cb9e966e23bf81a7fbb55bad775fed11b0ac6",
+      "task_digest": "477349358a34e76ebe99df9b921a4fce800eca8035afa257706db1af92925d18",
+      "task_id": "30"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 31,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "143f464568313c9b765c2c402d9cb9e966e23bf81a7fbb55bad775fed11b0ac6",
+      "task_digest": "26e46609b8f6ad6bb59a77319d5fc5f7ba29cbf5cdae48972f34f08b76fc0907",
+      "task_id": "31"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 32,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "04aa89fa13bd02ed55967c4942851b3f8b304c1f2d568358a995721812b7f548",
+      "task_digest": "7c104e08c914eee2ca314314662db8226e4cfa14e68150972df3d4da45e8256e",
+      "task_id": "32"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ffab3bfbab7450e0fd4619bfe179b3d409684fa1675097b98bd5b6a52a4411c9",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 33,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "de0a17ff02f795dad6597393c5206e1d26008c69f2d2f75f4901dacb449fc461",
+      "task_digest": "5e37d0020a8751e4d615c0124302cda93f6b7f12f19703426772bf5004f70a24",
+      "task_id": "33"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 34,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "82a312bb819e84dacbee10b4d0f1b38bb2e7d6694d8eeb389a7c8e9f4efa2719",
+      "task_digest": "cbbdac6820472560692cfc9779d41ba8f8bbc6fcf56fa48aae1cf9a1c4a08a5b",
+      "task_id": "34"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 35,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0b551725d7099b39e736bc121beffa6705669346abecd99f31f20479b27568f1",
+      "task_digest": "8de6aa14fdda6c4c338eb09b94321f15b1d0058fd965262da452fd539bd89418",
+      "task_id": "35"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 36,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dd3ba3cb1e0cc1fb0a22a90830560fc8e495e460a42a01bed348043be0d8dea3",
+      "task_digest": "4bd5a3150c6fe789352c8057341e652a59c01e44b4600260849b26ff92a18eb7",
+      "task_id": "36"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 37,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "4ecec19b571a864ed1e7b5ef99c4ee66694a6a1ccaf23a2ad7ee9a1ab021f4be",
+      "task_digest": "8ec9abdf992e48bff7128f0ad395598e0a96289fc1c52f59fed594eaa84b50cb",
+      "task_id": "37"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 38,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "4ecec19b571a864ed1e7b5ef99c4ee66694a6a1ccaf23a2ad7ee9a1ab021f4be",
+      "task_digest": "352574bf10ebc5e7cf814d830e11929770d334cdb79427d1e64bf5d3547c506b",
+      "task_id": "38"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 39,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dde0774b39429182fca29e8986e60ed1690d8f814b11a2684328d133d2da0d0f",
+      "task_digest": "a485d821dfe017b858aef6a4d50a23fe9de6926b75523c2dd3825765651f3ec5",
+      "task_id": "39"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 40,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dd3ba3cb1e0cc1fb0a22a90830560fc8e495e460a42a01bed348043be0d8dea3",
+      "task_digest": "d7a37944678a2442a34fb5208802c06f5c04e15a3358c08152f12e247b05fe2f",
+      "task_id": "40"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 41,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "04aa89fa13bd02ed55967c4942851b3f8b304c1f2d568358a995721812b7f548",
+      "task_digest": "993e0a6ea5f7d08a6034ef7f2aea58315f718862a4d1e744c8e8a57e8dded5e3",
+      "task_id": "41"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 42,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "82a312bb819e84dacbee10b4d0f1b38bb2e7d6694d8eeb389a7c8e9f4efa2719",
+      "task_digest": "d9e0092b1fddacd9bfd7ff771358aa7b32333ee637fddd14b1f6e5a18f6aedeb",
+      "task_id": "42"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 43,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dde0774b39429182fca29e8986e60ed1690d8f814b11a2684328d133d2da0d0f",
+      "task_digest": "6e3fa53129b2fbde07902a20d09537251673bb2f31be2861f94336ac7441ad49",
+      "task_id": "43"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 44,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dde0774b39429182fca29e8986e60ed1690d8f814b11a2684328d133d2da0d0f",
+      "task_digest": "51fa78ed33909f6a5c5d4f26ca9eca56bffdb01ede56bef15d31c8c72aef4e36",
+      "task_id": "44"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 45,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "dde0774b39429182fca29e8986e60ed1690d8f814b11a2684328d133d2da0d0f",
+      "task_digest": "18141c4caad40a72a62b05edbaf18e4a11dadb771b7f503f45f63d7441fea579",
+      "task_id": "45"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 46,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "02843da8a5ed08d10f19b02db04a0cd8a16e224f3ebfcde04b1485b9350884e8",
+      "task_digest": "cd268f187e2e4c2c8858c35bd7baec224cabaf5957806c4c3dd98b168dec4fff",
+      "task_id": "46"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 47,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "143f464568313c9b765c2c402d9cb9e966e23bf81a7fbb55bad775fed11b0ac6",
+      "task_digest": "674d759cfd0c22d2baea65a4305cba53bc429581d679848bdbdb220ff8acb584",
+      "task_id": "47"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ffab3bfbab7450e0fd4619bfe179b3d409684fa1675097b98bd5b6a52a4411c9",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 48,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "de0a17ff02f795dad6597393c5206e1d26008c69f2d2f75f4901dacb449fc461",
+      "task_digest": "d2321f1402e86ed59332c671cbe5df04870afdf756e3bc0c34a80a21874d714f",
+      "task_id": "48"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 49,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "02843da8a5ed08d10f19b02db04a0cd8a16e224f3ebfcde04b1485b9350884e8",
+      "task_digest": "73d68d155d3a658520cb9e0342cd0ba867bbf9894ae40d18d51ea8eb11287a96",
+      "task_id": "49"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 2,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 50,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0b551725d7099b39e736bc121beffa6705669346abecd99f31f20479b27568f1",
+      "task_digest": "5501e4537bd240f2365ce8de63bc72877b265cdb8137814a5e4dd3a369879375",
+      "task_id": "50"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 51,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ade712e37e8899a67d22531821c8f55c22de5a9754491822018caaa41eadd643",
+      "task_digest": "2968f5cd0c23c8251af16ef1e7536b6875ece42bd2c7daea0682c2c405099d59",
+      "task_id": "51"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6ce84e902c0745de62eaa3a388cd4ccfadc7faea4a25e80e8d27b33243420b45",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 52,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0c7504264c1eae6475d1fd758c03ee1c045b44d4e8d140831cc134e61b452abb",
+      "task_digest": "cc5c11d0a93e1e5093b92ff22a10bec78f2cab8b5c7e13cbc7c667f7be3b1828",
+      "task_id": "52"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 53,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ad2df3ebe6d8d28375232a58d528c9534447652d956fbb2f3e7ba0d694b286bf",
+      "task_digest": "0a15e90d6b3e68ea10e25b4a1862fe1c0b178c37283cd7d8b5a503aa65cf1d75",
+      "task_id": "53"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 54,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "3ed36a531209f25f79cfdead91dd49260e47a92a24cc3786506fe1f409b23414",
+      "task_digest": "a60315a659283d5d2b580090d0bcce67562d8dffd3d0223f9d9d9a7a3be7a287",
+      "task_id": "54"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 55,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "fc3e7cd02a7b1d43863af22b0f64d59ed899a988e6a1ddd8e5b8a41774b3d4ad",
+      "task_digest": "1cbdd2ee6f5af134add84c4e13ed688cf1763888b552483393f15360b2c74392",
+      "task_id": "55"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 56,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b14cbd1d7a6d6482763c181117603bcc9f5d0471a0f86eb87f177cde8fea0d1f",
+      "task_digest": "cfe64f1ec9fc0b556136e7aff1770f28fab809411143018485cbfd577469f4b5",
+      "task_id": "56"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 57,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ea3415cde9e85b305128c77bb8e0b3aa16f0b3e353f10949a97c588a7b515054",
+      "task_digest": "537d4564f52eb21285813a29809a230bae39e8fead446492f3d598eb25658e67",
+      "task_id": "57"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 58,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "fc3e7cd02a7b1d43863af22b0f64d59ed899a988e6a1ddd8e5b8a41774b3d4ad",
+      "task_digest": "46d0281bf39389dbd7421ba1a14d46d2b6eee9e74beb415aaf1488c8d35fed06",
+      "task_id": "58"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 59,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "3ed36a531209f25f79cfdead91dd49260e47a92a24cc3786506fe1f409b23414",
+      "task_digest": "2373b6a9b67a3be8054983dde128584caecc2d3ad614690aec122b23d19bf244",
+      "task_id": "59"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 60,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "972d6006a6bf581e29077611aa35c5fb779e557fc3afcbdf48072fc15a6a0f65",
+      "task_digest": "4b593abb006efb1bc25f77d48d8903f892e7279ed3b5d8578cee131eca06d11e",
+      "task_id": "60"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 61,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ad2df3ebe6d8d28375232a58d528c9534447652d956fbb2f3e7ba0d694b286bf",
+      "task_digest": "e5f0cc6ff4b08e3fe42eed9db8c00508cc8a3fd61d233508d3733d71b541e84d",
+      "task_id": "61"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 62,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "fc3e7cd02a7b1d43863af22b0f64d59ed899a988e6a1ddd8e5b8a41774b3d4ad",
+      "task_digest": "19e00163e76ea75d8b4d5d1fdee52c8612c92e8d71d8696b0b98b33b48a32bad",
+      "task_id": "62"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 63,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "972d6006a6bf581e29077611aa35c5fb779e557fc3afcbdf48072fc15a6a0f65",
+      "task_digest": "3aab00be6b3283ddccbf3835cc0c6552e890e770fa8f9038c3562f9bfb439231",
+      "task_id": "63"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 64,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ad2df3ebe6d8d28375232a58d528c9534447652d956fbb2f3e7ba0d694b286bf",
+      "task_digest": "53519d16727f145b1a5e4ca191a5d682f2b43eece5e642623d8682107c6b82ba",
+      "task_id": "64"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 65,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ea3415cde9e85b305128c77bb8e0b3aa16f0b3e353f10949a97c588a7b515054",
+      "task_digest": "47b5a36c469c49af4a5df65badede03c86821f1f19a6098dc9f9df306db18525",
+      "task_id": "65"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 66,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "082b3a751e664bdcc6d998bd3dbd492d844bbdcf92e55205b06299fee749c72d",
+      "task_digest": "a3f2d84abf82296e398981ce3ac05def2074b34d51e3fae10f0e9ecb196e0672",
+      "task_id": "66"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 67,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "fc3e7cd02a7b1d43863af22b0f64d59ed899a988e6a1ddd8e5b8a41774b3d4ad",
+      "task_digest": "e9ca0548dd00787d872dabf5361ea614504ccbcc451850f6fab3b007a7bf3464",
+      "task_id": "67"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 68,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ade712e37e8899a67d22531821c8f55c22de5a9754491822018caaa41eadd643",
+      "task_digest": "fcad19b3d5ccc755e76278ec7ff382311087281f6b69e7396fb1b54ee09ee306",
+      "task_id": "68"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 69,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "9e7dddd2cd843117351be49283bcad37728a49b47b4dc6f8ccbdfb676c71547e",
+      "task_digest": "2935145941ebebf197831a8b68b16deeeed73a652e840615130d900845a0ec88",
+      "task_id": "69"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 70,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ad2df3ebe6d8d28375232a58d528c9534447652d956fbb2f3e7ba0d694b286bf",
+      "task_digest": "7d89bcb0f4b97c1396d8414dd06f6e02ddf56e61eecc3be9d3780ee058ebaa8e",
+      "task_id": "70"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "746cadac527b2c070a6204adf873476fa89566f42f535508c1cabf410609f50f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "9f29f7fc3953a97b69aebeda923aee1ea87642445bc39c3294ced458a4713575"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 71,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ad2df3ebe6d8d28375232a58d528c9534447652d956fbb2f3e7ba0d694b286bf",
+      "task_digest": "6fcd76dc9c1faffd52270e14fa3d16a080220bdc1ea68a51686f796e74b6e10c",
+      "task_id": "71"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 72,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "082b3a751e664bdcc6d998bd3dbd492d844bbdcf92e55205b06299fee749c72d",
+      "task_digest": "d15cff115cb6211c9dceed8ff36996dae91aad00adcd55f06eeb9521da52b522",
+      "task_id": "72"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 73,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "082b3a751e664bdcc6d998bd3dbd492d844bbdcf92e55205b06299fee749c72d",
+      "task_digest": "6705acb480374605b2c8bd96199678e3b93ce5c6bd010ff08f73628b6f55a138",
+      "task_id": "73"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 74,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b14cbd1d7a6d6482763c181117603bcc9f5d0471a0f86eb87f177cde8fea0d1f",
+      "task_digest": "6078f11f0e861a54bd4272a0c9e2cc7cfbb071a575a359cabb7435a1f858a100",
+      "task_id": "74"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 75,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "082b3a751e664bdcc6d998bd3dbd492d844bbdcf92e55205b06299fee749c72d",
+      "task_digest": "5fad40243bd65670ec086e72fdcd38d8335afca93fb6e7c73c30df2e831dc92f",
+      "task_id": "75"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 76,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ade712e37e8899a67d22531821c8f55c22de5a9754491822018caaa41eadd643",
+      "task_digest": "396da9ff057c98241330202e7dcfe7f018b0ad06d404cc3a72287b3d610d75a1",
+      "task_id": "76"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 77,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "9e7dddd2cd843117351be49283bcad37728a49b47b4dc6f8ccbdfb676c71547e",
+      "task_digest": "494bc442219b4f026bf539b6628931491b7fc4c5628eb8efe70c842155a1a398",
+      "task_id": "77"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 78,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "3ed36a531209f25f79cfdead91dd49260e47a92a24cc3786506fe1f409b23414",
+      "task_digest": "198d81923bde74b26f53c4111e5e4a620a3c0a089a4042d38962ace2de8a5588",
+      "task_id": "78"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 79,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ade712e37e8899a67d22531821c8f55c22de5a9754491822018caaa41eadd643",
+      "task_digest": "7c953d034283a59ad0aed4ff6820286521401e1b15e04ae8d159db374ae9b443",
+      "task_id": "79"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "048584dfe7e517760cf5a4413689a0d94956157039a7b743abbf329651f4ae80",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "fe8b400ff3aac503cc8e7661e0df7cd9da86e3da52e154318aead065d6b9abe6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 80,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "082b3a751e664bdcc6d998bd3dbd492d844bbdcf92e55205b06299fee749c72d",
+      "task_digest": "ebf4fa750f36c8efb19ba1524a9b0b7413d4a1dbb55b4e2963a03bfd174e30e9",
+      "task_id": "80"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 81,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b14cbd1d7a6d6482763c181117603bcc9f5d0471a0f86eb87f177cde8fea0d1f",
+      "task_digest": "c5f04f5298f150df9b6db070733842c934401a4d7a88df6844ca04e2f2e38961",
+      "task_id": "81"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 82,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "9e7dddd2cd843117351be49283bcad37728a49b47b4dc6f8ccbdfb676c71547e",
+      "task_digest": "90ce3e375555bc8ec26874242babd9b1a8bdff63fd1b1596b08b1b623118059b",
+      "task_id": "82"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6ce84e902c0745de62eaa3a388cd4ccfadc7faea4a25e80e8d27b33243420b45",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 83,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0c7504264c1eae6475d1fd758c03ee1c045b44d4e8d140831cc134e61b452abb",
+      "task_digest": "ead1dcb5925768fe892891f733f626331cc7d0589b8968934a69eef330d597b6",
+      "task_id": "83"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 84,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "972d6006a6bf581e29077611aa35c5fb779e557fc3afcbdf48072fc15a6a0f65",
+      "task_digest": "10256751d9121a43a152b31fb7a9f5d7aa412c8851d3ea010213a366fec7d1d1",
+      "task_id": "84"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 85,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ea3415cde9e85b305128c77bb8e0b3aa16f0b3e353f10949a97c588a7b515054",
+      "task_digest": "54484426483c49da8d7b49cf9e1708ff8ad85db8ccf8726a6798f9cf0c932c12",
+      "task_id": "85"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 86,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b14cbd1d7a6d6482763c181117603bcc9f5d0471a0f86eb87f177cde8fea0d1f",
+      "task_digest": "9c4c45bf445272c720b9c8400b84ecc51c47638cd1aa2ff708b2a6ed33cd6e4d",
+      "task_id": "86"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 87,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "972d6006a6bf581e29077611aa35c5fb779e557fc3afcbdf48072fc15a6a0f65",
+      "task_digest": "b7abcc53a7fb9c29a4123cc5aa3868362ded4bf702656cfd54d95390632c6443",
+      "task_id": "87"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 88,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "9e7dddd2cd843117351be49283bcad37728a49b47b4dc6f8ccbdfb676c71547e",
+      "task_digest": "320d1aebfbbc4c8b7aa17a11ba9a1fba7f187eef379402894565bcf29bb25cc6",
+      "task_id": "88"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "0a4305f1a7fca7db85c68be482d3042607f0a54173b3a551fc05827e20d9f88f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "c5ca0f3af2ed89bcaaf97c15d3bd01c5ed6d2f2674f66db3a5382a26a4d684f7"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 89,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "9e7dddd2cd843117351be49283bcad37728a49b47b4dc6f8ccbdfb676c71547e",
+      "task_digest": "cec9808c28b1562d63d67581f97837979dd3e06bbe4392ab5389051a9f88c56b",
+      "task_id": "89"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6ce84e902c0745de62eaa3a388cd4ccfadc7faea4a25e80e8d27b33243420b45",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 90,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0c7504264c1eae6475d1fd758c03ee1c045b44d4e8d140831cc134e61b452abb",
+      "task_digest": "3dd084c386422fec02ace4c2aea996cb9260d808f3e1fee286d7f86caba6ddd4",
+      "task_id": "90"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 91,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "3ed36a531209f25f79cfdead91dd49260e47a92a24cc3786506fe1f409b23414",
+      "task_digest": "38fd72ab1ebe0bf676e9b550237cf33ad3481fe02c883a0c23c670f7457d6ef7",
+      "task_id": "91"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 92,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ea3415cde9e85b305128c77bb8e0b3aa16f0b3e353f10949a97c588a7b515054",
+      "task_digest": "f78ad6c481f1169169d189fbcdf1d21305ab3913dab1d30df4ce904f97b2c8f2",
+      "task_id": "92"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6ce84e902c0745de62eaa3a388cd4ccfadc7faea4a25e80e8d27b33243420b45",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 93,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0c7504264c1eae6475d1fd758c03ee1c045b44d4e8d140831cc134e61b452abb",
+      "task_digest": "b7cc76c9bc19153e9696e365325678fa2b1f8bd0af06755ec8f8a96419e64288",
+      "task_id": "93"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "46e083b0f9d841488c1eb5ba02f7a44069735e81d2244bf3b3404d9e0e791339",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "0ed61f358852b3e4bdbae85070828df32c12b3f768c355c1687968b37739bd43"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 94,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ea3415cde9e85b305128c77bb8e0b3aa16f0b3e353f10949a97c588a7b515054",
+      "task_digest": "4b22556afe729799b0b1593ec725d89a2b217781f7190aa9282abe00a9c452d1",
+      "task_id": "94"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6ce84e902c0745de62eaa3a388cd4ccfadc7faea4a25e80e8d27b33243420b45",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "453a75993b98b2692abe4d8cd1abf1fc0e2944911cb956c9a296b973fc0536ed"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 95,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "0c7504264c1eae6475d1fd758c03ee1c045b44d4e8d140831cc134e61b452abb",
+      "task_digest": "b256ff893d96f45f8f9de6550d64710c012011a9a8ee4fc2434c15e4422c56bc",
+      "task_id": "95"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "061c74f23d377e99281b9d3b1ad02eff09a986a0c0f4c93af950cc0eaca595bd"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "LOCK_CONTENTION",
+        "REDUNDANT_INDEX"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 96,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "b14cbd1d7a6d6482763c181117603bcc9f5d0471a0f86eb87f177cde8fea0d1f",
+      "task_digest": "b0ed0c145a460b62e1b03167befc70bdfe1507ec7eea53939721f5fd6c1db609",
+      "task_id": "96"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "6e69b7a76141720441d16564238407054ce5cfca29eb301cc5a831806c621ed5",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "e65e3f4a517ee972e5f22a6559b035f5779b5fb12fbcba133aee037285fb0e50"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "REDUNDANT_INDEX",
+        "VACUUM"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 97,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "ade712e37e8899a67d22531821c8f55c22de5a9754491822018caaa41eadd643",
+      "task_digest": "e50600cf1663e7818ce8fd0951ca7d2dc363ef39eb7d122eb09be42e60d20687",
+      "task_id": "97"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "ca257d2ecc0e5205d750d3cdbf7f55fbef6d830b0447d18677ca70c05a0ca64f",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "6dcfbec146753f1e2ca389613c58d2688694cb430f4df8d83a3dd4c2b5f878a1"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 98,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "fc3e7cd02a7b1d43863af22b0f64d59ed899a988e6a1ddd8e5b8a41774b3d4ad",
+      "task_digest": "24ecd37086701d0847ecc69ad5ce15ce524d0a05b4ff54d86fb3d1dbfb0e45ed",
+      "task_id": "98"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "2818524a94239aee165b170abafd1e42678cfd933e4e775536a958cb6c714db0",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "03727f62a1f8c8498c0611fec5a0dc7979db031d3a5dd2465969d91ff4479414"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "FETCH_LARGE_DATA",
+        "INSERT_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 99,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "3ed36a531209f25f79cfdead91dd49260e47a92a24cc3786506fe1f409b23414",
+      "task_digest": "48f4ffc8e41a59ef02d65b5f4a04e4889bc46e2abea062f27a6bd1a5e83252d6",
+      "task_id": "99"
+    },
+    {
+      "agent_count": 5,
+      "dataset": "database",
+      "environment_name": null,
+      "environment_type": null,
+      "init_sql_digest": "89ca0fbf344c40f58e21e9039100c25fee5b58f0f60867d4ebe46203c3ded05d",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "metadata": {
+        "communication": false,
+        "coordinate_mode": "",
+        "metrics": {
+          "accuracy": true,
+          "response_time": true
+        },
+        "output": {
+          "file_path": ""
+        },
+        "schema_family_digest": "eaeeaed4f288871410d7f5924bdc175a3bacd5f24c56d8e88f7f4635bef9fda6"
+      },
+      "number_of_labels_pred": 3,
+      "relationship_count": 10,
+      "root_causes": [
+        "VACUUM",
+        "FETCH_LARGE_DATA"
+      ],
+      "scenario": "database",
+      "source_digest": "e1128d946d49c4943849a758b0c2d22a1af57b7a71c43694107813d8a1542631",
+      "source_line": 100,
+      "source_path": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl",
+      "task_content_digest": "972d6006a6bf581e29077611aa35c5fb779e557fc3afcbdf48072fc15a6a0f65",
+      "task_digest": "63c3fa23ce0035b94f5af625f691c1cc3ce05b5681fa49e60e91c282d6ff9a3d",
+      "task_id": "100"
+    }
+  ],
+  "total_tasks": 100
+}

@@ -23,6 +23,16 @@ from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.evaluation import MarbleExperimentRunner
 from smtr.marble.integrity import audit_marble_pilot, audit_marble_pilot_run
 from smtr.marble.paired_records import MarblePairedRecordGenerator
+from smtr.marble.real_audit import audit_real_database_mvp
+from smtr.marble.real_data import (
+    RealDatabaseTrajectory,
+    RealProceduralMemory,
+    build_cross_task_candidates,
+    extract_procedural_memories,
+    file_sha256,
+)
+from smtr.marble.real_pairs import generate_real_database_pairs
+from smtr.marble.real_workflows import collect_database_trajectories
 from smtr.marble.runtime_preflight import write_runtime_preflight
 from smtr.marble.splits import write_split_manifest
 from smtr.marble.task_provider import _read_jsonl_line
@@ -104,6 +114,47 @@ def main() -> None:
     records_parser.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
     records_parser.add_argument("--limit-tasks", type=int)
 
+    trajectory_parser = subparsers.add_parser("collect-database-trajectories")
+    trajectory_parser.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
+    trajectory_parser.add_argument("--dataset-manifest", required=True)
+    trajectory_parser.add_argument("--split-manifest", required=True)
+    trajectory_parser.add_argument("--split", choices=["train"], required=True)
+    trajectory_parser.add_argument("--task-ids", nargs="+")
+    trajectory_parser.add_argument("--task-count", type=int)
+    trajectory_parser.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
+    trajectory_parser.add_argument("--output", required=True)
+    trajectory_parser.add_argument("--resume", action="store_true")
+
+    memory_parser = subparsers.add_parser("extract-database-memories")
+    memory_parser.add_argument("--trajectory-index", required=True)
+    memory_parser.add_argument("--split-manifest", required=True)
+    memory_parser.add_argument("--output", required=True)
+
+    candidate_parser = subparsers.add_parser("build-database-candidates")
+    candidate_parser.add_argument("--dataset-manifest", required=True)
+    candidate_parser.add_argument("--split-manifest", required=True)
+    candidate_parser.add_argument("--memory-pool", required=True)
+    candidate_parser.add_argument("--output", required=True)
+    candidate_parser.add_argument("--top-k", type=int, default=4)
+
+    real_pair_parser = subparsers.add_parser("generate-database-paired-records")
+    real_pair_parser.add_argument("--dataset-manifest", required=True)
+    real_pair_parser.add_argument("--split-manifest", required=True)
+    real_pair_parser.add_argument("--candidate-manifest", required=True)
+    real_pair_parser.add_argument("--memory-pool", required=True)
+    real_pair_parser.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
+    real_pair_parser.add_argument("--limit-pairs", type=int)
+    real_pair_parser.add_argument("--output", required=True)
+
+    real_audit_parser = subparsers.add_parser("audit-real-database-mvp")
+    real_audit_parser.add_argument("--dataset-manifest", required=True)
+    real_audit_parser.add_argument("--split-manifest", required=True)
+    real_audit_parser.add_argument("--trajectory-index")
+    real_audit_parser.add_argument("--memory-pool")
+    real_audit_parser.add_argument("--candidate-manifest")
+    real_audit_parser.add_argument("--paired-records")
+    real_audit_parser.add_argument("--output", required=True)
+
     train_parser = subparsers.add_parser("train-critic")
     train_parser.add_argument("--train-records", required=True)
     train_parser.add_argument("--validation-records", required=True)
@@ -131,6 +182,7 @@ def main() -> None:
         manifest = write_marble_dataset_manifest(
             marble_root=Path(args.marble_root),
             output_path=Path(args.output),
+            scenarios={"database"},
         )
         _print_counts(manifest.total_tasks, manifest.scenario_counts)
     elif args.command == "create-splits":
@@ -153,7 +205,9 @@ def main() -> None:
             marble_root=Path(args.marble_root),
             output_path=Path(args.output),
         )
-        print(f"real_engine_execution_safe={summary['real_engine_execution_safe_for_paired_isolation']}")
+        print(
+            f"real_engine_execution_safe={summary['real_engine_execution_safe_for_paired_isolation']}"
+        )
     elif args.command == "runtime-preflight":
         result = write_runtime_preflight(
             marble_root=Path(args.marble_root),
@@ -261,6 +315,106 @@ def main() -> None:
         print(f"valid_count={summary.valid_count}")
         print(f"invalid_count={summary.invalid_count}")
         print(f"label_counts={json.dumps(summary.label_counts, sort_keys=True)}")
+    elif args.command == "collect-database-trajectories":
+        summary = collect_database_trajectories(
+            marble_root=Path(args.marble_root),
+            dataset_manifest_path=Path(args.dataset_manifest),
+            split_manifest_path=Path(args.split_manifest),
+            split=args.split,
+            task_ids=args.task_ids,
+            task_count=args.task_count,
+            generation_seeds=args.generation_seeds,
+            output_dir=Path(args.output),
+            resume=args.resume,
+        )
+        print(json.dumps(summary, sort_keys=True))
+    elif args.command == "extract-database-memories":
+        split_payload = json.loads(Path(args.split_manifest).read_text(encoding="utf-8"))
+        group_by_task = {
+            str(record["task_id"]): str(record["group_id"]) for record in split_payload["records"]
+        }
+        trajectories = [
+            RealDatabaseTrajectory.model_validate(json.loads(line))
+            for line in Path(args.trajectory_index).read_text(encoding="utf-8").splitlines()
+            if line.strip() and json.loads(line).get("valid")
+        ]
+        memories = extract_procedural_memories(
+            trajectories,
+            group_by_task=group_by_task,
+            created_at=str(split_payload.get("created_at") or "unknown"),
+        )
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            "".join(memory.model_dump_json() + "\n" for memory in memories),
+            encoding="utf-8",
+        )
+        print(f"memory_count={len(memories)}")
+    elif args.command == "build-database-candidates":
+        dataset_path = Path(args.dataset_manifest)
+        split_path = Path(args.split_manifest)
+        dataset = json.loads(dataset_path.read_text(encoding="utf-8"))
+        splits = json.loads(split_path.read_text(encoding="utf-8"))
+        tasks = {str(task["task_id"]): task for task in dataset["tasks"]}
+        validation_records = [
+            record for record in splits["records"] if record["split"] == "validation"
+        ]
+        recipients = [
+            {
+                "task_id": str(record["task_id"]),
+                "group_id": str(record["group_id"]),
+                "instruction": str(
+                    _read_jsonl_line(
+                        Path(tasks[str(record["task_id"])]["source_path"]),
+                        int(tasks[str(record["task_id"])]["source_line"]),
+                    )["task"]["content"]
+                ),
+            }
+            for record in validation_records
+        ]
+        memories = [
+            RealProceduralMemory.model_validate_json(line)
+            for line in Path(args.memory_pool).read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        manifest = build_cross_task_candidates(
+            memories=memories,
+            recipients=recipients,
+            dataset_manifest_sha256=file_sha256(dataset_path),
+            split_manifest_sha256=file_sha256(split_path),
+            created_at=str(splits.get("created_at") or "unknown"),
+            top_k=args.top_k,
+        )
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        print(f"candidate_edge_count={len(manifest.edges)}")
+    elif args.command == "generate-database-paired-records":
+        summary = generate_real_database_pairs(
+            dataset_manifest_path=Path(args.dataset_manifest),
+            split_manifest_path=Path(args.split_manifest),
+            candidate_manifest_path=Path(args.candidate_manifest),
+            memory_pool_path=Path(args.memory_pool),
+            generation_seeds=args.generation_seeds,
+            limit_pairs=args.limit_pairs,
+            output_dir=Path(args.output),
+        )
+        print(json.dumps(summary, sort_keys=True))
+    elif args.command == "audit-real-database-mvp":
+        report = audit_real_database_mvp(
+            dataset_manifest_path=Path(args.dataset_manifest),
+            split_manifest_path=Path(args.split_manifest),
+            trajectory_index_path=Path(args.trajectory_index) if args.trajectory_index else None,
+            memory_pool_path=Path(args.memory_pool) if args.memory_pool else None,
+            candidate_manifest_path=(
+                Path(args.candidate_manifest) if args.candidate_manifest else None
+            ),
+            paired_records_path=Path(args.paired_records) if args.paired_records else None,
+        )
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(json.dumps(report, sort_keys=True))
     elif args.command == "train-critic":
         MarbleTrainingPipeline().train(
             train_records=Path(args.train_records),
@@ -283,8 +437,7 @@ def main() -> None:
         else:
             if not args.split_manifest or not args.paired_records:
                 raise SystemExit(
-                    "integrity-audit requires --run-dir or old "
-                    "--split-manifest/--paired-records"
+                    "integrity-audit requires --run-dir or old --split-manifest/--paired-records"
                 )
             summary = audit_marble_pilot(
                 split_manifest_path=Path(args.split_manifest),
@@ -293,10 +446,7 @@ def main() -> None:
             output = Path(args.output or "artifacts/marble/outputs/integrity_summary.json")
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
-        print(
-            "READY_FOR_MARBLE_ISOLATION_HARNESS="
-            f"{summary['READY_FOR_MARBLE_ISOLATION_HARNESS']}"
-        )
+        print(f"READY_FOR_MARBLE_ISOLATION_HARNESS={summary['READY_FOR_MARBLE_ISOLATION_HARNESS']}")
         print(f"READY_FOR_MARBLE_REAL_ENGINE={summary['READY_FOR_MARBLE_REAL_ENGINE']}")
         print(f"READY_FOR_MARBLE_PAIRED_DATA={summary['READY_FOR_MARBLE_PAIRED_DATA']}")
 
