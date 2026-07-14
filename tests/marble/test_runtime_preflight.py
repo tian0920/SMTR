@@ -41,3 +41,19 @@ def test_preflight_artifact_does_not_leak_api_key(monkeypatch, tmp_path: Path) -
     assert "sk-test-secret-value" not in payload
     data = json.loads(payload)
     assert "checks" in data
+
+
+def test_preflight_accepts_dashscope_compatible_runtime(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("MARBLE_LLM_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-dashscope-secret-value")
+
+    result = run_database_runtime_preflight(marble_root=Path("/home/ecs-user/MARBLE"))
+    checks = {check.name: check for check in result.checks}
+
+    assert checks["required_api_key_presence"].passed is True
+    assert "DASHSCOPE_API_KEY" in checks["required_api_key_presence"].detail
+    assert "sk-dashscope-secret-value" not in checks["required_api_key_presence"].detail
+    assert checks["configured_model_name"].passed is True
+    assert "qwen3.7-max" in checks["configured_model_name"].detail

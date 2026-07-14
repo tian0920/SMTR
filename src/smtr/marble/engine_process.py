@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from smtr.counterfactual.decision_points import canonical_digest
+from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 
 
 @dataclass(frozen=True)
@@ -58,10 +59,10 @@ def run_marble_engine_process(
     run_identity: dict[str, str] | None = None,
     timeout_seconds: int = 900,
 ) -> MarbleEngineProcessResult:
-    env = _engine_environment(marble_root)
-    python = _marble_python(marble_root)
     log_dir = output_dir or (raw_result_path.parent if raw_result_path else config_path.parent)
     log_dir.mkdir(parents=True, exist_ok=True)
+    env = _engine_environment(marble_root, shim_dir=log_dir / "runtime_shim")
+    python = _marble_python(marble_root)
     if raw_result_path and raw_result_path.exists():
         raw_result_path.unlink()
     command = (
@@ -156,11 +157,70 @@ def write_engine_process_result(path: Path, result: MarbleEngineProcessResult) -
     path.write_text(json.dumps(result.to_json(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _engine_environment(marble_root: Path) -> dict[str, str]:
+def _engine_environment(marble_root: Path, *, shim_dir: Path | None = None) -> dict[str, str]:
     env = dict(os.environ)
     pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = str(marble_root) if not pythonpath else f"{marble_root}:{pythonpath}"
+    path_entries = []
+    if shim_dir is not None:
+        _write_litellm_runtime_shim(shim_dir)
+        path_entries.append(str(shim_dir))
+    path_entries.append(str(marble_root))
+    if pythonpath:
+        path_entries.append(pythonpath)
+    env["PYTHONPATH"] = ":".join(path_entries)
+    if env.get("DASHSCOPE_API_KEY") and not env.get("OPENAI_API_KEY"):
+        env["OPENAI_API_KEY"] = env["DASHSCOPE_API_KEY"]
+    base_url = (
+        env.get("MARBLE_LLM_BASE_URL")
+        or env.get("OPENAI_BASE_URL")
+        or env.get("OPENAI_API_BASE")
+        or env.get("DASHSCOPE_BASE_URL")
+    )
+    if not base_url and env.get("DASHSCOPE_API_KEY"):
+        base_url = DEFAULT_DASHSCOPE_BASE_URL
+    if base_url:
+        env["OPENAI_BASE_URL"] = base_url
+        env["OPENAI_API_BASE"] = base_url
+        env["SMTR_OPENAI_COMPAT_BASE_URL"] = base_url
+    if env.get("DASHSCOPE_API_KEY") and "SMTR_LLM_ENABLE_THINKING" not in env:
+        env["SMTR_LLM_ENABLE_THINKING"] = "true"
     return env
+
+
+def _write_litellm_runtime_shim(shim_dir: Path) -> None:
+    shim_dir.mkdir(parents=True, exist_ok=True)
+    (shim_dir / "sitecustomize.py").write_text(
+        """
+from __future__ import annotations
+
+import os
+
+try:
+    import litellm
+except Exception:
+    litellm = None
+
+if litellm is not None and not getattr(litellm, "_smtr_openai_compat_patch", False):
+    _smtr_original_completion = litellm.completion
+
+    def _smtr_completion(*args, **kwargs):
+        base_url = os.environ.get("SMTR_OPENAI_COMPAT_BASE_URL")
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if base_url and not kwargs.get("base_url"):
+            kwargs["base_url"] = base_url
+        if api_key and not kwargs.get("api_key"):
+            kwargs["api_key"] = api_key
+        if os.environ.get("SMTR_LLM_ENABLE_THINKING", "").lower() in {"1", "true", "yes"}:
+            extra_body = dict(kwargs.get("extra_body") or {})
+            extra_body.setdefault("enable_thinking", True)
+            kwargs["extra_body"] = extra_body
+        return _smtr_original_completion(*args, **kwargs)
+
+    litellm.completion = _smtr_completion
+    litellm._smtr_openai_compat_patch = True
+""".lstrip(),
+        encoding="utf-8",
+    )
 
 
 def _marble_python(marble_root: Path) -> Path:
@@ -174,7 +234,19 @@ def _sanitized_environment(env: dict[str, str]) -> dict[str, str]:
         upper = key.upper()
         if any(token in upper for token in ("KEY", "TOKEN", "SECRET", "PASSWORD")):
             sanitized[key] = "<redacted-present>" if value else "<empty>"
-        elif key in {"PATH", "PYTHONPATH", "MARBLE_LLM_MODEL", "OPENAI_MODEL"}:
+        elif key in {
+            "PATH",
+            "PYTHONPATH",
+            "MARBLE_LLM_MODEL",
+            "OPENAI_MODEL",
+            "DASHSCOPE_MODEL",
+            "MARBLE_LLM_BASE_URL",
+            "OPENAI_BASE_URL",
+            "OPENAI_API_BASE",
+            "DASHSCOPE_BASE_URL",
+            "SMTR_OPENAI_COMPAT_BASE_URL",
+            "SMTR_LLM_ENABLE_THINKING",
+        }:
             sanitized[key] = value
     return sanitized
 
@@ -187,7 +259,10 @@ def _redact(text: str) -> str:
     redacted = text
     patterns = [
         (
-            r"(?i)(OPENAI_API_KEY|ANTHROPIC_API_KEY|AZURE_OPENAI_API_KEY)\s*=\s*\S+",
+            (
+                r"(?i)(OPENAI_API_KEY|DASHSCOPE_API_KEY|ANTHROPIC_API_KEY|"
+                r"AZURE_OPENAI_API_KEY)\s*=\s*\S+"
+            ),
             r"\1=<redacted>",
         ),
         (

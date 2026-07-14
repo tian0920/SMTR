@@ -170,8 +170,20 @@ export OPENAI_API_KEY=...
 export MARBLE_LLM_MODEL=...
 ```
 
-`OPENAI_MODEL` is also accepted for the model name. The runtime preflight checks
-only whether these values are present; it never writes key contents to artifacts.
+`OPENAI_MODEL` is also accepted for the model name. For Alibaba Cloud Bailian /
+DashScope OpenAI-compatible runtime, use:
+
+```bash
+export DASHSCOPE_API_KEY=...
+export DASHSCOPE_BASE_URL=https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+export DASHSCOPE_MODEL=qwen3.7-max
+```
+
+When `DASHSCOPE_API_KEY` is present, SMTR maps it into MARBLE's LiteLLM process
+as an OpenAI-compatible key/base URL and writes the model as
+`openai/qwen3.7-max` unless another `MARBLE_LLM_MODEL`, `OPENAI_MODEL`, or
+`DASHSCOPE_MODEL` is set. The runtime preflight checks only whether these values
+are present; it never writes key contents to artifacts.
 
 ```bash
 python -m smtr.marble.cli runtime-preflight \

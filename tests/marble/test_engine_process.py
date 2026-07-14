@@ -3,7 +3,8 @@ import stat
 import time
 from pathlib import Path
 
-from smtr.marble.engine_process import _text_digest, run_marble_engine_process
+from smtr.marble.engine_process import _engine_environment, _text_digest, run_marble_engine_process
+from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 
 
 def test_engine_process_records_exit_logs_and_digests(monkeypatch, tmp_path: Path) -> None:
@@ -192,6 +193,39 @@ def test_normal_mock_subprocess_can_be_valid(monkeypatch, tmp_path: Path) -> Non
     assert result.raw_result_fresh is True
     assert result.raw_result_parseable is True
     assert result.cleanup_succeeded is True
+
+
+def test_dashscope_key_is_mapped_to_openai_compatible_env(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-dashscope-secret-value")
+
+    env = _engine_environment(tmp_path / "MARBLE")
+
+    assert env["OPENAI_API_KEY"] == "sk-dashscope-secret-value"
+    assert env["OPENAI_BASE_URL"] == DEFAULT_DASHSCOPE_BASE_URL
+    assert env["OPENAI_API_BASE"] == DEFAULT_DASHSCOPE_BASE_URL
+
+
+def test_runtime_shim_is_added_for_litellm_openai_compatible_calls(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-dashscope-secret-value")
+    shim_dir = tmp_path / "shim"
+
+    env = _engine_environment(tmp_path / "MARBLE", shim_dir=shim_dir)
+
+    assert env["PYTHONPATH"].split(":")[0] == str(shim_dir)
+    shim = shim_dir / "sitecustomize.py"
+    assert shim.exists()
+    text = shim.read_text(encoding="utf-8")
+    assert "enable_thinking" in text
+    assert "sk-dashscope-secret-value" not in text
 
 
 def _write_fake_marble_python(*, marble_root: Path, body: str) -> None:

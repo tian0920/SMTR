@@ -13,6 +13,11 @@ from pathlib import Path
 
 from smtr.marble.artifacts import assert_marble_artifact_path
 
+DEFAULT_DASHSCOPE_BASE_URL = (
+    "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+)
+DEFAULT_DASHSCOPE_MODEL = "qwen3.7-max"
+
 
 @dataclass(frozen=True)
 class RuntimeCheck:
@@ -109,6 +114,7 @@ def run_database_runtime_preflight(*, marble_root: Path) -> MarbleRuntimePreflig
             ),
             _llm_provider_check(),
             _model_check(),
+            _base_url_check(),
         ]
     )
     ready = all(check.passed for check in checks if check.blocking)
@@ -143,6 +149,9 @@ def write_runtime_preflight(
                     result, "required_api_key_presence"
                 ),
                 "llm_model_configured": _check_passed(result, "configured_model_name"),
+                "llm_base_url_configured": _check_passed(
+                    result, "configured_base_url"
+                ),
                 "checks": [asdict(check) for check in result.checks],
             },
             indent=2,
@@ -296,7 +305,14 @@ def _port_check(port: int) -> RuntimeCheck:
 
 
 def _llm_provider_check() -> RuntimeCheck:
-    key_names = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "AZURE_API_KEY")
+    key_names = (
+        "OPENAI_API_KEY",
+        "DASHSCOPE_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GEMINI_API_KEY",
+        "AZURE_OPENAI_API_KEY",
+        "AZURE_API_KEY",
+    )
     present = [name for name in key_names if os.environ.get(name)]
     if present:
         return RuntimeCheck("required_api_key_presence", True, f"present={','.join(present)}", True)
@@ -304,20 +320,66 @@ def _llm_provider_check() -> RuntimeCheck:
         "required_api_key_presence",
         False,
         (
-            "No supported LLM API key is present; set OPENAI_API_KEY or another "
-            "MARBLE-supported provider key."
+            "No supported LLM API key is present; set OPENAI_API_KEY, "
+            "DASHSCOPE_API_KEY, or another MARBLE-supported provider key."
         ),
         True,
     )
 
 
 def _model_check() -> RuntimeCheck:
-    model = os.environ.get("MARBLE_LLM_MODEL") or os.environ.get("OPENAI_MODEL")
+    model = (
+        os.environ.get("MARBLE_LLM_MODEL")
+        or os.environ.get("OPENAI_MODEL")
+        or os.environ.get("DASHSCOPE_MODEL")
+    )
     if model:
         return RuntimeCheck("configured_model_name", True, f"model={model}", True)
+    if _dashscope_compatible_runtime_configured():
+        return RuntimeCheck(
+            "configured_model_name",
+            True,
+            f"model={DEFAULT_DASHSCOPE_MODEL} (default DashScope-compatible smoke model)",
+            True,
+        )
     return RuntimeCheck(
         "configured_model_name",
         False,
-        "Set MARBLE_LLM_MODEL or OPENAI_MODEL to the model MARBLE should use.",
+        (
+            "Set MARBLE_LLM_MODEL, OPENAI_MODEL, or DASHSCOPE_MODEL to the model "
+            "MARBLE should use."
+        ),
         True,
+    )
+
+
+def _base_url_check() -> RuntimeCheck:
+    base_url = (
+        os.environ.get("MARBLE_LLM_BASE_URL")
+        or os.environ.get("OPENAI_BASE_URL")
+        or os.environ.get("OPENAI_API_BASE")
+        or os.environ.get("DASHSCOPE_BASE_URL")
+    )
+    if base_url:
+        return RuntimeCheck("configured_base_url", True, f"base_url={base_url}", False)
+    if os.environ.get("DASHSCOPE_API_KEY"):
+        return RuntimeCheck(
+            "configured_base_url",
+            True,
+            f"base_url={DEFAULT_DASHSCOPE_BASE_URL} (default DashScope-compatible URL)",
+            False,
+        )
+    return RuntimeCheck(
+        "configured_base_url",
+        False,
+        "No OpenAI-compatible base URL configured; this is only required for custom endpoints.",
+        False,
+    )
+
+
+def _dashscope_compatible_runtime_configured() -> bool:
+    return bool(
+        os.environ.get("DASHSCOPE_API_KEY")
+        or os.environ.get("DASHSCOPE_BASE_URL")
+        or os.environ.get("MARBLE_LLM_BASE_URL")
     )

@@ -19,7 +19,7 @@ from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.memory_injection import MarbleMemoryInjector
 from smtr.marble.outcome.factory import evaluator_for_scenario
 from smtr.marble.outcome.protocol import outcome_from_failure
-from smtr.marble.runtime_preflight import run_database_runtime_preflight
+from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_MODEL, run_database_runtime_preflight
 from smtr.marble.task_provider import _read_jsonl_line
 
 
@@ -261,11 +261,7 @@ def _write_marble_config(
 ) -> None:
     config = dict(task)
     config["coordinate_mode"] = "graph"
-    config["llm"] = (
-        os.environ.get("MARBLE_LLM_MODEL")
-        or os.environ.get("OPENAI_MODEL")
-        or "gpt-4o-mini"
-    )
+    config["llm"] = _configured_litellm_model()
     config["environment"] = dict(config.get("environment", {}))
     config["environment"]["type"] = "DB"
     config["environment"]["name"] = "DB Environment"
@@ -275,6 +271,26 @@ def _write_marble_config(
     config["smtr_generation_seed"] = generation_seed
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _configured_litellm_model() -> str:
+    model = (
+        os.environ.get("MARBLE_LLM_MODEL")
+        or os.environ.get("OPENAI_MODEL")
+        or os.environ.get("DASHSCOPE_MODEL")
+    )
+    compatible_base_url_configured = bool(
+        os.environ.get("DASHSCOPE_API_KEY")
+        or os.environ.get("DASHSCOPE_BASE_URL")
+        or os.environ.get("MARBLE_LLM_BASE_URL")
+    )
+    if not model and compatible_base_url_configured:
+        model = DEFAULT_DASHSCOPE_MODEL
+    if not model:
+        return "gpt-4o-mini"
+    if compatible_base_url_configured and "/" not in model:
+        return f"openai/{model}"
+    return model
 
 
 def _load_database_task_by_id(marble_root: Path, task_id: str) -> dict[str, Any]:
