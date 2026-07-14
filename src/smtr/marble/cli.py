@@ -18,6 +18,7 @@ from smtr.marble.database_smoke import (
 )
 from smtr.marble.dataset import DEFAULT_MARBLE_ROOT, write_marble_dataset_manifest
 from smtr.marble.engine_audit import audit_database_engine
+from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
 from smtr.marble.environment.isolation import bundle_from_manifest_task
 from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.evaluation import MarbleExperimentRunner
@@ -68,6 +69,7 @@ def main() -> None:
     b0_smoke_parser.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
     b0_smoke_parser.add_argument("--task-id", required=True)
     b0_smoke_parser.add_argument("--generation-seed", type=int, default=0)
+    b0_smoke_parser.add_argument("--engine-timeout-seconds", type=int)
     b0_smoke_parser.add_argument("--output", required=True)
 
     rebuild_parser = subparsers.add_parser("verify-database-rebuild")
@@ -122,6 +124,7 @@ def main() -> None:
     trajectory_parser.add_argument("--task-ids", nargs="+")
     trajectory_parser.add_argument("--task-count", type=int)
     trajectory_parser.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
+    trajectory_parser.add_argument("--engine-timeout-seconds", type=int)
     trajectory_parser.add_argument("--output", required=True)
     trajectory_parser.add_argument("--resume", action="store_true")
 
@@ -218,15 +221,29 @@ def main() -> None:
             if check.blocking and not check.passed:
                 print(f"blocking_failure={check.name}: {check.detail}")
     elif args.command == "run-database-b0-smoke":
+        if args.engine_timeout_seconds is not None and args.engine_timeout_seconds <= 0:
+            raise SystemExit("--engine-timeout-seconds must be positive")
+        engine_timeout_seconds = (
+            args.engine_timeout_seconds
+            if args.engine_timeout_seconds is not None
+            else DEFAULT_ENGINE_TIMEOUT_SECONDS
+        )
         summary = run_database_b0_smoke(
             marble_root=Path(args.marble_root),
             task_id=str(args.task_id),
             generation_seed=args.generation_seed,
             output_dir=Path(args.output),
+            engine_timeout_seconds=engine_timeout_seconds,
+            engine_timeout_source=(
+                "cli" if args.engine_timeout_seconds is not None else "default"
+            ),
         )
         print(f"real_engine_executed={summary['real_engine_executed']}")
         print(f"native_evaluator_executed={summary['native_evaluator_executed']}")
         print(f"environment_valid={summary['environment_valid']}")
+        print(f"engine_timeout_seconds={summary['engine_timeout_seconds']}")
+        print(f"engine_duration_seconds={summary['engine_duration_seconds']}")
+        print(f"last_observed_stage={summary['last_observed_stage']}")
     elif args.command == "verify-database-rebuild":
         summary = verify_database_rebuild(
             marble_root=Path(args.marble_root),
@@ -316,6 +333,13 @@ def main() -> None:
         print(f"invalid_count={summary.invalid_count}")
         print(f"label_counts={json.dumps(summary.label_counts, sort_keys=True)}")
     elif args.command == "collect-database-trajectories":
+        if args.engine_timeout_seconds is not None and args.engine_timeout_seconds <= 0:
+            raise SystemExit("--engine-timeout-seconds must be positive")
+        engine_timeout_seconds = (
+            args.engine_timeout_seconds
+            if args.engine_timeout_seconds is not None
+            else DEFAULT_ENGINE_TIMEOUT_SECONDS
+        )
         summary = collect_database_trajectories(
             marble_root=Path(args.marble_root),
             dataset_manifest_path=Path(args.dataset_manifest),
@@ -326,6 +350,10 @@ def main() -> None:
             generation_seeds=args.generation_seeds,
             output_dir=Path(args.output),
             resume=args.resume,
+            engine_timeout_seconds=engine_timeout_seconds,
+            engine_timeout_source=(
+                "cli" if args.engine_timeout_seconds is not None else "default"
+            ),
         )
         print(json.dumps(summary, sort_keys=True))
     elif args.command == "extract-database-memories":

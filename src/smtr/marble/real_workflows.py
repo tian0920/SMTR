@@ -8,6 +8,7 @@ from typing import Any, cast
 
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.database_smoke import run_database_b0_smoke
+from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
 from smtr.marble.real_data import RealDatabaseTrajectory, SplitName, file_sha256
 
 
@@ -22,6 +23,8 @@ def collect_database_trajectories(
     task_ids: list[str] | None = None,
     task_count: int | None = None,
     resume: bool = False,
+    engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
+    engine_timeout_source: str = "default",
 ) -> dict[str, Any]:
     if split != "train":
         raise ValueError("real source trajectory collection is train-only")
@@ -54,6 +57,8 @@ def collect_database_trajectories(
                     task_id=task_id,
                     generation_seed=seed,
                     output_dir=run_dir,
+                    engine_timeout_seconds=engine_timeout_seconds,
+                    engine_timeout_source=engine_timeout_source,
                 )
                 record = _normalize_smoke(
                     summary=summary,
@@ -215,6 +220,15 @@ def _invalid_trajectory_payload(
         "preflight_blocking_failures",
         "engine_exit_code",
         "engine_timed_out",
+        "engine_timeout_seconds",
+        "engine_timeout_source",
+        "engine_duration_seconds",
+        "engine_termination_requested",
+        "engine_termination_signal",
+        "engine_termination_grace_period_seconds",
+        "engine_kill_escalated",
+        "last_observed_stage",
+        "last_observed_stage_parser_version",
         "engine_working_directory",
         "engine_config_path",
         "selected_python",
@@ -245,9 +259,9 @@ def _failure_layer(*, summary: dict[str, Any] | None, invalid_reason: str) -> st
         return "unknown"
     if summary.get("runtime_preflight_ready") is False:
         return "preflight_failure"
-    if summary.get("engine_timed_out") is True or _nonzero_exit(
-        summary.get("engine_exit_code")
-    ):
+    if summary.get("engine_timed_out") is True:
+        return "engine_execution_timeout"
+    if _nonzero_exit(summary.get("engine_exit_code")):
         return "engine_execution_failure"
     if (
         "raw result" in reason

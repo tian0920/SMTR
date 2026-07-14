@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import time
 from dataclasses import asdict, dataclass
@@ -16,6 +17,10 @@ from urllib.parse import urlparse
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 
+DEFAULT_ENGINE_TIMEOUT_SECONDS = 900
+DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
+LAST_OBSERVED_STAGE_PARSER_VERSION = "marble_engine_log_markers_v1"
+
 
 @dataclass(frozen=True)
 class MarbleEngineProcessResult:
@@ -23,8 +28,17 @@ class MarbleEngineProcessResult:
     working_directory: str
     selected_python: str
     config_path: str
+    engine_timeout_seconds: int
+    engine_timeout_source: str
+    engine_duration_seconds: float
     exit_code: int
     timed_out: bool
+    engine_termination_requested: bool
+    engine_termination_signal: str | None
+    engine_termination_grace_period_seconds: float
+    engine_kill_escalated: bool
+    last_observed_stage: str
+    last_observed_stage_parser_version: str
     stdout_digest: str
     stderr_digest: str
     stdout_log_path: str | None
@@ -60,8 +74,14 @@ def run_marble_engine_process(
     raw_result_path: Path | None,
     output_dir: Path | None = None,
     run_identity: dict[str, str] | None = None,
-    timeout_seconds: int = 900,
+    timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
+    timeout_source: str = "default",
+    termination_grace_period_seconds: float = DEFAULT_TERMINATION_GRACE_SECONDS,
 ) -> MarbleEngineProcessResult:
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
+    if termination_grace_period_seconds < 0:
+        raise ValueError("termination_grace_period_seconds must be non-negative")
     log_dir = output_dir or (raw_result_path.parent if raw_result_path else config_path.parent)
     log_dir.mkdir(parents=True, exist_ok=True)
     env = _engine_environment(marble_root, shim_dir=log_dir / "runtime_shim")
@@ -77,34 +97,39 @@ def run_marble_engine_process(
     started_at_timestamp = time.time()
     started = _now()
     timed_out = False
+    termination_requested = False
+    termination_signal: str | None = None
+    kill_escalated = False
+    process = subprocess.Popen(
+        command,
+        cwd=marble_root,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
     try:
-        completed = subprocess.run(
-            command,
-            cwd=marble_root,
-            env=env,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-        )
-        exit_code = completed.returncode
-        stdout = completed.stdout
-        stderr = completed.stderr
-    except subprocess.TimeoutExpired as exc:
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
         timed_out = True
-        exit_code = -9
-        stdout = (
-            (exc.stdout or "").decode()
-            if isinstance(exc.stdout, bytes)
-            else (exc.stdout or "")
-        )
-        stderr = (
-            (exc.stderr or "").decode()
-            if isinstance(exc.stderr, bytes)
-            else (exc.stderr or "")
-        )
+        termination_requested = True
+        termination_signal = "SIGTERM"
+        _terminate_process_group(process, signal.SIGTERM)
+        try:
+            stdout, stderr = process.communicate(timeout=termination_grace_period_seconds)
+        except subprocess.TimeoutExpired as exc:
+            kill_escalated = True
+            termination_signal = "SIGKILL"
+            _terminate_process_group(process, signal.SIGKILL)
+            stdout, stderr = process.communicate()
+            stdout = _combine_timeout_output(exc.stdout, stdout)
+            stderr = _combine_timeout_output(exc.stderr, stderr)
+    exit_code = process.returncode if process.returncode is not None else -9
+    ended_at_timestamp = time.time()
     stdout_log = _write_log(log_dir / "stdout.log", stdout)
     stderr_log = _write_log(log_dir / "stderr.log", stderr)
+    last_stage = _last_observed_stage(stdout=stdout, stderr=stderr)
     cleanup = _cleanup_database(marble_root, log_dir=log_dir)
     ended = _now()
     raw_validation = _validate_raw_result(
@@ -125,8 +150,17 @@ def run_marble_engine_process(
         working_directory=str(marble_root),
         selected_python=str(python),
         config_path=str(config_path.resolve()),
+        engine_timeout_seconds=timeout_seconds,
+        engine_timeout_source=timeout_source,
+        engine_duration_seconds=round(ended_at_timestamp - started_at_timestamp, 3),
         exit_code=exit_code,
         timed_out=timed_out,
+        engine_termination_requested=termination_requested,
+        engine_termination_signal=termination_signal,
+        engine_termination_grace_period_seconds=termination_grace_period_seconds,
+        engine_kill_escalated=kill_escalated,
+        last_observed_stage=last_stage,
+        last_observed_stage_parser_version=LAST_OBSERVED_STAGE_PARSER_VERSION,
         stdout_digest=stdout_log["digest"],
         stderr_digest=stderr_log["digest"],
         stdout_log_path=stdout_log["path"],
@@ -298,6 +332,42 @@ def _write_log(path: Path, text: str) -> dict[str, str]:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(redacted, encoding="utf-8")
     return {"path": str(path), "digest": _text_digest(redacted)}
+
+
+def _combine_timeout_output(partial: str | bytes | None, final: str | None) -> str:
+    left = partial.decode() if isinstance(partial, bytes) else (partial or "")
+    right = final or ""
+    return right if right.startswith(left) else left + right
+
+
+def _terminate_process_group(process: subprocess.Popen[str], sig: signal.Signals) -> None:
+    try:
+        os.killpg(process.pid, sig)
+    except ProcessLookupError:
+        return
+    except OSError:
+        if sig == signal.SIGTERM:
+            process.terminate()
+        else:
+            process.kill()
+
+
+def _last_observed_stage(*, stdout: str, stderr: str) -> str:
+    text = f"{stdout}\n{stderr}".lower()
+    markers = (
+        ("raw_output_writing_started", ("jsonl", "output")),
+        ("final_answer_generated", ("final answer",)),
+        ("tool_sql_execution_started", ("sql", "query", "tool")),
+        ("first_model_response_received", ("model response", "completion response")),
+        ("first_model_request_started", ("model request", "completion request")),
+        ("agents_initialized", ("agent initialized", "initializing agent", "agent")),
+        ("docker_database_started", ("starting docker containers",)),
+        ("engine_process_started", ("starting engine with configuration",)),
+    )
+    for stage, tokens in markers:
+        if all(token in text for token in tokens):
+            return stage
+    return "unknown"
 
 
 def _validate_raw_result(

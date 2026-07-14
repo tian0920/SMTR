@@ -18,7 +18,7 @@ from smtr.marble.real_data import (
     build_cross_task_candidates,
     extract_procedural_memories,
 )
-from smtr.marble.real_workflows import _normalize_smoke
+from smtr.marble.real_workflows import _invalid_trajectory_payload, _normalize_smoke
 from smtr.marble.splits import create_split_manifest, validate_split_manifest
 
 MARBLE_ROOT = Path("/home/ecs-user/MARBLE")
@@ -343,6 +343,13 @@ def test_audit_deep_reads_shallow_index_and_classifies_invalid_trajectories(
                 {
                     "exit_code": -9,
                     "timed_out": True,
+                    "engine_timeout_seconds": 3,
+                    "engine_timeout_source": "cli",
+                    "engine_duration_seconds": 3.01,
+                    "engine_termination_requested": True,
+                    "engine_termination_signal": "SIGKILL",
+                    "engine_kill_escalated": True,
+                    "last_observed_stage": "docker_database_started",
                     "real_engine_executed": False,
                     "raw_result_path": str(run_dir / "workspace/marble_output.jsonl"),
                     "raw_result_exists": False,
@@ -363,7 +370,41 @@ def test_audit_deep_reads_shallow_index_and_classifies_invalid_trajectories(
     assert report["trajectory_invalid"] == 3
     assert report["classified_primary_failures"] == 3
     assert report["unclassified_invalid_count"] == 0
-    assert report["engine_execution_failure_count"] == 3
+    assert report["engine_execution_timeout_count"] == 3
+    assert report["engine_execution_failure_count"] == 0
     assert report["engine_failure_count"] == 3
     assert report["raw_result_failure_count"] == 3
     assert report["evaluator_skipped_due_to_upstream_failure_count"] == 3
+
+
+def test_timeout_invalid_payload_preserves_timeout_as_primary_failure() -> None:
+    payload = _invalid_trajectory_payload(
+        trajectory_id="traj",
+        task_id="19",
+        split="train",
+        generation_seed=0,
+        invalid_reason="raw result file missing",
+        summary={
+            "engine_timed_out": True,
+            "engine_exit_code": -9,
+            "engine_timeout_seconds": 3,
+            "engine_timeout_source": "cli",
+            "engine_duration_seconds": 3.0,
+            "engine_termination_requested": True,
+            "engine_termination_signal": "SIGKILL",
+            "engine_kill_escalated": True,
+            "real_engine_executed": False,
+            "raw_result_path": "/tmp/raw.jsonl",
+            "raw_result_exists": False,
+            "raw_result_fresh": False,
+            "raw_result_parseable": False,
+            "native_evaluator_executed": False,
+            "cleanup_succeeded": True,
+            "last_observed_stage": "docker_database_started",
+        },
+    )
+
+    assert payload["failure_layer"] == "engine_execution_timeout"
+    assert payload["raw_result_exists"] is False
+    assert payload["engine_timeout_seconds"] == 3
+    assert payload["last_observed_stage"] == "docker_database_started"

@@ -66,9 +66,11 @@ def audit_real_database_mvp(
         "preflight_failure_count": primary_layers.count("preflight_failure"),
         "engine_failure_count": sum(
             item.get("real_engine_executed") is False
-            or _primary_failure_layer(item) == "engine_execution_failure"
+            or _primary_failure_layer(item)
+            in {"engine_execution_timeout", "engine_execution_failure"}
             for item in invalid_trajectories
         ),
+        "engine_execution_timeout_count": primary_layers.count("engine_execution_timeout"),
         "engine_execution_failure_count": primary_layers.count("engine_execution_failure"),
         "raw_result_failure_count": sum(
             _raw_result_failed(item) for item in invalid_trajectories
@@ -84,6 +86,7 @@ def audit_real_database_mvp(
             and _primary_failure_layer(item)
             in {
                 "preflight_failure",
+                "engine_execution_timeout",
                 "engine_execution_failure",
                 "raw_result_failure",
                 "structured_trace_failure",
@@ -102,6 +105,7 @@ def audit_real_database_mvp(
             layer: primary_layers.count(layer)
             for layer in (
                 "preflight_failure",
+                "engine_execution_timeout",
                 "engine_execution_failure",
                 "raw_result_failure",
                 "structured_trace_failure",
@@ -159,6 +163,15 @@ def _trajectory_records(path: Path | None) -> list[dict[str, Any]]:
                 "preflight_blocking_failures",
                 "engine_exit_code",
                 "engine_timed_out",
+                "engine_timeout_seconds",
+                "engine_timeout_source",
+                "engine_duration_seconds",
+                "engine_termination_requested",
+                "engine_termination_signal",
+                "engine_termination_grace_period_seconds",
+                "engine_kill_escalated",
+                "last_observed_stage",
+                "last_observed_stage_parser_version",
                 "engine_working_directory",
                 "engine_config_path",
                 "selected_python",
@@ -179,6 +192,17 @@ def _trajectory_records(path: Path | None) -> list[dict[str, Any]]:
         engine_map = {
             "exit_code": "engine_exit_code",
             "timed_out": "engine_timed_out",
+            "engine_timeout_seconds": "engine_timeout_seconds",
+            "engine_timeout_source": "engine_timeout_source",
+            "engine_duration_seconds": "engine_duration_seconds",
+            "engine_termination_requested": "engine_termination_requested",
+            "engine_termination_signal": "engine_termination_signal",
+            "engine_termination_grace_period_seconds": (
+                "engine_termination_grace_period_seconds"
+            ),
+            "engine_kill_escalated": "engine_kill_escalated",
+            "last_observed_stage": "last_observed_stage",
+            "last_observed_stage_parser_version": "last_observed_stage_parser_version",
             "working_directory": "engine_working_directory",
             "config_path": "engine_config_path",
             "selected_python": "selected_python",
@@ -237,7 +261,9 @@ def _primary_failure_layer(item: dict[str, Any]) -> str:
     reason = str(item.get("invalid_reason", "")).lower()
     if item.get("runtime_preflight_ready") is False:
         return "preflight_failure"
-    if item.get("engine_timed_out") is True or _nonzero_exit(item.get("engine_exit_code")):
+    if item.get("engine_timed_out") is True:
+        return "engine_execution_timeout"
+    if _nonzero_exit(item.get("engine_exit_code")):
         return "engine_execution_failure"
     if _raw_result_failed(item):
         return "raw_result_failure"
