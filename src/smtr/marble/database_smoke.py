@@ -94,6 +94,13 @@ def run_database_b0_smoke(
             check.name for check in preflight.checks if check.blocking and not check.passed
         ],
         "real_engine_executed": bool(engine_result and engine_result.real_engine_executed),
+        "engine_exit_code": engine_result.exit_code if engine_result else None,
+        "engine_timed_out": engine_result.timed_out if engine_result else None,
+        "engine_working_directory": engine_result.working_directory if engine_result else None,
+        "engine_config_path": (
+            engine_result.config_path if engine_result else str(config_path.resolve())
+        ),
+        "selected_python": engine_result.selected_python if engine_result else None,
         "cleanup_succeeded": bool(engine_result and engine_result.cleanup_succeeded),
         "cleanup_exit_code": engine_result.cleanup_exit_code if engine_result else None,
         "cleanup_failure_reason": (
@@ -109,6 +116,7 @@ def run_database_b0_smoke(
         "raw_result_identity_failure_reason": (
             engine_result.raw_result_identity_failure_reason if engine_result else None
         ),
+        "raw_result_path": engine_result.raw_result_path if engine_result else str(raw_result_path),
         "stdout_log_path": engine_result.stdout_log_path if engine_result else None,
         "stderr_log_path": engine_result.stderr_log_path if engine_result else None,
         "cleanup_stdout_log_path": (

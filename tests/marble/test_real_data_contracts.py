@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from smtr.marble.dataset import build_marble_dataset_manifest
+from smtr.marble.real_audit import audit_real_database_mvp
 from smtr.marble.real_data import (
     CandidateEdge,
     ProceduralRoutingCard,
@@ -17,6 +18,7 @@ from smtr.marble.real_data import (
     build_cross_task_candidates,
     extract_procedural_memories,
 )
+from smtr.marble.real_workflows import _normalize_smoke
 from smtr.marble.splits import create_split_manifest, validate_split_manifest
 
 MARBLE_ROOT = Path("/home/ecs-user/MARBLE")
@@ -230,3 +232,138 @@ def test_pair_label_and_branch_evidence_are_enforced() -> None:
     assert RealPairedRecord(**common).tau == 1
     with pytest.raises(ValidationError):
         RealPairedRecord(**{**common, "initial_state_match": False})
+
+
+def test_collector_normalizes_raw_result_path_from_b0_summary(tmp_path: Path) -> None:
+    raw = tmp_path / "raw.jsonl"
+    raw.write_text(
+        json.dumps(
+            {
+                "agents": [{"agent_id": "agent1"}],
+                "actions": [{"name": "query_db"}],
+                "tool_calls": [{"name": "query_db", "sql": "SELECT 1"}],
+                "final_answer": "diagnosis",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    dataset_path = tmp_path / "dataset.json"
+    dataset_path.write_text(
+        json.dumps({"marble_commit": "m", "smtr_commit": "s"}),
+        encoding="utf-8",
+    )
+    split_path = tmp_path / "split.json"
+    split_path.write_text("{}", encoding="utf-8")
+    record = _normalize_smoke(
+        summary={
+            "raw_result_path": str(raw),
+            "raw_result_exists": True,
+            "raw_result_nonempty": True,
+            "raw_result_fresh": True,
+            "raw_result_parseable": True,
+            "native_evaluator_executed": True,
+            "outcome": {"score": 1.0, "success": True},
+            "real_engine_executed": True,
+            "cleanup_succeeded": True,
+            "environment_valid": True,
+            "initial_logical_fingerprint": {"schema": "x"},
+            "initial_state_digest": "initial",
+        },
+        trajectory_id="traj",
+        task_id="1",
+        split="train",
+        generation_seed=0,
+        dataset={"marble_commit": "m", "smtr_commit": "s"},
+        dataset_manifest_path=dataset_path,
+        split_manifest_path=split_path,
+        run_dir=tmp_path,
+    )
+
+    assert record.raw_result_path == str(raw)
+    assert record.real_engine_executed is True
+    assert record.native_evaluator_executed is True
+
+
+def test_audit_deep_reads_shallow_index_and_classifies_invalid_trajectories(
+    tmp_path: Path,
+) -> None:
+    dataset_path = tmp_path / "dataset.json"
+    dataset_path.write_text(
+        json.dumps({"total_tasks": 3, "dataset_sha256": "dataset"}),
+        encoding="utf-8",
+    )
+    split_path = tmp_path / "split.json"
+    split_path.write_text(
+        json.dumps(
+            {
+                "records": [
+                    {"task_id": "1", "split": "train"},
+                    {"task_id": "2", "split": "validation"},
+                    {"task_id": "3", "split": "test"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    index = tmp_path / "trajectory_index.jsonl"
+    rows = [
+        {
+            "trajectory_id": f"traj-{task_id}",
+            "task_id": str(task_id),
+            "split": "train",
+            "generation_seed": 0,
+            "valid": False,
+            "invalid_reason": "raw result file missing",
+        }
+        for task_id in (1, 2, 3)
+    ]
+    index.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    for row in rows:
+        run_dir = tmp_path / "trajectories" / row["trajectory_id"]
+        run_dir.mkdir(parents=True)
+        (run_dir / "trajectory.json").write_text(json.dumps(row), encoding="utf-8")
+        (run_dir / "b0_smoke.json").write_text(
+            json.dumps(
+                {
+                    "real_engine_executed": False,
+                    "native_evaluator_executed": False,
+                    "raw_result_path": str(run_dir / "workspace/marble_output.jsonl"),
+                    "raw_result_exists": False,
+                    "raw_result_fresh": False,
+                    "raw_result_parseable": False,
+                    "cleanup_succeeded": True,
+                    "environment_valid": False,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (run_dir / "engine_process.json").write_text(
+            json.dumps(
+                {
+                    "exit_code": -9,
+                    "timed_out": True,
+                    "real_engine_executed": False,
+                    "raw_result_path": str(run_dir / "workspace/marble_output.jsonl"),
+                    "raw_result_exists": False,
+                    "raw_result_fresh": False,
+                    "raw_result_parseable": False,
+                    "cleanup_succeeded": True,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    report = audit_real_database_mvp(
+        dataset_manifest_path=dataset_path,
+        split_manifest_path=split_path,
+        trajectory_index_path=index,
+    )
+
+    assert report["trajectory_invalid"] == 3
+    assert report["classified_primary_failures"] == 3
+    assert report["unclassified_invalid_count"] == 0
+    assert report["engine_execution_failure_count"] == 3
+    assert report["engine_failure_count"] == 3
+    assert report["raw_result_failure_count"] == 3
+    assert report["evaluator_skipped_due_to_upstream_failure_count"] == 3

@@ -47,6 +47,7 @@ def collect_database_trajectories(
                 index.append(json.loads(record_path.read_text(encoding="utf-8")))
                 continue
             run_dir.mkdir(parents=True, exist_ok=True)
+            summary: dict[str, Any] | None = None
             try:
                 summary = run_database_b0_smoke(
                     marble_root=marble_root,
@@ -68,14 +69,14 @@ def collect_database_trajectories(
                 payload = record.model_dump(mode="json")
                 payload["valid"] = True
             except Exception as exc:
-                payload = {
-                    "trajectory_id": trajectory_id,
-                    "task_id": task_id,
-                    "split": split,
-                    "generation_seed": seed,
-                    "valid": False,
-                    "invalid_reason": str(exc),
-                }
+                payload = _invalid_trajectory_payload(
+                    trajectory_id=trajectory_id,
+                    task_id=task_id,
+                    split=split,
+                    generation_seed=seed,
+                    summary=summary,
+                    invalid_reason=str(exc),
+                )
             record_path.write_text(
                 json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
@@ -107,8 +108,16 @@ def _normalize_smoke(
 ) -> RealDatabaseTrajectory:
     raw_path_value = summary.get("raw_result_path")
     if not raw_path_value:
-        raise ValueError("real engine did not produce a raw result path")
+        raise ValueError("raw result path not recorded")
     raw_path = Path(raw_path_value)
+    if not summary.get("raw_result_exists"):
+        raise ValueError("raw result file missing")
+    if not summary.get("raw_result_nonempty"):
+        raise ValueError("raw result file empty")
+    if not summary.get("raw_result_fresh"):
+        raise ValueError("raw result file stale")
+    if not summary.get("raw_result_parseable"):
+        raise ValueError("raw result file unparseable")
     raw = json.loads(raw_path.read_text(encoding="utf-8"))
     structured = _structured_trace(raw)
     return RealDatabaseTrajectory(
@@ -179,6 +188,94 @@ def _structured_trace(raw: Any) -> dict[str, Any]:
         "errors": raw.get("errors") or [],
         "final_answer": str(raw.get("final_answer") or raw.get("answer") or ""),
     }
+
+
+def _invalid_trajectory_payload(
+    *,
+    trajectory_id: str,
+    task_id: str,
+    split: str,
+    generation_seed: int,
+    summary: dict[str, Any] | None,
+    invalid_reason: str,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "trajectory_id": trajectory_id,
+        "task_id": task_id,
+        "split": split,
+        "generation_seed": generation_seed,
+        "valid": False,
+        "invalid_reason": invalid_reason,
+        "failure_layer": _failure_layer(summary=summary, invalid_reason=invalid_reason),
+    }
+    if summary is None:
+        return payload
+    for key in (
+        "runtime_preflight_ready",
+        "preflight_blocking_failures",
+        "engine_exit_code",
+        "engine_timed_out",
+        "engine_working_directory",
+        "engine_config_path",
+        "selected_python",
+        "real_engine_executed",
+        "raw_result_path",
+        "raw_result_exists",
+        "raw_result_nonempty",
+        "raw_result_fresh",
+        "raw_result_parseable",
+        "raw_result_identity_verified",
+        "native_evaluator_executed",
+        "cleanup_exit_code",
+        "cleanup_succeeded",
+        "cleanup_failure_reason",
+        "environment_valid",
+        "stdout_log_path",
+        "stderr_log_path",
+    ):
+        if key in summary:
+            payload[key] = summary[key]
+    payload["structured_trace_present"] = False
+    return payload
+
+
+def _failure_layer(*, summary: dict[str, Any] | None, invalid_reason: str) -> str:
+    reason = invalid_reason.lower()
+    if summary is None:
+        return "unknown"
+    if summary.get("runtime_preflight_ready") is False:
+        return "preflight_failure"
+    if summary.get("engine_timed_out") is True or _nonzero_exit(
+        summary.get("engine_exit_code")
+    ):
+        return "engine_execution_failure"
+    if (
+        "raw result" in reason
+        or not summary.get("raw_result_path")
+        or not summary.get("raw_result_exists")
+        or not summary.get("raw_result_nonempty")
+        or not summary.get("raw_result_fresh")
+        or not summary.get("raw_result_parseable")
+    ):
+        return "raw_result_failure"
+    if "structured" in reason or "trace" in reason:
+        return "structured_trace_failure"
+    if summary.get("native_evaluator_executed") is False:
+        return "native_evaluator_failure"
+    if summary.get("cleanup_succeeded") is False:
+        return "cleanup_failure"
+    if "provenance" in reason:
+        return "provenance_failure"
+    return "unknown"
+
+
+def _nonzero_exit(value: Any) -> bool:
+    if value is None:
+        return False
+    try:
+        return int(value) != 0
+    except (TypeError, ValueError):
+        return True
 
 
 def _task_sort_key(task_id: str) -> tuple[int, str]:

@@ -21,6 +21,8 @@ from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 class MarbleEngineProcessResult:
     command: tuple[str, ...]
     working_directory: str
+    selected_python: str
+    config_path: str
     exit_code: int
     timed_out: bool
     stdout_digest: str
@@ -121,15 +123,15 @@ def run_marble_engine_process(
     return MarbleEngineProcessResult(
         command=command,
         working_directory=str(marble_root),
+        selected_python=str(python),
+        config_path=str(config_path.resolve()),
         exit_code=exit_code,
         timed_out=timed_out,
         stdout_digest=stdout_log["digest"],
         stderr_digest=stderr_log["digest"],
         stdout_log_path=stdout_log["path"],
         stderr_log_path=stderr_log["path"],
-        raw_result_path=(
-            str(raw_result_path) if raw_result_path and raw_result_path.exists() else None
-        ),
+        raw_result_path=str(raw_result_path) if raw_result_path else None,
         raw_result_exists=raw_validation["raw_result_exists"],
         raw_result_nonempty=raw_validation["raw_result_nonempty"],
         raw_result_fresh=raw_validation["raw_result_fresh"],

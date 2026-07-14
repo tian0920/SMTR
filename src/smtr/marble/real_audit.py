@@ -18,7 +18,7 @@ def audit_real_database_mvp(
 ) -> dict[str, Any]:
     dataset = json.loads(dataset_manifest_path.read_text(encoding="utf-8"))
     splits = json.loads(split_manifest_path.read_text(encoding="utf-8"))
-    trajectories = _jsonl(trajectory_index_path)
+    trajectories = _trajectory_records(trajectory_index_path)
     memories = _jsonl(memory_pool_path)
     candidates = (
         json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
@@ -32,13 +32,15 @@ def audit_real_database_mvp(
         for split in ("train", "validation", "test")
     }
     valid_trajectories = [item for item in trajectories if item.get("valid")]
+    invalid_trajectories = [item for item in trajectories if not item.get("valid")]
     valid_pairs = [item for item in pairs if item.get("paired_record_valid")]
+    primary_layers = [_primary_failure_layer(item) for item in invalid_trajectories]
     report = {
         "dataset_task_count": dataset["total_tasks"],
         **{f"{name}_count": count for name, count in split_counts.items()},
         "trajectory_attempted": len(trajectories),
         "trajectory_valid": len(valid_trajectories),
-        "trajectory_invalid": len(trajectories) - len(valid_trajectories),
+        "trajectory_invalid": len(invalid_trajectories),
         "memory_generated": len(memories),
         "memory_accepted": len(memories),
         "memory_rejected": 0,
@@ -61,15 +63,54 @@ def audit_real_database_mvp(
         "memory_intervention_failure_count": sum(
             not item.get("memory_intervention_verified", False) for item in valid_pairs
         ),
+        "preflight_failure_count": primary_layers.count("preflight_failure"),
         "engine_failure_count": sum(
-            "engine" in str(item.get("invalid_reason", "")).lower() for item in pairs
+            item.get("real_engine_executed") is False
+            or _primary_failure_layer(item) == "engine_execution_failure"
+            for item in invalid_trajectories
         ),
-        "evaluator_failure_count": sum(
-            "evaluator" in str(item.get("invalid_reason", "")).lower() for item in pairs
+        "engine_execution_failure_count": primary_layers.count("engine_execution_failure"),
+        "raw_result_failure_count": sum(
+            _raw_result_failed(item) for item in invalid_trajectories
+        ),
+        "raw_result_primary_failure_count": primary_layers.count("raw_result_failure"),
+        "structured_trace_failure_count": primary_layers.count("structured_trace_failure"),
+        "evaluator_failure_count": primary_layers.count("native_evaluator_failure"),
+        "evaluator_skipped_count": sum(
+            item.get("native_evaluator_executed") is False for item in invalid_trajectories
+        ),
+        "evaluator_skipped_due_to_upstream_failure_count": sum(
+            item.get("native_evaluator_executed") is False
+            and _primary_failure_layer(item)
+            in {
+                "preflight_failure",
+                "engine_execution_failure",
+                "raw_result_failure",
+                "structured_trace_failure",
+            }
+            for item in invalid_trajectories
         ),
         "cleanup_failure_count": sum(
-            "cleanup" in str(item.get("invalid_reason", "")).lower() for item in pairs
+            item.get("cleanup_succeeded") is False for item in invalid_trajectories
         ),
+        "cleanup_primary_failure_count": primary_layers.count("cleanup_failure"),
+        "provenance_failure_count": primary_layers.count("provenance_failure"),
+        "unknown_invalid_reason_count": primary_layers.count("unknown"),
+        "classified_primary_failures": sum(layer != "unknown" for layer in primary_layers),
+        "unclassified_invalid_count": primary_layers.count("unknown"),
+        "primary_failure_layer_counts": {
+            layer: primary_layers.count(layer)
+            for layer in (
+                "preflight_failure",
+                "engine_execution_failure",
+                "raw_result_failure",
+                "structured_trace_failure",
+                "native_evaluator_failure",
+                "cleanup_failure",
+                "provenance_failure",
+                "unknown",
+            )
+        },
         "missing_provenance_count": 0,
     }
     report.update(
@@ -92,3 +133,129 @@ def _jsonl(path: Path | None) -> list[dict[str, Any]]:
     if path is None or not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def _trajectory_records(path: Path | None) -> list[dict[str, Any]]:
+    rows = _jsonl(path)
+    if path is None:
+        return rows
+    base = path.parent / "trajectories"
+    records: list[dict[str, Any]] = []
+    for row in rows:
+        trajectory_id = row.get("trajectory_id")
+        if not trajectory_id:
+            records.append(row)
+            continue
+        run_dir = base / str(trajectory_id)
+        trajectory = _json_file(run_dir / "trajectory.json")
+        b0 = _json_file(run_dir / "b0_smoke.json")
+        engine = _json_file(run_dir / "engine_process.json")
+        merged = {**row, **trajectory}
+        _merge_if_absent(
+            merged,
+            b0,
+            (
+                "runtime_preflight_ready",
+                "preflight_blocking_failures",
+                "engine_exit_code",
+                "engine_timed_out",
+                "engine_working_directory",
+                "engine_config_path",
+                "selected_python",
+                "real_engine_executed",
+                "raw_result_path",
+                "raw_result_exists",
+                "raw_result_nonempty",
+                "raw_result_fresh",
+                "raw_result_parseable",
+                "raw_result_identity_verified",
+                "native_evaluator_executed",
+                "cleanup_exit_code",
+                "cleanup_succeeded",
+                "cleanup_failure_reason",
+                "environment_valid",
+            ),
+        )
+        engine_map = {
+            "exit_code": "engine_exit_code",
+            "timed_out": "engine_timed_out",
+            "working_directory": "engine_working_directory",
+            "config_path": "engine_config_path",
+            "selected_python": "selected_python",
+        }
+        for source, target in engine_map.items():
+            if target not in merged and source in engine:
+                merged[target] = engine[source]
+        _merge_if_absent(
+            merged,
+            engine,
+            (
+                "real_engine_executed",
+                "raw_result_path",
+                "raw_result_exists",
+                "raw_result_nonempty",
+                "raw_result_fresh",
+                "raw_result_parseable",
+                "raw_result_identity_verified",
+                "cleanup_exit_code",
+                "cleanup_succeeded",
+                "cleanup_failure_reason",
+            ),
+        )
+        records.append(merged)
+    return records
+
+
+def _json_file(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _merge_if_absent(target: dict[str, Any], source: dict[str, Any], keys: tuple[str, ...]) -> None:
+    for key in keys:
+        if key not in target and key in source:
+            target[key] = source[key]
+
+
+def _raw_result_failed(item: dict[str, Any]) -> bool:
+    reason = str(item.get("invalid_reason", "")).lower()
+    return (
+        "raw result" in reason
+        or item.get("raw_result_path") in (None, "")
+        or item.get("raw_result_exists") is False
+        or item.get("raw_result_nonempty") is False
+        or item.get("raw_result_fresh") is False
+        or item.get("raw_result_parseable") is False
+    )
+
+
+def _primary_failure_layer(item: dict[str, Any]) -> str:
+    explicit = item.get("failure_layer")
+    if explicit:
+        return str(explicit)
+    reason = str(item.get("invalid_reason", "")).lower()
+    if item.get("runtime_preflight_ready") is False:
+        return "preflight_failure"
+    if item.get("engine_timed_out") is True or _nonzero_exit(item.get("engine_exit_code")):
+        return "engine_execution_failure"
+    if _raw_result_failed(item):
+        return "raw_result_failure"
+    if "structured" in reason or "trace" in reason:
+        return "structured_trace_failure"
+    if item.get("native_evaluator_executed") is False or "evaluator" in reason:
+        return "native_evaluator_failure"
+    if item.get("cleanup_succeeded") is False or "cleanup" in reason:
+        return "cleanup_failure"
+    if "provenance" in reason:
+        return "provenance_failure"
+    return "unknown"
+
+
+def _nonzero_exit(value: Any) -> bool:
+    if value is None:
+        return False
+    try:
+        return int(value) != 0
+    except (TypeError, ValueError):
+        return True

@@ -27,7 +27,11 @@ def test_engine_process_records_exit_logs_and_digests(monkeypatch, tmp_path: Pat
     )
 
     assert result.command[0].endswith(".venv/bin/python")
+    assert result.selected_python.endswith(".venv/bin/python")
+    assert result.config_path == str((tmp_path / "config.yaml").resolve())
+    assert result.working_directory == str(marble_root)
     assert result.exit_code == 3
+    assert result.raw_result_path == str(raw_result)
     assert result.stdout_digest
     assert result.stderr_digest
     assert result.stdout_log_path is not None
@@ -54,6 +58,7 @@ def test_engine_timeout_marks_not_executed(monkeypatch, tmp_path: Path) -> None:
 
     assert result.timed_out is True
     assert result.real_engine_executed is False
+    assert result.raw_result_path == str(tmp_path / "missing.jsonl")
 
 
 def test_old_raw_result_is_deleted_before_execution(monkeypatch, tmp_path: Path) -> None:
@@ -72,6 +77,27 @@ def test_old_raw_result_is_deleted_before_execution(monkeypatch, tmp_path: Path)
     )
 
     assert not raw_result.exists()
+    assert result.raw_result_path == str(raw_result)
+    assert result.raw_result_exists is False
+    assert result.real_engine_executed is False
+
+
+def test_exit_zero_missing_result_records_expected_path(monkeypatch, tmp_path: Path) -> None:
+    marble_root = tmp_path / "MARBLE"
+    raw_result = tmp_path / "missing.jsonl"
+    _write_fake_marble_python(marble_root=marble_root, body="exit 0\n")
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=tmp_path / "config.yaml",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=5,
+    )
+
+    assert result.exit_code == 0
+    assert result.raw_result_path == str(raw_result)
     assert result.raw_result_exists is False
     assert result.real_engine_executed is False
 
