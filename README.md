@@ -73,10 +73,16 @@ against the requested method and is never changed at runtime.
 Current ablation method IDs are:
 
 - `B0`: `NoMemoryRouter`.
-- `B1-Top1` / `B1-Top3`: relevance-only baselines.
-- `B1-Matched`: validation-calibrated exposure baseline.
+- `B1-Top1`: relevance-only top-1 baseline.
+- `B1-AllCandidates`: shares every proposer candidate.
+- `B1-Matched`: relevance ranking with validation-calibrated exposure sampling.
 - `SMTR`: full set-conditioned critic with the formal mean-effect/mean-risk gate.
-- `EffectOnly-SMTR`: optional risk-condition ablation.
+- `EffectOnly-SMTR`: removes only the negative-risk condition.
+- `Static-SMTR`: keeps the formal gate but freezes critic selected-set conditioning.
+- `FactualSuccess-SMTR`: uses an independent factual share-success checkpoint.
+
+Core ablations require `--enable-ablation-methods`. Removed method IDs fail
+fast in new runs; historical artifacts remain readable as artifacts only.
 
 ### Robust-SMTR Extension
 
@@ -122,6 +128,64 @@ python -m smtr.cli demo --seed 7 --db data/smtr_memory.sqlite --top-k 4
 
 `list-memories` prints routing metadata and execution alpha/beta counts. It does
 not print payload steps.
+
+## MARBLE Dataset Discovery
+
+The repository can inspect the real MARBLE MultiAgentBench task files without
+running a smoke fixture:
+
+```bash
+python -m smtr.cli inspect-marble-dataset \
+  --marble-root /home/ecs-user/MARBLE \
+  --output outputs/marble_dataset_manifest.json
+```
+
+The manifest freezes source paths, line numbers, task digests, source-file
+digests, scenario counts, agent counts, labels, and database root-cause metadata
+where available. This is a dataset-discovery step only: formal MARBLE evaluation
+still needs an evaluation runner that resets MARBLE environments between
+branches and writes the normal SMTR run, trace, summary, and integrity artifacts.
+
+The MARBLE pipeline also has a direct, non-Toy CLI:
+
+Install the optional MARBLE runtime dependencies with the versions declared by
+the MARBLE checkout:
+
+```bash
+pip install -r requirements-marble.txt
+# or
+pip install -e ".[marble]"
+```
+
+```bash
+python -m smtr.marble.cli runtime-preflight \
+  --marble-root /home/ecs-user/MARBLE \
+  --output artifacts/marble/manifests/runtime_preflight.json
+
+python -m smtr.marble.cli inspect-dataset \
+  --marble-root /home/ecs-user/MARBLE \
+  --output artifacts/marble/manifests/dataset.json
+
+python -m smtr.marble.cli create-splits \
+  --dataset-manifest artifacts/marble/manifests/dataset.json \
+  --output artifacts/marble/manifests/splits.json \
+  --seed 0
+
+python -m smtr.marble.cli inspect-capabilities \
+  --marble-root /home/ecs-user/MARBLE \
+  --output artifacts/marble/manifests/capabilities.json
+
+python -m smtr.marble.cli run-database-b0-smoke \
+  --marble-root /home/ecs-user/MARBLE \
+  --task-id 1 \
+  --generation-seed 0 \
+  --output artifacts/marble/outputs/database_b0_smoke
+```
+
+The top-level `python -m smtr.cli marble ...` command lazily dispatches to the
+same MARBLE CLI. The old ambiguous top-level `run-experiment` command is
+disabled so it cannot silently run Toy smoke code when the intent is real
+MARBLE evaluation.
 
 ## Paired Counterfactual Rollout
 

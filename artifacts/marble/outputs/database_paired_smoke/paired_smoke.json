@@ -1,0 +1,15 @@
+{
+  "branch_order": "share-then-withhold",
+  "candidate_memory_id": "database_1_helpful",
+  "initial_logical_digest_match": true,
+  "initial_state_match": true,
+  "invalid_reason": "real_marble_engine_not_executed",
+  "memory_intervention_verified": true,
+  "paired_label": null,
+  "paired_record_valid": false,
+  "share_native_evaluator_executed": false,
+  "share_real_engine_executed": false,
+  "task_id": "1",
+  "withhold_native_evaluator_executed": false,
+  "withhold_real_engine_executed": false
+}

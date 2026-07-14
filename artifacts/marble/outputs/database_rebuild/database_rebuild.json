@@ -1,0 +1,13 @@
+{
+  "fingerprint_definition": {
+    "config": "database name, task environment config, tool config, init SQL digest",
+    "content": "normalized sorted INSERT/UPDATE/DELETE/COPY statements from init_sql",
+    "schema": "normalized sorted CREATE/ALTER/INDEX statements from init_sql"
+  },
+  "initial_digest_run_1": "e239812d402db8ead2061608dbe8070be766310584b92e20a706d2dd21fb8286",
+  "initial_digest_run_2": "e239812d402db8ead2061608dbe8070be766310584b92e20a706d2dd21fb8286",
+  "initial_digests_match": true,
+  "marker_leakage": false,
+  "marker_written": true,
+  "task_id": "1"
+}

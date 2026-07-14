@@ -1,0 +1,3 @@
+# Mirrors /home/ecs-user/MARBLE/pyproject.toml database-runtime constraints.
+litellm>=1.52.1,<2.0.0
+psycopg2-binary>=2.9.10,<3.0.0

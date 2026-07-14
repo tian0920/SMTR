@@ -1,0 +1,28 @@
+{
+  "b0_memory_absent": true,
+  "environment_valid": false,
+  "final_state_digest": "c8fc6e744d11802c199086671af71dc47fa149ab63e57a1343c427f4b455ab80",
+  "initial_state_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
+  "native_evaluator_executed": false,
+  "native_evaluator_name": null,
+  "native_evaluator_result_digest": null,
+  "outcome": {
+    "environment_valid": false,
+    "evaluator_name": "marble_database_evaluate_task_db",
+    "failure_reason": "real_engine_not_executed",
+    "native_evaluator_executed": false,
+    "native_evaluator_name": null,
+    "native_evaluator_result_digest": null,
+    "raw_result_digest": "a232fca627c30239c4607bdaf35410d76a4cec4955aca081878a652c30c0c24c",
+    "score": null,
+    "success": false
+  },
+  "preflight_blocking_failures": [
+    "required_api_key_presence",
+    "configured_model_name"
+  ],
+  "raw_result_digest": "a232fca627c30239c4607bdaf35410d76a4cec4955aca081878a652c30c0c24c",
+  "real_engine_executed": false,
+  "runtime_preflight_ready": false,
+  "task_id": "1"
+}
