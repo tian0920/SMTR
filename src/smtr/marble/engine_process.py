@@ -11,6 +11,7 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
@@ -168,8 +169,6 @@ def _engine_environment(marble_root: Path, *, shim_dir: Path | None = None) -> d
     if pythonpath:
         path_entries.append(pythonpath)
     env["PYTHONPATH"] = ":".join(path_entries)
-    if env.get("DASHSCOPE_API_KEY") and not env.get("OPENAI_API_KEY"):
-        env["OPENAI_API_KEY"] = env["DASHSCOPE_API_KEY"]
     base_url = (
         env.get("MARBLE_LLM_BASE_URL")
         or env.get("OPENAI_BASE_URL")
@@ -178,6 +177,10 @@ def _engine_environment(marble_root: Path, *, shim_dir: Path | None = None) -> d
     )
     if not base_url and env.get("DASHSCOPE_API_KEY"):
         base_url = DEFAULT_DASHSCOPE_BASE_URL
+    if env.get("DASHSCOPE_API_KEY") and (
+        not env.get("OPENAI_API_KEY") or _is_dashscope_compatible_base_url(base_url)
+    ):
+        env["OPENAI_API_KEY"] = env["DASHSCOPE_API_KEY"]
     if base_url:
         env["OPENAI_BASE_URL"] = base_url
         env["OPENAI_API_BASE"] = base_url
@@ -185,6 +188,13 @@ def _engine_environment(marble_root: Path, *, shim_dir: Path | None = None) -> d
     if env.get("DASHSCOPE_API_KEY") and "SMTR_LLM_ENABLE_THINKING" not in env:
         env["SMTR_LLM_ENABLE_THINKING"] = "true"
     return env
+
+
+def _is_dashscope_compatible_base_url(base_url: str | None) -> bool:
+    if not base_url:
+        return False
+    host = urlparse(base_url).hostname or ""
+    return host.endswith(".aliyuncs.com") or host == "dashscope.aliyuncs.com"
 
 
 def _write_litellm_runtime_shim(shim_dir: Path) -> None:

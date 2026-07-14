@@ -211,6 +211,22 @@ def test_dashscope_key_is_mapped_to_openai_compatible_env(
     assert env["OPENAI_API_BASE"] == DEFAULT_DASHSCOPE_BASE_URL
 
 
+def test_dashscope_endpoint_prefers_dashscope_key_when_openai_key_also_exists(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-secret-value")
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-dashscope-secret-value")
+
+    env = _engine_environment(tmp_path / "MARBLE")
+
+    assert env["OPENAI_API_KEY"] == "sk-dashscope-secret-value"
+    assert env["OPENAI_BASE_URL"] == DEFAULT_DASHSCOPE_BASE_URL
+    assert env["OPENAI_API_BASE"] == DEFAULT_DASHSCOPE_BASE_URL
+
+
 def test_runtime_shim_is_added_for_litellm_openai_compatible_calls(
     monkeypatch,
     tmp_path: Path,
