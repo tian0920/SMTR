@@ -157,6 +157,22 @@ pip install -r requirements-marble.txt
 pip install -e ".[marble]"
 ```
 
+Real MARBLE database execution must use the MARBLE runtime Python, not the SMTR
+Python 3.13 interpreter. The local MARBLE checkout declares `python >=3.9,<3.13`
+and this integration therefore selects `/home/ecs-user/MARBLE/.venv/bin/python`
+when it exists.
+
+Before running live engine smoke tests, configure a real provider key and model
+name in the shell. Do not commit keys or `.env` files:
+
+```bash
+export OPENAI_API_KEY=...
+export MARBLE_LLM_MODEL=...
+```
+
+`OPENAI_MODEL` is also accepted for the model name. The runtime preflight checks
+only whether these values are present; it never writes key contents to artifacts.
+
 ```bash
 python -m smtr.marble.cli runtime-preflight \
   --marble-root /home/ecs-user/MARBLE \
@@ -180,7 +196,36 @@ python -m smtr.marble.cli run-database-b0-smoke \
   --task-id 1 \
   --generation-seed 0 \
   --output artifacts/marble/outputs/database_b0_smoke
+
+python -m smtr.marble.cli verify-database-rebuild \
+  --marble-root /home/ecs-user/MARBLE \
+  --task-id 1 \
+  --output artifacts/marble/outputs/database_rebuild
+
+python -m smtr.marble.cli run-database-paired-smoke \
+  --marble-root /home/ecs-user/MARBLE \
+  --task-id 1 \
+  --memory-id database_1_helpful \
+  --generation-seed 0 \
+  --branch-order share-then-withhold \
+  --output artifacts/marble/outputs/database_paired_smoke
 ```
+
+`READY_FOR_MARBLE_ISOLATION_HARNESS` only means the rebuild/fingerprint/marker
+leakage and branch-isolation harness checks pass. `READY_FOR_MARBLE_REAL_ENGINE`
+requires a fresh, parseable B0 raw result from the real MARBLE engine, native
+database evaluator execution, cleanup success, and a valid environment.
+`READY_FOR_MARBLE_PAIRED_DATA` additionally requires a real share/withhold pair
+with matching initial fingerprints, verified memory intervention, evaluator
+execution on both branches, cleanup success on both branches, and a non-empty
+paired label. `READY_FOR_FORMAL_MARBLE_EXPERIMENT` remains false for smoke
+memories.
+
+Engine stdout/stderr and cleanup logs are written as redacted artifacts for
+debugging. They should still be treated as operational logs and should not be
+committed if they contain sensitive business data. The `database_1_helpful`
+memory is a smoke payload for validating the execution chain only; do not train
+a critic or report research results from smoke records.
 
 The top-level `python -m smtr.cli marble ...` command lazily dispatches to the
 same MARBLE CLI. The old ambiguous top-level `run-experiment` command is

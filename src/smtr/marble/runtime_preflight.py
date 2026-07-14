@@ -125,6 +125,24 @@ def write_runtime_preflight(
         json.dumps(
             {
                 "ready": result.ready,
+                "blocking_failures": [
+                    check.name for check in result.checks if check.blocking and not check.passed
+                ],
+                "selected_python": str(_marble_python(marble_root)),
+                "selected_python_version": _python_version_detail(
+                    _marble_python(marble_root)
+                ),
+                "marble_imports": {
+                    check.name: check.passed
+                    for check in result.checks
+                    if check.name.endswith("_import")
+                },
+                "docker_available": _check_passed(result, "docker_executable"),
+                "compose_available": _check_passed(result, "docker_compose_available"),
+                "llm_key_configured": _check_passed(
+                    result, "required_api_key_presence"
+                ),
+                "llm_model_configured": _check_passed(result, "configured_model_name"),
                 "checks": [asdict(check) for check in result.checks],
             },
             indent=2,
@@ -134,6 +152,10 @@ def write_runtime_preflight(
         encoding="utf-8",
     )
     return result
+
+
+def _check_passed(result: MarbleRuntimePreflightResult, name: str) -> bool:
+    return any(check.name == name and check.passed for check in result.checks)
 
 
 def _path_check(
@@ -203,6 +225,22 @@ def _marble_python(marble_root: Path) -> Path:
 
 
 def _python_version_check(python: Path) -> RuntimeCheck:
+    detail = _python_version_detail(python)
+    if detail.startswith("Could not execute"):
+        return RuntimeCheck("marble_python_version", False, detail, True)
+    parts = detail.split()
+    version = parts[1] if len(parts) > 1 else "0"
+    major_minor = tuple(int(item) for item in version.split(".")[:2])
+    passed = (3, 9) <= major_minor < (3, 13)
+    return RuntimeCheck(
+        "marble_python_version",
+        passed,
+        f"{detail} at {python}. MARBLE requires Python >=3.9,<3.13.",
+        True,
+    )
+
+
+def _python_version_detail(python: Path) -> str:
     completed = subprocess.run(
         (str(python), "--version"),
         check=False,
@@ -212,22 +250,8 @@ def _python_version_check(python: Path) -> RuntimeCheck:
     )
     detail = (completed.stdout or completed.stderr).strip()
     if completed.returncode != 0:
-        return RuntimeCheck(
-            "marble_python_version",
-            False,
-            f"Could not execute {python}. Use MARBLE .venv or Python >=3.9,<3.13.",
-            True,
-        )
-    parts = detail.split()
-    version = parts[-1] if parts else "0"
-    major_minor = tuple(int(item) for item in version.split(".")[:2])
-    passed = (3, 9) <= major_minor < (3, 13)
-    return RuntimeCheck(
-        "marble_python_version",
-        passed,
-        f"{detail} at {python}. MARBLE requires Python >=3.9,<3.13.",
-        True,
-    )
+        return f"Could not execute {python}. Use MARBLE .venv or Python >=3.9,<3.13."
+    return detail
 
 
 def _command_check(name: str, command: tuple[str, ...], fix: str) -> RuntimeCheck:

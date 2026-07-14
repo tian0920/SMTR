@@ -1,44 +1,222 @@
-import sys
+import os
+import stat
+import time
 from pathlib import Path
 
-from smtr.marble.engine_process import run_marble_engine_process
+from smtr.marble.engine_process import _text_digest, run_marble_engine_process
 
 
-def test_engine_process_records_exit_and_digests(tmp_path: Path) -> None:
+def test_engine_process_records_exit_logs_and_digests(monkeypatch, tmp_path: Path) -> None:
     marble_root = tmp_path / "MARBLE"
-    (marble_root / "marble").mkdir(parents=True)
-    main = marble_root / "marble/main.py"
-    main.write_text("import sys\nprint('hello')\nsys.exit(3)\n", encoding="utf-8")
+    raw_result = tmp_path / "result.jsonl"
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body="echo 'hello token=secret Bearer abc123 sk-abc123456789'\nexit 3\n",
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
     (marble_root / "pyproject.toml").write_text('version = "0.0.test"\n', encoding="utf-8")
 
     result = run_marble_engine_process(
         marble_root=marble_root,
         config_path=tmp_path / "config.yaml",
-        raw_result_path=tmp_path / "missing.jsonl",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
         timeout_seconds=5,
     )
 
-    assert result.command[0] == sys.executable
+    assert result.command[0].endswith(".venv/bin/python")
     assert result.exit_code == 3
     assert result.stdout_digest
     assert result.stderr_digest
+    assert result.stdout_log_path is not None
+    stdout = Path(result.stdout_log_path).read_text(encoding="utf-8")
+    assert "secret" not in stdout
+    assert "Bearer abc123" not in stdout
+    assert "sk-abc123456789" not in stdout
+    assert result.stdout_digest == _text_digest(stdout)
     assert result.real_engine_executed is False
 
 
-def test_engine_timeout_marks_not_executed(tmp_path: Path) -> None:
+def test_engine_timeout_marks_not_executed(monkeypatch, tmp_path: Path) -> None:
     marble_root = tmp_path / "MARBLE"
-    (marble_root / "marble").mkdir(parents=True)
-    (marble_root / "marble/main.py").write_text(
-        "import time\ntime.sleep(5)\n",
-        encoding="utf-8",
-    )
+    _write_fake_marble_python(marble_root=marble_root, body="sleep 5\n")
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
 
     result = run_marble_engine_process(
         marble_root=marble_root,
         config_path=tmp_path / "config.yaml",
         raw_result_path=tmp_path / "missing.jsonl",
+        output_dir=tmp_path / "logs",
         timeout_seconds=1,
     )
 
     assert result.timed_out is True
     assert result.real_engine_executed is False
+
+
+def test_old_raw_result_is_deleted_before_execution(monkeypatch, tmp_path: Path) -> None:
+    marble_root = tmp_path / "MARBLE"
+    raw_result = tmp_path / "result.jsonl"
+    raw_result.write_text('{"old": true}\n', encoding="utf-8")
+    _write_fake_marble_python(marble_root=marble_root, body="exit 0\n")
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=tmp_path / "config.yaml",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=5,
+    )
+
+    assert not raw_result.exists()
+    assert result.raw_result_exists is False
+    assert result.real_engine_executed is False
+
+
+def test_exit_zero_empty_result_is_not_real_execution(monkeypatch, tmp_path: Path) -> None:
+    marble_root = tmp_path / "MARBLE"
+    raw_result = tmp_path / "result.jsonl"
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body=f": > {raw_result}\nexit 0\n",
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=tmp_path / "config.yaml",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=5,
+    )
+
+    assert result.exit_code == 0
+    assert result.raw_result_exists is True
+    assert result.raw_result_nonempty is False
+    assert result.real_engine_executed is False
+
+
+def test_exit_zero_unparseable_result_is_not_real_execution(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    marble_root = tmp_path / "MARBLE"
+    raw_result = tmp_path / "result.jsonl"
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body=f"echo 'not json' > {raw_result}\nexit 0\n",
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=tmp_path / "config.yaml",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=5,
+    )
+
+    assert result.raw_result_parseable is False
+    assert result.real_engine_executed is False
+
+
+def test_stale_result_is_not_real_execution(monkeypatch, tmp_path: Path) -> None:
+    marble_root = tmp_path / "MARBLE"
+    raw_result = tmp_path / "result.jsonl"
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body=(
+            f"echo '{{\"ok\": true}}' > {raw_result}\n"
+            f"touch -t 200001010000 {raw_result}\n"
+            "exit 0\n"
+        ),
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=tmp_path / "config.yaml",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=5,
+    )
+
+    assert result.raw_result_parseable is True
+    assert result.raw_result_fresh is False
+    assert result.real_engine_executed is False
+
+
+def test_cleanup_failure_is_recorded(monkeypatch, tmp_path: Path) -> None:
+    marble_root = tmp_path / "MARBLE"
+    raw_result = tmp_path / "result.jsonl"
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body=f"echo '{{\"ok\": true}}' > {raw_result}\nexit 0\n",
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=9)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=tmp_path / "config.yaml",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=5,
+    )
+
+    assert result.real_engine_executed is True
+    assert result.cleanup_succeeded is False
+    assert result.cleanup_exit_code == 9
+
+
+def test_normal_mock_subprocess_can_be_valid(monkeypatch, tmp_path: Path) -> None:
+    marble_root = tmp_path / "MARBLE"
+    raw_result = tmp_path / "result.jsonl"
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body=f"echo '{{\"ok\": true}}' > {raw_result}\nexit 0\n",
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=tmp_path / "config.yaml",
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=1,
+    )
+
+    assert result.real_engine_executed is True
+    assert result.raw_result_exists is True
+    assert result.raw_result_nonempty is True
+    assert result.raw_result_fresh is True
+    assert result.raw_result_parseable is True
+    assert result.cleanup_succeeded is True
+
+
+def _write_fake_marble_python(*, marble_root: Path, body: str) -> None:
+    (marble_root / ".venv/bin").mkdir(parents=True)
+    (marble_root / "marble").mkdir(parents=True)
+    python = marble_root / ".venv/bin/python"
+    python.write_text("#!/usr/bin/env bash\n" + body, encoding="utf-8")
+    python.chmod(python.stat().st_mode | stat.S_IXUSR)
+    (marble_root / "marble/main.py").write_text("# fake\n", encoding="utf-8")
+    compose = marble_root / "marble/environments/db_env_docker/docker-compose.yml"
+    compose.parent.mkdir(parents=True)
+    compose.write_text("services: {}\n", encoding="utf-8")
+
+
+def _write_fake_sudo(monkeypatch, tmp_path: Path, *, exit_code: int) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    sudo = bin_dir / "sudo"
+    sudo.write_text(
+        "#!/usr/bin/env bash\n"
+        "echo cleanup stdout\n"
+        "echo cleanup stderr >&2\n"
+        f"exit {exit_code}\n",
+        encoding="utf-8",
+    )
+    sudo.chmod(sudo.stat().st_mode | stat.S_IXUSR)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    time.sleep(0.01)

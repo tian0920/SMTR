@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,11 @@ def run_database_b0_smoke(
 ) -> dict[str, Any]:
     assert_marble_artifact_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    run_id = _run_id(
+        task_id=str(task_id),
+        branch="b0",
+        generation_seed=generation_seed,
+    )
     preflight = run_database_runtime_preflight(marble_root=marble_root)
     task = _load_database_task_by_id(marble_root, task_id)
     bundle = bundle_from_manifest_task(
@@ -64,6 +71,8 @@ def run_database_b0_smoke(
             marble_root=marble_root,
             config_path=config_path,
             raw_result_path=raw_result_path,
+            output_dir=output_dir,
+            run_identity={},
         )
         write_engine_process_result(output_dir / "engine_process.json", engine_result)
         raw_result = _load_last_jsonl(raw_result_path) or {}
@@ -78,16 +87,43 @@ def run_database_b0_smoke(
             raw_result=raw_result,
         )
     summary = {
+        "run_id": run_id,
         "task_id": str(task_id),
         "runtime_preflight_ready": preflight.ready,
         "preflight_blocking_failures": [
             check.name for check in preflight.checks if check.blocking and not check.passed
         ],
         "real_engine_executed": bool(engine_result and engine_result.real_engine_executed),
+        "cleanup_succeeded": bool(engine_result and engine_result.cleanup_succeeded),
+        "cleanup_exit_code": engine_result.cleanup_exit_code if engine_result else None,
+        "cleanup_failure_reason": (
+            engine_result.cleanup_failure_reason if engine_result else "engine_not_started"
+        ),
+        "raw_result_exists": bool(engine_result and engine_result.raw_result_exists),
+        "raw_result_nonempty": bool(engine_result and engine_result.raw_result_nonempty),
+        "raw_result_fresh": bool(engine_result and engine_result.raw_result_fresh),
+        "raw_result_parseable": bool(engine_result and engine_result.raw_result_parseable),
+        "raw_result_identity_verified": (
+            engine_result.raw_result_identity_verified if engine_result else False
+        ),
+        "raw_result_identity_failure_reason": (
+            engine_result.raw_result_identity_failure_reason if engine_result else None
+        ),
+        "stdout_log_path": engine_result.stdout_log_path if engine_result else None,
+        "stderr_log_path": engine_result.stderr_log_path if engine_result else None,
+        "cleanup_stdout_log_path": (
+            engine_result.cleanup_stdout_log_path if engine_result else None
+        ),
+        "cleanup_stderr_log_path": (
+            engine_result.cleanup_stderr_log_path if engine_result else None
+        ),
         "native_evaluator_executed": outcome.native_evaluator_executed,
         "native_evaluator_name": outcome.native_evaluator_name,
         "native_evaluator_result_digest": outcome.native_evaluator_result_digest,
-        "environment_valid": outcome.environment_valid,
+        "environment_valid": (
+            outcome.environment_valid
+            and bool(engine_result and engine_result.cleanup_succeeded)
+        ),
         "initial_state_digest": env.initial_state_digest(),
         "raw_result_digest": canonical_digest(raw_result) if raw_result else None,
         "final_state_digest": env.final_state_digest(),
@@ -111,6 +147,7 @@ def verify_database_rebuild(
     assert_marble_artifact_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     task = _load_database_task_by_id(marble_root, task_id)
+    run_id = _run_id(task_id=str(task_id), branch="rebuild", generation_seed=0)
     bundle = bundle_from_manifest_task(
         {"raw_task": task, "task_id": str(task_id), "scenario": "database"}
     )
@@ -119,17 +156,22 @@ def verify_database_rebuild(
     marker = output_dir / "run_1" / "marker.txt"
     marker.write_text("unique marker", encoding="utf-8")
     marker_present = marker.exists()
-    rebuilder.destroy()
+    cleanup_1 = rebuilder.destroy()
     fp2 = rebuilder.materialize(initial_state_bundle=bundle, branch_workspace=output_dir / "run_2")
     marker_leakage = (output_dir / "run_2" / "marker.txt").exists()
-    rebuilder.destroy()
+    cleanup_2 = rebuilder.destroy()
+    cleanup_succeeded = cleanup_1.succeeded and cleanup_2.succeeded
     summary = {
+        "run_id": run_id,
         "task_id": str(task_id),
         "initial_digest_run_1": fp1.combined_digest,
         "initial_digest_run_2": fp2.combined_digest,
         "initial_digests_match": fp1.combined_digest == fp2.combined_digest,
         "marker_written": marker_present,
         "marker_leakage": marker_leakage,
+        "cleanup_succeeded": cleanup_succeeded,
+        "cleanup_run_1": cleanup_1.to_json(),
+        "cleanup_run_2": cleanup_2.to_json(),
         "fingerprint_definition": {
             "schema": "normalized sorted CREATE/ALTER/INDEX statements from init_sql",
             "content": "normalized sorted INSERT/UPDATE/DELETE/COPY statements from init_sql",
@@ -153,6 +195,12 @@ def run_database_paired_smoke(
     output_dir: Path,
 ) -> dict[str, Any]:
     assert_marble_artifact_path(output_dir)
+    run_id = _run_id(
+        task_id=str(task_id),
+        memory_id=memory_id,
+        branch=branch_order,
+        generation_seed=generation_seed,
+    )
     task = _load_database_task_by_id(marble_root, task_id)
     memory = _memory_for_id(task_id=task_id, memory_id=memory_id)
     bundle = bundle_from_manifest_task(
@@ -169,6 +217,7 @@ def run_database_paired_smoke(
         branch_execution_order=branch_order.replace("-", "_"),
     )
     summary = {
+        "run_id": run_id,
         "task_id": str(task_id),
         "candidate_memory_id": memory_id,
         "branch_order": branch_order,
@@ -176,6 +225,10 @@ def run_database_paired_smoke(
         "withhold_real_engine_executed": result.withhold.real_engine_executed,
         "share_native_evaluator_executed": result.share.outcome.native_evaluator_executed,
         "withhold_native_evaluator_executed": result.withhold.outcome.native_evaluator_executed,
+        "share_cleanup_succeeded": result.share.cleanup_succeeded,
+        "withhold_cleanup_succeeded": result.withhold.cleanup_succeeded,
+        "share_cleanup_failure_reason": result.share.cleanup_failure_reason,
+        "withhold_cleanup_failure_reason": result.withhold.cleanup_failure_reason,
         "initial_state_match": result.share.initial_digest == result.withhold.initial_digest,
         "initial_logical_digest_match": (
             result.share.initial_logical_fingerprint is not None
@@ -260,3 +313,22 @@ def _memory_for_id(*, task_id: str, memory_id: str) -> dict[str, str]:
         "payload_digest": canonical_digest(memory_id),
         "task_id": str(task_id),
     }
+
+
+def _run_id(
+    *,
+    task_id: str,
+    branch: str,
+    generation_seed: int,
+    memory_id: str | None = None,
+) -> str:
+    parts = [
+        f"task-{task_id}",
+        f"branch-{branch}",
+        f"seed-{generation_seed}",
+        f"ts-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}",
+        uuid.uuid4().hex[:8],
+    ]
+    if memory_id:
+        parts.insert(1, f"memory-{memory_id}")
+    return "_".join(parts)

@@ -11,7 +11,10 @@ from pydantic import BaseModel, ConfigDict
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.artifacts import assert_marble_artifact_path
 from smtr.marble.environment.database_fingerprint import DatabaseLogicalFingerprint
-from smtr.marble.environment.database_rebuild import SequentialDatabaseRebuilder
+from smtr.marble.environment.database_rebuild import (
+    DatabaseCleanupResult,
+    SequentialDatabaseRebuilder,
+)
 from smtr.marble.environment.isolation import InitialStateBundle
 from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.memory_injection import MarbleAgentInputAudit, MarbleMemoryInjector
@@ -35,6 +38,9 @@ class MarbleBranchAudit(BaseModel):
     tool_config_digest: str
     outcome: MarbleOutcome
     real_engine_executed: bool = False
+    cleanup_succeeded: bool = False
+    cleanup_exit_code: int | None = None
+    cleanup_failure_reason: str | None = None
 
 
 class PairedBranchResult(BaseModel):
@@ -136,6 +142,7 @@ class MarblePairedBranchRunner:
                         raw_result=run,
                     )
                     branch_engine_executed = False
+                cleanup_result = rebuilder.destroy(remove_workspace=False)
                 audits[branch] = self._audit(
                     branch_id=branch,
                     env=env,
@@ -146,6 +153,7 @@ class MarblePairedBranchRunner:
                     outcome=outcome,
                     initial_logical_fingerprint=fingerprint,
                     real_engine_executed=branch_engine_executed,
+                    cleanup_result=cleanup_result,
                 )
                 env.close()
                 rebuilder.destroy()
@@ -202,7 +210,13 @@ class MarblePairedBranchRunner:
         outcome: MarbleOutcome,
         initial_logical_fingerprint: DatabaseLogicalFingerprint | None = None,
         real_engine_executed: bool = False,
+        cleanup_result: DatabaseCleanupResult | None = None,
     ) -> MarbleBranchAudit:
+        cleanup = cleanup_result or DatabaseCleanupResult(
+            exit_code=None,
+            succeeded=False,
+            failure_reason="cleanup_not_executed",
+        )
         return MarbleBranchAudit(
             branch_id=branch_id,
             workspace=str(env.workspace),
@@ -221,6 +235,9 @@ class MarblePairedBranchRunner:
             tool_config_digest=bundle.tool_config_digest,
             outcome=outcome,
             real_engine_executed=real_engine_executed,
+            cleanup_succeeded=cleanup.succeeded,
+            cleanup_exit_code=cleanup.exit_code,
+            cleanup_failure_reason=cleanup.failure_reason,
         )
 
 
@@ -236,6 +253,8 @@ def _validate_pair(
         "withhold_real_engine_executed": withhold.real_engine_executed,
         "share_native_evaluator_executed": share.outcome.native_evaluator_executed,
         "withhold_native_evaluator_executed": withhold.outcome.native_evaluator_executed,
+        "share_cleanup_succeeded": share.cleanup_succeeded,
+        "withhold_cleanup_succeeded": withhold.cleanup_succeeded,
         "initial_logical_digest": (
             share.initial_logical_fingerprint is not None
             and withhold.initial_logical_fingerprint is not None
