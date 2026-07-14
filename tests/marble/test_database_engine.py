@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -41,3 +42,34 @@ def test_database_environment_fails_fast_without_surrogate_execution(tmp_path: P
         match="real_marble_database_engine_(not_executed|import_failed)",
     ):
         env.run(agent_input=env.build_agent_input(memory_payloads=()), generation_seed=0)
+
+
+def test_database_environment_config_uses_absolute_output_path(tmp_path: Path) -> None:
+    task = {
+        "task_id": "path-test",
+        "task": {},
+        "environment": {},
+        "agents": [],
+    }
+    bundle = bundle_from_manifest_task(
+        {"raw_task": task, "task_id": task["task_id"], "scenario": "database"}
+    )
+    env = MarbleDatabaseEnvironment(
+        task=task,
+        workspace=tmp_path / "workspace with spaces",
+        initial_state_bundle=bundle,
+        agent_config={"target_receiver_agent_id": "agent1"},
+        marble_root=MARBLE_ROOT,
+    )
+
+    env._write_config(generation_seed=0)
+
+    config = json.loads((env.workspace / "marble_config.json").read_text(encoding="utf-8"))
+    output_path = Path(config["output"]["file_path"])
+    assert output_path.is_absolute()
+    assert output_path == (env.workspace / "marble_output.jsonl").resolve()
+    text = json.dumps(config)
+    assert "DASHSCOPE_API_KEY" not in text
+    assert "OPENAI_API_KEY" not in text
+    assert "Authorization" not in text
+    assert "Bearer" not in text

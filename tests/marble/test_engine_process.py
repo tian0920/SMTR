@@ -1,4 +1,5 @@
 import os
+import shlex
 import stat
 import time
 from pathlib import Path
@@ -193,6 +194,75 @@ def test_normal_mock_subprocess_can_be_valid(monkeypatch, tmp_path: Path) -> Non
     assert result.raw_result_fresh is True
     assert result.raw_result_parseable is True
     assert result.cleanup_succeeded is True
+
+
+def test_relative_config_path_is_absolutized_for_marble_cwd(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    smtr_root = tmp_path / "SMTR workspace"
+    smtr_root.mkdir()
+    monkeypatch.chdir(smtr_root)
+    marble_root = tmp_path / "MARBLE cwd"
+    config_path = Path("relative workspace/config.yaml")
+    raw_result = Path("relative workspace/result.jsonl")
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text("{}\n", encoding="utf-8")
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body=(
+            "test \"$2\" = '--config_path' || exit 6\n"
+            "case \"$3\" in /*) ;; *) exit 7 ;; esac\n"
+            "test -f \"$3\" || exit 8\n"
+            f"echo '{{\"ok\": true}}' > {shlex.quote(str(raw_result.resolve()))}\n"
+            "exit 0\n"
+        ),
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=config_path,
+        raw_result_path=raw_result,
+        output_dir=Path("relative logs"),
+        timeout_seconds=5,
+    )
+
+    assert result.exit_code == 0
+    assert result.command[3] == str(config_path.resolve())
+    assert result.real_engine_executed is True
+
+
+def test_absolute_config_path_keeps_same_target(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    marble_root = tmp_path / "MARBLE"
+    config_path = (tmp_path / "workspace/config.yaml").resolve()
+    raw_result = (tmp_path / "workspace/result.jsonl").resolve()
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text("{}\n", encoding="utf-8")
+    _write_fake_marble_python(
+        marble_root=marble_root,
+        body=(
+            f"test \"$3\" = '{config_path}' || exit 9\n"
+            f"echo '{{\"ok\": true}}' > {raw_result}\n"
+            "exit 0\n"
+        ),
+    )
+    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
+
+    result = run_marble_engine_process(
+        marble_root=marble_root,
+        config_path=config_path,
+        raw_result_path=raw_result,
+        output_dir=tmp_path / "logs",
+        timeout_seconds=5,
+    )
+
+    assert result.command[3] == str(config_path)
+    assert result.real_engine_executed is True
 
 
 def test_dashscope_key_is_mapped_to_openai_compatible_env(

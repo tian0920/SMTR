@@ -99,7 +99,9 @@ class MarbleDatabaseEnvironment:
         config = dict(self.task)
         config["environment"] = dict(config.get("environment", {}))
         config["environment"]["type"] = "DB"
-        config["output"] = {"file_path": str(self.workspace / "marble_output.jsonl")}
+        config["output"] = {
+            "file_path": str((self.workspace / "marble_output.jsonl").resolve())
+        }
         config["smtr_generation_seed"] = generation_seed
         (self.workspace / "marble_config.json").write_text(
             json.dumps(config, indent=2, sort_keys=True) + "\n",

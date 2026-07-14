@@ -267,7 +267,7 @@ def _write_marble_config(
     config["environment"]["name"] = "DB Environment"
     config["environment"]["max_iterations"] = int(config["environment"].get("max_iterations") or 1)
     config["memory"] = {"type": "BaseMemory"}
-    config["output"] = {"file_path": str(raw_result_path)}
+    config["output"] = {"file_path": str(raw_result_path.resolve())}
     config["smtr_generation_seed"] = generation_seed
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n", encoding="utf-8")

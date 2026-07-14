@@ -70,7 +70,7 @@ def run_marble_engine_process(
         str(python),
         str(marble_root / "marble/main.py"),
         "--config_path",
-        str(config_path),
+        str(config_path.resolve()),
     )
     started_at_timestamp = time.time()
     started = _now()
