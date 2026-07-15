@@ -405,7 +405,7 @@ class TestRouterFactory:
             build_router("relevance-topk", max_shares_per_invocation=-1)
 
     def test_factory_passes_seed_to_learned(self):
-        """Factory explicitly passes traversal seed to ProductionSequentialRouter."""
+        """Factory passes seed but does not apply share budgets to learned SMTR."""
         from pathlib import Path
 
         checkpoint_path = Path(__file__).parent.parent / "checkpoints" / "critic_pi0.joblib"
@@ -420,7 +420,8 @@ class TestRouterFactory:
         )
         assert isinstance(router, ProductionSequentialRouter)
         assert router.seed == 123
-        assert router.config.max_shares_per_invocation == 2
+        assert not hasattr(router.config, "max_shares_per_invocation")
+        assert router.traversal_policy.policy_name == "random_order"
 
 
 # --- Test 7: Regression — default behavior unchanged ---

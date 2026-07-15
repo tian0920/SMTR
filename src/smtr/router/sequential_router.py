@@ -7,27 +7,35 @@ estimates of tau(m|o,S) to decide whether sharing a memory is beneficial.
 """
 
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from smtr.counterfactual.candidate_traversal import randomized_candidate_order
 from smtr.counterfactual.schemas import RoutingFeatureSnapshot
+from smtr.memory.execution_evidence import selected_set_signature
 from smtr.memory.schemas import ContextFingerprint, MemoryRoutingCard
 from smtr.router.baseline_router import RoutingResult
 from smtr.router.candidate_proposer import CandidateProposal
-from smtr.router.gate_protocol import RoutingGate, TransferPointEstimate
+from smtr.router.conditioning import (
+    DynamicSelectedSetConditioning,
+    SelectedSetConditioningPolicy,
+)
+from smtr.router.gate_protocol import GateDecision, RoutingGate, TransferPointEstimate
 from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
 from smtr.router.traces import CandidateTrace, RouterDecision
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import TransferPredictionInput
+from smtr.router.traversal import (
+    RandomTraversal,
+    TraversalPolicy,
+    traversal_permutation_indices,
+)
 
 
 class SequentialRouterConfig(BaseModel):
     """Operational configuration for the sequential router."""
 
     model_config = ConfigDict(frozen=True)
-
-    max_shares_per_invocation: int | None = None
-    """Maximum number of memories to share per router invocation."""
 
 
 class SequentialRouterDecision(RouterDecision):
@@ -52,6 +60,8 @@ class SequentialRouterState(BaseModel):
 
     selected_memory_ids: list[str] = Field(default_factory=list)
     selected_cards: list[RoutingFeatureSnapshot] = Field(default_factory=list)
+    initial_selected_memory_ids: list[str] = Field(default_factory=list)
+    initial_selected_cards: list[RoutingFeatureSnapshot] = Field(default_factory=list)
     decisions: list[RouterDecision] = Field(default_factory=list)
     share_count: int = 0
 
@@ -75,8 +85,10 @@ class ProductionSequentialRouter:
     def __init__(
         self,
         *,
-        critic: FourOutcomeTransferCritic,
+        critic: FourOutcomeTransferCritic | Any,
         gate: RoutingGate | None = None,
+        conditioning_policy: SelectedSetConditioningPolicy | None = None,
+        traversal_policy: TraversalPolicy | None = None,
         config: SequentialRouterConfig | None = None,
         seed: int = 0,
     ) -> None:
@@ -87,6 +99,8 @@ class ProductionSequentialRouter:
             )
         self.critic = critic
         self.gate = gate or SMTRGate(SMTRGateConfig())
+        self.conditioning_policy = conditioning_policy or DynamicSelectedSetConditioning()
+        self.traversal_policy = traversal_policy or RandomTraversal()
         self.config = config or SequentialRouterConfig()
         self.seed = seed
         self._rng = None
@@ -126,9 +140,12 @@ class ProductionSequentialRouter:
             if proposal.request.seed is not None
             else self.seed
         )
-        traversal_order = randomized_candidate_order(
-            proposal,
-            traversal_seed=traversal_seed,
+        proposal_order = [candidate.memory_id for candidate in proposal.ranked_candidates]
+        traversal_order = list(
+            self.traversal_policy.order(proposal_order, seed=traversal_seed)
+        )
+        permutation_indices = list(
+            traversal_permutation_indices(proposal_order, traversal_order)
         )
         candidate_by_id = {
             candidate.memory_id: candidate for candidate in proposal.ranked_candidates
@@ -140,28 +157,6 @@ class ProductionSequentialRouter:
 
         for position, memory_id in enumerate(traversal_order):
             candidate = candidate_by_id[memory_id]
-            if (
-                self.config.max_shares_per_invocation is not None
-                and state.share_count >= self.config.max_shares_per_invocation
-            ):
-                # Budget exhausted - withhold remaining
-                decision = self._make_decision(
-                    candidate=candidate,
-                    position=position,
-                    original_position=original_position_by_id[candidate.memory_id],
-                    action="withhold",
-                    reason="share_budget_exceeded",
-                    decision_mode="budget_exhausted",
-                    effect_condition_passed=None,
-                    risk_condition_passed=None,
-                    estimate=None,
-                    traversal_seed=traversal_seed,
-                    traversal_order=traversal_order,
-                    accepted=False,
-                )
-                state.decisions.append(decision)
-                continue
-
             card_snapshot = self._get_card_snapshot(candidate.memory_id, cards_by_id)
             if card_snapshot is None:
                 decision = self._make_decision(
@@ -173,29 +168,44 @@ class ProductionSequentialRouter:
                     decision_mode="ordinary_withhold",
                     effect_condition_passed=None,
                     risk_condition_passed=None,
+                    effect_condition_status=None,
+                    risk_condition_status=None,
+                    selected_before_actual=state.selected_memory_ids,
+                    selected_before_critic=state.selected_memory_ids,
                     estimate=None,
                     traversal_seed=traversal_seed,
+                    traversal_policy_name=self.traversal_policy.policy_name,
+                    proposal_order=proposal_order,
                     traversal_order=traversal_order,
+                    permutation_indices=permutation_indices,
                     accepted=False,
                 )
                 state.decisions.append(decision)
                 continue
 
-            # Get critic point estimate for this candidate.
+            actual_selected_set = tuple(state.selected_memory_ids)
+            critic_selected_set = self.conditioning_policy.critic_selected_set(
+                initial_selected_set=tuple(state.initial_selected_memory_ids),
+                current_selected_set=actual_selected_set,
+            )
+            critic_selected_cards = _cards_for_selected_ids(
+                critic_selected_set,
+                current_cards=state.selected_cards,
+                initial_cards=state.initial_selected_cards,
+            )
+
             estimate = self._estimate_transfer_effect(
                 candidate=candidate,
                 receiver_agent_id=receiver_agent_id,
                 proposal=proposal,
                 card_snapshot=card_snapshot,
-                selected_cards=state.selected_cards,
+                selected_cards=critic_selected_cards,
                 cards_by_id=cards_by_id,
                 context=context,
                 decision_index=position,
             )
 
-            action, reason, mode, effect_ok, risk_ok = self._apply_decision_rules(
-                estimate
-            )
+            action, reason, mode, gate_decision = self._apply_decision_rules(estimate)
             accepted = action == "share"
 
             decision = self._make_decision(
@@ -205,11 +215,18 @@ class ProductionSequentialRouter:
                 action=action,
                 reason=reason,
                 decision_mode=mode,
-                effect_condition_passed=effect_ok,
-                risk_condition_passed=risk_ok,
+                effect_condition_passed=gate_decision.effect_condition_passed,
+                risk_condition_passed=gate_decision.risk_condition_passed,
+                effect_condition_status=gate_decision.effect_condition_status,
+                risk_condition_status=gate_decision.risk_condition_status,
+                selected_before_actual=actual_selected_set,
+                selected_before_critic=critic_selected_set,
                 estimate=estimate,
                 traversal_seed=traversal_seed,
+                traversal_policy_name=self.traversal_policy.policy_name,
+                proposal_order=proposal_order,
                 traversal_order=traversal_order,
+                permutation_indices=permutation_indices,
                 accepted=accepted,
             )
             state.decisions.append(decision)
@@ -297,7 +314,7 @@ class ProductionSequentialRouter:
         cards_by_id: dict[str, MemoryRoutingCard] | None,
         context: ContextFingerprint | None,
         decision_index: int | None,
-    ) -> TransferPointEstimate | None:
+    ) -> Any | None:
         """Get critic estimate for a candidate given current selected set."""
         del candidate, cards_by_id
         selected_memory_ids = [card.memory_id for card in selected_cards]
@@ -319,8 +336,8 @@ class ProductionSequentialRouter:
 
     def _apply_decision_rules(
         self,
-        estimate: TransferPointEstimate | None,
-    ) -> tuple[str, str, str, bool | None, bool | None]:
+        estimate: Any | None,
+    ) -> tuple[str, str, str, GateDecision]:
         """Apply the configured gate to determine share/withhold action.
 
         Returns:
@@ -335,8 +352,7 @@ class ProductionSequentialRouter:
                 "share",
                 gate_decision.reason,
                 "safe_exploit",
-                gate_decision.effect_condition_passed,
-                gate_decision.risk_condition_passed,
+                gate_decision,
             )
         mode = (
             "risk_veto"
@@ -348,8 +364,7 @@ class ProductionSequentialRouter:
             "withhold",
             gate_decision.reason,
             mode,
-            gate_decision.effect_condition_passed,
-            gate_decision.risk_condition_passed,
+            gate_decision,
         )
 
     def _make_decision(
@@ -363,9 +378,16 @@ class ProductionSequentialRouter:
         decision_mode: str,
         effect_condition_passed: bool | None,
         risk_condition_passed: bool | None,
+        effect_condition_status: str | None,
+        risk_condition_status: str | None,
+        selected_before_actual: tuple[str, ...] | list[str],
+        selected_before_critic: tuple[str, ...] | list[str],
         estimate: TransferPointEstimate | None,
         traversal_seed: int | None,
+        traversal_policy_name: str | None,
+        proposal_order: list[str] | None,
         traversal_order: list[str] | None,
+        permutation_indices: list[int] | None,
         accepted: bool,
     ) -> RouterDecision:
         """Create a router decision with critic estimates."""
@@ -395,8 +417,19 @@ class ProductionSequentialRouter:
             low_support=getattr(estimate, "low_support", None) if estimate else None,
             decision_mode=decision_mode,
             gate_name=self.gate.gate_name,
+            conditioning_policy_name=self.conditioning_policy.policy_name,
             effect_condition_passed=effect_condition_passed,
             risk_condition_passed=risk_condition_passed,
+            effect_condition_status=effect_condition_status,
+            risk_condition_status=risk_condition_status,
+            selected_before_actual=list(selected_before_actual),
+            selected_before_critic=list(selected_before_critic),
+            selected_before_actual_digest=selected_set_signature(
+                list(selected_before_actual)
+            ),
+            selected_before_critic_digest=selected_set_signature(
+                list(selected_before_critic)
+            ),
             support_distance=(
                 getattr(estimate, "support_distance", None) if estimate else None
             ),
@@ -407,7 +440,12 @@ class ProductionSequentialRouter:
             original_candidate_position=original_position,
             traversal_position=position,
             traversal_seed=traversal_seed,
+            traversal_policy_name=traversal_policy_name,
+            proposal_order=proposal_order,
             traversal_order=traversal_order,
+            permutation_indices=permutation_indices,
+            proposal_rank=original_position + 1 if original_position is not None else None,
+            proposal_score=candidate.total_score,
         )
 
     def _get_card_snapshot(
@@ -449,8 +487,6 @@ class ProductionSequentialRouter:
         decision_index: int | None,
     ) -> ContextFingerprint:
         """Build/update context so critic sees the current selected set."""
-        from smtr.memory.execution_evidence import selected_set_signature
-
         if base_context is not None:
             return base_context.model_copy(
                 update={
@@ -493,6 +529,16 @@ def _gate_negative_risk_budget(gate: RoutingGate) -> float | None:
     config = getattr(gate, "config", None)
     budget = getattr(config, "negative_risk_budget", None)
     return float(budget) if budget is not None else None
+
+
+def _cards_for_selected_ids(
+    selected_ids: tuple[str, ...],
+    *,
+    current_cards: list[RoutingFeatureSnapshot],
+    initial_cards: list[RoutingFeatureSnapshot],
+) -> list[RoutingFeatureSnapshot]:
+    cards_by_id = {card.memory_id: card for card in [*initial_cards, *current_cards]}
+    return [cards_by_id[memory_id] for memory_id in selected_ids if memory_id in cards_by_id]
 
 
 def _robust_diagnostics_from_estimate(

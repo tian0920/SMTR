@@ -94,10 +94,10 @@ def compute_paired_comparisons(
     """
     if pairs is None:
         pairs = [
-            ("SMTR", "B1-Top1"),
-            ("SMTR", "B1-Top3"),
             ("SMTR", "B1-Matched"),
             ("SMTR", "EffectOnly-SMTR"),
+            ("SMTR", "Static-SMTR"),
+            ("SMTR", "FactualSuccess-SMTR"),
         ]
 
     rng = np.random.default_rng(bootstrap_seed)
@@ -137,7 +137,10 @@ def compute_paired_comparisons(
             metrics_b["selected"].append(_episode_metric(groups_b[key], "selected_count"))
 
         # Bootstrap
-        boot_deltas: dict[str, list[float]] = {k: [] for k in ["success", "neg_transfer", "pos_transfer", "selected"]}
+        boot_deltas: dict[str, list[float]] = {
+            key: []
+            for key in ["success", "neg_transfer", "pos_transfer", "selected"]
+        }
 
         for _ in range(n_bootstrap):
             indices = rng.integers(0, n_groups, size=n_groups)

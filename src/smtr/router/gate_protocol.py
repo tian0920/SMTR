@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
+
+ConditionStatus = Literal["passed", "failed", "not_applicable"]
 
 
 @dataclass(frozen=True)
@@ -21,14 +23,28 @@ class GateDecision:
     share: bool
     reason: str
     gate_name: str
-    effect_condition_passed: bool
-    risk_condition_passed: bool | None
+    effect_condition_status: ConditionStatus
+    risk_condition_status: ConditionStatus
+
+    @property
+    def effect_condition_passed(self) -> bool | None:
+        if self.effect_condition_status == "not_applicable":
+            return None
+        return self.effect_condition_status == "passed"
+
+    @property
+    def risk_condition_passed(self) -> bool | None:
+        if self.risk_condition_status == "not_applicable":
+            return None
+        return self.risk_condition_status == "passed"
 
 
 class RoutingGate(Protocol):
     """Protocol implemented by formal SMTR gates."""
 
-    gate_name: str
+    @property
+    def gate_name(self) -> str:
+        ...
 
     def decide(self, estimate: TransferPointEstimate) -> GateDecision:
         ...

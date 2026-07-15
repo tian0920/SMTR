@@ -1,9 +1,7 @@
-"""Tests for B1-Top1 and B1-Top3 router variants."""
-
-import pytest
+"""Tests for retained relevance baseline router behavior."""
 
 from smtr.router.baselines import RelevanceTopKRouter, RelevanceTopKRouterConfig
-from smtr.router.candidate_proposer import CandidateProposal, CandidateScore, CandidateRequest
+from smtr.router.candidate_proposer import CandidateProposal, CandidateRequest, CandidateScore
 
 
 def _make_proposal(n_candidates: int = 5) -> CandidateProposal:
@@ -80,38 +78,38 @@ class TestB1Top1:
             assert dec.tau_lcb is None
 
 
-class TestB1Top3:
-    """B1-Top3: max_shares_per_invocation=3."""
+class TestRelevanceAllCandidates:
+    """B1-AllCandidates: no per-invocation relevance budget."""
 
-    def test_selects_at_most_three(self):
-        """B1-Top3 selects at most 3 memories per invocation."""
+    def test_selects_all_candidates(self):
+        """B1-AllCandidates shares every proposer candidate."""
         router = RelevanceTopKRouter(
-            config=RelevanceTopKRouterConfig(max_shares_per_invocation=3)
+            config=RelevanceTopKRouterConfig(max_shares_per_invocation=None)
         )
         proposal = _make_proposal(5)
         result = router.decide_from_proposal(
             receiver_agent_id="agent_1",
             proposal=proposal,
         )
-        assert len(result.selected_memory_ids) == 3
-        assert result.selected_memory_ids == ["mem_0", "mem_1", "mem_2"]
+        assert len(result.selected_memory_ids) == 5
+        assert result.selected_memory_ids == ["mem_0", "mem_1", "mem_2", "mem_3", "mem_4"]
 
-    def test_fewer_candidates_than_limit(self):
-        """B1-Top3 selects all when fewer candidates than limit."""
+    def test_empty_candidate_list(self):
+        """B1-AllCandidates handles empty proposal lists."""
         router = RelevanceTopKRouter(
-            config=RelevanceTopKRouterConfig(max_shares_per_invocation=3)
+            config=RelevanceTopKRouterConfig(max_shares_per_invocation=None)
         )
-        proposal = _make_proposal(2)
+        proposal = _make_proposal(0)
         result = router.decide_from_proposal(
             receiver_agent_id="agent_1",
             proposal=proposal,
         )
-        assert len(result.selected_memory_ids) == 2
+        assert result.selected_memory_ids == []
 
-    def test_withhold_reason(self):
-        """B1-Top3 withhold decisions have correct reason."""
+    def test_top1_withhold_reason(self):
+        """B1-Top1 withhold decisions have correct reason."""
         router = RelevanceTopKRouter(
-            config=RelevanceTopKRouterConfig(max_shares_per_invocation=3)
+            config=RelevanceTopKRouterConfig(max_shares_per_invocation=1)
         )
         proposal = _make_proposal(5)
         result = router.decide_from_proposal(
@@ -119,6 +117,6 @@ class TestB1Top3:
             proposal=proposal,
         )
         withheld = [d for d in result.decisions if d.action == "withhold"]
-        assert len(withheld) == 2
+        assert len(withheld) == 4
         for d in withheld:
             assert d.reason == "relevance_topk_budget_exceeded"

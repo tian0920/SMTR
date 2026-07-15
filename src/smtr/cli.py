@@ -1,5 +1,6 @@
 import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -27,12 +28,21 @@ from smtr.evaluation.feature_ablation import audit_feature_blocks
 from smtr.evaluation.gate_diagnostics import compute_gate_diagnostics
 from smtr.evaluation.interaction_audit import audit_interaction
 from smtr.evaluation.logging import summarize_run
+from smtr.evaluation.order_sensitivity import run_order_sensitivity
 from smtr.evaluation.paired_statistics import compute_group_bootstrap_ci
 from smtr.evaluation.shortcut_diagnostics import shortcut_diagnostics
+from smtr.evaluation.static_set_diagnostics import compute_static_set_diagnostics
+from smtr.experiment.methods import build_default_specs
 from smtr.experiment.runner import ComparisonRunner
 from smtr.experiment.schemas import ExperimentConfig
 from smtr.experiment.summary import compute_summary
 from smtr.experiment.writer import ExperimentWriter
+from smtr.marble.dataset import (
+    DEFAULT_MARBLE_ROOT,
+    MARBLE_BENCHMARK_FILES,
+    build_marble_dataset_manifest,
+    write_marble_dataset_manifest,
+)
 from smtr.memory.execution_evidence import build_context_fingerprint
 from smtr.memory.paired_transfer_evidence import PairedTransferEvidenceIngestor
 from smtr.memory.seed_memories import seed_repository
@@ -104,6 +114,29 @@ def _list_memories(db: str) -> None:
                 ]
             )
         )
+
+
+def _inspect_marble_dataset(args: argparse.Namespace) -> None:
+    scenarios = set(args.scenarios) if args.scenarios else None
+    if args.output:
+        manifest = write_marble_dataset_manifest(
+            output_path=Path(args.output),
+            marble_root=Path(args.marble_root),
+            scenarios=scenarios,
+            limit_per_scenario=args.limit_per_scenario,
+        )
+    else:
+        manifest = build_marble_dataset_manifest(
+            marble_root=Path(args.marble_root),
+            scenarios=scenarios,
+            limit_per_scenario=args.limit_per_scenario,
+        )
+    print(f"marble_root={manifest.marble_root}")
+    print(f"total_tasks={manifest.total_tasks}")
+    for scenario, count in manifest.scenario_counts.items():
+        print(f"scenario.{scenario}={count}")
+    if args.output:
+        print(f"manifest={args.output}")
 
 
 def _demo(
@@ -892,6 +925,13 @@ def _compare_routers(args: argparse.Namespace) -> None:
         raise ValueError(
             f"critic checkpoint not found: {args.critic_checkpoint}"
         )
+    if (
+        getattr(args, "factual_success_checkpoint", None)
+        and not Path(args.factual_success_checkpoint).exists()
+    ):
+        raise ValueError(
+            f"factual success checkpoint not found: {args.factual_success_checkpoint}"
+        )
     if args.budget_manifest_path and not Path(args.budget_manifest_path).exists():
         raise ValueError(
             f"budget manifest not found: {args.budget_manifest_path}"
@@ -918,7 +958,10 @@ def _compare_routers(args: argparse.Namespace) -> None:
         fail_fast=not args.continue_on_error,
         scenario=args.scenario,
         methods=args.methods,
+        enable_ablation_methods=args.enable_ablation_methods,
         budget_manifest_path=args.budget_manifest_path,
+        factual_success_checkpoint=getattr(args, "factual_success_checkpoint", None),
+        factual_success_threshold=getattr(args, "factual_success_threshold", None),
     )
 
     runner = ComparisonRunner(config)
@@ -929,27 +972,42 @@ def _compare_routers(args: argparse.Namespace) -> None:
     print(f"n_base_episodes={summary.n_base_episodes}")
     print(f"n_traversal_runs={summary.n_traversal_runs}")
     for method_id, method_summary in summary.methods.items():
+        net_transfer_rate = None
+        if (
+            method_summary.positive_transfer_rate is not None
+            and method_summary.negative_transfer_rate is not None
+        ):
+            net_transfer_rate = (
+                method_summary.positive_transfer_rate
+                - method_summary.negative_transfer_rate
+            )
         print(f"\n{method_id}:")
         print(f"  success_rate={method_summary.success_rate:.3f}")
-        print(f"  avg_selected={method_summary.avg_selected_size:.1f}")
+        if method_summary.positive_transfer_rate is not None:
+            print(
+                f"  positive_transfer_rate={method_summary.positive_transfer_rate:.3f}"
+            )
         if method_summary.negative_transfer_rate is not None:
-            print(f"  negative_transfer_rate={method_summary.negative_transfer_rate:.3f}")
-        if method_summary.share_decision_rate is not None:
-            print(f"  share_decision_rate={method_summary.share_decision_rate:.3f}")
-        if method_summary.tau_mean_rejection_rate is not None:
             print(
-                "  tau_mean_rejection_rate="
-                f"{method_summary.tau_mean_rejection_rate:.3f}"
+                f"  negative_transfer_rate={method_summary.negative_transfer_rate:.3f}"
             )
-        if method_summary.negative_risk_mean_rejection_rate is not None:
+        if net_transfer_rate is not None:
+            print(f"  net_transfer_rate={net_transfer_rate:.3f}")
+        if method_summary.mean_exposure_per_invocation is not None:
             print(
-                "  negative_risk_mean_rejection_rate="
-                f"{method_summary.negative_risk_mean_rejection_rate:.3f}"
+                "  mean_exposure_per_invocation="
+                f"{method_summary.mean_exposure_per_invocation:.3f}"
             )
-        if method_summary.success_delta_vs_b0 is not None:
-            print(f"  delta_vs_b0={method_summary.success_delta_vs_b0:+.3f}")
-        if method_summary.other_reason_counts:
-            print(f"  other_rejection_reasons={method_summary.other_reason_counts}")
+        if method_summary.total_exposure_per_episode is not None:
+            print(
+                "  total_exposure_per_episode="
+                f"{method_summary.total_exposure_per_episode:.3f}"
+            )
+        print(f"  all_withhold_rate={method_summary.all_withhold_rate:.3f}")
+        if method_summary.opportunity_capture is not None:
+            print(f"  opportunity_capture={method_summary.opportunity_capture:.3f}")
+        if method_summary.safety_preservation is not None:
+            print(f"  safety_preservation={method_summary.safety_preservation:.3f}")
     if not summary.experiment_valid:
         print(f"\nWARNING: experiment invalid — {summary.invalid_reason}")
     print(f"\noutput_dir={args.output_dir}")
@@ -960,9 +1018,12 @@ def _run_gate_ablation(args: argparse.Namespace) -> None:
     methods = [
         "B0",
         "B1-Top1",
+        "B1-AllCandidates",
         "B1-Matched",
         "SMTR",
         "EffectOnly-SMTR",
+        "Static-SMTR",
+        "FactualSuccess-SMTR",
     ]
     output_dir = Path(args.output_dir)
     if output_dir.exists() and not args.overwrite:
@@ -977,6 +1038,8 @@ def _run_gate_ablation(args: argparse.Namespace) -> None:
         config = ExperimentConfig(
             db_path=args.db,
             critic_checkpoint=args.critic_checkpoint,
+            factual_success_checkpoint=args.factual_success_checkpoint,
+            factual_success_threshold=args.factual_success_threshold,
             task_seeds=args.task_seeds,
             generation_seeds=args.generation_seeds,
             traversal_seeds=args.traversal_seeds,
@@ -989,6 +1052,7 @@ def _run_gate_ablation(args: argparse.Namespace) -> None:
             fail_fast=args.fail_fast,
             scenario=scenario,
             methods=methods,
+            enable_ablation_methods=True,
             budget_manifest_path=args.budget_manifest,
             bootstrap_n=args.bootstrap_n,
         )
@@ -1027,6 +1091,28 @@ def _run_gate_ablation(args: argparse.Namespace) -> None:
         "".join(run.model_dump_json() + "\n" for run in runs),
         encoding="utf-8",
     )
+    decision_lines = []
+    for run in runs:
+        for invocation in run.invocations:
+            for decision in invocation.decisions:
+                decision_lines.append(
+                    json.dumps(
+                        {
+                            "base_episode_id": run.base_episode_id,
+                            "method": run.method,
+                            "scenario": run.scenario,
+                            "traversal_seed": run.traversal_seed,
+                            "graph_node": invocation.graph_node,
+                            "receiver_agent_id": invocation.receiver_agent_id,
+                            **decision.model_dump(),
+                        },
+                        default=str,
+                    )
+                )
+    (output_dir / "decisions.jsonl").write_text(
+        "\n".join(decision_lines) + ("\n" if decision_lines else ""),
+        encoding="utf-8",
+    )
     (output_dir / "errors.jsonl").write_text(
         "".join(json.dumps(error, default=str) + "\n" for error in errors),
         encoding="utf-8",
@@ -1055,12 +1141,29 @@ def _run_gate_ablation(args: argparse.Namespace) -> None:
         output_dir=str(output_dir),
         methods=methods,
         negative_risk_budget=args.negative_risk_budget,
+        enable_ablation_methods=True,
         budget_manifest_path=args.budget_manifest,
         bootstrap_n=args.bootstrap_n,
     )
     summary = compute_summary(runs, summary_config)
     (output_dir / "summary.json").write_text(
         summary.model_dump_json(indent=2) + "\n",
+        encoding="utf-8",
+    )
+    method_specs = {
+        key: spec.__dict__
+        for key, spec in build_default_specs(
+            critic_checkpoint=args.critic_checkpoint,
+            factual_success_checkpoint=args.factual_success_checkpoint,
+            budget_manifest_path=args.budget_manifest,
+            max_shares_per_invocation=args.max_shares_per_invocation,
+            negative_risk_budget=args.negative_risk_budget,
+            include_ablations=True,
+        ).items()
+        if spec.display_label in methods
+    }
+    (output_dir / "method_specs.json").write_text(
+        json.dumps(method_specs, indent=2, default=str) + "\n",
         encoding="utf-8",
     )
     gate_diagnostics = {
@@ -1074,9 +1177,12 @@ def _run_gate_ablation(args: argparse.Namespace) -> None:
         runs,
         method_pairs=[
             ("SMTR", "B0"),
+            ("SMTR", "B1-AllCandidates"),
             ("SMTR", "B1-Top1"),
             ("SMTR", "B1-Matched"),
             ("SMTR", "EffectOnly-SMTR"),
+            ("SMTR", "Static-SMTR"),
+            ("SMTR", "FactualSuccess-SMTR"),
         ],
         bootstrap_seed=config.bootstrap_seed,
         bootstrap_n=config.bootstrap_n,
@@ -1089,13 +1195,78 @@ def _run_gate_ablation(args: argparse.Namespace) -> None:
         json.dumps(paired, indent=2, default=str) + "\n",
         encoding="utf-8",
     )
+    (output_dir / "paired_comparisons.json").write_text(
+        json.dumps(paired, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "static_set_diagnostics.json").write_text(
+        json.dumps(compute_static_set_diagnostics(runs), indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    scenario_slices = {}
+    for scenario in args.scenarios:
+        scenario_runs = [run for run in runs if run.scenario == scenario]
+        if scenario_runs:
+            scenario_slices[scenario] = compute_summary(
+                scenario_runs,
+                summary_config,
+            ).model_dump()
+    (output_dir / "scenario_slices.json").write_text(
+        json.dumps(scenario_slices, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "report.md").write_text(
+        "# Formal SMTR Core Ablation Smoke\n\n"
+        "This smoke run validates implementation and metrics only.\n",
+        encoding="utf-8",
+    )
     print(f"experiment_id={runner.experiment_id}")
     print(f"n_base_episodes={summary.n_base_episodes}")
     print(f"n_traversal_runs={summary.n_traversal_runs}")
     print(f"output_dir={output_dir}")
 
 
+def _run_order_sensitivity(args: argparse.Namespace) -> None:
+    """Run the minimal SMTR-only order-sensitivity diagnostic."""
+    if args.method != "SMTR":
+        raise ValueError("run-order-sensitivity only supports --method SMTR")
+    if not args.enumerate_permutations:
+        raise ValueError("run-order-sensitivity requires --enumerate-permutations")
+    metrics = run_order_sensitivity(
+        db_path=args.db,
+        critic_checkpoint=args.critic_checkpoint,
+        output_dir=args.output_dir,
+        task_seeds=args.task_seeds,
+        generation_seeds=args.generation_seeds,
+        scenario_replicates=args.scenario_replicates,
+        scenario=args.scenario_filter.replace("-", "_"),
+        candidate_count=4,
+        negative_risk_budget=args.negative_risk_budget,
+        overwrite=args.overwrite,
+        fail_fast=args.fail_fast,
+    )
+    for key, value in metrics.items():
+        print(f"{key}={value:.6f}")
+    print(f"output_dir={args.output_dir}")
+
+
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] in {"toy", "marble", "robust"}:
+        target = sys.argv[1]
+        sys.argv = [f"python -m smtr.{target}.cli", *sys.argv[2:]]
+        if target == "toy":
+            from smtr.toy.cli import main as toy_main
+
+            toy_main()
+        elif target == "marble":
+            from smtr.marble.cli import main as marble_main
+
+            marble_main()
+        else:
+            from smtr.robust.cli import main as robust_main
+
+            robust_main()
+        return
     parser = argparse.ArgumentParser(prog="smtr")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -1234,6 +1405,18 @@ def main() -> None:
     candidate_audit_parser.add_argument("--checkpoint", required=True)
     candidate_audit_parser.add_argument("--output", required=True)
 
+    marble_parser = subparsers.add_parser("inspect-marble-dataset")
+    marble_parser.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
+    marble_parser.add_argument(
+        "--scenarios",
+        nargs="+",
+        choices=sorted(MARBLE_BENCHMARK_FILES),
+        default=None,
+        help="MARBLE MultiAgentBench scenarios to include.",
+    )
+    marble_parser.add_argument("--limit-per-scenario", type=int)
+    marble_parser.add_argument("--output")
+
     serve_api_parser = subparsers.add_parser("serve-api")
     serve_api_parser.add_argument("--host", default="0.0.0.0")
     serve_api_parser.add_argument("--port", type=int, default=8000)
@@ -1252,12 +1435,11 @@ def main() -> None:
     demo_real_parser.add_argument("--critic-checkpoint")
     demo_real_parser.add_argument("--max-shares-per-invocation", type=int)
 
-    compare_parser = subparsers.add_parser(
-        "compare-routers",
-        aliases=["run-experiment"],
-    )
+    compare_parser = subparsers.add_parser("run-experiment")
     compare_parser.add_argument("--db", required=True)
     compare_parser.add_argument("--critic-checkpoint")
+    compare_parser.add_argument("--factual-success-checkpoint")
+    compare_parser.add_argument("--factual-success-threshold", type=float)
     compare_parser.add_argument("--task-seeds", type=int, nargs="+", default=[0])
     compare_parser.add_argument(
         "--generation-seeds", type=int, nargs="+", default=[0]
@@ -1267,8 +1449,9 @@ def main() -> None:
     )
     compare_parser.add_argument("--scenario-replicates", type=int, default=1)
     compare_parser.add_argument("--top-k", type=int, default=4)
-    compare_parser.add_argument("--max-shares-per-invocation", type=int, default=3)
+    compare_parser.add_argument("--max-shares-per-invocation", type=int, default=None)
     compare_parser.add_argument("--negative-risk-budget", type=float, default=0.2)
+    compare_parser.add_argument("--enable-ablation-methods", action="store_true")
     compare_parser.add_argument("--output-dir", required=True)
     compare_parser.add_argument("--overwrite", action="store_true")
     compare_parser.add_argument(
@@ -1286,13 +1469,15 @@ def main() -> None:
         choices=[
             "B0",
             "B1-Top1",
-            "B1-Top3",
+            "B1-AllCandidates",
             "B1-Matched",
             "SMTR",
             "EffectOnly-SMTR",
+            "Static-SMTR",
+            "FactualSuccess-SMTR",
         ],
         default=None,
-        help="Methods to compare (default: B0/B1-Matched/SMTR)",
+        help="Methods to compare (default: formal five-method registry)",
     )
     compare_parser.add_argument(
         "--budget-manifest-path",
@@ -1314,8 +1499,10 @@ def main() -> None:
     gate_parser = subparsers.add_parser("run-gate-ablation")
     gate_parser.add_argument("--db", default="data/smtr_memory.sqlite")
     gate_parser.add_argument("--critic-checkpoint", required=True)
+    gate_parser.add_argument("--factual-success-checkpoint", required=True)
+    gate_parser.add_argument("--factual-success-threshold", type=float)
     gate_parser.add_argument("--training-manifest")
-    gate_parser.add_argument("--budget-manifest", required=True)
+    gate_parser.add_argument("--budget-manifest")
     gate_parser.add_argument(
         "--scenarios",
         nargs="+",
@@ -1337,12 +1524,30 @@ def main() -> None:
     gate_parser.add_argument("--traversal-seeds", type=int, nargs="+", default=[0, 1])
     gate_parser.add_argument("--scenario-replicates", type=int, default=1)
     gate_parser.add_argument("--top-k", type=int, default=4)
-    gate_parser.add_argument("--max-shares-per-invocation", type=int, default=3)
+    gate_parser.add_argument("--max-shares-per-invocation", type=int, default=None)
     gate_parser.add_argument("--negative-risk-budget", type=float, default=0.2)
     gate_parser.add_argument("--output-dir", required=True)
     gate_parser.add_argument("--overwrite", action="store_true")
     gate_parser.add_argument("--fail-fast", action="store_true", default=True)
     gate_parser.add_argument("--bootstrap-n", type=int, default=1000)
+
+    order_parser = subparsers.add_parser("run-order-sensitivity")
+    order_parser.add_argument("--db", default="data/smtr_memory.sqlite")
+    order_parser.add_argument("--critic-checkpoint", required=True)
+    order_parser.add_argument("--method", choices=["SMTR"], default="SMTR")
+    order_parser.add_argument(
+        "--scenario-filter",
+        choices=["prefix-sensitive"],
+        default="prefix-sensitive",
+    )
+    order_parser.add_argument("--enumerate-permutations", action="store_true")
+    order_parser.add_argument("--task-seeds", type=int, nargs="+", default=[0, 1])
+    order_parser.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
+    order_parser.add_argument("--scenario-replicates", type=int, default=1)
+    order_parser.add_argument("--negative-risk-budget", type=float, default=0.2)
+    order_parser.add_argument("--output-dir", required=True)
+    order_parser.add_argument("--overwrite", action="store_true")
+    order_parser.add_argument("--fail-fast", action="store_true", default=True)
 
     args = parser.parse_args()
     if args.command == "seed-memories":
@@ -1453,6 +1658,8 @@ def main() -> None:
         _audit_interaction(args.input, args.checkpoint, args.output, mode="prefix")
     elif args.command == "audit-candidate-substitution":
         _audit_interaction(args.input, args.checkpoint, args.output, mode="candidate")
+    elif args.command == "inspect-marble-dataset":
+        _inspect_marble_dataset(args)
     elif args.command == "serve-api":
         _serve_api(host=args.host, port=args.port, model=args.model)
     elif args.command == "demo-real":
@@ -1465,7 +1672,7 @@ def main() -> None:
             critic_checkpoint=args.critic_checkpoint,
             max_shares_per_invocation=args.max_shares_per_invocation,
         )
-    elif args.command in {"compare-routers", "run-experiment"}:
+    elif args.command == "run-experiment":
         _compare_routers(args)
     elif args.command == "audit-experiment-integrity":
         summary = audit_experiment_integrity(
@@ -1498,6 +1705,8 @@ def main() -> None:
         print(f"READY_FOR_FORMAL_EXPERIMENT={summary['READY_FOR_FORMAL_EXPERIMENT']}")
     elif args.command == "run-gate-ablation":
         _run_gate_ablation(args)
+    elif args.command == "run-order-sensitivity":
+        _run_order_sensitivity(args)
 
 
 if __name__ == "__main__":

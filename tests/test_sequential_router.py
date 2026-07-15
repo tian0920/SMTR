@@ -6,6 +6,7 @@ from smtr.evaluation.ablation_gates import EffectOnlyGate
 from smtr.memory.schemas import ContextFingerprint, MemoryRoutingCard
 from smtr.router.baseline_router import NoMemoryRouter
 from smtr.router.candidate_proposer import CandidateProposal, CandidateRequest, CandidateScore
+from smtr.router.conditioning import FrozenInitialSelectedSetConditioning
 from smtr.router.gate_protocol import TransferPointEstimate
 from smtr.router.sequential_router import (
     ProductionSequentialRouter,
@@ -150,13 +151,11 @@ class TestSequentialRouterBasics:
             ProductionSequentialRouter(critic=None)
 
     def test_router_creation_with_config(self):
-        """Router accepts custom configuration."""
+        """Sequential router config no longer carries share-budget fields."""
         critic = _make_critic_with_estimate(tau_mean=0.3, negative_risk=0.1)
-        config = SequentialRouterConfig(
-            max_shares_per_invocation=5,
-        )
+        config = SequentialRouterConfig()
         router = ProductionSequentialRouter(critic=critic, config=config)
-        assert router.config.max_shares_per_invocation == 5
+        assert not hasattr(router.config, "max_shares_per_invocation")
 
     def test_router_without_critic_withholds_all(self):
         """No-memory baseline is handled by NoMemoryRouter."""
@@ -246,11 +245,10 @@ class TestSequentialRouterDecisionRules:
         assert result.selected_memory_ids == ["mem_1"]
         assert result.decisions[0].reason == "shared"
 
-    def test_max_shares_limit(self):
-        """Router respects max shares per invocation."""
+    def test_no_share_budget_truncation(self):
+        """Router shares every candidate that passes the formal gate."""
         critic = _make_critic_with_estimate(tau_mean=0.3, negative_risk=0.1)
-        config = SequentialRouterConfig(max_shares_per_invocation=2)
-        router = ProductionSequentialRouter(critic=critic, config=config)
+        router = ProductionSequentialRouter(critic=critic, config=SequentialRouterConfig())
         memory_ids = ["mem_1", "mem_2", "mem_3", "mem_4"]
         proposal = _make_proposal(memory_ids)
         cards_by_id = _make_cards_by_id(memory_ids)
@@ -259,10 +257,9 @@ class TestSequentialRouterDecisionRules:
             proposal=proposal,
             cards_by_id=cards_by_id,
         )
-        assert len(result.selected_memory_ids) == 2
-        # Remaining should be withheld due to budget
-        assert result.decisions[2].decision_mode == "budget_exhausted"
-        assert result.decisions[3].decision_mode == "budget_exhausted"
+        assert len(result.selected_memory_ids) == len(memory_ids)
+        assert all(decision.action == "share" for decision in result.decisions)
+        assert "share_budget_exceeded" not in {d.reason for d in result.decisions}
 
     def test_effect_only_gate_uses_tau_mean(self):
         """EffectOnly can share when the risk condition would reject."""
@@ -493,6 +490,45 @@ class TestSequentialRouterStateTracking:
             decision = next(d for d in result.decisions if d.memory_id == candidate_id)
             if decision.action == "share":
                 accepted_before.append(candidate_id)
+
+    def test_static_conditioning_freezes_critic_selected_set_but_actual_updates(self):
+        class CapturingCritic:
+            critic_version = "static_capture_v1"
+
+            def __init__(self):
+                self.calls = []
+
+            def predict_point(self, item):
+                self.calls.append(
+                    (
+                        item.candidate_card.memory_id,
+                        [card.memory_id for card in item.selected_cards],
+                        list(item.context.selected_memory_ids),
+                    )
+                )
+                return TransferPointEstimate(tau_mean=0.2, negative_risk_mean=0.0)
+
+        critic = CapturingCritic()
+        router = ProductionSequentialRouter(
+            critic=critic,
+            conditioning_policy=FrozenInitialSelectedSetConditioning(),
+        )
+        result = router.decide_from_proposal(
+            receiver_agent_id="executor",
+            proposal=_make_proposal(["a", "b", "c"]),
+            cards_by_id=_make_cards_by_id(["a", "b", "c"]),
+            traversal_seed=1,
+        )
+
+        assert len(result.selected_memory_ids) == 3
+        assert all(selected_cards == [] for _, selected_cards, _ in critic.calls)
+        assert all(context_ids == [] for _, _, context_ids in critic.calls)
+        assert result.decisions[1].selected_before_actual
+        assert result.decisions[1].selected_before_critic == []
+        assert (
+            result.decisions[1].selected_before_actual_digest
+            != result.decisions[1].selected_before_critic_digest
+        )
 
 
 # --- Tests: Legacy Interface ---

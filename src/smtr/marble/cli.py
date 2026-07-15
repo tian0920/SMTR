@@ -151,6 +151,11 @@ def main() -> None:
     train_parser = subparsers.add_parser("train-critic")
     train_parser.add_argument("--train-records", required=True)
     train_parser.add_argument("--validation-records", required=True)
+    train_parser.add_argument("--memory-pool", required=True)
+    train_parser.add_argument("--seed", type=int, default=7)
+    train_parser.add_argument("--n-bootstrap", type=int, default=31)
+    train_parser.add_argument("--n-features", type=int, default=512)
+    train_parser.add_argument("--feature-block", default="full")
     train_parser.add_argument("--output", required=True)
 
     eval_parser = subparsers.add_parser("run-evaluation")
@@ -159,9 +164,16 @@ def main() -> None:
     eval_parser.add_argument("--split-manifest", required=True)
     eval_parser.add_argument("--split", choices=["test"], required=True)
     eval_parser.add_argument("--scenario", required=True)
-    eval_parser.add_argument("--memory-snapshot", required=True)
+    eval_parser.add_argument("--memory-pool", required=True)
     eval_parser.add_argument("--checkpoint", required=True)
-    eval_parser.add_argument("--methods", nargs="+", required=True)
+    eval_parser.add_argument(
+        "--methods",
+        nargs="+",
+        default=["smtr", "b0_no_memory", "all_share"],
+    )
+    eval_parser.add_argument(
+        "--negative-risk-budget", type=float, default=0.2,
+    )
     eval_parser.add_argument("--output", required=True)
 
     audit_parser = subparsers.add_parser("integrity-audit")
@@ -424,20 +436,43 @@ def main() -> None:
         )
         print(json.dumps(summary, sort_keys=True))
     elif args.command == "train-critic":
-        MarbleTrainingPipeline().train(
+        summary = MarbleTrainingPipeline().train(
             train_records=Path(args.train_records),
             validation_records=Path(args.validation_records),
+            memory_pool=Path(args.memory_pool),
             output=Path(args.output),
+            seed=args.seed,
+            n_bootstrap=args.n_bootstrap,
+            n_features=args.n_features,
+            feature_block=args.feature_block,
         )
+        print(f"train_records_bridged={summary['train_record_count_bridged']}")
+        print(f"validation_records_bridged={summary['validation_record_count_bridged']}")
+        print(f"checkpoint_sha256={summary['checkpoint_sha256'][:16]}")
+        metrics = summary.get('validation_metrics', {})
+        if metrics.get('accuracy') is not None:
+            print(f"validation_accuracy={metrics['accuracy']:.4f}")
+        if metrics.get('log_loss') is not None:
+            print(f"validation_log_loss={metrics['log_loss']:.4f}")
     elif args.command == "run-evaluation":
-        MarbleExperimentRunner().run(
+        summary = MarbleExperimentRunner().run(
             dataset_manifest=Path(args.dataset_manifest),
             split_manifest=Path(args.split_manifest),
             split=args.split,
             scenario=args.scenario,
             checkpoint=Path(args.checkpoint),
+            memory_pool=Path(args.memory_pool),
             output=Path(args.output),
+            methods=args.methods,
+            negative_risk_budget=args.negative_risk_budget,
         )
+        print(f"task_count={summary['task_count']}")
+        for method, agg in summary.get('aggregate', {}).items():
+            print(
+                f"{method}: share={agg['share_count']} "
+                f"withhold={agg['withhold_count']} "
+                f"rate={agg['share_rate']:.3f}"
+            )
     elif args.command == "integrity-audit":
         if args.run_dir:
             summary = audit_marble_pilot_run(run_dir=Path(args.run_dir))

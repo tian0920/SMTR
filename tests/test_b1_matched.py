@@ -1,11 +1,11 @@
 """Tests for B1-Matched budget manifest and router."""
 
-import json
 import tempfile
 from pathlib import Path
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from smtr.experiment.budget_manifest import (
     ShareBudgetManifest,
@@ -13,8 +13,8 @@ from smtr.experiment.budget_manifest import (
     load_manifest,
     save_manifest,
 )
-from smtr.router.baselines import BudgetMatchedTopKRouter, BudgetManifestConfig
-from smtr.router.candidate_proposer import CandidateProposal, CandidateScore, CandidateRequest
+from smtr.router.baselines import BudgetManifestConfig, BudgetMatchedTopKRouter
+from smtr.router.candidate_proposer import CandidateProposal, CandidateRequest, CandidateScore
 
 
 def _make_proposal(n: int = 5) -> CandidateProposal:
@@ -37,7 +37,7 @@ class TestShareBudgetManifest:
     def test_manifest_frozen(self):
         """Manifest is immutable."""
         m = ShareBudgetManifest(count_distribution={"0": 0.5, "1": 0.3, "2": 0.2}, seed=7)
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             m.seed = 99  # type: ignore
 
     def test_sample_budget_distribution(self):
@@ -71,7 +71,14 @@ class TestShareBudgetManifest:
             save_manifest(m, path)
             loaded = load_manifest(path)
             assert loaded.count_distribution == m.count_distribution
-            assert loaded.seed == m.seed
+        assert loaded.seed == m.seed
+
+    def test_manifest_keeps_observed_counts_above_legacy_cap(self):
+        runs = [{"router_trace": [{"decisions": [{"action": "share"}] * 4}]}]
+        manifest = build_manifest_from_runs(runs, max_shares_per_invocation=3)
+        assert manifest.max_shares_per_invocation == 4
+        assert manifest.count_distribution["4"] == 1.0
+        assert manifest.source_split == "validation"
 
 
 class TestBuildManifestFromRuns:
@@ -110,7 +117,11 @@ class TestBudgetMatchedTopKRouter:
             max_shares=3,
             seed=42,
         )
-        router = BudgetMatchedTopKRouter(manifest_config=config, invocation_seed=0)
+        router = BudgetMatchedTopKRouter(
+            manifest_config=config,
+            experiment_seed=0,
+            base_episode_id="base",
+        )
         proposal = _make_proposal(5)
         result = router.decide_from_proposal(
             receiver_agent_id="a1",
@@ -127,7 +138,11 @@ class TestBudgetMatchedTopKRouter:
             max_shares=3,
             seed=42,
         )
-        router = BudgetMatchedTopKRouter(manifest_config=config, invocation_seed=0)
+        router = BudgetMatchedTopKRouter(
+            manifest_config=config,
+            experiment_seed=0,
+            base_episode_id="base",
+        )
         # Router has no reference to test outcomes
         assert not hasattr(router, "test_outcomes")
         assert not hasattr(router, "m0_results")
@@ -141,7 +156,11 @@ class TestBudgetMatchedTopKRouter:
         )
         results = []
         for _ in range(2):
-            router = BudgetMatchedTopKRouter(manifest_config=config, invocation_seed=0)
+            router = BudgetMatchedTopKRouter(
+                manifest_config=config,
+                experiment_seed=0,
+                base_episode_id="base",
+            )
             proposal = _make_proposal(5)
             result = router.decide_from_proposal(
                 receiver_agent_id="a1",

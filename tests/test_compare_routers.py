@@ -14,7 +14,7 @@ def _config(tmp_path, **overrides):
         "db_path": str(tmp_path / "memory.sqlite"),
         "output_dir": str(tmp_path / "out"),
         "overwrite": True,
-        "methods": ["B0", "B1-Top1", "B1-Top3"],
+        "methods": ["B0", "B1-Top1", "B1-AllCandidates"],
         "task_seeds": [0, 1],
         "generation_seeds": [0],
         "traversal_seeds": [0, 1],
@@ -31,7 +31,7 @@ def test_base_episode_and_runtime_counts(tmp_path):
     assert summary.n_runtime_executions_by_method == {
         "B0": 2,
         "B1-Top1": 2,
-        "B1-Top3": 2,
+        "B1-AllCandidates": 2,
     }
     assert summary.n_traversal_runs == 6
 
@@ -68,6 +68,36 @@ def test_legacy_method_id_is_rejected(tmp_path):
     config = _config(tmp_path, methods=["B0", "A1-NoSet"])
     runner = ComparisonRunner(config)
     with pytest.raises(ValueError, match="unknown method IDs"):
+        runner.run()
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        "RiskOnly-SMTR",
+        "B1-TopCountMatched",
+        "B1-RandomCountMatched",
+        "B1-TokenMatched",
+        "SMTR-ProposerOrder",
+        "SMTR-ReverseOrder",
+        "SMTR-RandomOrder",
+        "Static-SMTR-RandomOrder",
+        "Revisit-SMTR",
+        "Oracle-Best-Order",
+        "Oracle-Worst-Order",
+    ],
+)
+def test_deleted_method_ids_are_rejected(tmp_path, method):
+    config = _config(tmp_path, methods=["B0", method])
+    runner = ComparisonRunner(config)
+    with pytest.raises(ValueError, match="unknown method IDs"):
+        runner.run()
+
+
+def test_ablation_methods_require_explicit_enable(tmp_path):
+    config = _config(tmp_path, methods=["B0", "EffectOnly-SMTR"])
+    runner = ComparisonRunner(config)
+    with pytest.raises(ValueError, match="enable_ablation_methods"):
         runner.run()
 
 

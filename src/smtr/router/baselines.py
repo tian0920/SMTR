@@ -8,7 +8,7 @@ causal transfer estimation over naive relevance-based sharing.
 from dataclasses import dataclass
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.memory.schemas import MemoryRoutingCard
@@ -40,14 +40,12 @@ class RelevanceTopKRouterConfig:
 class BudgetManifestConfig(BaseModel):
     """Configuration for B1-Matched budget sampling."""
 
+    model_config = ConfigDict(frozen=True)
+
     count_distribution: dict[str, float]
     """P(|S|=k) for k in 0..max_shares."""
     max_shares: int
     seed: int = 0
-
-    class Config:
-        frozen = True
-
 
 class RelevanceTopKRouter:
     """Non-causal relevance baseline router (B1).
@@ -209,25 +207,26 @@ class BudgetMatchedTopKRouter:
         self,
         *,
         manifest_config: BudgetManifestConfig,
-        invocation_seed: int = 0,
+        experiment_seed: int = 0,
+        base_episode_id: str = "",
+        method_id: str = "B1-Matched",
     ) -> None:
         if not manifest_config.count_distribution:
             raise ValueError("B1-Matched requires a non-empty budget distribution")
         self.manifest_config = manifest_config
-        self._invocation_counter: dict[str, int] = {}
-        self._invocation_seed = invocation_seed
+        self._experiment_seed = experiment_seed
+        self._base_episode_id = base_episode_id
+        self._method_id = method_id
 
-    def _get_budget(self, invocation_key: str) -> int:
+    def _get_budget(self, invocation_id: str) -> int:
         """Get sampled budget for this invocation."""
-        count = self._invocation_counter.get(invocation_key, 0)
-        self._invocation_counter[invocation_key] = count + 1
         inv_seed = int(
             canonical_digest(
                 {
-                    "manifest_seed": self.manifest_config.seed,
-                    "experiment_seed": self._invocation_seed,
-                    "invocation_key": invocation_key,
-                    "invocation_index": count,
+                    "experiment_seed": self._experiment_seed,
+                    "base_episode_id": self._base_episode_id,
+                    "invocation_id": invocation_id,
+                    "method_id": self._method_id,
                 }
             )[:8],
             16,
@@ -256,9 +255,14 @@ class BudgetMatchedTopKRouter:
         candidates = proposal.ranked_candidates
         traversal_order = [c.memory_id for c in candidates]
 
-        # Build invocation key for deterministic budget sampling
-        inv_key = f"{receiver_agent_id}:{traversal_seed}"
-        budget = self._get_budget(inv_key)
+        invocation_id = canonical_digest(
+            {
+                "receiver_agent_id": receiver_agent_id,
+                "candidate_request": proposal.request.model_dump(mode="json"),
+                "traversal_seed": traversal_seed,
+            }
+        )[:16]
+        budget = self._get_budget(invocation_id)
         share_limit = min(len(candidates), budget)
 
         # Build decisions

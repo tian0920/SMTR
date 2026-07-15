@@ -59,17 +59,27 @@ class RouterDecision(BaseModel):
     behavior_probability_share: float | None = None
     decision_mode: str | None = None
     gate_name: str | None = None
+    conditioning_policy_name: str | None = None
     effect_condition_passed: bool | None = None
     risk_condition_passed: bool | None = None
+    effect_condition_status: str | None = None
+    risk_condition_status: str | None = None
     exploration_eligible: bool | None = None
     exploration_selected: bool | None = None
+    selected_before_actual: list[str] = Field(default_factory=list)
+    selected_before_critic: list[str] = Field(default_factory=list)
+    selected_before_actual_digest: str | None = None
+    selected_before_critic_digest: str | None = None
     support_distance: float | None = None
     support_threshold: float | None = None
     robust_diagnostics: dict[str, float] | None = None
     original_candidate_position: int | None = None
     traversal_position: int | None = None
     traversal_seed: int | None = None
+    traversal_policy_name: str | None = None
+    proposal_order: list[str] | None = None
     traversal_order: list[str] | None = None
+    permutation_indices: list[int] | None = None
     proposal_rank: int | None = None
     """1-based rank in the proposer's relevance ranking."""
     proposal_score: float | None = None
@@ -100,7 +110,10 @@ class RouterTraceEntry(BaseModel):
     decisions: list[RouterDecision]
     selected_memory_ids: list[str]
     traversal_seed: int | None = None
+    traversal_policy_name: str | None = None
+    proposal_order: list[str] = Field(default_factory=list)
     traversal_order: list[str] = Field(default_factory=list)
+    permutation_indices: list[int] = Field(default_factory=list)
     graph_node: str | None = None
     receiver_role: str | None = None
     context_fingerprint_digest: str | None = None

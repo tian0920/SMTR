@@ -40,6 +40,6 @@ class SMTRGate:
             share=effect_passed and risk_passed,
             reason=reason,
             gate_name=self.gate_name,
-            effect_condition_passed=effect_passed,
-            risk_condition_passed=risk_passed,
+            effect_condition_status="passed" if effect_passed else "failed",
+            risk_condition_status="passed" if risk_passed else "failed",
         )

@@ -25,7 +25,8 @@ class ShareBudgetManifest(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    method: str = "M0"
+    method: str = "SMTR"
+    source_split: str = "validation"
     max_shares_per_invocation: int = 3
     count_distribution: dict[str, float] = Field(default_factory=dict)
     """P(|S|=k) for k in 0..max_shares. Keys are string integers."""
@@ -85,6 +86,11 @@ def build_manifest_from_runs(
             count_distribution={str(k): 0.0 for k in range(max_shares_per_invocation + 1)},
             seed=seed,
         )
+
+    # Preserve SMTR's natural count support.  ``max_shares_per_invocation`` is
+    # metadata for the observed validation run, not a cap that may silently
+    # discard invocations where SMTR accepted more candidates.
+    max_shares_per_invocation = max(max_shares_per_invocation, max(share_counts))
 
     # Compute distribution
     total = len(share_counts)

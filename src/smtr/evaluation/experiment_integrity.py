@@ -10,6 +10,8 @@ from smtr.router.factory import CheckpointCompatibilityError, build_router
 GATE_METHOD_TO_GATE = {
     "SMTR": "smtr_mean_effect_mean_risk",
     "EffectOnly-SMTR": "effect_only_smtr",
+    "Static-SMTR": "smtr_mean_effect_mean_risk",
+    "FactualSuccess-SMTR": "factual_success_smtr",
 }
 
 
@@ -97,7 +99,7 @@ def _all_withhold_consistency(runs) -> float:
     checked = 0
     ok = 0
     for run in runs:
-        if run.method not in {"SMTR", "EffectOnly-SMTR"} or not run.all_withhold:
+        if run.method not in set(GATE_METHOD_TO_GATE) or not run.all_withhold:
             continue
         checked += 1
         base = b0.get(run.base_episode_id)

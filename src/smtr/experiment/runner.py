@@ -16,6 +16,9 @@ from smtr.counterfactual.decision_points import canonical_digest
 from smtr.counterfactual.snapshot import ReadOnlyPinnedMemoryView
 from smtr.counterfactual.task_provider import CounterfactualToyTaskProvider
 from smtr.evaluation.ablation_gates import EffectOnlyGate
+from smtr.evaluation.paired_statistics import compute_group_bootstrap_ci
+from smtr.evaluation.static_set_diagnostics import compute_static_set_diagnostics
+from smtr.experiment.methods import build_default_specs
 from smtr.experiment.schemas import (
     VALID_METHOD_IDS,
     BaseEpisodeManifestRecord,
@@ -38,19 +41,33 @@ from smtr.router.baselines import (
     RelevanceTopKRouterConfig,
 )
 from smtr.router.candidate_proposer import DeterministicHybridCandidateProposer
-from smtr.router.factory import build_router, build_smtr_router
+from smtr.router.conditioning import FrozenInitialSelectedSetConditioning
+from smtr.router.factory import (
+    build_factual_success_router,
+    build_router,
+    build_smtr_router,
+)
 from smtr.router.sequential_router import SequentialRouterConfig
 from smtr.runtime.environment import ToyEnvironment
 from smtr.runtime.graph import build_graph
 from smtr.runtime.state import initial_state
 
-FULL_ABLATION_METHODS = [
+FORMAL_METHODS = [
     "B0",
     "B1-Top1",
+    "B1-AllCandidates",
     "B1-Matched",
     "SMTR",
 ]
-FORMAL_LEARNED_METHODS = frozenset({"SMTR", "EffectOnly-SMTR"})
+CORE_ABLATION_METHODS = frozenset({
+    "EffectOnly-SMTR",
+    "Static-SMTR",
+    "FactualSuccess-SMTR",
+})
+FORMAL_LEARNED_METHODS = frozenset({
+    "SMTR",
+    *CORE_ABLATION_METHODS,
+})
 TRAVERSAL_METHODS = FORMAL_LEARNED_METHODS
 CRITIC_METHODS = FORMAL_LEARNED_METHODS
 
@@ -67,13 +84,34 @@ class ComparisonRunner:
         self.experiment_id = str(uuid4())[:8]
 
     def _resolve_methods(self) -> list[str]:
-        methods = list(self.config.methods or FULL_ABLATION_METHODS)
+        methods = list(self.config.methods or FORMAL_METHODS)
         unknown = [method for method in methods if method not in VALID_METHOD_IDS]
         if unknown:
             raise ValueError(f"unknown method IDs for new runner: {unknown}")
+        disabled_ablations = [
+            method
+            for method in methods
+            if method in CORE_ABLATION_METHODS
+            and not self.config.enable_ablation_methods
+        ]
+        if disabled_ablations:
+            raise ValueError(
+                "ablation methods require enable_ablation_methods=True: "
+                f"{disabled_ablations}"
+            )
         learned_methods = [method for method in methods if method in CRITIC_METHODS]
-        if learned_methods and not self.config.critic_checkpoint:
+        four_outcome_methods = [
+            method for method in learned_methods if method != "FactualSuccess-SMTR"
+        ]
+        if four_outcome_methods and not self.config.critic_checkpoint:
             raise ValueError("SMTR methods require critic_checkpoint")
+        if (
+            "FactualSuccess-SMTR" in learned_methods
+            and not self.config.factual_success_checkpoint
+        ):
+            raise ValueError(
+                "FactualSuccess-SMTR requires factual_success_checkpoint"
+            )
         if "B1-Matched" in methods and not self.config.budget_manifest_path:
             raise ValueError("B1-Matched requires budget_manifest_path")
         return methods
@@ -94,10 +132,10 @@ class ComparisonRunner:
                 ),
                 "RelevanceTopKRouter",
             )
-        if method == "B1-Top3":
+        if method == "B1-AllCandidates":
             return (
                 RelevanceTopKRouter(
-                    config=RelevanceTopKRouterConfig(max_shares_per_invocation=3)
+                    config=RelevanceTopKRouterConfig(max_shares_per_invocation=None)
                 ),
                 "RelevanceTopKRouter",
             )
@@ -105,17 +143,27 @@ class ComparisonRunner:
             manifest = self._load_budget_manifest()
             router = BudgetMatchedTopKRouter(
                 manifest_config=manifest,
-                invocation_seed=canonical_int_seed(
-                    self.experiment_id, base_episode_id, traversal_seed
-                ),
+                experiment_seed=canonical_int_seed(self.experiment_id),
+                base_episode_id=base_episode_id,
+                method_id=method,
             )
             return router, "BudgetMatchedTopKRouter"
+        traversal_policy = None
+        if self.config.explicit_permutation is not None and method in {
+            "SMTR",
+            "Static-SMTR",
+            "EffectOnly-SMTR",
+            "FactualSuccess-SMTR",
+        }:
+            traversal_policy = _RankPermutationTraversal(
+                tuple(self.config.explicit_permutation)
+            )
         if method == "SMTR":
             router = build_smtr_router(
                 critic_checkpoint=self.config.critic_checkpoint,
                 negative_risk_budget=self.config.negative_risk_budget,
-                max_shares_per_invocation=self.config.max_shares_per_invocation,
                 seed=traversal_seed or 0,
+                traversal_policy=traversal_policy,
             )
             return router, "ProductionSequentialRouter"
         if method == "EffectOnly-SMTR":
@@ -123,12 +171,29 @@ class ComparisonRunner:
                 mode="learned",
                 critic_checkpoint=self.config.critic_checkpoint,
                 expected_feature_block="full",
-                max_shares_per_invocation=self.config.max_shares_per_invocation,
                 seed=traversal_seed or 0,
                 critic_config=SequentialRouterConfig(),
                 negative_risk_budget=self.config.negative_risk_budget,
+                traversal_policy=traversal_policy,
             )
             router.gate = EffectOnlyGate()
+            return router, "ProductionSequentialRouter"
+        if method == "Static-SMTR":
+            router = build_smtr_router(
+                critic_checkpoint=self.config.critic_checkpoint,
+                negative_risk_budget=self.config.negative_risk_budget,
+                seed=traversal_seed or 0,
+                conditioning_policy=FrozenInitialSelectedSetConditioning(),
+                traversal_policy=traversal_policy,
+            )
+            return router, "ProductionSequentialRouter"
+        if method == "FactualSuccess-SMTR":
+            router = build_factual_success_router(
+                factual_checkpoint=self.config.factual_success_checkpoint,
+                threshold=self.config.factual_success_threshold,
+                seed=traversal_seed or 0,
+                traversal_policy=traversal_policy,
+            )
             return router, "ProductionSequentialRouter"
         raise ValueError(f"unknown method: {method!r}")
 
@@ -179,6 +244,21 @@ class ComparisonRunner:
         )
 
         methods = self._resolve_methods()
+        writer.write_json(
+            "method_specs.json",
+            {
+                key: spec.__dict__
+                for key, spec in build_default_specs(
+                    critic_checkpoint=self.config.critic_checkpoint,
+                    factual_success_checkpoint=self.config.factual_success_checkpoint,
+                    budget_manifest_path=self.config.budget_manifest_path,
+                    max_shares_per_invocation=self.config.max_shares_per_invocation,
+                    negative_risk_budget=self.config.negative_risk_budget,
+                    include_ablations=self.config.enable_ablation_methods,
+                ).items()
+                if spec.display_label in methods
+            },
+        )
         self._validate_checkpoints(methods)
         base_episodes = self._build_base_episode_manifest(
             task_provider=task_provider,
@@ -243,16 +323,54 @@ class ComparisonRunner:
 
         self._assert_roundtrip(writer, all_runs)
         writer.write_invocations(all_runs)
+        writer.write_jsonl("decisions.jsonl", _decision_lines(all_runs))
         summary = compute_summary(all_runs, self.config)
         writer.write_summary(summary)
+        writer.write_paired_comparisons(
+            compute_group_bootstrap_ci(
+                all_runs,
+                method_pairs=[
+                    ("SMTR", "B0"),
+                    ("SMTR", "B1-Top1"),
+                    ("SMTR", "B1-AllCandidates"),
+                    ("SMTR", "B1-Matched"),
+                    ("SMTR", "EffectOnly-SMTR"),
+                    ("SMTR", "Static-SMTR"),
+                    ("SMTR", "FactualSuccess-SMTR"),
+                ],
+                bootstrap_seed=self.config.bootstrap_seed,
+                bootstrap_n=self.config.bootstrap_n,
+            )
+        )
+        writer.write_json(
+            "static_set_diagnostics.json",
+            compute_static_set_diagnostics(all_runs),
+        )
+        writer.write_json("scenario_slices.json", _scenario_slices(all_runs, self.config))
+        writer.write_json(
+            "gate_diagnostics.json",
+            {
+                "note": "Gate diagnostics are included in summary method fields.",
+                "methods": list(summary.methods),
+            },
+        )
+        (writer.output_dir / "report.md").write_text(
+            _render_report(summary),
+            encoding="utf-8",
+        )
         return summary
 
     def _validate_checkpoints(self, methods: list[str]) -> None:
-        if any(method in CRITIC_METHODS for method in methods):
+        if any(method in CRITIC_METHODS - {"FactualSuccess-SMTR"} for method in methods):
             build_smtr_router(
                 critic_checkpoint=self.config.critic_checkpoint,
                 negative_risk_budget=self.config.negative_risk_budget,
-                max_shares_per_invocation=self.config.max_shares_per_invocation,
+                seed=0,
+            )
+        if "FactualSuccess-SMTR" in methods:
+            build_factual_success_router(
+                factual_checkpoint=self.config.factual_success_checkpoint,
+                threshold=self.config.factual_success_threshold,
                 seed=0,
             )
 
@@ -435,6 +553,9 @@ class ComparisonRunner:
             generation_seed=base_episode.generation_seed,
             replicate_index=base_episode.replicate_index,
             traversal_seed=traversal_seed,
+            permutation_id=self.config.permutation_id,
+            permutation_indices=list(self.config.explicit_permutation or []),
+            permutation_application_policy=self.config.permutation_application_policy,
             memory_snapshot_id=base_episode.memory_snapshot_id,
             memory_snapshot_digest=base_episode.memory_snapshot_digest,
             environment_snapshot_digest=base_episode.initial_environment_digest,
@@ -500,6 +621,22 @@ def _build_invocations(router_trace: list[dict[str, Any]]) -> list[RoutingInvoca
                     traversal_position=int(traversal_position),
                     selected_before_memory_ids=list(selected_before),
                     selected_before_digest=selected_set_signature(selected_before),
+                    selected_before_actual=decision.get(
+                        "selected_before_actual",
+                        list(selected_before),
+                    ),
+                    selected_before_critic=decision.get(
+                        "selected_before_critic",
+                        list(selected_before),
+                    ),
+                    selected_before_actual_digest=decision.get(
+                        "selected_before_actual_digest",
+                        selected_set_signature(selected_before),
+                    ),
+                    selected_before_critic_digest=decision.get(
+                        "selected_before_critic_digest",
+                        selected_set_signature(selected_before),
+                    ),
                     tau_mean=decision.get("tau_mean"),
                     tau_lcb=decision.get("tau_lcb"),
                     tau_ucb=decision.get("tau_ucb"),
@@ -509,8 +646,11 @@ def _build_invocations(router_trace: list[dict[str, Any]]) -> list[RoutingInvoca
                     robust_diagnostics=decision.get("robust_diagnostics"),
                     support_distance=decision.get("support_distance"),
                     gate_name=decision.get("gate_name"),
+                    conditioning_policy_name=decision.get("conditioning_policy_name"),
                     effect_condition_passed=decision.get("effect_condition_passed"),
                     risk_condition_passed=decision.get("risk_condition_passed"),
+                    effect_condition_status=decision.get("effect_condition_status"),
+                    risk_condition_status=decision.get("risk_condition_status"),
                 )
             )
             if decision.get("action") == "share":
@@ -525,6 +665,7 @@ def _build_invocations(router_trace: list[dict[str, Any]]) -> list[RoutingInvoca
                 decision_records, key=lambda item: item.traversal_position
             )
         ]
+        proposal_order = trace.get("proposal_order") or candidate_ids
         invocation_id = canonical_digest(
             {
                 "index": invocation_index,
@@ -542,8 +683,11 @@ def _build_invocations(router_trace: list[dict[str, Any]]) -> list[RoutingInvoca
                 candidate_request_digest=trace.get("candidate_request_digest", ""),
                 candidate_memory_ids=candidate_ids,
                 candidate_scores=candidate_scores,
-                proposal_order=candidate_ids,
+                proposal_order=proposal_order,
                 traversal_order=traversal_order,
+                traversal_policy_name=trace.get("traversal_policy_name"),
+                traversal_seed=trace.get("traversal_seed"),
+                permutation_indices=trace.get("permutation_indices", []),
                 decisions=decision_records,
                 selected_memory_ids=trace.get("selected_memory_ids", []),
                 visible_payload_memory_ids=trace.get(
@@ -559,8 +703,114 @@ def canonical_int_seed(*parts: Any) -> int:
     return int(canonical_digest(parts)[:8], 16)
 
 
+class _RankPermutationTraversal:
+    policy_name = "explicit_permutation"
+
+    def __init__(self, permutation: tuple[int, ...]) -> None:
+        self.permutation = permutation
+
+    def order(self, candidates, *, seed: int):
+        del seed
+        if len(self.permutation) != len(candidates):
+            raise ValueError(
+                "permutation length must match candidate count: "
+                f"{len(self.permutation)} != {len(candidates)}"
+            )
+        expected = set(range(len(candidates)))
+        if set(self.permutation) != expected:
+            raise ValueError("permutation must contain each rank exactly once")
+        return tuple(candidates[index] for index in self.permutation)
+
+
 def _append_error_from_exception(writer: ExperimentWriter, exc: ExperimentRunError) -> None:
     try:
         writer.append_error(json.loads(str(exc)))
     except json.JSONDecodeError:
         writer.append_error({"error": str(exc)})
+
+
+def _decision_lines(runs: list[ComparisonRunRecord]) -> list[dict[str, Any]]:
+    records = []
+    for run in runs:
+        for invocation in run.invocations:
+            for decision in invocation.decisions:
+                records.append(
+                    {
+                        "experiment_id": run.experiment_id,
+                        "base_episode_id": run.base_episode_id,
+                        "method": run.method,
+                        "scenario": run.scenario,
+                        "traversal_seed": run.traversal_seed,
+                        "graph_node": invocation.graph_node,
+                        "receiver_agent_id": invocation.receiver_agent_id,
+                        **decision.model_dump(),
+                    }
+                )
+    return records
+
+
+def _scenario_slices(
+    runs: list[ComparisonRunRecord],
+    config: ExperimentConfig,
+) -> dict[str, Any]:
+    scenarios = sorted({run.scenario or "default" for run in runs})
+    return {
+        scenario: compute_summary(
+            [run for run in runs if (run.scenario or "default") == scenario],
+            config,
+        ).model_dump()
+        for scenario in scenarios
+    }
+
+
+def _render_report(summary: ExperimentSummary) -> str:
+    lines = [
+        "# Formal SMTR Core Ablation",
+        "",
+        "SMTR shares when `tau_mean > 0` and `negative_risk_mean <= epsilon`.",
+        "",
+        "## Main Results",
+        "",
+        "| Method | Success | PosTR | NegTR | NetTR | "
+        "Mean exposure/invocation | Total exposure/episode | All-withhold | "
+        "Opportunity Capture | Safety Preservation |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for method, item in summary.methods.items():
+        pos = item.positive_transfer_rate
+        neg = item.negative_transfer_rate
+        net = None if pos is None or neg is None else pos - neg
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    method,
+                    _fmt(item.success_rate),
+                    _fmt(pos),
+                    _fmt(neg),
+                    _fmt(net),
+                    _fmt(item.mean_exposure_per_invocation),
+                    _fmt(item.total_exposure_per_episode),
+                    _fmt(item.all_withhold_rate),
+                    _fmt(item.opportunity_capture),
+                    _fmt(item.safety_preservation),
+                ]
+            )
+            + " |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Notes",
+            "",
+            "EffectOnly removes the risk condition. Static-SMTR keeps the SMTR "
+            "gate but freezes critic selected-set conditioning at invocation "
+            "start. FactualSuccess-SMTR uses a validation-calibrated binary "
+            "share-success threshold.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _fmt(value: float | None) -> str:
+    return "-" if value is None else f"{value:.3f}"

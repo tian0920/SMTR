@@ -8,20 +8,24 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 VALID_METHOD_IDS = frozenset({
     "B0",
     "B1-Top1",
-    "B1-Top3",
+    "B1-AllCandidates",
     "B1-Matched",
     "SMTR",
     "EffectOnly-SMTR",
+    "Static-SMTR",
+    "FactualSuccess-SMTR",
 })
 
 # Mapping from method_id to internal registry key
 METHOD_ID_TO_REGISTRY = {
     "B0": "b0_no_memory",
     "B1-Top1": "b1_top1",
-    "B1-Top3": "b1_top3",
+    "B1-AllCandidates": "b1_all_candidates",
     "B1-Matched": "b1_matched",
     "SMTR": "smtr",
     "EffectOnly-SMTR": "effect_only_smtr",
+    "Static-SMTR": "static_smtr",
+    "FactualSuccess-SMTR": "factual_success_smtr",
 }
 
 
@@ -43,15 +47,21 @@ class ExperimentConfig(BaseModel):
     overwrite: bool = False
     fail_fast: bool = True
     bootstrap_seed: int = 42
-    bootstrap_n: int = 1000
+    bootstrap_n: int = 2000
     # Counterfactual scenario name (None = default toy task)
     scenario: str | None = None
     # Methods to run (None = default B0/B1/M0 for backward compat)
     methods: list[str] | None = None
+    enable_ablation_methods: bool = False
     # A1 critic checkpoint (if different from M0)
     a1_critic_checkpoint: str | None = None
+    factual_success_checkpoint: str | None = None
+    factual_success_threshold: float | None = None
     # B1-Matched budget manifest path
     budget_manifest_path: str | None = None
+    explicit_permutation: list[int] | None = None
+    permutation_id: str | None = None
+    permutation_application_policy: str | None = None
 
     @model_validator(mode="after")
     def validate_config(self) -> "ExperimentConfig":
@@ -82,6 +92,10 @@ class DecisionRecord(BaseModel):
     traversal_position: int
     selected_before_memory_ids: list[str] = Field(default_factory=list)
     selected_before_digest: str
+    selected_before_actual: list[str] = Field(default_factory=list)
+    selected_before_critic: list[str] = Field(default_factory=list)
+    selected_before_actual_digest: str | None = None
+    selected_before_critic_digest: str | None = None
     tau_mean: float | None = None
     tau_lcb: float | None = None
     tau_ucb: float | None = None
@@ -91,8 +105,11 @@ class DecisionRecord(BaseModel):
     robust_diagnostics: dict[str, float] | None = None
     support_distance: float | None = None
     gate_name: str | None = None
+    conditioning_policy_name: str | None = None
     effect_condition_passed: bool | None = None
     risk_condition_passed: bool | None = None
+    effect_condition_status: str | None = None
+    risk_condition_status: str | None = None
     paired_record_id: str | None = None
     true_transfer_class: str | None = None
     true_tau: float | None = None
@@ -113,6 +130,9 @@ class RoutingInvocationRecord(BaseModel):
     candidate_scores: list[float] = Field(default_factory=list)
     proposal_order: list[str] = Field(default_factory=list)
     traversal_order: list[str] = Field(default_factory=list)
+    traversal_policy_name: str | None = None
+    traversal_seed: int | None = None
+    permutation_indices: list[int] = Field(default_factory=list)
     decisions: list[DecisionRecord] = Field(default_factory=list)
     selected_memory_ids: list[str] = Field(default_factory=list)
     visible_payload_memory_ids: list[str] = Field(default_factory=list)
@@ -153,6 +173,9 @@ class ComparisonRunRecord(BaseModel):
     generation_seed: int
     replicate_index: int = 0
     traversal_seed: int | None = None
+    permutation_id: str | None = None
+    permutation_indices: list[int] = Field(default_factory=list)
+    permutation_application_policy: str | None = None
     memory_snapshot_id: str
     memory_snapshot_digest: str = ""
     environment_snapshot_digest: str
@@ -200,6 +223,20 @@ class MethodSummary(BaseModel):
     confidence_level: float | None = None
     share_budget_rejection_rate: float | None = None
     low_support_rejection_rate: float | None = None
+    effect_condition_pass_rate: float | None = None
+    effect_condition_rejection_rate: float | None = None
+    risk_condition_pass_rate: float | None = None
+    risk_condition_rejection_rate: float | None = None
+    opportunity_capture: float | None = None
+    safety_preservation: float | None = None
+    n_positive_transfer_opportunities: int = 0
+    n_negative_transfer_opportunities: int = 0
+    mean_exposure_per_invocation: float | None = None
+    total_exposure_per_episode: float | None = None
+    payload_token_count: int | None = None
+    mean_payload_tokens_per_invocation: float | None = None
+    all_candidates_shared_rate: float | None = None
+    selected_set_conditioning_divergence_rate: float | None = None
     other_reason_counts: dict[str, int] = Field(default_factory=dict)
 
 

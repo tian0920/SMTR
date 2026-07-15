@@ -86,8 +86,17 @@ def _pre_route_node(
         candidates = routing_result.candidate_proposal.ranked_candidates
         decisions = routing_result.decisions
         selected_ids = routing_result.selected_memory_ids
+        # Router traversal may be randomized, but prompt presentation remains
+        # proposer-ranked so order diagnostics vary selection order only.
+        selected_id_set = set(selected_ids)
+        presentation_ids = [
+            candidate.memory_id
+            for candidate in candidates
+            if candidate.memory_id in selected_id_set
+        ]
         selected_payloads = [
-            payload.model_dump() for payload in memory_pool.get_selected_payloads(selected_ids)
+            payload.model_dump()
+            for payload in memory_pool.get_selected_payloads(presentation_ids)
         ]
         visible_payload_memory_ids = [payload["memory_id"] for payload in selected_payloads]
 
@@ -122,10 +131,22 @@ def _pre_route_node(
             decisions=decisions,
             selected_memory_ids=selected_ids,
             traversal_seed=traversal_seed,
+            traversal_policy_name=(
+                routing_result.decisions[0].traversal_policy_name
+                if routing_result.decisions
+                else None
+            ),
+            proposal_order=[candidate.memory_id for candidate in candidates],
             traversal_order=(
                 routing_result.decisions[0].traversal_order
                 if routing_result.decisions
                 and routing_result.decisions[0].traversal_order is not None
+                else []
+            ),
+            permutation_indices=(
+                routing_result.decisions[0].permutation_indices
+                if routing_result.decisions
+                and routing_result.decisions[0].permutation_indices is not None
                 else []
             ),
             graph_node=f"pre_route_{receiver_agent}",

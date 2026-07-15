@@ -32,7 +32,7 @@ def test_reason_mapping(raw, canonical):
     assert canonicalize_reason(raw) == canonical
 
 
-def test_rejection_metrics_sum_to_one(tmp_path):
+def test_formal_summary_does_not_emit_share_budget_rejection_rate(tmp_path):
     run = ComparisonRunRecord(
         experiment_id="exp",
         base_episode_id="base",
@@ -85,14 +85,14 @@ def test_rejection_metrics_sum_to_one(tmp_path):
                     DecisionRecord(
                         decision_index=3,
                         memory_id="m4",
-                        action="withhold",
-                            reason="share_budget_exceeded",
+                        action="share",
+                        reason="shared",
                         traversal_position=3,
                         selected_before_digest="x",
                     ),
                 ],
-                selected_memory_ids=["m1"],
-                visible_payload_memory_ids=["m1"],
+                selected_memory_ids=["m1", "m4"],
+                visible_payload_memory_ids=["m1", "m4"],
             )
         ],
     )
@@ -101,11 +101,7 @@ def test_rejection_metrics_sum_to_one(tmp_path):
         ExperimentConfig(db_path=":memory:", output_dir=str(tmp_path)),
     )
     method = summary.methods["SMTR"]
-    total = (
-        (method.share_decision_rate or 0.0)
-        + (method.tau_mean_rejection_rate or 0.0)
-        + (method.negative_risk_mean_rejection_rate or 0.0)
-        + (method.share_budget_rejection_rate or 0.0)
-        + (method.low_support_rejection_rate or 0.0)
-    )
-    assert total == pytest.approx(1.0)
+    assert method.share_budget_rejection_rate is None
+    assert method.share_decision_rate == pytest.approx(0.5)
+    assert method.tau_mean_rejection_rate == pytest.approx(0.25)
+    assert method.negative_risk_mean_rejection_rate == pytest.approx(0.25)
