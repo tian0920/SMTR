@@ -124,7 +124,7 @@ class MarbleDatabaseEnvironment:
         """Write a MARBLE-compatible YAML/JSON config for the engine."""
         task_data = dict(self.task)
         config = dict(task_data)
-        config["coordinate_mode"] = config.get("coordinate_mode", "graph")
+        config["coordinate_mode"] = config.get("coordinate_mode") or "graph"
         config["llm"] = _configured_litellm_model()
         config["environment"] = dict(config.get("environment", {}))
         config["environment"]["type"] = "DB"
