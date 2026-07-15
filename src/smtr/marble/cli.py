@@ -176,6 +176,46 @@ def main() -> None:
     )
     eval_parser.add_argument("--output", required=True)
 
+    # --- New commands (Milestone 5) ---
+    preflight_alias = subparsers.add_parser("preflight")
+    preflight_alias.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
+    preflight_alias.add_argument("--output", default="artifacts/marble/outputs/preflight.json")
+
+    run_cmd = subparsers.add_parser("run")
+    run_cmd.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
+    run_cmd.add_argument("--method", choices=["b0", "allshare", "smtr"], required=True)
+    run_cmd.add_argument("--scenario", default="database")
+    run_cmd.add_argument("--task-id", required=True)
+    run_cmd.add_argument("--seed", type=int, default=0)
+    run_cmd.add_argument("--engine-timeout-seconds", type=int)
+    run_cmd.add_argument("--memory-pool")
+    run_cmd.add_argument("--checkpoint")
+    run_cmd.add_argument("--output", required=True)
+
+    run_pair_cmd = subparsers.add_parser("run-pair")
+    run_pair_cmd.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
+    run_pair_cmd.add_argument("--scenario", default="database")
+    run_pair_cmd.add_argument("--task-id", required=True)
+    run_pair_cmd.add_argument("--candidate-memory-id", required=True)
+    run_pair_cmd.add_argument("--seed", type=int, default=0)
+    run_pair_cmd.add_argument(
+        "--branch-order",
+        choices=["share-then-withhold", "withhold-then-share"],
+        default="share-then-withhold",
+    )
+    run_pair_cmd.add_argument("--output", required=True)
+
+    eval_methods = subparsers.add_parser("evaluate")
+    eval_methods.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
+    eval_methods.add_argument("--methods", nargs="+", default=["b0", "allshare", "smtr"])
+    eval_methods.add_argument("--scenario", default="database")
+    eval_methods.add_argument("--task-id", required=True)
+    eval_methods.add_argument("--seed", type=int, default=0)
+    eval_methods.add_argument("--memory-pool")
+    eval_methods.add_argument("--checkpoint")
+    eval_methods.add_argument("--engine-timeout-seconds", type=int)
+    eval_methods.add_argument("--output", required=True)
+
     audit_parser = subparsers.add_parser("integrity-audit")
     audit_parser.add_argument("--run-dir")
     audit_parser.add_argument("--split-manifest")
@@ -473,6 +513,82 @@ def main() -> None:
                 f"withhold={agg['withhold_count']} "
                 f"rate={agg['share_rate']:.3f}"
             )
+    elif args.command == "preflight":
+        result = write_runtime_preflight(
+            marble_root=Path(args.marble_root),
+            output_path=Path(args.output),
+        )
+        print(f"runtime_preflight.ready={result.ready}")
+        for check in result.checks:
+            if check.blocking and not check.passed:
+                print(f"blocking_failure={check.name}: {check.detail}")
+    elif args.command == "run":
+        from smtr.marble.marble_environment_evaluation import MarbleEnvironmentEvaluator
+        method_map = {"b0": "b0_no_memory", "allshare": "all_share", "smtr": "smtr"}
+        method = method_map[args.method]
+        marble_root = Path(args.marble_root)
+        task = _load_database_task_by_id(marble_root, str(args.task_id))
+        engine_timeout = args.engine_timeout_seconds or DEFAULT_ENGINE_TIMEOUT_SECONDS
+        evaluator = MarbleEnvironmentEvaluator()
+        result = evaluator.evaluate_method(
+            method=method,
+            task=task,
+            task_id=str(args.task_id),
+            scenario=args.scenario,
+            marble_root=marble_root,
+            output_dir=Path(args.output),
+            generation_seed=args.seed,
+            engine_timeout_seconds=engine_timeout,
+        )
+        output_dir = Path(args.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / "run_result.json").write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+        )
+        print(f"real_engine_executed={result['real_engine_executed']}")
+        print(f"native_evaluator_executed={result['native_evaluator_executed']}")
+        print(f"method={result['method']}")
+    elif args.command == "run-pair":
+        marble_root = Path(args.marble_root)
+        task = _load_database_task_by_id(marble_root, str(args.task_id))
+        summary = run_database_paired_smoke(
+            marble_root=marble_root,
+            task_id=str(args.task_id),
+            memory_id=str(args.candidate_memory_id),
+            generation_seed=args.seed,
+            branch_order=args.branch_order,
+            output_dir=Path(args.output),
+        )
+        print(f"paired_record_valid={summary['paired_record_valid']}")
+        print(f"paired_label={summary['paired_label']}")
+    elif args.command == "evaluate":
+        from smtr.marble.marble_environment_evaluation import MarbleEnvironmentEvaluator
+        marble_root = Path(args.marble_root)
+        task = _load_database_task_by_id(marble_root, str(args.task_id))
+        engine_timeout = args.engine_timeout_seconds or DEFAULT_ENGINE_TIMEOUT_SECONDS
+        method_map = {"b0": "b0_no_memory", "allshare": "all_share", "smtr": "smtr"}
+        evaluator = MarbleEnvironmentEvaluator()
+        results: list[dict] = []
+        for m in args.methods:
+            method_key = method_map.get(m, m)
+            result = evaluator.evaluate_method(
+                method=method_key,
+                task=task,
+                task_id=str(args.task_id),
+                scenario=args.scenario,
+                marble_root=marble_root,
+                output_dir=Path(args.output) / method_key,
+                generation_seed=args.seed,
+                engine_timeout_seconds=engine_timeout,
+            )
+            results.append(result)
+            print(f"{method_key}: real_engine={result['real_engine_executed']} "
+                  f"evaluator={result['native_evaluator_executed']}")
+        output_dir = Path(args.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / "evaluate_results.json").write_text(
+            json.dumps(results, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+        )
     elif args.command == "integrity-audit":
         if args.run_dir:
             summary = audit_marble_pilot_run(run_dir=Path(args.run_dir))

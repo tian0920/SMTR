@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.artifacts import assert_marble_artifact_path
+from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
 from smtr.marble.environment.database_fingerprint import DatabaseLogicalFingerprint
 from smtr.marble.environment.database_rebuild import (
     DatabaseCleanupResult,
@@ -76,6 +77,7 @@ class MarblePairedBranchRunner:
             "share_then_withhold",
             "withhold_then_share",
         ] = "share_then_withhold",
+        engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
     ) -> PairedBranchResult:
         assert_marble_artifact_path(workspace)
         evaluator = evaluator_for_scenario(initial_state_bundle.scenario)
@@ -94,6 +96,15 @@ class MarblePairedBranchRunner:
             base_env.close()
             memory_payload = str(candidate_memory.get("payload", ""))
             memory_id = str(candidate_memory.get("memory_id", "unknown"))
+            receiver_agent_id = str(agent_config.get("target_receiver_agent_id", "agent1"))
+            share_injection: dict[str, Any] | None = None
+            if memory_payload:
+                share_injection = {
+                    "receiver_agent_ids": [receiver_agent_id],
+                    "memory_payloads": [memory_payload],
+                    "memory_ids": [memory_id],
+                    "intervention_id": f"pair_{memory_id}_{generation_seed}",
+                }
             share_input, share_input_audit = injector.build_agent_input(
                 base_agent_input=base_input,
                 memory_payloads=(memory_payload,),
@@ -104,6 +115,10 @@ class MarblePairedBranchRunner:
                 memory_payloads=(),
                 memory_ids=(),
             )
+            branch_injections = {
+                "share": share_injection,
+                "withhold": None,
+            }
             branch_inputs = {
                 "share": (share_input, share_input_audit),
                 "withhold": (withhold_input, withhold_input_audit),
@@ -130,8 +145,14 @@ class MarblePairedBranchRunner:
                 else:
                     withhold_env = env
                 branch_input, branch_input_audit = branch_inputs[branch]
+                branch_inj = branch_injections[branch]
                 try:
-                    run = env.run(agent_input=branch_input, generation_seed=generation_seed)
+                    run = env.run(
+                        agent_input=branch_input,
+                        generation_seed=generation_seed,
+                        memory_injection=branch_inj,
+                        engine_timeout_seconds=engine_timeout_seconds,
+                    )
                     outcome = evaluator.evaluate(task=task, run_result=run)
                     branch_engine_executed = True
                 except Exception as exc:

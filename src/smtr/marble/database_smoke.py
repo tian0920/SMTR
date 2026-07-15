@@ -20,9 +20,10 @@ from smtr.marble.engine_process import (
 from smtr.marble.environment.database_rebuild import SequentialDatabaseRebuilder
 from smtr.marble.environment.isolation import bundle_from_manifest_task
 from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
-from smtr.marble.memory_injection import MarbleMemoryInjector
+from smtr.marble.memory_injection import MarbleMemoryInjector, MemoryPayload
 from smtr.marble.outcome.factory import evaluator_for_scenario
 from smtr.marble.outcome.protocol import outcome_from_failure
+from smtr.marble.run_identity import RunIdentity, current_marble_commit, current_smtr_commit
 from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_MODEL, run_database_runtime_preflight
 from smtr.marble.task_provider import _read_jsonl_line
 
@@ -44,6 +45,18 @@ def run_database_b0_smoke(
     )
     preflight = run_database_runtime_preflight(marble_root=marble_root)
     task = _load_database_task_by_id(marble_root, task_id)
+    identity = RunIdentity(
+        run_id=run_id,
+        task_id=str(task_id),
+        task_digest=canonical_digest(task),
+        scenario="database",
+        method="b0",
+        branch="b0",
+        generation_seed=generation_seed,
+        config_digest="pending",
+        marble_commit=current_marble_commit(marble_root),
+        smtr_commit=current_smtr_commit(),
+    )
     bundle = bundle_from_manifest_task(
         {"raw_task": task, "task_id": str(task_id), "scenario": "database"},
         generation_seed=generation_seed,
@@ -77,8 +90,9 @@ def run_database_b0_smoke(
             config_path=config_path,
             raw_result_path=raw_result_path,
             output_dir=output_dir,
-            run_identity={},
+            run_identity=identity.to_dict(),
             timeout_seconds=engine_timeout_seconds,
+            memory_injection=None,
         )
         write_engine_process_result(output_dir / "engine_process.json", engine_result)
         raw_result = _load_last_jsonl(raw_result_path) or {}
@@ -212,6 +226,7 @@ def run_database_paired_smoke(
     generation_seed: int,
     branch_order: str,
     output_dir: Path,
+    engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     assert_marble_artifact_path(output_dir)
     run_id = _run_id(
@@ -234,6 +249,7 @@ def run_database_paired_smoke(
         generation_seed=generation_seed,
         workspace=output_dir,
         branch_execution_order=branch_order.replace("-", "_"),
+        engine_timeout_seconds=engine_timeout_seconds,
     )
     summary = {
         "run_id": run_id,

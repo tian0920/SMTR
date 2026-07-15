@@ -1,7 +1,12 @@
-"""Auditable memory intervention layer for MARBLE agent inputs."""
+"""Memory injection adapter for MARBLE engine runs.
+
+Builds share/withhold agent inputs and generates runtime shim payloads
+that inject procedural memories into specific MARBLE agents' BaseMemory.
+"""
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -19,8 +24,27 @@ class MarbleAgentInputAudit:
     contains_memory_section: bool
 
 
+@dataclass(frozen=True)
+class MemoryPayload:
+    """A single memory payload to inject into a MARBLE agent."""
+
+    memory_id: str
+    payload: str
+    role: str = "procedural"
+
+
+@dataclass(frozen=True)
+class InjectionResult:
+    """Result of building a memory injection config."""
+
+    agent_input: dict[str, Any]
+    audit: MarbleAgentInputAudit
+    memory_injection: dict[str, Any] | None
+    intervention_id: str
+
+
 class MarbleMemoryInjector:
-    """Build share/withhold agent input while auditing only digests."""
+    """Build share/withhold agent input and runtime shim injection payloads."""
 
     def build_agent_input(
         self,
@@ -56,3 +80,35 @@ class MarbleMemoryInjector:
             contains_memory_section=memory_section is not None,
         )
         return agent_input, audit
+
+    def build_injection(
+        self,
+        *,
+        base_agent_input: dict[str, Any],
+        memory_payloads: list[MemoryPayload],
+        receiver_agent_ids: list[str],
+        intervention_id: str | None = None,
+    ) -> InjectionResult:
+        """Build both the agent input and the runtime shim injection payload."""
+        payloads_tuple = tuple(m.payload for m in memory_payloads)
+        ids_tuple = tuple(m.memory_id for m in memory_payloads)
+        agent_input, audit = self.build_agent_input(
+            base_agent_input=base_agent_input,
+            memory_payloads=payloads_tuple,
+            memory_ids=ids_tuple,
+        )
+        iid = intervention_id or uuid.uuid4().hex[:12]
+        injection: dict[str, Any] | None = None
+        if memory_payloads and receiver_agent_ids:
+            injection = {
+                "receiver_agent_ids": receiver_agent_ids,
+                "memory_payloads": list(payloads_tuple),
+                "memory_ids": list(ids_tuple),
+                "intervention_id": iid,
+            }
+        return InjectionResult(
+            agent_input=agent_input,
+            audit=audit,
+            memory_injection=injection,
+            intervention_id=iid,
+        )

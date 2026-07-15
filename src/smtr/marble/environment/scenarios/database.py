@@ -1,10 +1,10 @@
-"""Real MARBLE database environment adapter with fail-fast isolation checks."""
+"""Real MARBLE database environment adapter that invokes the true Engine."""
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -14,16 +14,15 @@ from smtr.marble.environment.isolation import (
     materialize_bundle_workspace,
     workspace_digest,
 )
+from smtr.marble.engine_process import (
+    DEFAULT_ENGINE_TIMEOUT_SECONDS,
+    MarbleEngineProcessResult,
+    run_marble_engine_process,
+)
 
 
 class MarbleDatabaseEnvironment:
-    """Adapter for MARBLE's DBEnvironment.
-
-    MARBLE's current DBEnvironment uses a fixed docker-compose directory and
-    fixed localhost:5432 PostgreSQL target. Until that upstream surface supports
-    branch-specific database/workspace configuration, this adapter refuses to run
-    paired labels instead of silently falling back to a surrogate.
-    """
+    """Adapter that runs a real MARBLE Engine subprocess for database tasks."""
 
     scenario = "database"
     engine_name = "MARBLE.Engine(DBEnvironment)"
@@ -78,16 +77,31 @@ class MarbleDatabaseEnvironment:
     def run(
         self,
         *,
-        agent_input: object,
+        agent_input: dict[str, Any],
         generation_seed: int,
+        memory_injection: dict[str, Any] | None = None,
+        run_identity: dict[str, str] | None = None,
+        engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
     ) -> dict[str, Any]:
-        self._write_config(generation_seed=generation_seed)
-        reason = self._preflight_real_engine()
-        if reason is not None:
-            raise RuntimeError(reason)
-        # If upstream DB isolation is ever added, this is where Engine(config).start()
-        # should be called. The current preflight rejects before this point.
-        raise RuntimeError("real_marble_database_engine_preflight_unexpectedly_passed")
+        """Write MARBLE YAML config and invoke the real engine subprocess."""
+        config_path = self.workspace / "marble_config.yaml"
+        raw_result_path = self.workspace / "marble_output.jsonl"
+        self._write_yaml_config(
+            agent_input=agent_input,
+            generation_seed=generation_seed,
+            config_path=config_path,
+            raw_result_path=raw_result_path,
+        )
+        engine_result = run_marble_engine_process(
+            marble_root=self.marble_root,
+            config_path=config_path,
+            raw_result_path=raw_result_path,
+            output_dir=self.workspace,
+            run_identity=run_identity or {},
+            timeout_seconds=engine_timeout_seconds,
+            memory_injection=memory_injection,
+        )
+        return self._load_raw_result(raw_result_path, engine_result)
 
     def final_state_digest(self) -> str:
         return workspace_digest(self.workspace)
@@ -95,44 +109,85 @@ class MarbleDatabaseEnvironment:
     def close(self) -> None:
         self._closed = True
 
-    def _write_config(self, *, generation_seed: int) -> None:
-        config = dict(self.task)
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _write_yaml_config(
+        self,
+        *,
+        agent_input: dict[str, Any],
+        generation_seed: int,
+        config_path: Path,
+        raw_result_path: Path,
+    ) -> None:
+        """Write a MARBLE-compatible YAML/JSON config for the engine."""
+        task_data = dict(self.task)
+        config = dict(task_data)
+        config["coordinate_mode"] = config.get("coordinate_mode", "graph")
+        config["llm"] = _configured_litellm_model()
         config["environment"] = dict(config.get("environment", {}))
         config["environment"]["type"] = "DB"
-        config["output"] = {
-            "file_path": str((self.workspace / "marble_output.jsonl").resolve())
-        }
+        config["environment"]["name"] = config["environment"].get(
+            "name", "DB Environment"
+        )
+        config["environment"]["max_iterations"] = int(
+            config["environment"].get("max_iterations") or 1
+        )
+        config["memory"] = {"type": "BaseMemory"}
+        config["output"] = {"file_path": str(raw_result_path.resolve())}
         config["smtr_generation_seed"] = generation_seed
-        (self.workspace / "marble_config.json").write_text(
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
             json.dumps(config, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
 
-    def _preflight_real_engine(self) -> str | None:
-        if not self.marble_root.exists():
-            return f"MARBLE root not found: {self.marble_root}"
-        sys.path.insert(0, str(self.marble_root))
-        try:
-            from marble.engine.engine import Engine  # noqa: F401
-            from marble.environments.db_env import DBEnvironment  # noqa: F401
-        except Exception as exc:
-            return f"real_marble_database_engine_import_failed: {type(exc).__name__}: {exc}"
-        db_env_source = self.marble_root / "marble/environments/db_env.py"
-        source = db_env_source.read_text(encoding="utf-8")
-        fixed_state = [
-            "cwd=os.path.join(self.current_dir, \"db_env_docker\")",
-            "host=\"localhost\"",
-            "port=\"5432\"",
-            "[\"sudo\", \"docker\", \"compose\", \"down\", \"-v\"]",
-        ]
-        if all(fragment in source for fragment in fixed_state):
-            return (
-                "real_marble_database_engine_not_executed: upstream DBEnvironment "
-                "uses fixed db_env_docker workspace and localhost:5432, so paired "
-                "share/withhold branches cannot be isolated as independent writable "
-                "database copies in one run."
-            )
-        return None
+    @staticmethod
+    def _load_raw_result(
+        raw_result_path: Path,
+        engine_result: MarbleEngineProcessResult,
+    ) -> dict[str, Any]:
+        """Load the last JSONL record from the engine output."""
+        result: dict[str, Any] = {
+            "real_engine_executed": engine_result.real_engine_executed,
+            "engine_exit_code": engine_result.exit_code,
+            "timed_out": engine_result.timed_out,
+            "task_evaluation": None,
+        }
+        if raw_result_path.exists() and raw_result_path.stat().st_size > 0:
+            try:
+                records = [
+                    json.loads(line)
+                    for line in raw_result_path.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                ]
+                if records:
+                    last = records[-1]
+                    result.update(last)
+            except (json.JSONDecodeError, OSError):
+                pass
+        return result
+
+
+def _configured_litellm_model() -> str:
+    model = (
+        os.environ.get("MARBLE_LLM_MODEL")
+        or os.environ.get("OPENAI_MODEL")
+        or os.environ.get("DASHSCOPE_MODEL")
+    )
+    compatible_base_url_configured = bool(
+        os.environ.get("DASHSCOPE_API_KEY")
+        or os.environ.get("DASHSCOPE_BASE_URL")
+        or os.environ.get("MARBLE_LLM_BASE_URL")
+    )
+    if not model and compatible_base_url_configured:
+        model = "qwen-plus"
+    if not model:
+        return "gpt-4o-mini"
+    if compatible_base_url_configured and "/" not in model:
+        return f"openai/{model}"
+    return model
 
 
 def clean_database_workspace(path: Path) -> None:

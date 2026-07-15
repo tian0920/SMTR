@@ -21,6 +21,36 @@ from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 DEFAULT_ENGINE_TIMEOUT_SECONDS = 900
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
 
+_LITELLM_SHIM_CODE = """
+from __future__ import annotations
+
+import os
+
+try:
+    import litellm
+except Exception:
+    litellm = None
+
+if litellm is not None and not getattr(litellm, "_smtr_openai_compat_patch", False):
+    _smtr_original_completion = litellm.completion
+
+    def _smtr_completion(*args, **kwargs):
+        base_url = os.environ.get("SMTR_OPENAI_COMPAT_BASE_URL")
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if base_url and not kwargs.get("base_url"):
+            kwargs["base_url"] = base_url
+        if api_key and not kwargs.get("api_key"):
+            kwargs["api_key"] = api_key
+        if os.environ.get("SMTR_LLM_ENABLE_THINKING", "").lower() in {"1", "true", "yes"}:
+            extra_body = dict(kwargs.get("extra_body") or {})
+            extra_body.setdefault("enable_thinking", True)
+            kwargs["extra_body"] = extra_body
+        return _smtr_original_completion(*args, **kwargs)
+
+    litellm.completion = _smtr_completion
+    litellm._smtr_openai_compat_patch = True
+""".lstrip()
+
 
 @dataclass(frozen=True)
 class MarbleEngineProcessResult:
@@ -75,6 +105,7 @@ def run_marble_engine_process(
     timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
     timeout_source: str = "default",
     termination_grace_period_seconds: float = DEFAULT_TERMINATION_GRACE_SECONDS,
+    memory_injection: dict[str, Any] | None = None,
 ) -> MarbleEngineProcessResult:
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be positive")
@@ -82,7 +113,12 @@ def run_marble_engine_process(
         raise ValueError("termination_grace_period_seconds must be non-negative")
     log_dir = output_dir or (raw_result_path.parent if raw_result_path else config_path.parent)
     log_dir.mkdir(parents=True, exist_ok=True)
-    env = _engine_environment(marble_root, shim_dir=log_dir / "runtime_shim")
+    env = _engine_environment(
+        marble_root,
+        shim_dir=log_dir / "runtime_shim",
+        memory_injection=memory_injection,
+        visibility_audit_path=log_dir / "memory_visibility_audit.jsonl",
+    )
     python = _marble_python(marble_root)
     if raw_result_path and raw_result_path.exists():
         raw_result_path.unlink()
@@ -98,9 +134,12 @@ def run_marble_engine_process(
     termination_requested = False
     termination_signal: str | None = None
     kill_escalated = False
+    # MARBLE uses relative paths (e.g. evaluator/evaluator_prompts.json)
+    # so CWD must be marble_root/marble (the package directory)
+    engine_cwd = marble_root / "marble"
     process = subprocess.Popen(
         command,
-        cwd=marble_root,
+        cwd=engine_cwd if engine_cwd.exists() else marble_root,
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -189,14 +228,29 @@ def write_engine_process_result(path: Path, result: MarbleEngineProcessResult) -
     path.write_text(json.dumps(result.to_json(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _engine_environment(marble_root: Path, *, shim_dir: Path | None = None) -> dict[str, str]:
+def _engine_environment(
+    marble_root: Path,
+    *,
+    shim_dir: Path | None = None,
+    memory_injection: dict[str, Any] | None = None,
+    visibility_audit_path: Path | None = None,
+) -> dict[str, str]:
     env = dict(os.environ)
     pythonpath = env.get("PYTHONPATH")
     path_entries = []
     if shim_dir is not None:
-        _write_litellm_runtime_shim(shim_dir)
+        _write_runtime_shim(
+            shim_dir,
+            memory_injection=memory_injection,
+            visibility_audit_path=visibility_audit_path,
+        )
         path_entries.append(str(shim_dir))
     path_entries.append(str(marble_root))
+    # Ensure MARBLE venv bin is on PATH so `python` resolves correctly
+    venv_bin = marble_root / ".venv" / "bin"
+    if venv_bin.exists():
+        existing_path = env.get("PATH", "")
+        env["PATH"] = f"{venv_bin}:{existing_path}" if existing_path else str(venv_bin)
     if pythonpath:
         path_entries.append(pythonpath)
     env["PYTHONPATH"] = ":".join(path_entries)
@@ -228,40 +282,88 @@ def _is_dashscope_compatible_base_url(base_url: str | None) -> bool:
     return host.endswith(".aliyuncs.com") or host == "dashscope.aliyuncs.com"
 
 
-def _write_litellm_runtime_shim(shim_dir: Path) -> None:
+def _write_runtime_shim(
+    shim_dir: Path,
+    *,
+    memory_injection: dict[str, Any] | None = None,
+    visibility_audit_path: Path | None = None,
+) -> None:
+    """Write a combined sitecustomize.py with litellm patch + optional memory injection."""
     shim_dir.mkdir(parents=True, exist_ok=True)
+    parts: list[str] = [_LITELLM_SHIM_CODE]
+    if memory_injection and visibility_audit_path:
+        payload_json = json.dumps(memory_injection, sort_keys=True)
+        audit_path_str = str(visibility_audit_path.resolve())
+        parts.append(
+            _build_memory_injection_code(payload_json, audit_path_str)
+        )
     (shim_dir / "sitecustomize.py").write_text(
-        """
-from __future__ import annotations
-
-import os
-
-try:
-    import litellm
-except Exception:
-    litellm = None
-
-if litellm is not None and not getattr(litellm, "_smtr_openai_compat_patch", False):
-    _smtr_original_completion = litellm.completion
-
-    def _smtr_completion(*args, **kwargs):
-        base_url = os.environ.get("SMTR_OPENAI_COMPAT_BASE_URL")
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if base_url and not kwargs.get("base_url"):
-            kwargs["base_url"] = base_url
-        if api_key and not kwargs.get("api_key"):
-            kwargs["api_key"] = api_key
-        if os.environ.get("SMTR_LLM_ENABLE_THINKING", "").lower() in {"1", "true", "yes"}:
-            extra_body = dict(kwargs.get("extra_body") or {})
-            extra_body.setdefault("enable_thinking", True)
-            kwargs["extra_body"] = extra_body
-        return _smtr_original_completion(*args, **kwargs)
-
-    litellm.completion = _smtr_completion
-    litellm._smtr_openai_compat_patch = True
-""".lstrip(),
-        encoding="utf-8",
+        "\n".join(parts), encoding="utf-8"
     )
+
+
+def _write_litellm_runtime_shim(shim_dir: Path) -> None:
+    """Legacy wrapper — writes only the litellm shim."""
+    _write_runtime_shim(shim_dir)
+
+
+def _build_memory_injection_code(payload_json: str, audit_path: str) -> str:
+    """Generate Python code for the memory injection part of the shim."""
+    safe_payload = payload_json.replace("\\", "\\\\").replace("'", "\\'")
+    safe_audit = audit_path.replace("\\", "\\\\")
+    return f"""
+
+# --- SMTR Memory Injection ---
+def _smtr_inject_memories():
+    import json as _json
+    import hashlib as _hashlib
+    payload_str = '{safe_payload}'
+    audit_path = '{safe_audit}'
+    try:
+        payload = _json.loads(payload_str)
+    except Exception:
+        return
+    receiver_ids = set(payload.get("receiver_agent_ids", []))
+    memory_payloads = payload.get("memory_payloads", [])
+    memory_ids = payload.get("memory_ids", [])
+    intervention_id = payload.get("intervention_id", "unknown")
+    if not receiver_ids or not memory_payloads:
+        return
+    try:
+        from marble.engine.engine import Engine
+    except ImportError:
+        return
+    _original_start = Engine.start
+    def _patched_start(self):
+        audit_records = []
+        for agent in self.agents:
+            if agent.agent_id in receiver_ids:
+                for mem_payload in memory_payloads:
+                    agent.memory.update("smtr_procedural", mem_payload)
+        digest = _hashlib.sha256(
+            _json.dumps(payload, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        for agent in self.agents:
+            visible = list(memory_ids) if agent.agent_id in receiver_ids else []
+            audit_records.append({{
+                "agent_id": agent.agent_id,
+                "visible_memory_ids": visible,
+                "memory_payload_digest": digest,
+                "intervention_id": intervention_id,
+            }})
+        try:
+            import pathlib
+            p = pathlib.Path(audit_path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            lines = [_json.dumps(r, sort_keys=True) for r in audit_records]
+            p.write_text(chr(10).join(lines) + chr(10) if lines else "", encoding="utf-8")
+        except Exception:
+            pass
+        return _original_start(self)
+    Engine.start = _patched_start
+
+_smtr_inject_memories()
+"""
 
 
 def _marble_python(marble_root: Path) -> Path:

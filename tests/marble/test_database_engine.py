@@ -23,7 +23,14 @@ def test_database_engine_audit_records_fixed_workspace_limitation(tmp_path: Path
 
 
 @pytest.mark.marble
-def test_database_environment_fails_fast_without_surrogate_execution(tmp_path: Path) -> None:
+def test_database_environment_run_invokes_real_engine(tmp_path: Path) -> None:
+    """Verify that run() now invokes the real engine subprocess (no fail-fast).
+
+    The environment no longer raises RuntimeError; it delegates to
+    run_marble_engine_process().  Without Docker running, the engine
+    subprocess will fail, but the environment gracefully returns a result
+    dict with real_engine_executed=False.
+    """
     path = MARBLE_ROOT / "multiagentbench/database/database_main.jsonl"
     task = _read_jsonl_line(path, 1)
     bundle = bundle_from_manifest_task(
@@ -36,12 +43,16 @@ def test_database_environment_fails_fast_without_surrogate_execution(tmp_path: P
         agent_config={"target_receiver_agent_id": "agent1"},
         marble_root=MARBLE_ROOT,
     )
-
-    with pytest.raises(
-        RuntimeError,
-        match="real_marble_database_engine_(not_executed|import_failed)",
-    ):
-        env.run(agent_input=env.build_agent_input(memory_payloads=()), generation_seed=0)
+    # Without Docker, the engine will fail, but run() should NOT raise.
+    result = env.run(
+        agent_input=env.build_agent_input(memory_payloads=()),
+        generation_seed=0,
+        engine_timeout_seconds=30,
+    )
+    assert isinstance(result, dict)
+    assert "real_engine_executed" in result
+    assert "task_evaluation" in result
+    env.close()
 
 
 def test_database_environment_config_uses_absolute_output_path(tmp_path: Path) -> None:
@@ -62,12 +73,19 @@ def test_database_environment_config_uses_absolute_output_path(tmp_path: Path) -
         marble_root=MARBLE_ROOT,
     )
 
-    env._write_config(generation_seed=0)
+    config_path = env.workspace / "marble_config.yaml"
+    raw_result_path = env.workspace / "marble_output.jsonl"
+    env._write_yaml_config(
+        agent_input=env.build_agent_input(memory_payloads=()),
+        generation_seed=0,
+        config_path=config_path,
+        raw_result_path=raw_result_path,
+    )
 
-    config = json.loads((env.workspace / "marble_config.json").read_text(encoding="utf-8"))
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     output_path = Path(config["output"]["file_path"])
     assert output_path.is_absolute()
-    assert output_path == (env.workspace / "marble_output.jsonl").resolve()
+    assert output_path == raw_result_path.resolve()
     text = json.dumps(config)
     assert "DASHSCOPE_API_KEY" not in text
     assert "OPENAI_API_KEY" not in text
