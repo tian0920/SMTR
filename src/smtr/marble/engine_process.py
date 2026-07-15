@@ -8,6 +8,7 @@ import os
 import re
 import signal
 import subprocess
+import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -19,7 +20,6 @@ from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 
 DEFAULT_ENGINE_TIMEOUT_SECONDS = 900
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
-LAST_OBSERVED_STAGE_PARSER_VERSION = "marble_engine_log_markers_v1"
 
 
 @dataclass(frozen=True)
@@ -37,8 +37,6 @@ class MarbleEngineProcessResult:
     engine_termination_signal: str | None
     engine_termination_grace_period_seconds: float
     engine_kill_escalated: bool
-    last_observed_stage: str
-    last_observed_stage_parser_version: str
     stdout_digest: str
     stderr_digest: str
     stdout_log_path: str | None
@@ -129,7 +127,6 @@ def run_marble_engine_process(
     ended_at_timestamp = time.time()
     stdout_log = _write_log(log_dir / "stdout.log", stdout)
     stderr_log = _write_log(log_dir / "stderr.log", stderr)
-    last_stage = _last_observed_stage(stdout=stdout, stderr=stderr)
     cleanup = _cleanup_database(marble_root, log_dir=log_dir)
     ended = _now()
     raw_validation = _validate_raw_result(
@@ -159,8 +156,6 @@ def run_marble_engine_process(
         engine_termination_signal=termination_signal,
         engine_termination_grace_period_seconds=termination_grace_period_seconds,
         engine_kill_escalated=kill_escalated,
-        last_observed_stage=last_stage,
-        last_observed_stage_parser_version=LAST_OBSERVED_STAGE_PARSER_VERSION,
         stdout_digest=stdout_log["digest"],
         stderr_digest=stderr_log["digest"],
         stdout_log_path=stdout_log["path"],
@@ -271,7 +266,7 @@ if litellm is not None and not getattr(litellm, "_smtr_openai_compat_patch", Fal
 
 def _marble_python(marble_root: Path) -> Path:
     candidate = marble_root / ".venv/bin/python"
-    return candidate if candidate.exists() else Path(os.sys.executable)
+    return candidate if candidate.exists() else Path(sys.executable)
 
 
 def _sanitized_environment(env: dict[str, str]) -> dict[str, str]:
@@ -350,24 +345,6 @@ def _terminate_process_group(process: subprocess.Popen[str], sig: signal.Signals
             process.terminate()
         else:
             process.kill()
-
-
-def _last_observed_stage(*, stdout: str, stderr: str) -> str:
-    text = f"{stdout}\n{stderr}".lower()
-    markers = (
-        ("raw_output_writing_started", ("jsonl", "output")),
-        ("final_answer_generated", ("final answer",)),
-        ("tool_sql_execution_started", ("sql", "query", "tool")),
-        ("first_model_response_received", ("model response", "completion response")),
-        ("first_model_request_started", ("model request", "completion request")),
-        ("agents_initialized", ("agent initialized", "initializing agent", "agent")),
-        ("docker_database_started", ("starting docker containers",)),
-        ("engine_process_started", ("starting engine with configuration",)),
-    )
-    for stage, tokens in markers:
-        if all(token in text for token in tokens):
-            return stage
-    return "unknown"
 
 
 def _validate_raw_result(

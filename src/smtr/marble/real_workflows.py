@@ -24,7 +24,6 @@ def collect_database_trajectories(
     task_count: int | None = None,
     resume: bool = False,
     engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
-    engine_timeout_source: str = "default",
 ) -> dict[str, Any]:
     if split != "train":
         raise ValueError("real source trajectory collection is train-only")
@@ -47,7 +46,8 @@ def collect_database_trajectories(
             run_dir = output_dir / "trajectories" / trajectory_id
             record_path = run_dir / "trajectory.json"
             if resume and record_path.exists():
-                index.append(json.loads(record_path.read_text(encoding="utf-8")))
+                payload = json.loads(record_path.read_text(encoding="utf-8"))
+                index.append(_index_record(payload, record_path))
                 continue
             run_dir.mkdir(parents=True, exist_ok=True)
             summary: dict[str, Any] | None = None
@@ -58,7 +58,6 @@ def collect_database_trajectories(
                     generation_seed=seed,
                     output_dir=run_dir,
                     engine_timeout_seconds=engine_timeout_seconds,
-                    engine_timeout_source=engine_timeout_source,
                 )
                 record = _normalize_smoke(
                     summary=summary,
@@ -67,12 +66,8 @@ def collect_database_trajectories(
                     split=split,
                     generation_seed=seed,
                     dataset=dataset,
-                    dataset_manifest_path=dataset_manifest_path,
-                    split_manifest_path=split_manifest_path,
-                    run_dir=run_dir,
                 )
                 payload = record.model_dump(mode="json")
-                payload["valid"] = True
             except Exception as exc:
                 payload = _invalid_trajectory_payload(
                     trajectory_id=trajectory_id,
@@ -80,12 +75,12 @@ def collect_database_trajectories(
                     split=split,
                     generation_seed=seed,
                     summary=summary,
-                    invalid_reason=str(exc),
+                    failure_reason=_failure_reason(summary=summary, error=str(exc)),
                 )
             record_path.write_text(
                 json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
-            index.append(payload)
+            index.append(_index_record(payload, record_path))
     index_path.write_text(
         "".join(json.dumps(item, sort_keys=True) + "\n" for item in index),
         encoding="utf-8",
@@ -107,9 +102,6 @@ def _normalize_smoke(
     split: str,
     generation_seed: int,
     dataset: dict[str, Any],
-    dataset_manifest_path: Path,
-    split_manifest_path: Path,
-    run_dir: Path,
 ) -> RealDatabaseTrajectory:
     raw_path_value = summary.get("raw_result_path")
     if not raw_path_value:
@@ -123,6 +115,10 @@ def _normalize_smoke(
         raise ValueError("raw result file stale")
     if not summary.get("raw_result_parseable"):
         raise ValueError("raw result file unparseable")
+    if not summary.get("real_engine_executed"):
+        raise ValueError("real engine did not produce a valid raw result")
+    if not summary.get("native_evaluator_executed"):
+        raise ValueError("native evaluator did not run")
     raw = json.loads(raw_path.read_text(encoding="utf-8"))
     structured = _structured_trace(raw)
     return RealDatabaseTrajectory(
@@ -131,42 +127,18 @@ def _normalize_smoke(
         split=cast(SplitName, split),
         generation_seed=generation_seed,
         model_id=str(summary.get("model_id") or "unknown"),
-        dataset_manifest_sha256=file_sha256(dataset_manifest_path),
-        split_manifest_sha256=file_sha256(split_manifest_path),
-        marble_commit=dataset["marble_commit"],
-        smtr_commit=dataset["smtr_commit"],
-        initial_database_fingerprint=summary.get("initial_logical_fingerprint") or {},
-        initial_logical_database_digest=str(
-            summary.get("initial_logical_database_digest")
-            or summary.get("initial_state_digest")
-            or ""
-        ),
-        agent_identities=structured["agents"],
-        agent_messages=structured["messages"],
-        agent_actions=structured["actions"],
+        source_dataset_version=str(dataset.get("dataset_sha256") or dataset.get("version") or ""),
+        messages=structured["messages"],
+        actions=structured["actions"],
         tool_calls=structured["tool_calls"],
         sql_statements=structured["sql"],
         observations=structured["observations"],
         errors=structured["errors"],
         final_answer=structured["final_answer"],
-        raw_result_path=str(raw_path),
-        raw_result_sha256=file_sha256(raw_path),
-        native_evaluator_executed=bool(summary.get("native_evaluator_executed")),
-        native_evaluator_output=summary.get("outcome") or {},
         score=float(summary.get("outcome", {}).get("score") or 0.0),
         task_success=bool(summary.get("outcome", {}).get("success")),
-        real_engine_executed=bool(summary.get("real_engine_executed")),
-        cleanup_succeeded=bool(summary.get("cleanup_succeeded")),
-        environment_valid=bool(summary.get("environment_valid")),
-        raw_result_exists=bool(summary.get("raw_result_exists")),
-        raw_result_nonempty=bool(summary.get("raw_result_nonempty")),
-        raw_result_fresh=bool(summary.get("raw_result_fresh")),
-        raw_result_parseable=bool(summary.get("raw_result_parseable")),
-        started_at=str(summary.get("started_at") or "unknown"),
-        completed_at=str(summary.get("completed_at") or "unknown"),
-        stdout_log_path=str(summary.get("stdout_log_path") or run_dir / "stdout.log"),
-        stderr_log_path=str(summary.get("stderr_log_path") or run_dir / "stderr.log"),
-        workspace_path=str(run_dir / "workspace"),
+        valid=True,
+        failure_reason=None,
     )
 
 
@@ -202,67 +174,40 @@ def _invalid_trajectory_payload(
     split: str,
     generation_seed: int,
     summary: dict[str, Any] | None,
-    invalid_reason: str,
+    failure_reason: str,
 ) -> dict[str, Any]:
-    payload: dict[str, Any] = {
+    return {
+        "schema_version": "database_trajectory_v1",
         "trajectory_id": trajectory_id,
         "task_id": task_id,
         "split": split,
         "generation_seed": generation_seed,
+        "model_id": str((summary or {}).get("model_id") or "unknown"),
+        "source_dataset_version": None,
+        "messages": [],
+        "actions": [],
+        "tool_calls": [],
+        "sql_statements": [],
+        "observations": [],
+        "errors": [],
+        "final_answer": "",
+        "score": None,
+        "task_success": None,
         "valid": False,
-        "invalid_reason": invalid_reason,
-        "failure_layer": _failure_layer(summary=summary, invalid_reason=invalid_reason),
+        "failure_reason": failure_reason,
     }
-    if summary is None:
-        return payload
-    for key in (
-        "runtime_preflight_ready",
-        "preflight_blocking_failures",
-        "engine_exit_code",
-        "engine_timed_out",
-        "engine_timeout_seconds",
-        "engine_timeout_source",
-        "engine_duration_seconds",
-        "engine_termination_requested",
-        "engine_termination_signal",
-        "engine_termination_grace_period_seconds",
-        "engine_kill_escalated",
-        "last_observed_stage",
-        "last_observed_stage_parser_version",
-        "engine_working_directory",
-        "engine_config_path",
-        "selected_python",
-        "real_engine_executed",
-        "raw_result_path",
-        "raw_result_exists",
-        "raw_result_nonempty",
-        "raw_result_fresh",
-        "raw_result_parseable",
-        "raw_result_identity_verified",
-        "native_evaluator_executed",
-        "cleanup_exit_code",
-        "cleanup_succeeded",
-        "cleanup_failure_reason",
-        "environment_valid",
-        "stdout_log_path",
-        "stderr_log_path",
-    ):
-        if key in summary:
-            payload[key] = summary[key]
-    payload["structured_trace_present"] = False
-    return payload
 
 
-def _failure_layer(*, summary: dict[str, Any] | None, invalid_reason: str) -> str:
-    reason = invalid_reason.lower()
+def _failure_reason(*, summary: dict[str, Any] | None, error: str) -> str:
+    reason = error.lower()
     if summary is None:
         return "unknown"
     if summary.get("runtime_preflight_ready") is False:
-        return "preflight_failure"
+        return "preflight_failed"
     if summary.get("engine_timed_out") is True:
-        return "engine_execution_timeout"
+        return "engine_timeout"
     if _nonzero_exit(summary.get("engine_exit_code")):
-        return "engine_execution_failure"
+        return "engine_failed"
     if (
         "raw result" in reason
         or not summary.get("raw_result_path")
@@ -271,16 +216,24 @@ def _failure_layer(*, summary: dict[str, Any] | None, invalid_reason: str) -> st
         or not summary.get("raw_result_fresh")
         or not summary.get("raw_result_parseable")
     ):
-        return "raw_result_failure"
+        return "raw_result_invalid"
     if "structured" in reason or "trace" in reason:
-        return "structured_trace_failure"
+        return "trace_missing"
     if summary.get("native_evaluator_executed") is False:
-        return "native_evaluator_failure"
-    if summary.get("cleanup_succeeded") is False:
-        return "cleanup_failure"
-    if "provenance" in reason:
-        return "provenance_failure"
+        return "evaluator_failed"
     return "unknown"
+
+
+def _index_record(payload: dict[str, Any], path: Path) -> dict[str, Any]:
+    return {
+        "trajectory_id": payload["trajectory_id"],
+        "task_id": payload["task_id"],
+        "split": payload["split"],
+        "generation_seed": payload["generation_seed"],
+        "valid": bool(payload.get("valid")),
+        "failure_reason": payload.get("failure_reason"),
+        "path": str(path),
+    }
 
 
 def _nonzero_exit(value: Any) -> bool:

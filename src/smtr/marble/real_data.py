@@ -24,65 +24,28 @@ class RealDatabaseTrajectory(BaseModel):
     split: SplitName
     generation_seed: int
     model_id: str
-    dataset_manifest_sha256: str
-    split_manifest_sha256: str
-    marble_commit: str
-    smtr_commit: str
-    initial_database_fingerprint: dict[str, str]
-    initial_logical_database_digest: str
-    agent_identities: list[dict[str, Any]]
-    agent_messages: list[dict[str, Any]]
-    agent_actions: list[dict[str, Any]]
+    source_dataset_version: str | None = None
+    messages: list[dict[str, Any]]
+    actions: list[dict[str, Any]]
     tool_calls: list[dict[str, Any]]
     sql_statements: list[str]
     observations: list[dict[str, Any]]
     errors: list[dict[str, Any]]
     final_answer: str
-    raw_result_path: str
-    raw_result_sha256: str
-    native_evaluator_executed: bool
-    native_evaluator_output: dict[str, Any]
-    score: float
-    task_success: bool
-    real_engine_executed: bool
-    cleanup_succeeded: bool
-    environment_valid: bool
-    raw_result_exists: bool
-    raw_result_nonempty: bool
-    raw_result_fresh: bool
-    raw_result_parseable: bool
-    started_at: str
-    completed_at: str
-    stdout_log_path: str
-    stderr_log_path: str
-    workspace_path: str
+    score: float | None = None
+    task_success: bool | None = None
+    valid: bool
+    failure_reason: str | None = None
 
     @model_validator(mode="after")
     def validate_real_run(self) -> RealDatabaseTrajectory:
-        required = {
-            "real_engine_executed": self.real_engine_executed,
-            "raw_result_exists": self.raw_result_exists,
-            "raw_result_nonempty": self.raw_result_nonempty,
-            "raw_result_fresh": self.raw_result_fresh,
-            "raw_result_parseable": self.raw_result_parseable,
-            "native_evaluator_executed": self.native_evaluator_executed,
-            "cleanup_succeeded": self.cleanup_succeeded,
-            "environment_valid": self.environment_valid,
-        }
-        failed = [name for name, passed in required.items() if not passed]
-        if failed:
-            raise ValueError(f"invalid real trajectory: {','.join(failed)}")
-        provenance = [
-            self.dataset_manifest_sha256,
-            self.split_manifest_sha256,
-            self.marble_commit,
-            self.smtr_commit,
-            self.raw_result_sha256,
-            self.initial_logical_database_digest,
-        ]
-        if any(not value for value in provenance):
-            raise ValueError("real trajectory provenance is incomplete")
-        if not self.agent_actions and not self.tool_calls:
+        if self.valid and self.failure_reason is not None:
+            raise ValueError("valid trajectory must not carry failure_reason")
+        if not self.valid and not self.failure_reason:
+            raise ValueError("invalid trajectory must carry failure_reason")
+        if self.valid and (self.score is None or self.task_success is None):
+            raise ValueError("valid trajectory requires native score and task_success")
+        if self.valid and not self.actions and not self.tool_calls and not self.sql_statements:
             raise ValueError("real trajectory must contain structured actions or tool calls")
         return self
 
@@ -100,8 +63,8 @@ class ProceduralRoutingCard(BaseModel):
 class ProcedurePayload(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    applicable_context: str
-    ordered_steps: list[str]
+    preconditions: list[str]
+    steps: list[str]
     failure_signals: list[str]
     recovery_actions: list[str]
 
@@ -114,20 +77,8 @@ class RealProceduralMemory(BaseModel):
     memory_type: Literal["procedural"] = "procedural"
     source_task_id: str
     source_trajectory_id: str
-    source_split: Literal["train"]
-    source_group_id: str
     routing_card: ProceduralRoutingCard
     procedure_payload: ProcedurePayload
-    extractor_type: str
-    extractor_version: str
-    extraction_model: str
-    extraction_seed: int
-    extraction_prompt_hash: str
-    dataset_manifest_sha256: str
-    split_manifest_sha256: str
-    source_trajectory_sha256: str
-    created_at: str
-    duplicate_cluster_id: str | None = None
 
     @model_validator(mode="after")
     def reject_answer_leakage(self) -> RealProceduralMemory:
@@ -135,29 +86,22 @@ class RealProceduralMemory(BaseModel):
         forbidden = ("reference_answer", "y_share", "y_withhold", "recipient_task_outcome")
         if any(token in payload for token in forbidden):
             raise ValueError("procedural memory contains outcome/reference leakage")
-        if not self.procedure_payload.ordered_steps:
+        if not self.procedure_payload.steps:
             raise ValueError("procedural memory needs at least one executable step")
         return self
 
 
-class CandidateEdge(BaseModel):
+class CandidateSet(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     recipient_task_id: str
-    recipient_split: Literal["validation"]
-    recipient_group_id: str
-    memory_id: str
-    source_task_id: str
-    source_split: Literal["train"]
-    source_group_id: str
-    retrieval_score: float
+    candidate_memory_ids: list[str]
+    retrieval_scores: list[float]
 
     @model_validator(mode="after")
-    def validate_cross_task(self) -> CandidateEdge:
-        if self.source_task_id == self.recipient_task_id:
-            raise ValueError("self-pair is forbidden")
-        if self.source_group_id == self.recipient_group_id:
-            raise ValueError("same-group candidate is forbidden")
+    def validate_lengths(self) -> CandidateSet:
+        if len(self.candidate_memory_ids) != len(self.retrieval_scores):
+            raise ValueError("candidate_memory_ids and retrieval_scores length mismatch")
         return self
 
 
@@ -166,13 +110,10 @@ class DatabaseCandidateManifest(BaseModel):
 
     schema_version: str = "database_candidates_v1"
     retrieval_method: str = "routing_card_lexical_v1"
+    candidates: list[CandidateSet]
     candidate_pool_sha256: str
-    dataset_manifest_sha256: str
-    split_manifest_sha256: str
-    edges: list[CandidateEdge]
     excluded_self_count: int = 0
     excluded_group_count: int = 0
-    created_at: str
 
 
 class RealPairedRecord(BaseModel):
@@ -181,64 +122,32 @@ class RealPairedRecord(BaseModel):
     schema_version: str = "database_real_pair_v1"
     pair_id: str
     recipient_task_id: str
-    recipient_split: Literal["validation"]
     memory_id: str
     source_task_id: str
-    source_trajectory_id: str
-    source_split: Literal["train"]
     generation_seed: int
-    branch_order: Literal["share_then_withhold", "withhold_then_share"]
-    withhold_trajectory_id: str
-    share_trajectory_id: str
-    y_withhold: int
-    y_share: int
-    tau: int
-    withhold_score: float
-    share_score: float
-    withhold_task_success: bool
-    share_task_success: bool
+    Y_withhold: int | None = None
+    Y_share: int | None = None
+    tau: int | None = None
+    withhold_score: float | None = None
+    share_score: float | None = None
     initial_state_match: bool
-    initial_logical_digest_match: bool
     memory_intervention_verified: bool
-    withhold_real_engine_executed: bool
-    share_real_engine_executed: bool
-    withhold_native_evaluator_executed: bool
-    share_native_evaluator_executed: bool
-    withhold_cleanup_succeeded: bool
-    share_cleanup_succeeded: bool
-    routing_card_snapshot: ProceduralRoutingCard
-    memory_payload_sha256: str
-    candidate_manifest_sha256: str
-    dataset_manifest_sha256: str
-    split_manifest_sha256: str
-    paired_record_valid: bool
-    invalid_reason: str | None = None
+    valid: bool
+    failure_reason: str | None = None
 
     @model_validator(mode="after")
     def validate_pair(self) -> RealPairedRecord:
         if self.source_task_id == self.recipient_task_id:
             raise ValueError("self-pair is forbidden")
-        if self.y_share != int(self.share_task_success):
-            raise ValueError("Y_share must come from native evaluated share success")
-        if self.y_withhold != int(self.withhold_task_success):
-            raise ValueError("Y_withhold must come from native evaluated withhold success")
-        if self.tau != self.y_share - self.y_withhold:
-            raise ValueError("tau must equal Y_share-Y_withhold")
-        validity = all(
-            (
-                self.initial_state_match,
-                self.initial_logical_digest_match,
-                self.memory_intervention_verified,
-                self.withhold_real_engine_executed,
-                self.share_real_engine_executed,
-                self.withhold_native_evaluator_executed,
-                self.share_native_evaluator_executed,
-                self.withhold_cleanup_succeeded,
-                self.share_cleanup_succeeded,
-            )
-        )
-        if self.paired_record_valid != validity:
-            raise ValueError("paired_record_valid does not match branch evidence")
+        if self.valid:
+            if self.Y_share is None or self.Y_withhold is None or self.tau is None:
+                raise ValueError("valid pair requires Y_withhold, Y_share, and tau")
+            if self.tau != self.Y_share - self.Y_withhold:
+                raise ValueError("tau must equal Y_share-Y_withhold")
+            if not (self.initial_state_match and self.memory_intervention_verified):
+                raise ValueError("valid pair requires state match and verified intervention")
+        if not self.valid and not self.failure_reason:
+            raise ValueError("invalid pair must carry failure_reason")
         return self
 
 
@@ -246,14 +155,16 @@ def build_cross_task_candidates(
     *,
     memories: list[RealProceduralMemory],
     recipients: list[dict[str, str]],
-    dataset_manifest_sha256: str,
-    split_manifest_sha256: str,
-    created_at: str,
+    group_by_task: dict[str, str] | None = None,
+    dataset_manifest_sha256: str | None = None,
+    split_manifest_sha256: str | None = None,
+    created_at: str | None = None,
     top_k: int = 4,
 ) -> DatabaseCandidateManifest:
-    edges: list[CandidateEdge] = []
+    candidate_sets: list[CandidateSet] = []
     excluded_self = 0
     excluded_group = 0
+    group_by_task = group_by_task or {}
     for recipient in sorted(recipients, key=lambda item: item["task_id"]):
         scored = []
         recipient_terms = _terms(recipient["instruction"])
@@ -261,7 +172,7 @@ def build_cross_task_candidates(
             if memory.source_task_id == recipient["task_id"]:
                 excluded_self += 1
                 continue
-            if memory.source_group_id == recipient["group_id"]:
+            if group_by_task.get(memory.source_task_id) == recipient.get("group_id"):
                 excluded_group += 1
                 continue
             card = memory.routing_card
@@ -270,28 +181,20 @@ def build_cross_task_candidates(
             )
             score = len(recipient_terms & card_terms) / max(1, len(recipient_terms | card_terms))
             scored.append((score, memory))
-        for score, memory in sorted(scored, key=lambda item: (-item[0], item[1].memory_id))[:top_k]:
-            edges.append(
-                CandidateEdge(
-                    recipient_task_id=recipient["task_id"],
-                    recipient_split="validation",
-                    recipient_group_id=recipient["group_id"],
-                    memory_id=memory.memory_id,
-                    source_task_id=memory.source_task_id,
-                    source_split="train",
-                    source_group_id=memory.source_group_id,
-                    retrieval_score=score,
-                )
+        top = sorted(scored, key=lambda item: (-item[0], item[1].memory_id))[:top_k]
+        candidate_sets.append(
+            CandidateSet(
+                recipient_task_id=recipient["task_id"],
+                candidate_memory_ids=[memory.memory_id for _, memory in top],
+                retrieval_scores=[score for score, _ in top],
             )
+        )
     pool_digest = canonical_digest([memory.model_dump(mode="json") for memory in memories])
     return DatabaseCandidateManifest(
         candidate_pool_sha256=pool_digest,
-        dataset_manifest_sha256=dataset_manifest_sha256,
-        split_manifest_sha256=split_manifest_sha256,
-        edges=edges,
+        candidates=candidate_sets,
         excluded_self_count=excluded_self,
         excluded_group_count=excluded_group,
-        created_at=created_at,
     )
 
 
@@ -304,14 +207,13 @@ def extract_procedural_memories(
 ) -> list[RealProceduralMemory]:
     """Extract bounded, answer-free diagnostic procedures from real train runs."""
     memories: list[RealProceduralMemory] = []
-    seen_payloads: dict[str, str] = {}
     for trajectory in sorted(trajectories, key=lambda item: item.trajectory_id):
         if trajectory.split != "train":
             raise ValueError("memory extraction may only read train trajectories")
         action_names = sorted(
             {
                 str(action.get("name") or action.get("tool") or action.get("type"))
-                for action in [*trajectory.agent_actions, *trajectory.tool_calls]
+                for action in [*trajectory.actions, *trajectory.tool_calls]
                 if action.get("name") or action.get("tool") or action.get("type")
             }
         )
@@ -324,8 +226,8 @@ def extract_procedural_memories(
             "Report the supported cause and preserve contradictory evidence.",
         ]
         payload = ProcedurePayload(
-            applicable_context="Database performance diagnosis with monitoring access.",
-            ordered_steps=steps,
+            preconditions=["Database performance diagnosis with monitoring access."],
+            steps=steps,
             failure_signals=[
                 "monitoring view unavailable",
                 "query timeout",
@@ -336,18 +238,12 @@ def extract_procedural_memories(
                 "request another agent cross-check",
             ],
         )
-        payload_digest = canonical_digest(payload.model_dump(mode="json"))
-        duplicate_cluster = seen_payloads.get(payload_digest)
         memory_id = f"dbproc-{trajectory.trajectory_id[:16]}"
-        if duplicate_cluster is None:
-            seen_payloads[payload_digest] = memory_id
         memories.append(
             RealProceduralMemory(
                 memory_id=memory_id,
                 source_task_id=trajectory.task_id,
                 source_trajectory_id=trajectory.trajectory_id,
-                source_split="train",
-                source_group_id=group_by_task[trajectory.task_id],
                 routing_card=ProceduralRoutingCard(
                     goal_summary="Diagnose database performance using evidence before deciding.",
                     task_tags=["database", "performance", *action_names[:4]],
@@ -361,18 +257,6 @@ def extract_procedural_memories(
                     ],
                 ),
                 procedure_payload=payload,
-                extractor_type="deterministic_real_trajectory",
-                extractor_version="1",
-                extraction_model="none",
-                extraction_seed=extraction_seed,
-                extraction_prompt_hash=canonical_digest(
-                    {"extractor": "deterministic_real_trajectory", "version": "1"}
-                ),
-                dataset_manifest_sha256=trajectory.dataset_manifest_sha256,
-                split_manifest_sha256=trajectory.split_manifest_sha256,
-                source_trajectory_sha256=canonical_digest(trajectory.model_dump(mode="json")),
-                created_at=created_at,
-                duplicate_cluster_id=duplicate_cluster,
             )
         )
     return memories

@@ -34,7 +34,6 @@ def run_database_b0_smoke(
     generation_seed: int,
     output_dir: Path,
     engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
-    engine_timeout_source: str = "default",
 ) -> dict[str, Any]:
     assert_marble_artifact_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -80,7 +79,6 @@ def run_database_b0_smoke(
             output_dir=output_dir,
             run_identity={},
             timeout_seconds=engine_timeout_seconds,
-            timeout_source=engine_timeout_source,
         )
         write_engine_process_result(output_dir / "engine_process.json", engine_result)
         raw_result = _load_last_jsonl(raw_result_path) or {}
@@ -103,32 +101,12 @@ def run_database_b0_smoke(
         ],
         "real_engine_executed": bool(engine_result and engine_result.real_engine_executed),
         "engine_exit_code": engine_result.exit_code if engine_result else None,
+        "timed_out": engine_result.timed_out if engine_result else None,
         "engine_timed_out": engine_result.timed_out if engine_result else None,
+        "timeout_seconds": engine_timeout_seconds,
         "engine_timeout_seconds": engine_timeout_seconds,
-        "engine_timeout_source": (
-            engine_result.engine_timeout_source if engine_result else engine_timeout_source
-        ),
-        "engine_duration_seconds": (
-            engine_result.engine_duration_seconds if engine_result else None
-        ),
         "started_at": engine_result.started_at if engine_result else None,
         "completed_at": engine_result.ended_at if engine_result else None,
-        "engine_termination_requested": (
-            engine_result.engine_termination_requested if engine_result else False
-        ),
-        "engine_termination_signal": (
-            engine_result.engine_termination_signal if engine_result else None
-        ),
-        "engine_termination_grace_period_seconds": (
-            engine_result.engine_termination_grace_period_seconds if engine_result else None
-        ),
-        "engine_kill_escalated": engine_result.engine_kill_escalated if engine_result else False,
-        "last_observed_stage": (
-            engine_result.last_observed_stage if engine_result else "unknown"
-        ),
-        "last_observed_stage_parser_version": (
-            engine_result.last_observed_stage_parser_version if engine_result else "unknown"
-        ),
         "engine_working_directory": engine_result.working_directory if engine_result else None,
         "engine_config_path": (
             engine_result.config_path if engine_result else str(config_path.resolve())

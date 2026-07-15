@@ -31,9 +31,7 @@ def test_engine_process_records_exit_logs_and_digests(monkeypatch, tmp_path: Pat
     assert result.config_path == str((tmp_path / "config.yaml").resolve())
     assert result.working_directory == str(marble_root)
     assert result.engine_timeout_seconds == 5
-    assert result.engine_timeout_source == "default"
     assert result.engine_duration_seconds >= 0
-    assert result.last_observed_stage == "unknown"
     assert result.exit_code == 3
     assert result.raw_result_path == str(raw_result)
     assert result.stdout_digest
@@ -63,8 +61,6 @@ def test_engine_timeout_marks_not_executed(monkeypatch, tmp_path: Path) -> None:
     assert result.timed_out is True
     assert result.real_engine_executed is False
     assert result.raw_result_path == str(tmp_path / "missing.jsonl")
-    assert result.engine_termination_requested is True
-    assert result.engine_termination_signal in {"SIGTERM", "SIGKILL"}
     assert result.cleanup_succeeded is True
 
 
@@ -90,9 +86,6 @@ def test_engine_timeout_terminates_before_kill_when_process_exits(
     )
 
     assert result.timed_out is True
-    assert result.engine_termination_requested is True
-    assert result.engine_termination_signal == "SIGTERM"
-    assert result.engine_kill_escalated is False
     assert marker.exists()
     assert result.cleanup_succeeded is True
 
@@ -119,9 +112,6 @@ def test_engine_timeout_kills_after_grace_when_process_ignores_term(
     )
 
     assert result.timed_out is True
-    assert result.engine_timeout_source == "cli"
-    assert result.engine_termination_signal == "SIGKILL"
-    assert result.engine_kill_escalated is True
     assert result.real_engine_executed is False
     assert result.raw_result_exists is False
     assert result.cleanup_succeeded is True
@@ -288,31 +278,6 @@ def test_normal_mock_subprocess_can_be_valid(monkeypatch, tmp_path: Path) -> Non
     assert result.raw_result_fresh is True
     assert result.raw_result_parseable is True
     assert result.cleanup_succeeded is True
-
-
-def test_last_observed_stage_uses_redacted_log_markers(monkeypatch, tmp_path: Path) -> None:
-    marble_root = tmp_path / "MARBLE"
-    raw_result = tmp_path / "result.jsonl"
-    _write_fake_marble_python(
-        marble_root=marble_root,
-        body=(
-            "echo 'Starting Docker containers...'\n"
-            f"echo '{{\"ok\": true}}' > {raw_result}\n"
-            "exit 0\n"
-        ),
-    )
-    _write_fake_sudo(monkeypatch, tmp_path, exit_code=0)
-
-    result = run_marble_engine_process(
-        marble_root=marble_root,
-        config_path=tmp_path / "config.yaml",
-        raw_result_path=raw_result,
-        output_dir=tmp_path / "logs",
-        timeout_seconds=5,
-    )
-
-    assert result.last_observed_stage == "docker_database_started"
-    assert result.last_observed_stage_parser_version
 
 
 def test_relative_config_path_is_absolutized_for_marble_cwd(

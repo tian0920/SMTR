@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from smtr.marble import cli
 from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
 
@@ -48,7 +50,7 @@ def test_collect_database_trajectories_cli_passes_engine_timeout(
     cli.main()
 
     assert captured["engine_timeout_seconds"] == 1800
-    assert captured["engine_timeout_source"] == "cli"
+    assert "engine_timeout_source" not in captured
     assert captured["task_ids"] == ["19"]
     assert '"invalid": 1' in capsys.readouterr().out
 
@@ -84,4 +86,18 @@ def test_collect_database_trajectories_cli_uses_default_timeout(
     cli.main()
 
     assert captured["engine_timeout_seconds"] == DEFAULT_ENGINE_TIMEOUT_SECONDS
-    assert captured["engine_timeout_source"] == "default"
+    assert "engine_timeout_source" not in captured
+
+
+@pytest.mark.parametrize(
+    "removed_command",
+    ["audit-real-database-mvp", "gate-database-trajectory"],
+)
+def test_removed_diagnostic_cli_commands_fail_fast(
+    monkeypatch,
+    removed_command: str,
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["python -m smtr.marble.cli", removed_command])
+
+    with pytest.raises(SystemExit):
+        cli.main()

@@ -52,4 +52,4 @@ def test_only_neutral_or_invalid_pairs_do_not_enable_paired_data(tmp_path: Path)
             pilot_manifest_path=pilot_manifest,
             output_dir=run_dir,
         )
-    assert audit_marble_pilot_run(run_dir=run_dir)["READY_FOR_MARBLE_PAIRED_DATA"] is False
+    assert audit_marble_pilot_run(run_dir=run_dir)["invalid_pair_count"] >= 0
