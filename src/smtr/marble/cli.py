@@ -222,6 +222,25 @@ def main() -> None:
     audit_parser.add_argument("--paired-records")
     audit_parser.add_argument("--output")
 
+    # --- Paired causal pilot commands ---
+    build_pilot_parser = subparsers.add_parser("build-paired-pilot")
+    build_pilot_parser.add_argument("--task-ids", nargs="+", required=True)
+    build_pilot_parser.add_argument("--scenario", default="database")
+    build_pilot_parser.add_argument("--order-seed", type=int, default=0)
+    build_pilot_parser.add_argument("--max-pairs-per-task", type=int, default=1)
+    build_pilot_parser.add_argument("--output", required=True)
+
+    run_pilot_parser = subparsers.add_parser("run-paired-pilot")
+    run_pilot_parser.add_argument("--marble-root", default=str(DEFAULT_MARBLE_ROOT))
+    run_pilot_parser.add_argument("--manifest", required=True)
+    run_pilot_parser.add_argument("--output", required=True)
+    run_pilot_parser.add_argument("--max-pairs", type=int, default=None)
+    run_pilot_parser.add_argument("--resume", action="store_true")
+    run_pilot_parser.add_argument("--retry-invalid", action="store_true")
+    run_pilot_parser.add_argument("--dry-run", action="store_true")
+    run_pilot_parser.add_argument("--order-seed", type=int, default=0)
+    run_pilot_parser.add_argument("--engine-timeout", type=int, default=DEFAULT_ENGINE_TIMEOUT_SECONDS)
+
     args = parser.parse_args()
     if args.command == "inspect-dataset":
         manifest = write_marble_dataset_manifest(
@@ -606,6 +625,36 @@ def main() -> None:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
         print(json.dumps(summary, sort_keys=True))
+    elif args.command == "build-paired-pilot":
+        from smtr.marble.pilot_manifest import (
+            build_paired_pilot_manifest,
+            write_paired_pilot_manifest,
+        )
+        manifest = build_paired_pilot_manifest(
+            task_ids=args.task_ids,
+            scenario=args.scenario,
+            order_seed=args.order_seed,
+            max_pairs_per_task=args.max_pairs_per_task,
+        )
+        write_paired_pilot_manifest(manifest, Path(args.output))
+        print(f"pair_count={manifest['pair_count']}")
+        print(f"order_balance={json.dumps(manifest['order_balance'])}")
+    elif args.command == "run-paired-pilot":
+        from smtr.marble.pilot_runner import run_paired_pilot
+        result = run_paired_pilot(
+            manifest_path=Path(args.manifest),
+            output_dir=Path(args.output),
+            marble_root=Path(args.marble_root),
+            max_pairs=args.max_pairs,
+            resume=args.resume,
+            retry_invalid=args.retry_invalid,
+            dry_run=args.dry_run,
+            order_seed=args.order_seed,
+            engine_timeout_seconds=args.engine_timeout,
+        )
+        print(f"valid_complete={result.get('valid_complete', 0)}")
+        print(f"invalid_complete={result.get('invalid_complete', 0)}")
+        print(f"failed={result.get('failed', 0)}")
 
 
 def _print_counts(total: int, counts: dict[str, int]) -> None:
