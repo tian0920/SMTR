@@ -312,3 +312,105 @@ class TestRealMarbleIntegration:
             engine_timeout_seconds=600,
         )
         assert result["task_evaluation"] is not None
+
+    def test_real_b0_produces_visibility_jsonl(self, tmp_path: Path) -> None:
+        """B0 run must produce a runtime visibility JSONL file."""
+        from smtr.marble.marble_environment_evaluation import MarbleEnvironmentEvaluator
+        from smtr.marble.task_provider import _read_jsonl_line
+
+        task_path = MARBLE_ROOT / "multiagentbench/database/database_main.jsonl"
+        task = _read_jsonl_line(task_path, 1)
+        evaluator = MarbleEnvironmentEvaluator()
+        result = evaluator.evaluate_method(
+            method="b0_no_memory",
+            task=task,
+            task_id="1",
+            scenario="database",
+            marble_root=MARBLE_ROOT,
+            output_dir=tmp_path / "vis_b0",
+            generation_seed=0,
+            engine_timeout_seconds=600,
+        )
+        audit_path = tmp_path / "vis_b0" / "workspace_b0_no_memory" / "memory_visibility_audit.jsonl"
+        assert audit_path.exists(), "B0 run must produce visibility JSONL"
+        assert result["runtime_visibility_verified"] is True
+
+    def test_real_b0_visibility_records_have_no_memory(self, tmp_path: Path) -> None:
+        """B0 visibility records must have empty visible_memory_ids."""
+        from smtr.marble.marble_environment_evaluation import MarbleEnvironmentEvaluator
+        from smtr.marble.runtime_visibility_audit import read_runtime_visibility_records
+        from smtr.marble.task_provider import _read_jsonl_line
+
+        task_path = MARBLE_ROOT / "multiagentbench/database/database_main.jsonl"
+        task = _read_jsonl_line(task_path, 1)
+        evaluator = MarbleEnvironmentEvaluator()
+        evaluator.evaluate_method(
+            method="b0_no_memory",
+            task=task,
+            task_id="1",
+            scenario="database",
+            marble_root=MARBLE_ROOT,
+            output_dir=tmp_path / "vis_b0_records",
+            generation_seed=0,
+            engine_timeout_seconds=600,
+        )
+        audit_path = tmp_path / "vis_b0_records" / "workspace_b0_no_memory" / "memory_visibility_audit.jsonl"
+        if audit_path.exists():
+            records = read_runtime_visibility_records(audit_path)
+            for rec in records:
+                assert rec.visible_memory_ids == (), (
+                    f"B0 record must have no visible memory, got {rec.visible_memory_ids}"
+                )
+
+    def test_real_all_share_visibility_shows_memory(self, tmp_path: Path) -> None:
+        """AllShare run visibility records should show memory for receiver."""
+        from smtr.marble.marble_environment_evaluation import MarbleEnvironmentEvaluator
+        from smtr.marble.real_data import RealProceduralMemory, ProcedurePayload, ProceduralRoutingCard
+        from smtr.marble.runtime_visibility_audit import read_runtime_visibility_records
+        from smtr.marble.task_provider import _read_jsonl_line
+
+        task_path = MARBLE_ROOT / "multiagentbench/database/database_main.jsonl"
+        task = _read_jsonl_line(task_path, 1)
+        candidate = RealProceduralMemory(
+            memory_id="test_mem_001",
+            source_task_id="99",
+            source_trajectory_id="traj_99",
+            routing_card=ProceduralRoutingCard(
+                goal_summary="test",
+                task_tags=["test"],
+                precondition_summary="test",
+                expected_effect="test",
+                known_risks=[],
+            ),
+            payload=ProcedurePayload(
+                preconditions=["test"],
+                steps=["Check pg_stat_statements for slow queries"],
+                failure_signals=["error"],
+                recovery_actions=["retry"],
+            ),
+        )
+        evaluator = MarbleEnvironmentEvaluator()
+        result = evaluator.evaluate_method(
+            method="all_share",
+            task=task,
+            task_id="1",
+            scenario="database",
+            marble_root=MARBLE_ROOT,
+            output_dir=tmp_path / "vis_allshare",
+            candidate_memories=[candidate],
+            selected_memory_ids=["test_mem_001"],
+            generation_seed=0,
+            engine_timeout_seconds=600,
+        )
+        audit_path = tmp_path / "vis_allshare" / "workspace_all_share" / "memory_visibility_audit.jsonl"
+        if audit_path.exists():
+            records = read_runtime_visibility_records(audit_path)
+            assert len(records) > 0, "AllShare should produce visibility records"
+            receiver_records = [r for r in records if r.receiver_agent]
+            if receiver_records:
+                union_visible: set[str] = set()
+                for r in receiver_records:
+                    union_visible.update(r.visible_memory_ids)
+                assert "test_mem_001" in union_visible, (
+                    f"Receiver should see test_mem_001, got {union_visible}"
+                )
