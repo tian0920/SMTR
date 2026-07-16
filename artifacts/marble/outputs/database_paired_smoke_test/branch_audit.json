@@ -1,0 +1,96 @@
+{
+  "branch_execution_order": "share_then_withhold",
+  "candidate_memory_id": "database_1_helpful",
+  "engine_name": "MARBLE.Engine(DBEnvironment)",
+  "engine_version": "unknown",
+  "invalid_reason": "share_native_evaluator_executed,withhold_native_evaluator_executed,environment_valid",
+  "paired_label": null,
+  "paired_record_valid": false,
+  "real_engine_executed": true,
+  "scenario": "database",
+  "share": {
+    "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
+    "branch_id": "share",
+    "cleanup_exit_code": 0,
+    "cleanup_failure_reason": null,
+    "cleanup_succeeded": true,
+    "final_digest": "06a46d5956e412c587986d8ef5bf1197c05a0417a69c6c5c561c0a4d1a5f396a",
+    "generation_seed": 0,
+    "initial_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
+    "initial_logical_fingerprint": {
+      "combined_digest": "e239812d402db8ead2061608dbe8070be766310584b92e20a706d2dd21fb8286",
+      "config_digest": "86a4dddd6b3bed9a623a3af9ebad8da71c3d3c1412b16d214582da966a87262b",
+      "content_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "schema_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "input_audit": {
+      "contains_memory_section": true,
+      "full_input_digest": "e3449117c720c22b2c9a2190125d3e1967c1924a83204505532e2bdda25ed03d",
+      "memory_ids": [
+        "database_1_helpful"
+      ],
+      "memory_section_digest": "ea24a4feb7b540a985c4f854b0873377baa9bd74286552640cfeb6de06d7ba42",
+      "system_section_digest": "9bcf7e84ad0b0601cb26b15d4858b49c970976074028392739280bbf6bb9d3c0",
+      "task_section_digest": "249722be24569060cc39ed87de1826c80cbf81c31df6fdb0c3baa45100bef525",
+      "tool_section_digest": "cadaea46369d654db7292a159bf1f56b2f9cd4eb9a0ac61d7b128fe707938bbf"
+    },
+    "outcome": {
+      "environment_valid": false,
+      "evaluator_name": "marble_database_evaluate_task_db",
+      "failure_reason": "native_evaluator_not_executed",
+      "native_evaluator_executed": false,
+      "native_evaluator_name": null,
+      "native_evaluator_result_digest": null,
+      "raw_result_digest": "f1b7538f92d29e36a3d882ccd809e3625a7c869778b2f14eced0376622314992",
+      "score": null,
+      "success": false
+    },
+    "raw_result_digest": "f1b7538f92d29e36a3d882ccd809e3625a7c869778b2f14eced0376622314992",
+    "real_engine_executed": true,
+    "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
+    "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
+    "workspace": "artifacts/marble/outputs/database_paired_smoke_test/share"
+  },
+  "task_id": "1",
+  "withhold": {
+    "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
+    "branch_id": "withhold",
+    "cleanup_exit_code": 0,
+    "cleanup_failure_reason": null,
+    "cleanup_succeeded": true,
+    "final_digest": "4776d12ec1355a9ad122c06dcb2582156097fd9f6d5f844a5ff33c0f693c3abf",
+    "generation_seed": 0,
+    "initial_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
+    "initial_logical_fingerprint": {
+      "combined_digest": "e239812d402db8ead2061608dbe8070be766310584b92e20a706d2dd21fb8286",
+      "config_digest": "86a4dddd6b3bed9a623a3af9ebad8da71c3d3c1412b16d214582da966a87262b",
+      "content_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "schema_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "input_audit": {
+      "contains_memory_section": false,
+      "full_input_digest": "85692b1c00b88e1166d4aa2881a129c939be9e2d9ccfc560bc431d827f0c625c",
+      "memory_ids": [],
+      "memory_section_digest": null,
+      "system_section_digest": "9bcf7e84ad0b0601cb26b15d4858b49c970976074028392739280bbf6bb9d3c0",
+      "task_section_digest": "249722be24569060cc39ed87de1826c80cbf81c31df6fdb0c3baa45100bef525",
+      "tool_section_digest": "cadaea46369d654db7292a159bf1f56b2f9cd4eb9a0ac61d7b128fe707938bbf"
+    },
+    "outcome": {
+      "environment_valid": false,
+      "evaluator_name": "marble_database_evaluate_task_db",
+      "failure_reason": "native_evaluator_not_executed",
+      "native_evaluator_executed": false,
+      "native_evaluator_name": null,
+      "native_evaluator_result_digest": null,
+      "raw_result_digest": "f1b7538f92d29e36a3d882ccd809e3625a7c869778b2f14eced0376622314992",
+      "score": null,
+      "success": false
+    },
+    "raw_result_digest": "f1b7538f92d29e36a3d882ccd809e3625a7c869778b2f14eced0376622314992",
+    "real_engine_executed": true,
+    "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
+    "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
+    "workspace": "artifacts/marble/outputs/database_paired_smoke_test/withhold"
+  }
+}

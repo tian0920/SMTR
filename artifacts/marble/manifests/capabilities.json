@@ -1,0 +1,122 @@
+{
+  "marble_root": "/home/ecs-user/MARBLE",
+  "pilot_scenario": null,
+  "pilot_selection_reason": "No scenario currently satisfies real paired-pilot requirements: real_engine_execution_verified, memory_intervention_verified, native_outcome_evaluator_supported, and paired_signal_verified.",
+  "scenarios": {
+    "bargaining": {
+      "adapter_exists": false,
+      "dataset_readable": true,
+      "environment_constructible": false,
+      "filesystem_isolation_supported": false,
+      "independent_clone_supported": false,
+      "isolation_harness_supported": false,
+      "memory_injection_supported": false,
+      "memory_intervention_verified": false,
+      "native_outcome_evaluator_supported": false,
+      "notes": [
+        "Dataset is readable, but no scenario-specific environment adapter, outcome evaluator, or branch-isolation verification has been added."
+      ],
+      "outcome_evaluator_supported": false,
+      "paired_branch_isolation_verified": false,
+      "paired_signal_verified": false,
+      "pilot_supported": false,
+      "real_engine_constructible": false,
+      "real_engine_execution_verified": false,
+      "scenario": "bargaining",
+      "state_restore_supported": false,
+      "state_snapshot_supported": false
+    },
+    "coding": {
+      "adapter_exists": false,
+      "dataset_readable": true,
+      "environment_constructible": false,
+      "filesystem_isolation_supported": false,
+      "independent_clone_supported": false,
+      "isolation_harness_supported": false,
+      "memory_injection_supported": false,
+      "memory_intervention_verified": false,
+      "native_outcome_evaluator_supported": false,
+      "notes": [
+        "Dataset is readable, but no scenario-specific environment adapter, outcome evaluator, or branch-isolation verification has been added."
+      ],
+      "outcome_evaluator_supported": false,
+      "paired_branch_isolation_verified": false,
+      "paired_signal_verified": false,
+      "pilot_supported": false,
+      "real_engine_constructible": false,
+      "real_engine_execution_verified": false,
+      "scenario": "coding",
+      "state_restore_supported": false,
+      "state_snapshot_supported": false
+    },
+    "database": {
+      "adapter_exists": true,
+      "dataset_readable": true,
+      "environment_constructible": true,
+      "filesystem_isolation_supported": true,
+      "independent_clone_supported": true,
+      "isolation_harness_supported": true,
+      "memory_injection_supported": true,
+      "memory_intervention_verified": false,
+      "native_outcome_evaluator_supported": true,
+      "notes": [
+        "Filesystem isolation harness is available, but real paired pilot is not supported because upstream DBEnvironment uses fixed Docker workspace and localhost:5432 rather than branch-specific writable database copies."
+      ],
+      "outcome_evaluator_supported": true,
+      "paired_branch_isolation_verified": false,
+      "paired_signal_verified": false,
+      "pilot_supported": false,
+      "real_engine_constructible": false,
+      "real_engine_execution_verified": false,
+      "scenario": "database",
+      "state_restore_supported": false,
+      "state_snapshot_supported": true
+    },
+    "minecraft": {
+      "adapter_exists": false,
+      "dataset_readable": true,
+      "environment_constructible": false,
+      "filesystem_isolation_supported": false,
+      "independent_clone_supported": false,
+      "isolation_harness_supported": false,
+      "memory_injection_supported": false,
+      "memory_intervention_verified": false,
+      "native_outcome_evaluator_supported": false,
+      "notes": [
+        "Dataset is readable, but no scenario-specific environment adapter, outcome evaluator, or branch-isolation verification has been added."
+      ],
+      "outcome_evaluator_supported": false,
+      "paired_branch_isolation_verified": false,
+      "paired_signal_verified": false,
+      "pilot_supported": false,
+      "real_engine_constructible": false,
+      "real_engine_execution_verified": false,
+      "scenario": "minecraft",
+      "state_restore_supported": false,
+      "state_snapshot_supported": false
+    },
+    "research": {
+      "adapter_exists": false,
+      "dataset_readable": true,
+      "environment_constructible": false,
+      "filesystem_isolation_supported": false,
+      "independent_clone_supported": false,
+      "isolation_harness_supported": false,
+      "memory_injection_supported": false,
+      "memory_intervention_verified": false,
+      "native_outcome_evaluator_supported": false,
+      "notes": [
+        "Dataset is readable, but no scenario-specific environment adapter, outcome evaluator, or branch-isolation verification has been added."
+      ],
+      "outcome_evaluator_supported": false,
+      "paired_branch_isolation_verified": false,
+      "paired_signal_verified": false,
+      "pilot_supported": false,
+      "real_engine_constructible": false,
+      "real_engine_execution_verified": false,
+      "scenario": "research",
+      "state_restore_supported": false,
+      "state_snapshot_supported": false
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "candidate_memory_id": "database_1_irrelevant",
+  "engine_name": "MARBLE.Engine(DBEnvironment)",
+  "engine_version": "unknown",
+  "invalid_reason": "real_marble_engine_not_executed",
+  "paired_label": null,
+  "paired_record_valid": false,
+  "real_engine_executed": false,
+  "scenario": "database",
+  "share": {
+    "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
+    "branch_id": "share",
+    "final_digest": "33bd7b4f41ed0be62bdc21abeb952f0df3cca11e969bf712be6758bcc4f71c9d",
+    "generation_seed": 0,
+    "initial_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
+    "input_audit": {
+      "contains_memory_section": true,
+      "full_input_digest": "bb3c8086543891d3823befd294d87d75b48dc4d8f7f3fe2fa0e2f61ed5b8a27b",
+      "memory_ids": [
+        "database_1_irrelevant"
+      ],
+      "memory_section_digest": "05042ba3152a54374f20ab6ae8c9f0f19906295ea5b56d83f5b80ebd342847ba",
+      "system_section_digest": "9bcf7e84ad0b0601cb26b15d4858b49c970976074028392739280bbf6bb9d3c0",
+      "task_section_digest": "249722be24569060cc39ed87de1826c80cbf81c31df6fdb0c3baa45100bef525",
+      "tool_section_digest": "cadaea46369d654db7292a159bf1f56b2f9cd4eb9a0ac61d7b128fe707938bbf"
+    },
+    "outcome": {
+      "environment_valid": false,
+      "evaluator_name": "marble_database_engine",
+      "failure_reason": "real_marble_database_engine_import_failed: ModuleNotFoundError: No module named 'litellm'",
+      "raw_result_digest": "907cbd80f485a7db4ff5c5d4dd3750f6cc12960d72270d91ed0bfb6b8bf86c51",
+      "score": null,
+      "success": false
+    },
+    "raw_result_digest": "907cbd80f485a7db4ff5c5d4dd3750f6cc12960d72270d91ed0bfb6b8bf86c51",
+    "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
+    "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
+    "workspace": "artifacts/marble/records/pilot/database/c7cb0191fced0291/share"
+  },
+  "task_id": "1",
+  "withhold": {
+    "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
+    "branch_id": "withhold",
+    "final_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
+    "generation_seed": 0,
+    "initial_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
+    "input_audit": {
+      "contains_memory_section": false,
+      "full_input_digest": "85692b1c00b88e1166d4aa2881a129c939be9e2d9ccfc560bc431d827f0c625c",
+      "memory_ids": [],
+      "memory_section_digest": null,
+      "system_section_digest": "9bcf7e84ad0b0601cb26b15d4858b49c970976074028392739280bbf6bb9d3c0",
+      "task_section_digest": "249722be24569060cc39ed87de1826c80cbf81c31df6fdb0c3baa45100bef525",
+      "tool_section_digest": "cadaea46369d654db7292a159bf1f56b2f9cd4eb9a0ac61d7b128fe707938bbf"
+    },
+    "outcome": {
+      "environment_valid": false,
+      "evaluator_name": "marble_database_engine",
+      "failure_reason": "real_marble_database_engine_import_failed: ModuleNotFoundError: No module named 'litellm'",
+      "raw_result_digest": "9a132015c2d8f34ebf170bddc1a470f69711300c5ae5b675c9b0472ddaedf271",
+      "score": null,
+      "success": false
+    },
+    "raw_result_digest": "9a132015c2d8f34ebf170bddc1a470f69711300c5ae5b675c9b0472ddaedf271",
+    "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
+    "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
+    "workspace": "artifacts/marble/records/pilot/database/c7cb0191fced0291/withhold"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "environment_valid": false,
+  "evaluator_name": "marble_database_engine",
+  "failure_reason": "real_marble_database_engine_import_failed: ModuleNotFoundError: No module named 'litellm'",
+  "raw_result_digest": "9a132015c2d8f34ebf170bddc1a470f69711300c5ae5b675c9b0472ddaedf271",
+  "score": null,
+  "success": false
+}

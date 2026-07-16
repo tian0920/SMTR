@@ -1,0 +1,104 @@
+{
+  "overall": {
+    "matched_run_count": 36,
+    "matched_decision_count": 432,
+    "action_agreement_rate": 0.9375,
+    "smtr_share_static_withhold_count": 4,
+    "smtr_withhold_static_share_count": 23,
+    "selected_set_jaccard": 0.8970899470899472,
+    "policy_outcome_disagreement_rate": 0.1111111111111111,
+    "selected_set_conditioning_divergence_rate": 0.3819444444444444
+  },
+  "by_scenario": {
+    "flip_neg_to_pos": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.875,
+      "smtr_share_static_withhold_count": 2,
+      "smtr_withhold_static_share_count": 4,
+      "selected_set_jaccard": 0.875,
+      "policy_outcome_disagreement_rate": 0.25,
+      "selected_set_conditioning_divergence_rate": 0.5833333333333334
+    },
+    "flip_neu_to_neg": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.9583333333333334,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 2,
+      "selected_set_jaccard": 0.9166666666666667,
+      "policy_outcome_disagreement_rate": 0.25,
+      "selected_set_conditioning_divergence_rate": 0.3333333333333333
+    },
+    "neutral_failure": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.9583333333333334,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 2,
+      "selected_set_jaccard": 0.9,
+      "policy_outcome_disagreement_rate": 0.0,
+      "selected_set_conditioning_divergence_rate": 0.3541666666666667
+    },
+    "positive": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.9166666666666666,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 4,
+      "selected_set_jaccard": 0.8333333333333334,
+      "policy_outcome_disagreement_rate": 0.25,
+      "selected_set_conditioning_divergence_rate": 0.5833333333333334
+    },
+    "flip_pos_to_neg": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 1.0,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 0,
+      "selected_set_jaccard": 1.0,
+      "policy_outcome_disagreement_rate": 0.0,
+      "selected_set_conditioning_divergence_rate": 0.0
+    },
+    "negative": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 1.0,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 0,
+      "selected_set_jaccard": 1.0,
+      "policy_outcome_disagreement_rate": 0.0,
+      "selected_set_conditioning_divergence_rate": 0.0
+    },
+    "prefix_sensitive": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.8958333333333334,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 5,
+      "selected_set_jaccard": 0.7916666666666666,
+      "policy_outcome_disagreement_rate": 0.0,
+      "selected_set_conditioning_divergence_rate": 0.7083333333333334
+    },
+    "flip_neu_to_pos": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.9166666666666666,
+      "smtr_share_static_withhold_count": 2,
+      "smtr_withhold_static_share_count": 2,
+      "selected_set_jaccard": 0.8571428571428572,
+      "policy_outcome_disagreement_rate": 0.25,
+      "selected_set_conditioning_divergence_rate": 0.3333333333333333
+    },
+    "neutral_success": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.9166666666666666,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 4,
+      "selected_set_jaccard": 0.9,
+      "policy_outcome_disagreement_rate": 0.0,
+      "selected_set_conditioning_divergence_rate": 0.5416666666666666
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "agent_input": {
+    "agent_config": {
+      "target_receiver_agent_id": "agent1"
+    },
+    "memory_exposure": []
+  },
+  "generation_seed": 0,
+  "workspace_digest_before_run": "a0aa3d7ea7c9c0487700d7e84d56e67ff04fb52ac310ac02610c0f48445c9599"
+}

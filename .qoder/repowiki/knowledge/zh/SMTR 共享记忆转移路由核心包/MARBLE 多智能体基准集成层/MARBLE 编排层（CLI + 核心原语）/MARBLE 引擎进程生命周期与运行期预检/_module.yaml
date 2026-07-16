@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: smtr_core/marble/core_orchestration/engine_lifecycle
+title: MARBLE 引擎进程生命周期与运行期预检
+scope:
+    - src/smtr/marble/engine_process.py
+    - src/smtr/marble/engine_audit.py
+    - src/smtr/marble/runtime_preflight.py
+source_files: []
+depends_on: []
+related_to: []

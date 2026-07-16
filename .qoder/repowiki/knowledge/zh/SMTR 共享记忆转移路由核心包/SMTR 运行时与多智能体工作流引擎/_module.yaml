@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: smtr_core/runtime
+title: SMTR 运行时与多智能体工作流引擎
+scope:
+    - src/smtr/runtime/
+source_files: []
+depends_on: []
+related_to: []

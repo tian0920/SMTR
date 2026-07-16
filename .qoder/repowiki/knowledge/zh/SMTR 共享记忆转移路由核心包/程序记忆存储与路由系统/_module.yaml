@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: smtr_core/memory
+title: 程序记忆存储与路由系统
+scope:
+    - src/smtr/memory/
+source_files: []
+depends_on: []
+related_to: []

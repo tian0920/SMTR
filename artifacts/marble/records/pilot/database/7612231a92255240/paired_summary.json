@@ -1,0 +1,15 @@
+{
+  "agent_input_non_memory_sections_match": true,
+  "candidate_memory_id": "database_6_irrelevant",
+  "evaluator_name": "marble_database_engine",
+  "expected_role": "irrelevant",
+  "initial_state_match": true,
+  "invalid_reason": "real_marble_engine_not_executed",
+  "memory_intervention_verified": true,
+  "paired_label": null,
+  "paired_record_valid": false,
+  "real_engine_executed": false,
+  "share_success": false,
+  "task_id": "6",
+  "withhold_success": false
+}

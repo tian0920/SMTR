@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: smtr_core/robust
+title: Robust-SMTR 可选扩展（置信区间门控）
+scope:
+    - src/smtr/robust/
+source_files: []
+depends_on: []
+related_to: []

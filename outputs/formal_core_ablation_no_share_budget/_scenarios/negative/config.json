@@ -1,0 +1,37 @@
+{
+  "db_path": "data/formal_core_ablation_no_share_budget.sqlite",
+  "critic_checkpoint": "checkpoints/critic_full_gate_ablation_v1.joblib",
+  "task_seeds": [
+    0,
+    1
+  ],
+  "generation_seeds": [
+    0
+  ],
+  "traversal_seeds": [
+    0,
+    1
+  ],
+  "scenario_replicates": 1,
+  "top_k": 4,
+  "max_shares_per_invocation": null,
+  "negative_risk_budget": 0.2,
+  "output_dir": "outputs/formal_core_ablation_no_share_budget/_scenarios/negative",
+  "overwrite": true,
+  "fail_fast": true,
+  "bootstrap_seed": 42,
+  "bootstrap_n": 100,
+  "scenario": "negative",
+  "methods": [
+    "B0",
+    "B1-Top1",
+    "B1-AllCandidates",
+    "SMTR",
+    "EffectOnly-SMTR",
+    "RiskOnly-SMTR",
+    "Static-SMTR"
+  ],
+  "enable_ablation_methods": true,
+  "a1_critic_checkpoint": null,
+  "budget_manifest_path": null
+}

@@ -21,7 +21,7 @@ from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 DEFAULT_ENGINE_TIMEOUT_SECONDS = 900
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
 
-_LITELLM_SHIM_CODE = """
+_LITELLM_SHIM_TEMPLATE = """
 from __future__ import annotations
 
 import os
@@ -31,10 +31,11 @@ try:
 except Exception:
     litellm = None
 
-if litellm is not None and not getattr(litellm, "_smtr_openai_compat_patch", False):
+if litellm is not None and not getattr(litellm, "_smtr_compat_patch", False):
     _smtr_original_completion = litellm.completion
 
     def _smtr_completion(*args, **kwargs):
+        # --- URL / key routing ---
         base_url = os.environ.get("SMTR_OPENAI_COMPAT_BASE_URL")
         api_key = os.environ.get("OPENAI_API_KEY")
         if base_url and not kwargs.get("base_url"):
@@ -45,10 +46,94 @@ if litellm is not None and not getattr(litellm, "_smtr_openai_compat_patch", Fal
             extra_body = dict(kwargs.get("extra_body") or {})
             extra_body.setdefault("enable_thinking", True)
             kwargs["extra_body"] = extra_body
+        # --- Runtime visibility audit ---
+        _audit_path = os.environ.get("SMTR_VISIBILITY_AUDIT_PATH")
+        if _audit_path:
+            try:
+                _smtr_audit_completion(_audit_path, args, kwargs)
+            except Exception:
+                pass
         return _smtr_original_completion(*args, **kwargs)
 
+    def _smtr_audit_completion(audit_path, args, kwargs):
+        import json as _json
+        import hashlib as _hashlib
+        import re as _re
+        import time as _time
+        import fcntl as _fcntl
+        messages = kwargs.get("messages") or (args[1] if len(args) > 1 else [])
+        if not messages:
+            return
+        full_text = ""
+        for m in messages:
+            content = m.get("content", "") if isinstance(m, dict) else str(m)
+            full_text += content + "\\n"
+        agent_match = _re.search(r"You are (agent\\w+):", full_text)
+        agent_id = agent_match.group(1) if agent_match else "unknown"
+        mem_pattern = _re.compile(
+            r"\\[SMTR_PROCEDURAL_MEMORY:id=([^:]+):intervention=([^\\]]+)\\]"
+        )
+        visible_ids = []
+        intervention_ids = set()
+        for m in messages:
+            content = m.get("content", "") if isinstance(m, dict) else str(m)
+            for match in mem_pattern.finditer(content):
+                mid = match.group(1)
+                iid = match.group(2)
+                if mid not in visible_ids:
+                    visible_ids.append(mid)
+                intervention_ids.add(iid)
+        meta = {}
+        meta_path = os.environ.get("SMTR_RUN_METADATA_PATH")
+        if meta_path:
+            try:
+                with open(meta_path, "r") as f:
+                    meta = _json.loads(f.read())
+            except Exception:
+                pass
+        receiver_ids = set()
+        ri = os.environ.get("SMTR_RECEIVER_AGENT_IDS", "")
+        if ri:
+            receiver_ids = set(x.strip() for x in ri.split(",") if x.strip())
+        mem_digest = _hashlib.sha256(
+            ",".join(visible_ids).encode("utf-8")
+        ).hexdigest()
+        msgs_digest = _hashlib.sha256(full_text.encode("utf-8")).hexdigest()
+        record = {
+            "schema_version": "1.0",
+            "run_id": meta.get("run_id", os.environ.get("SMTR_RUN_ID", "unknown")),
+            "task_id": meta.get("task_id", os.environ.get("SMTR_TASK_ID", "unknown")),
+            "scenario": meta.get("scenario", os.environ.get("SMTR_SCENARIO", "unknown")),
+            "method": meta.get("method", os.environ.get("SMTR_METHOD", "unknown")),
+            "branch": meta.get("branch", os.environ.get("SMTR_BRANCH", "unknown")),
+            "agent_id": agent_id,
+            "agent_role": None,
+            "receiver_agent": agent_id in receiver_ids,
+            "turn_id": 0,
+            "visible_memory_ids": visible_ids,
+            "ordered_memory_digest": mem_digest,
+            "memory_payload_digest": os.environ.get("SMTR_MEMORY_PAYLOAD_DIGEST", ""),
+            "system_prompt_digest": "",
+            "messages_digest": msgs_digest,
+            "intervention_id": (
+                list(intervention_ids)[0] if intervention_ids
+                else os.environ.get("SMTR_INTERVENTION_ID")
+            ),
+            "invocation_index": 0,
+            "timestamp_utc": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+        }
+        line = _json.dumps(record, sort_keys=True) + "\\n"
+        p = _audit_path
+        with open(p, "a", encoding="utf-8") as fh:
+            try:
+                _fcntl.flock(fh.fileno(), _fcntl.LOCK_EX)
+                fh.write(line)
+                fh.flush()
+            finally:
+                _fcntl.flock(fh.fileno(), _fcntl.LOCK_UN)
+
     litellm.completion = _smtr_completion
-    litellm._smtr_openai_compat_patch = True
+    litellm._smtr_compat_patch = True
 """.lstrip()
 
 
@@ -106,6 +191,7 @@ def run_marble_engine_process(
     timeout_source: str = "default",
     termination_grace_period_seconds: float = DEFAULT_TERMINATION_GRACE_SECONDS,
     memory_injection: dict[str, Any] | None = None,
+    run_metadata: dict[str, str] | None = None,
 ) -> MarbleEngineProcessResult:
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be positive")
@@ -118,6 +204,7 @@ def run_marble_engine_process(
         shim_dir=log_dir / "runtime_shim",
         memory_injection=memory_injection,
         visibility_audit_path=log_dir / "memory_visibility_audit.jsonl",
+        run_metadata=run_metadata,
     )
     python = _marble_python(marble_root)
     if raw_result_path and raw_result_path.exists():
@@ -234,6 +321,7 @@ def _engine_environment(
     shim_dir: Path | None = None,
     memory_injection: dict[str, Any] | None = None,
     visibility_audit_path: Path | None = None,
+    run_metadata: dict[str, str] | None = None,
 ) -> dict[str, str]:
     env = dict(os.environ)
     pythonpath = env.get("PYTHONPATH")
@@ -243,6 +331,7 @@ def _engine_environment(
             shim_dir,
             memory_injection=memory_injection,
             visibility_audit_path=visibility_audit_path,
+            run_metadata=run_metadata,
         )
         path_entries.append(str(shim_dir))
     path_entries.append(str(marble_root))
@@ -287,16 +376,41 @@ def _write_runtime_shim(
     *,
     memory_injection: dict[str, Any] | None = None,
     visibility_audit_path: Path | None = None,
+    run_metadata: dict[str, str] | None = None,
 ) -> None:
-    """Write a combined sitecustomize.py with litellm patch + optional memory injection."""
+    """Write a combined sitecustomize.py with unified litellm patch + optional memory injection."""
     shim_dir.mkdir(parents=True, exist_ok=True)
-    parts: list[str] = [_LITELLM_SHIM_CODE]
-    if memory_injection and visibility_audit_path:
-        payload_json = json.dumps(memory_injection, sort_keys=True)
+    parts: list[str] = [_LITELLM_SHIM_TEMPLATE]
+    if visibility_audit_path:
         audit_path_str = str(visibility_audit_path.resolve())
-        parts.append(
-            _build_memory_injection_code(payload_json, audit_path_str)
-        )
+        # Write run metadata file for the shim to read
+        meta_path_str = ""
+        if run_metadata:
+            meta_path = shim_dir / "run_metadata.json"
+            meta_path.write_text(
+                json.dumps(run_metadata, sort_keys=True), encoding="utf-8"
+            )
+            meta_path_str = str(meta_path.resolve())
+        # Write a small env-setup snippet that always runs (even for B0)
+        parts.append(_build_audit_env_snippet(
+            audit_path=audit_path_str,
+            metadata_path=meta_path_str,
+            run_metadata=run_metadata or {},
+            receiver_agent_ids=memory_injection.get("receiver_agent_ids", []) if memory_injection else [],
+            intervention_id=memory_injection.get("intervention_id", "") if memory_injection else "",
+            memory_digest=_compute_memory_digest(memory_injection),
+        ))
+        if memory_injection:
+            payload_json = json.dumps(memory_injection, sort_keys=True)
+            parts.append(
+                _build_memory_injection_code(
+                    payload_json=payload_json,
+                    audit_path=audit_path_str,
+                    metadata_path=meta_path_str,
+                    receiver_agent_ids=memory_injection.get("receiver_agent_ids", []),
+                    intervention_id=memory_injection.get("intervention_id", ""),
+                )
+            )
     (shim_dir / "sitecustomize.py").write_text(
         "\n".join(parts), encoding="utf-8"
     )
@@ -307,18 +421,75 @@ def _write_litellm_runtime_shim(shim_dir: Path) -> None:
     _write_runtime_shim(shim_dir)
 
 
-def _build_memory_injection_code(payload_json: str, audit_path: str) -> str:
-    """Generate Python code for the memory injection part of the shim."""
-    safe_payload = payload_json.replace("\\", "\\\\").replace("'", "\\'")
+def _compute_memory_digest(memory_injection: dict[str, Any] | None) -> str:
+    """SHA-256 of the canonical JSON representation of the injection payload."""
+    if not memory_injection:
+        return ""
+    return hashlib.sha256(
+        json.dumps(memory_injection, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+
+
+def _build_audit_env_snippet(
+    *,
+    audit_path: str,
+    metadata_path: str = "",
+    run_metadata: dict[str, str] | None = None,
+    receiver_agent_ids: list[str] | None = None,
+    intervention_id: str = "",
+    memory_digest: str = "",
+) -> str:
+    """Generate a small Python snippet that sets env vars for the audit.
+
+    This runs for ALL methods (B0, AllShare, SMTR, share, withhold) so that
+    the unified litellm.completion patch always writes visibility records.
+    """
     safe_audit = audit_path.replace("\\", "\\\\")
+    safe_meta = metadata_path.replace("\\", "\\\\")
+    safe_receivers = ",".join(receiver_agent_ids or [])
+    meta = run_metadata or {}
+    return f"""
+
+# --- SMTR Visibility Audit Env Setup ---
+import os as _os
+_os.environ["SMTR_VISIBILITY_AUDIT_PATH"] = '{safe_audit}'
+if '{safe_meta}':
+    _os.environ["SMTR_RUN_METADATA_PATH"] = '{safe_meta}'
+_os.environ["SMTR_RUN_ID"] = '{meta.get("run_id", "unknown")}'
+_os.environ["SMTR_TASK_ID"] = '{meta.get("task_id", "unknown")}'
+_os.environ["SMTR_SCENARIO"] = '{meta.get("scenario", "unknown")}'
+_os.environ["SMTR_METHOD"] = '{meta.get("method", "unknown")}'
+_os.environ["SMTR_BRANCH"] = '{meta.get("branch", "unknown")}'
+_os.environ["SMTR_RECEIVER_AGENT_IDS"] = '{safe_receivers}'
+_os.environ["SMTR_MEMORY_PAYLOAD_DIGEST"] = '{memory_digest}'
+_os.environ["SMTR_INTERVENTION_ID"] = '{intervention_id}'
+"""
+
+
+def _build_memory_injection_code(
+    *,
+    payload_json: str,
+    audit_path: str,
+    metadata_path: str = "",
+    receiver_agent_ids: list[str] | None = None,
+    intervention_id: str = "",
+) -> str:
+    """Generate Python code for memory injection with structured markers.
+
+    The generated code monkey-patches Engine.start() to inject memories
+    wrapped in [SMTR_PROCEDURAL_MEMORY] markers.  The unified litellm
+    completion patch (already in the shim) detects these markers in the
+    final messages and writes RuntimeVisibilityRecords.
+    """
+    safe_payload = payload_json.replace("\\", "\\\\").replace("'", "\\'") if payload_json else ""
     return f"""
 
 # --- SMTR Memory Injection ---
 def _smtr_inject_memories():
     import json as _json
-    import hashlib as _hashlib
     payload_str = '{safe_payload}'
-    audit_path = '{safe_audit}'
+    if not payload_str:
+        return
     try:
         payload = _json.loads(payload_str)
     except Exception:
@@ -335,30 +506,16 @@ def _smtr_inject_memories():
         return
     _original_start = Engine.start
     def _patched_start(self):
-        audit_records = []
         for agent in self.agents:
             if agent.agent_id in receiver_ids:
-                for mem_payload in memory_payloads:
-                    agent.memory.update("smtr_procedural", mem_payload)
-        digest = _hashlib.sha256(
-            _json.dumps(payload, sort_keys=True).encode("utf-8")
-        ).hexdigest()
-        for agent in self.agents:
-            visible = list(memory_ids) if agent.agent_id in receiver_ids else []
-            audit_records.append({{
-                "agent_id": agent.agent_id,
-                "visible_memory_ids": visible,
-                "memory_payload_digest": digest,
-                "intervention_id": intervention_id,
-            }})
-        try:
-            import pathlib
-            p = pathlib.Path(audit_path)
-            p.parent.mkdir(parents=True, exist_ok=True)
-            lines = [_json.dumps(r, sort_keys=True) for r in audit_records]
-            p.write_text(chr(10).join(lines) + chr(10) if lines else "", encoding="utf-8")
-        except Exception:
-            pass
+                for idx, mem_payload in enumerate(memory_payloads):
+                    mem_id = memory_ids[idx] if idx < len(memory_ids) else f"mem_{{idx}}"
+                    wrapped = (
+                        f"[SMTR_PROCEDURAL_MEMORY:id={{mem_id}}:intervention={{intervention_id}}]"
+                        f"\\n{{mem_payload}}"
+                        f"\\n[/SMTR_PROCEDURAL_MEMORY]"
+                    )
+                    agent.memory.update("smtr_procedural", wrapped)
         return _original_start(self)
     Engine.start = _patched_start
 

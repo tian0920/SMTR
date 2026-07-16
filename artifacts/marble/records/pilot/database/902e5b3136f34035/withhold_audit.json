@@ -1,0 +1,28 @@
+{
+  "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
+  "branch_id": "withhold",
+  "final_digest": "57c2d69b14211a8f134d06e781aeed6457542dc6daf4ecc05a1f8ed9d17b3bd6",
+  "generation_seed": 0,
+  "initial_digest": "57c2d69b14211a8f134d06e781aeed6457542dc6daf4ecc05a1f8ed9d17b3bd6",
+  "input_audit": {
+    "contains_memory_section": false,
+    "full_input_digest": "b5f23ae87168b1f6ee2229fed45c9ef8f3969e148b246cdc8b2cd04ae72bae85",
+    "memory_ids": [],
+    "memory_section_digest": null,
+    "system_section_digest": "9bcf7e84ad0b0601cb26b15d4858b49c970976074028392739280bbf6bb9d3c0",
+    "task_section_digest": "d88129ebe9fa5675ebba8d10d23f34ef85eddf16880f6fe03f48eeb068b3c6f4",
+    "tool_section_digest": "cadaea46369d654db7292a159bf1f56b2f9cd4eb9a0ac61d7b128fe707938bbf"
+  },
+  "outcome": {
+    "environment_valid": false,
+    "evaluator_name": "marble_database_engine",
+    "failure_reason": "real_marble_database_engine_import_failed: ModuleNotFoundError: No module named 'litellm'",
+    "raw_result_digest": "9a132015c2d8f34ebf170bddc1a470f69711300c5ae5b675c9b0472ddaedf271",
+    "score": null,
+    "success": false
+  },
+  "raw_result_digest": "9a132015c2d8f34ebf170bddc1a470f69711300c5ae5b675c9b0472ddaedf271",
+  "task_digest": "26e06479d407b0ae55f8ade4d4091eddce6d694fc77a5af08cb2c1c5a0616ee3",
+  "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
+  "workspace": "artifacts/marble/records/pilot/database/902e5b3136f34035/withhold"
+}

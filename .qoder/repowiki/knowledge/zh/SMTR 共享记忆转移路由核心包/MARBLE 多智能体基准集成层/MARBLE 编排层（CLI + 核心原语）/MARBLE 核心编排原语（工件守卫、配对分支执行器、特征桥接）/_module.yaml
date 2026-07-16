@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: smtr_core/marble/core_orchestration/core_orchestration_primitives
+title: MARBLE 核心编排原语（工件守卫、配对分支执行器、特征桥接）
+scope:
+    - src/smtr/marble/artifacts.py
+    - src/smtr/marble/branch_runner.py
+    - src/smtr/marble/feature_bridge.py
+source_files: []
+depends_on: []
+related_to: []

@@ -82,6 +82,7 @@ class MarbleDatabaseEnvironment:
         memory_injection: dict[str, Any] | None = None,
         run_identity: dict[str, str] | None = None,
         engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
+        run_metadata: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Write MARBLE YAML config and invoke the real engine subprocess."""
         config_path = self.workspace / "marble_config.yaml"
@@ -100,6 +101,7 @@ class MarbleDatabaseEnvironment:
             run_identity=run_identity or {},
             timeout_seconds=engine_timeout_seconds,
             memory_injection=memory_injection,
+            run_metadata=run_metadata,
         )
         return self._load_raw_result(raw_result_path, engine_result)
 

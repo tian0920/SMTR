@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: smtr_core/marble
+title: MARBLE 多智能体基准集成层
+scope:
+    - src/smtr/marble/
+source_files: []
+depends_on: []
+related_to: []

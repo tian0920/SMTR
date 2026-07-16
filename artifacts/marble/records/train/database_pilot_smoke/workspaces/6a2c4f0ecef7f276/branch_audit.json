@@ -1,0 +1,42 @@
+{
+  "candidate_memory_id": "pilot_memory_database_1",
+  "invalid_reason": null,
+  "paired_label": "neutral_failure",
+  "paired_record_valid": true,
+  "scenario": "database",
+  "share": {
+    "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
+    "branch_id": "share",
+    "generation_seed": 0,
+    "initial_digest": "5cda5c5c8fc525120bc08064e9095e36931fefb1f8d79a5f86bc64b0583d2fd1",
+    "outcome": {
+      "environment_valid": true,
+      "evaluator_name": "database_root_cause_exact_match",
+      "failure_reason": "missing_predicted_root_causes",
+      "raw_result_digest": "a78b8d8b902bf9b876da5a39c0a2847787877304bddb04de920fd86092fb1b8e",
+      "score": null,
+      "success": false
+    },
+    "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
+    "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
+    "workspace": "artifacts/marble/records/train/database_pilot_smoke/workspaces/6a2c4f0ecef7f276/share"
+  },
+  "task_id": "1",
+  "withhold": {
+    "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
+    "branch_id": "withhold",
+    "generation_seed": 0,
+    "initial_digest": "5cda5c5c8fc525120bc08064e9095e36931fefb1f8d79a5f86bc64b0583d2fd1",
+    "outcome": {
+      "environment_valid": true,
+      "evaluator_name": "database_root_cause_exact_match",
+      "failure_reason": "missing_predicted_root_causes",
+      "raw_result_digest": "0441534a8d79fb11ef2a254687c009639df521131f92ab984afb7ca4470de7b1",
+      "score": null,
+      "success": false
+    },
+    "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
+    "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
+    "workspace": "artifacts/marble/records/train/database_pilot_smoke/workspaces/6a2c4f0ecef7f276/withhold"
+  }
+}

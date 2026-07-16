@@ -27,6 +27,7 @@ from smtr.marble.outcome.protocol import outcome_from_failure
 from smtr.marble.real_data import RealProceduralMemory
 from smtr.marble.router_evaluation import evaluate_router_decisions
 from smtr.marble.run_identity import RunIdentity, current_marble_commit, current_smtr_commit
+from smtr.marble.runtime_visibility_validator import validate_runtime_visibility_from_path
 from smtr.marble.scenario_registry import adapter_for_scenario
 from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
@@ -125,12 +126,20 @@ class MarbleEnvironmentEvaluator:
             smtr_commit=current_smtr_commit(),
         )
         try:
+            run_metadata = {
+                "run_id": run_id,
+                "task_id": task_id,
+                "scenario": scenario,
+                "method": method,
+                "branch": method,
+            }
             raw_result = env.run(
                 agent_input=agent_input,
                 generation_seed=generation_seed,
                 memory_injection=memory_injection,
                 run_identity=identity.to_dict(),
                 engine_timeout_seconds=engine_timeout_seconds,
+                run_metadata=run_metadata,
             )
             evaluator = evaluator_for_scenario(scenario)
             os.environ["SMTR_MARBLE_ROOT"] = str(marble_root)
@@ -147,6 +156,21 @@ class MarbleEnvironmentEvaluator:
         finally:
             env.close()
 
+        # Runtime visibility validation
+        audit_path = output_dir / f"workspace_{method}" / "memory_visibility_audit.jsonl"
+        expected_ids = []
+        if method == "all_share" and candidate_memories:
+            expected_ids = [m.memory_id for m in candidate_memories]
+        elif method == "smtr" and selected_memory_ids:
+            expected_ids = list(selected_memory_ids)
+        rt_val = validate_runtime_visibility_from_path(
+            method=method,
+            branch=method,
+            receiver_agent_ids=receiver_ids,
+            expected_memory_ids=expected_ids,
+            audit_path=audit_path,
+        )
+
         return {
             "method": method,
             "task_id": task_id,
@@ -160,4 +184,7 @@ class MarbleEnvironmentEvaluator:
             "outcome": outcome.__dict__,
             "memory_injection_present": memory_injection is not None,
             "generation_seed": generation_seed,
+            "runtime_visibility_audit_exists": audit_path.exists(),
+            "runtime_visibility_verified": rt_val.visibility_verified,
+            "runtime_visibility_invalid_reason": rt_val.invalid_reason,
         }

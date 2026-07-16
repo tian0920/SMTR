@@ -1,0 +1,195 @@
+{
+  "agent_configuration": [
+    {
+      "agent_id": "agent1",
+      "profile": "agent1 will explore the possibility of INSERT_LARGE_DATA as a root cause. Recommended tables: `pg_stat_statements`. You can search for INSERTs.",
+      "type": "BaseAgent"
+    },
+    {
+      "agent_id": "agent2",
+      "profile": "agent2 will explore the possibility of LOCK_CONTENTION as a root cause. Recommended tables: `pg_locks`.",
+      "type": "BaseAgent"
+    },
+    {
+      "agent_id": "agent3",
+      "profile": "agent3 will explore the possibility of VACUUM as a root cause. Recommended to search for inappropiate VACUUMs from `pg_stat_all_tables`: SELECT query, calls, total_plan_time, rows, mean_plan_time FROM pg_stat_statements WHERE query LIKE 'VACUUM%';",
+      "type": "BaseAgent"
+    },
+    {
+      "agent_id": "agent4",
+      "profile": "agent4 will explore the possibility of REDUNDANT_INDEX as a root cause. Recommended tables: `pg_stat_user_indexes`, `pg_indexes`.",
+      "type": "BaseAgent"
+    },
+    {
+      "agent_id": "agent5",
+      "profile": "agent5 will explore the possibility of FETCH_LARGE_DATA as a root cause. Recommended to search for SELECTs from `pg_stat_statements`.",
+      "type": "BaseAgent"
+    }
+  ],
+  "database_content_digest": "3094ce46dd577f66114c6cd653714b97fde9ab3a9f16aa079b765500e7ea3116",
+  "database_schema_digest": "324898a1f463420f6a1808fa1d5e170996992e22ed5ae5a9ab4c4d1f9c334e9f",
+  "database_snapshot_or_seed": "45da9c04791ba85409762a91cefca16b881d958ac10d258cc0e558341c37743d",
+  "environment_configuration": {
+    "anomalies": [
+      {
+        "anomaly": "INSERT_LARGE_DATA",
+        "colsize": 100,
+        "ncolumn": 20,
+        "nrow": 20000,
+        "threads": 100
+      }
+    ],
+    "init_sql": "-- 1. Devices table (stores information about IoT devices)\nCREATE TABLE devices (\n    device_id SERIAL PRIMARY KEY,  -- Unique device ID\n    device_name VARCHAR(255) NOT NULL,  -- Device name\n    device_type VARCHAR(100) NOT NULL,  -- Device type (e.g., sensor, actuator)\n    manufacturer VARCHAR(255),  -- Manufacturer of the device\n    model_number VARCHAR(100),  -- Model number of the device\n    status VARCHAR(50) DEFAULT 'active',  -- Device status (e.g., active, inactive)\n    last_communication TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last communication time\n);\n\n-- 2. Users table (stores users of the IoT system)\nCREATE TABLE users (\n    user_id SERIAL PRIMARY KEY,  -- Unique user ID\n    first_name VARCHAR(100),  -- User's first name\n    last_name VARCHAR(100),   -- User's last name\n    email VARCHAR(255) UNIQUE NOT NULL,  -- User email\n    password VARCHAR(255) NOT NULL,  -- User password\n    role VARCHAR(50) DEFAULT 'user',  -- Role of the user (e.g., admin, user)\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Account creation time\n);\n\n-- 3. Device_Data table (stores data collected by IoT devices)\nCREATE TABLE device_data (\n    data_id SERIAL PRIMARY KEY,  -- Unique data ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    data_value VARCHAR(255) NOT NULL,  -- Value of the data (e.g., temperature, humidity)\n    data_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of data collection\n    data_type VARCHAR(50)  -- Type of data (e.g., sensor reading, status update)\n);\n\n-- 4. Device_Logs table (stores logs for IoT devices)\nCREATE TABLE device_logs (\n    log_id SERIAL PRIMARY KEY,  -- Unique log ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    log_message TEXT,  -- Log message\n    log_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of log entry\n);\n\n-- 5. Device_Configuration table (stores configuration settings for IoT devices)\nCREATE TABLE device_configuration (\n    config_id SERIAL PRIMARY KEY,  -- Unique configuration ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    config_key VARCHAR(255) NOT NULL,  -- Configuration key (e.g., IP address, threshold)\n    config_value VARCHAR(255) NOT NULL,  -- Configuration value\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of configuration update\n);\n\n-- 6. Alerts table (stores alerts triggered by IoT devices)\nCREATE TABLE alerts (\n    alert_id SERIAL PRIMARY KEY,  -- Unique alert ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    alert_message TEXT,  -- Description of the alert\n    alert_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of alert\n    alert_status VARCHAR(50) DEFAULT 'unresolved'  -- Alert status (e.g., resolved, unresolved)\n);\n\n-- 7. Device_Status table (stores the current status of IoT devices)\nCREATE TABLE device_status (\n    status_id SERIAL PRIMARY KEY,  -- Unique status ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    status_value VARCHAR(50) NOT NULL,  -- Current status (e.g., online, offline)\n    status_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of status update\n);\n\n-- 8. Device_Commands table (stores commands sent to IoT devices)\nCREATE TABLE device_commands (\n    command_id SERIAL PRIMARY KEY,  -- Unique command ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    command VARCHAR(255) NOT NULL,  -- Command sent to the device\n    command_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of command sent\n    command_status VARCHAR(50) DEFAULT 'pending'  -- Command status (e.g., pending, executed)\n);\n\n-- Insert some sample devices\nINSERT INTO devices (device_name, device_type, manufacturer, model_number) \nVALUES \n('Temperature Sensor', 'sensor', 'IoT Corp', 'TS-1001'),\n('Smart Light', 'actuator', 'SmartHome Inc.', 'SL-2020');\n\n-- Insert some users\nINSERT INTO users (first_name, last_name, email, password, role) \nVALUES \n('John', 'Doe', 'john.doe@example.com', 'securepassword', 'admin'),\n('Jane', 'Smith', 'jane.smith@example.com', 'password123', 'user');\n\n-- Insert device data\nINSERT INTO device_data (device_id, data_value, data_type) \nVALUES \n(1, '23.5', 'temperature'),\n(2, 'ON', 'status');\n\n-- Insert device logs\nINSERT INTO device_logs (device_id, log_message) \nVALUES \n(1, 'Temperature sensor initialized successfully'),\n(2, 'Smart light turned on remotely');\n\n-- Insert device configuration\nINSERT INTO device_configuration (device_id, config_key, config_value) \nVALUES \n(1, 'IP Address', '192.168.1.10'),\n(2, 'IP Address', '192.168.1.20');\n\n-- Insert alerts\nINSERT INTO alerts (device_id, alert_message) \nVALUES \n(1, 'Temperature exceeded threshold!'),\n(2, 'Smart light malfunction detected');\n\n-- Insert device status\nINSERT INTO device_status (device_id, status_value) \nVALUES \n(1, 'online'),\n(2, 'offline');\n\n-- Insert device commands\nINSERT INTO device_commands (device_id, command) \nVALUES \n(1, 'Reset sensor'),\n(2, 'Turn off light');\n",
+    "max_iterations": "",
+    "name": "",
+    "type": ""
+  },
+  "environment_seed": 0,
+  "generation_seed": 0,
+  "scenario": "database",
+  "task_id": "4",
+  "task_source_snapshot": {
+    "agents": [
+      {
+        "agent_id": "agent1",
+        "profile": "agent1 will explore the possibility of INSERT_LARGE_DATA as a root cause. Recommended tables: `pg_stat_statements`. You can search for INSERTs.",
+        "type": "BaseAgent"
+      },
+      {
+        "agent_id": "agent2",
+        "profile": "agent2 will explore the possibility of LOCK_CONTENTION as a root cause. Recommended tables: `pg_locks`.",
+        "type": "BaseAgent"
+      },
+      {
+        "agent_id": "agent3",
+        "profile": "agent3 will explore the possibility of VACUUM as a root cause. Recommended to search for inappropiate VACUUMs from `pg_stat_all_tables`: SELECT query, calls, total_plan_time, rows, mean_plan_time FROM pg_stat_statements WHERE query LIKE 'VACUUM%';",
+        "type": "BaseAgent"
+      },
+      {
+        "agent_id": "agent4",
+        "profile": "agent4 will explore the possibility of REDUNDANT_INDEX as a root cause. Recommended tables: `pg_stat_user_indexes`, `pg_indexes`.",
+        "type": "BaseAgent"
+      },
+      {
+        "agent_id": "agent5",
+        "profile": "agent5 will explore the possibility of FETCH_LARGE_DATA as a root cause. Recommended to search for SELECTs from `pg_stat_statements`.",
+        "type": "BaseAgent"
+      }
+    ],
+    "communication": false,
+    "coordinate_mode": "",
+    "engine_planner": {
+      "initial_progress": "Starting the simulation."
+    },
+    "environment": {
+      "anomalies": [
+        {
+          "anomaly": "INSERT_LARGE_DATA",
+          "colsize": 100,
+          "ncolumn": 20,
+          "nrow": 20000,
+          "threads": 100
+        }
+      ],
+      "init_sql": "-- 1. Devices table (stores information about IoT devices)\nCREATE TABLE devices (\n    device_id SERIAL PRIMARY KEY,  -- Unique device ID\n    device_name VARCHAR(255) NOT NULL,  -- Device name\n    device_type VARCHAR(100) NOT NULL,  -- Device type (e.g., sensor, actuator)\n    manufacturer VARCHAR(255),  -- Manufacturer of the device\n    model_number VARCHAR(100),  -- Model number of the device\n    status VARCHAR(50) DEFAULT 'active',  -- Device status (e.g., active, inactive)\n    last_communication TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last communication time\n);\n\n-- 2. Users table (stores users of the IoT system)\nCREATE TABLE users (\n    user_id SERIAL PRIMARY KEY,  -- Unique user ID\n    first_name VARCHAR(100),  -- User's first name\n    last_name VARCHAR(100),   -- User's last name\n    email VARCHAR(255) UNIQUE NOT NULL,  -- User email\n    password VARCHAR(255) NOT NULL,  -- User password\n    role VARCHAR(50) DEFAULT 'user',  -- Role of the user (e.g., admin, user)\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Account creation time\n);\n\n-- 3. Device_Data table (stores data collected by IoT devices)\nCREATE TABLE device_data (\n    data_id SERIAL PRIMARY KEY,  -- Unique data ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    data_value VARCHAR(255) NOT NULL,  -- Value of the data (e.g., temperature, humidity)\n    data_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of data collection\n    data_type VARCHAR(50)  -- Type of data (e.g., sensor reading, status update)\n);\n\n-- 4. Device_Logs table (stores logs for IoT devices)\nCREATE TABLE device_logs (\n    log_id SERIAL PRIMARY KEY,  -- Unique log ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    log_message TEXT,  -- Log message\n    log_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of log entry\n);\n\n-- 5. Device_Configuration table (stores configuration settings for IoT devices)\nCREATE TABLE device_configuration (\n    config_id SERIAL PRIMARY KEY,  -- Unique configuration ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    config_key VARCHAR(255) NOT NULL,  -- Configuration key (e.g., IP address, threshold)\n    config_value VARCHAR(255) NOT NULL,  -- Configuration value\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of configuration update\n);\n\n-- 6. Alerts table (stores alerts triggered by IoT devices)\nCREATE TABLE alerts (\n    alert_id SERIAL PRIMARY KEY,  -- Unique alert ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    alert_message TEXT,  -- Description of the alert\n    alert_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of alert\n    alert_status VARCHAR(50) DEFAULT 'unresolved'  -- Alert status (e.g., resolved, unresolved)\n);\n\n-- 7. Device_Status table (stores the current status of IoT devices)\nCREATE TABLE device_status (\n    status_id SERIAL PRIMARY KEY,  -- Unique status ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    status_value VARCHAR(50) NOT NULL,  -- Current status (e.g., online, offline)\n    status_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of status update\n);\n\n-- 8. Device_Commands table (stores commands sent to IoT devices)\nCREATE TABLE device_commands (\n    command_id SERIAL PRIMARY KEY,  -- Unique command ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    command VARCHAR(255) NOT NULL,  -- Command sent to the device\n    command_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of command sent\n    command_status VARCHAR(50) DEFAULT 'pending'  -- Command status (e.g., pending, executed)\n);\n\n-- Insert some sample devices\nINSERT INTO devices (device_name, device_type, manufacturer, model_number) \nVALUES \n('Temperature Sensor', 'sensor', 'IoT Corp', 'TS-1001'),\n('Smart Light', 'actuator', 'SmartHome Inc.', 'SL-2020');\n\n-- Insert some users\nINSERT INTO users (first_name, last_name, email, password, role) \nVALUES \n('John', 'Doe', 'john.doe@example.com', 'securepassword', 'admin'),\n('Jane', 'Smith', 'jane.smith@example.com', 'password123', 'user');\n\n-- Insert device data\nINSERT INTO device_data (device_id, data_value, data_type) \nVALUES \n(1, '23.5', 'temperature'),\n(2, 'ON', 'status');\n\n-- Insert device logs\nINSERT INTO device_logs (device_id, log_message) \nVALUES \n(1, 'Temperature sensor initialized successfully'),\n(2, 'Smart light turned on remotely');\n\n-- Insert device configuration\nINSERT INTO device_configuration (device_id, config_key, config_value) \nVALUES \n(1, 'IP Address', '192.168.1.10'),\n(2, 'IP Address', '192.168.1.20');\n\n-- Insert alerts\nINSERT INTO alerts (device_id, alert_message) \nVALUES \n(1, 'Temperature exceeded threshold!'),\n(2, 'Smart light malfunction detected');\n\n-- Insert device status\nINSERT INTO device_status (device_id, status_value) \nVALUES \n(1, 'online'),\n(2, 'offline');\n\n-- Insert device commands\nINSERT INTO device_commands (device_id, command) \nVALUES \n(1, 'Reset sensor'),\n(2, 'Turn off light');\n",
+      "max_iterations": "",
+      "name": "",
+      "type": ""
+    },
+    "llm": "",
+    "memory": {
+      "type": ""
+    },
+    "metrics": {
+      "accuracy": true,
+      "response_time": true
+    },
+    "output": {
+      "file_path": ""
+    },
+    "relationships": [
+      [
+        "agent1",
+        "agent2",
+        "collaborate with"
+      ],
+      [
+        "agent1",
+        "agent3",
+        "collaborate with"
+      ],
+      [
+        "agent1",
+        "agent4",
+        "collaborate with"
+      ],
+      [
+        "agent1",
+        "agent5",
+        "collaborate with"
+      ],
+      [
+        "agent2",
+        "agent3",
+        "collaborate with"
+      ],
+      [
+        "agent2",
+        "agent4",
+        "collaborate with"
+      ],
+      [
+        "agent2",
+        "agent5",
+        "collaborate with"
+      ],
+      [
+        "agent3",
+        "agent4",
+        "collaborate with"
+      ],
+      [
+        "agent3",
+        "agent5",
+        "collaborate with"
+      ],
+      [
+        "agent4",
+        "agent5",
+        "collaborate with"
+      ]
+    ],
+    "scenario": "database",
+    "task": {
+      "content": "This database is used for an IoT (Internet of Things) system where various devices collect and manage data. It includes tables to store device details, user information, collected data, logs, configurations, alerts, device statuses, and commands.\nRecently, during operation, the database has seen performance issues. Use sql queries to find out what is wrong, and find out the reason that caused it. The root cause can be only two of the following: 'INSERT_LARGE_DATA', 'MISSING_INDEXES', 'LOCK_CONTENTION', 'VACUUM', 'REDUNDANT_INDEX', 'FETCH_LARGE_DATA', 'POOR_JOIN_PERFORMANCE,CPU_CONTENTION'. The planner should assign different agent to analyze possbility for each root cause and make final decision. Agents can also chat with each other to share information.  Please make the decision after using all these tools, as a premature decision may lead to incorrect conclusions.\n",
+      "labels": [
+        "INSERT_LARGE_DATA",
+        "LOCK_CONTENTION",
+        "VACUUM",
+        "REDUNDANT_INDEX",
+        "FETCH_LARGE_DATA"
+      ],
+      "number_of_labels_pred": 2,
+      "output_format": "Please make the decision after exploring all rootcauses, as a premature decision may lead to incorrect conclusions.\nPlease choose the most likely cause of the database anomaly from the following list, based on the expert agents: \n'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'VACUUM', 'REDUNDANT_INDEX', 'FETCH_LARGE_DATA'\nYou can ONLY CHOOSE two.\nYou have access to the Database, and you can perform queries to get the required information. Agents can also chat with each other to share information.\nThese tables include:\n- `pg_stat_statements` (for detailed query stats)\n- `pg_locks` (for lock waits and contention)\n- `pg_stat_user_indexes` (for index usage)\n- `pg_indexes` (for index definitions)\n- `pg_stat_all_tables` (detailed statistics about vacuuming, auto vacuuming, and analyze operations for each table)\n- `pg_stat_progress_vacuum` (for vacuum progress)\n- `pg_stat_user_tables` (for dead tuples and vacuum stats)\n",
+      "root_causes": [
+        "INSERT_LARGE_DATA"
+      ]
+    },
+    "task_id": 4
+  },
+  "tool_configuration": {
+    "metrics": {
+      "accuracy": true,
+      "response_time": true
+    },
+    "output": {
+      "file_path": ""
+    }
+  },
+  "workspace_template": {
+    "init.sql": "-- 1. Devices table (stores information about IoT devices)\nCREATE TABLE devices (\n    device_id SERIAL PRIMARY KEY,  -- Unique device ID\n    device_name VARCHAR(255) NOT NULL,  -- Device name\n    device_type VARCHAR(100) NOT NULL,  -- Device type (e.g., sensor, actuator)\n    manufacturer VARCHAR(255),  -- Manufacturer of the device\n    model_number VARCHAR(100),  -- Model number of the device\n    status VARCHAR(50) DEFAULT 'active',  -- Device status (e.g., active, inactive)\n    last_communication TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last communication time\n);\n\n-- 2. Users table (stores users of the IoT system)\nCREATE TABLE users (\n    user_id SERIAL PRIMARY KEY,  -- Unique user ID\n    first_name VARCHAR(100),  -- User's first name\n    last_name VARCHAR(100),   -- User's last name\n    email VARCHAR(255) UNIQUE NOT NULL,  -- User email\n    password VARCHAR(255) NOT NULL,  -- User password\n    role VARCHAR(50) DEFAULT 'user',  -- Role of the user (e.g., admin, user)\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Account creation time\n);\n\n-- 3. Device_Data table (stores data collected by IoT devices)\nCREATE TABLE device_data (\n    data_id SERIAL PRIMARY KEY,  -- Unique data ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    data_value VARCHAR(255) NOT NULL,  -- Value of the data (e.g., temperature, humidity)\n    data_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of data collection\n    data_type VARCHAR(50)  -- Type of data (e.g., sensor reading, status update)\n);\n\n-- 4. Device_Logs table (stores logs for IoT devices)\nCREATE TABLE device_logs (\n    log_id SERIAL PRIMARY KEY,  -- Unique log ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    log_message TEXT,  -- Log message\n    log_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of log entry\n);\n\n-- 5. Device_Configuration table (stores configuration settings for IoT devices)\nCREATE TABLE device_configuration (\n    config_id SERIAL PRIMARY KEY,  -- Unique configuration ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    config_key VARCHAR(255) NOT NULL,  -- Configuration key (e.g., IP address, threshold)\n    config_value VARCHAR(255) NOT NULL,  -- Configuration value\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of configuration update\n);\n\n-- 6. Alerts table (stores alerts triggered by IoT devices)\nCREATE TABLE alerts (\n    alert_id SERIAL PRIMARY KEY,  -- Unique alert ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    alert_message TEXT,  -- Description of the alert\n    alert_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of alert\n    alert_status VARCHAR(50) DEFAULT 'unresolved'  -- Alert status (e.g., resolved, unresolved)\n);\n\n-- 7. Device_Status table (stores the current status of IoT devices)\nCREATE TABLE device_status (\n    status_id SERIAL PRIMARY KEY,  -- Unique status ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    status_value VARCHAR(50) NOT NULL,  -- Current status (e.g., online, offline)\n    status_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of status update\n);\n\n-- 8. Device_Commands table (stores commands sent to IoT devices)\nCREATE TABLE device_commands (\n    command_id SERIAL PRIMARY KEY,  -- Unique command ID\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\n    command VARCHAR(255) NOT NULL,  -- Command sent to the device\n    command_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of command sent\n    command_status VARCHAR(50) DEFAULT 'pending'  -- Command status (e.g., pending, executed)\n);\n\n-- Insert some sample devices\nINSERT INTO devices (device_name, device_type, manufacturer, model_number) \nVALUES \n('Temperature Sensor', 'sensor', 'IoT Corp', 'TS-1001'),\n('Smart Light', 'actuator', 'SmartHome Inc.', 'SL-2020');\n\n-- Insert some users\nINSERT INTO users (first_name, last_name, email, password, role) \nVALUES \n('John', 'Doe', 'john.doe@example.com', 'securepassword', 'admin'),\n('Jane', 'Smith', 'jane.smith@example.com', 'password123', 'user');\n\n-- Insert device data\nINSERT INTO device_data (device_id, data_value, data_type) \nVALUES \n(1, '23.5', 'temperature'),\n(2, 'ON', 'status');\n\n-- Insert device logs\nINSERT INTO device_logs (device_id, log_message) \nVALUES \n(1, 'Temperature sensor initialized successfully'),\n(2, 'Smart light turned on remotely');\n\n-- Insert device configuration\nINSERT INTO device_configuration (device_id, config_key, config_value) \nVALUES \n(1, 'IP Address', '192.168.1.10'),\n(2, 'IP Address', '192.168.1.20');\n\n-- Insert alerts\nINSERT INTO alerts (device_id, alert_message) \nVALUES \n(1, 'Temperature exceeded threshold!'),\n(2, 'Smart light malfunction detected');\n\n-- Insert device status\nINSERT INTO device_status (device_id, status_value) \nVALUES \n(1, 'online'),\n(2, 'offline');\n\n-- Insert device commands\nINSERT INTO device_commands (device_id, command) \nVALUES \n(1, 'Reset sensor'),\n(2, 'Turn off light');\n",
+    "task.json": "{\n  \"agents\": [\n    {\n      \"agent_id\": \"agent1\",\n      \"profile\": \"agent1 will explore the possibility of INSERT_LARGE_DATA as a root cause. Recommended tables: `pg_stat_statements`. You can search for INSERTs.\",\n      \"type\": \"BaseAgent\"\n    },\n    {\n      \"agent_id\": \"agent2\",\n      \"profile\": \"agent2 will explore the possibility of LOCK_CONTENTION as a root cause. Recommended tables: `pg_locks`.\",\n      \"type\": \"BaseAgent\"\n    },\n    {\n      \"agent_id\": \"agent3\",\n      \"profile\": \"agent3 will explore the possibility of VACUUM as a root cause. Recommended to search for inappropiate VACUUMs from `pg_stat_all_tables`: SELECT query, calls, total_plan_time, rows, mean_plan_time FROM pg_stat_statements WHERE query LIKE 'VACUUM%';\",\n      \"type\": \"BaseAgent\"\n    },\n    {\n      \"agent_id\": \"agent4\",\n      \"profile\": \"agent4 will explore the possibility of REDUNDANT_INDEX as a root cause. Recommended tables: `pg_stat_user_indexes`, `pg_indexes`.\",\n      \"type\": \"BaseAgent\"\n    },\n    {\n      \"agent_id\": \"agent5\",\n      \"profile\": \"agent5 will explore the possibility of FETCH_LARGE_DATA as a root cause. Recommended to search for SELECTs from `pg_stat_statements`.\",\n      \"type\": \"BaseAgent\"\n    }\n  ],\n  \"communication\": false,\n  \"coordinate_mode\": \"\",\n  \"engine_planner\": {\n    \"initial_progress\": \"Starting the simulation.\"\n  },\n  \"environment\": {\n    \"anomalies\": [\n      {\n        \"anomaly\": \"INSERT_LARGE_DATA\",\n        \"colsize\": 100,\n        \"ncolumn\": 20,\n        \"nrow\": 20000,\n        \"threads\": 100\n      }\n    ],\n    \"init_sql\": \"-- 1. Devices table (stores information about IoT devices)\\nCREATE TABLE devices (\\n    device_id SERIAL PRIMARY KEY,  -- Unique device ID\\n    device_name VARCHAR(255) NOT NULL,  -- Device name\\n    device_type VARCHAR(100) NOT NULL,  -- Device type (e.g., sensor, actuator)\\n    manufacturer VARCHAR(255),  -- Manufacturer of the device\\n    model_number VARCHAR(100),  -- Model number of the device\\n    status VARCHAR(50) DEFAULT 'active',  -- Device status (e.g., active, inactive)\\n    last_communication TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Last communication time\\n);\\n\\n-- 2. Users table (stores users of the IoT system)\\nCREATE TABLE users (\\n    user_id SERIAL PRIMARY KEY,  -- Unique user ID\\n    first_name VARCHAR(100),  -- User's first name\\n    last_name VARCHAR(100),   -- User's last name\\n    email VARCHAR(255) UNIQUE NOT NULL,  -- User email\\n    password VARCHAR(255) NOT NULL,  -- User password\\n    role VARCHAR(50) DEFAULT 'user',  -- Role of the user (e.g., admin, user)\\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Account creation time\\n);\\n\\n-- 3. Device_Data table (stores data collected by IoT devices)\\nCREATE TABLE device_data (\\n    data_id SERIAL PRIMARY KEY,  -- Unique data ID\\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\\n    data_value VARCHAR(255) NOT NULL,  -- Value of the data (e.g., temperature, humidity)\\n    data_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of data collection\\n    data_type VARCHAR(50)  -- Type of data (e.g., sensor reading, status update)\\n);\\n\\n-- 4. Device_Logs table (stores logs for IoT devices)\\nCREATE TABLE device_logs (\\n    log_id SERIAL PRIMARY KEY,  -- Unique log ID\\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\\n    log_message TEXT,  -- Log message\\n    log_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of log entry\\n);\\n\\n-- 5. Device_Configuration table (stores configuration settings for IoT devices)\\nCREATE TABLE device_configuration (\\n    config_id SERIAL PRIMARY KEY,  -- Unique configuration ID\\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\\n    config_key VARCHAR(255) NOT NULL,  -- Configuration key (e.g., IP address, threshold)\\n    config_value VARCHAR(255) NOT NULL,  -- Configuration value\\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of configuration update\\n);\\n\\n-- 6. Alerts table (stores alerts triggered by IoT devices)\\nCREATE TABLE alerts (\\n    alert_id SERIAL PRIMARY KEY,  -- Unique alert ID\\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\\n    alert_message TEXT,  -- Description of the alert\\n    alert_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of alert\\n    alert_status VARCHAR(50) DEFAULT 'unresolved'  -- Alert status (e.g., resolved, unresolved)\\n);\\n\\n-- 7. Device_Status table (stores the current status of IoT devices)\\nCREATE TABLE device_status (\\n    status_id SERIAL PRIMARY KEY,  -- Unique status ID\\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\\n    status_value VARCHAR(50) NOT NULL,  -- Current status (e.g., online, offline)\\n    status_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Time of status update\\n);\\n\\n-- 8. Device_Commands table (stores commands sent to IoT devices)\\nCREATE TABLE device_commands (\\n    command_id SERIAL PRIMARY KEY,  -- Unique command ID\\n    device_id INT REFERENCES devices(device_id),  -- Foreign key to devices\\n    command VARCHAR(255) NOT NULL,  -- Command sent to the device\\n    command_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Time of command sent\\n    command_status VARCHAR(50) DEFAULT 'pending'  -- Command status (e.g., pending, executed)\\n);\\n\\n-- Insert some sample devices\\nINSERT INTO devices (device_name, device_type, manufacturer, model_number) \\nVALUES \\n('Temperature Sensor', 'sensor', 'IoT Corp', 'TS-1001'),\\n('Smart Light', 'actuator', 'SmartHome Inc.', 'SL-2020');\\n\\n-- Insert some users\\nINSERT INTO users (first_name, last_name, email, password, role) \\nVALUES \\n('John', 'Doe', 'john.doe@example.com', 'securepassword', 'admin'),\\n('Jane', 'Smith', 'jane.smith@example.com', 'password123', 'user');\\n\\n-- Insert device data\\nINSERT INTO device_data (device_id, data_value, data_type) \\nVALUES \\n(1, '23.5', 'temperature'),\\n(2, 'ON', 'status');\\n\\n-- Insert device logs\\nINSERT INTO device_logs (device_id, log_message) \\nVALUES \\n(1, 'Temperature sensor initialized successfully'),\\n(2, 'Smart light turned on remotely');\\n\\n-- Insert device configuration\\nINSERT INTO device_configuration (device_id, config_key, config_value) \\nVALUES \\n(1, 'IP Address', '192.168.1.10'),\\n(2, 'IP Address', '192.168.1.20');\\n\\n-- Insert alerts\\nINSERT INTO alerts (device_id, alert_message) \\nVALUES \\n(1, 'Temperature exceeded threshold!'),\\n(2, 'Smart light malfunction detected');\\n\\n-- Insert device status\\nINSERT INTO device_status (device_id, status_value) \\nVALUES \\n(1, 'online'),\\n(2, 'offline');\\n\\n-- Insert device commands\\nINSERT INTO device_commands (device_id, command) \\nVALUES \\n(1, 'Reset sensor'),\\n(2, 'Turn off light');\\n\",\n    \"max_iterations\": \"\",\n    \"name\": \"\",\n    \"type\": \"\"\n  },\n  \"llm\": \"\",\n  \"memory\": {\n    \"type\": \"\"\n  },\n  \"metrics\": {\n    \"accuracy\": true,\n    \"response_time\": true\n  },\n  \"output\": {\n    \"file_path\": \"\"\n  },\n  \"relationships\": [\n    [\n      \"agent1\",\n      \"agent2\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent1\",\n      \"agent3\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent1\",\n      \"agent4\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent1\",\n      \"agent5\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent2\",\n      \"agent3\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent2\",\n      \"agent4\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent2\",\n      \"agent5\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent3\",\n      \"agent4\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent3\",\n      \"agent5\",\n      \"collaborate with\"\n    ],\n    [\n      \"agent4\",\n      \"agent5\",\n      \"collaborate with\"\n    ]\n  ],\n  \"scenario\": \"database\",\n  \"task\": {\n    \"content\": \"This database is used for an IoT (Internet of Things) system where various devices collect and manage data. It includes tables to store device details, user information, collected data, logs, configurations, alerts, device statuses, and commands.\\nRecently, during operation, the database has seen performance issues. Use sql queries to find out what is wrong, and find out the reason that caused it. The root cause can be only two of the following: 'INSERT_LARGE_DATA', 'MISSING_INDEXES', 'LOCK_CONTENTION', 'VACUUM', 'REDUNDANT_INDEX', 'FETCH_LARGE_DATA', 'POOR_JOIN_PERFORMANCE,CPU_CONTENTION'. The planner should assign different agent to analyze possbility for each root cause and make final decision. Agents can also chat with each other to share information.  Please make the decision after using all these tools, as a premature decision may lead to incorrect conclusions.\\n\",\n    \"labels\": [\n      \"INSERT_LARGE_DATA\",\n      \"LOCK_CONTENTION\",\n      \"VACUUM\",\n      \"REDUNDANT_INDEX\",\n      \"FETCH_LARGE_DATA\"\n    ],\n    \"number_of_labels_pred\": 2,\n    \"output_format\": \"Please make the decision after exploring all rootcauses, as a premature decision may lead to incorrect conclusions.\\nPlease choose the most likely cause of the database anomaly from the following list, based on the expert agents: \\n'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'VACUUM', 'REDUNDANT_INDEX', 'FETCH_LARGE_DATA'\\nYou can ONLY CHOOSE two.\\nYou have access to the Database, and you can perform queries to get the required information. Agents can also chat with each other to share information.\\nThese tables include:\\n- `pg_stat_statements` (for detailed query stats)\\n- `pg_locks` (for lock waits and contention)\\n- `pg_stat_user_indexes` (for index usage)\\n- `pg_indexes` (for index definitions)\\n- `pg_stat_all_tables` (detailed statistics about vacuuming, auto vacuuming, and analyze operations for each table)\\n- `pg_stat_progress_vacuum` (for vacuum progress)\\n- `pg_stat_user_tables` (for dead tuples and vacuum stats)\\n\",\n    \"root_causes\": [\n      \"INSERT_LARGE_DATA\"\n    ]\n  },\n  \"task_id\": 4\n}"
+  },
+  "workspace_template_digest": "c084f4d9cf8a8baab580d60fcc2fe3c64f2a320af30dbf6cd6fb364a8c746047",
+  "world_snapshot": null
+}

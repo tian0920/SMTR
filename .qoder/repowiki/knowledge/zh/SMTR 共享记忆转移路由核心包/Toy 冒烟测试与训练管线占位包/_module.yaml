@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: smtr_core/toy
+title: Toy 冒烟测试与训练管线占位包
+scope:
+    - src/smtr/toy/
+source_files: []
+depends_on: []
+related_to: []

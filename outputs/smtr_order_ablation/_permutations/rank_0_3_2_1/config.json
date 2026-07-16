@@ -1,0 +1,39 @@
+{
+  "db_path": "data/smtr_order_ablation.sqlite",
+  "critic_checkpoint": "checkpoints/critic_full_gate_ablation_v1.joblib",
+  "task_seeds": [
+    0,
+    1
+  ],
+  "generation_seeds": [
+    0
+  ],
+  "traversal_seeds": [
+    0
+  ],
+  "scenario_replicates": 1,
+  "top_k": 4,
+  "max_shares_per_invocation": 3,
+  "negative_risk_budget": 0.2,
+  "output_dir": "outputs/smtr_order_ablation/_permutations/rank_0_3_2_1",
+  "overwrite": true,
+  "fail_fast": true,
+  "bootstrap_seed": 42,
+  "bootstrap_n": 50,
+  "scenario": null,
+  "methods": [
+    "SMTR",
+    "Static-SMTR"
+  ],
+  "enable_ablation_methods": true,
+  "a1_critic_checkpoint": null,
+  "budget_manifest_path": null,
+  "explicit_permutation": [
+    0,
+    3,
+    2,
+    1
+  ],
+  "permutation_id": "rank_0_3_2_1",
+  "permutation_application_policy": "same_rank_permutation_per_invocation"
+}

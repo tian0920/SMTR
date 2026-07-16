@@ -1,0 +1,24 @@
+{
+  "overall": {
+    "matched_run_count": 4,
+    "matched_decision_count": 48,
+    "action_agreement_rate": 0.875,
+    "smtr_share_static_withhold_count": 2,
+    "smtr_withhold_static_share_count": 4,
+    "selected_set_jaccard": 0.875,
+    "policy_outcome_disagreement_rate": 0.25,
+    "selected_set_conditioning_divergence_rate": 0.5833333333333334
+  },
+  "by_scenario": {
+    "flip_neg_to_pos": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 0.875,
+      "smtr_share_static_withhold_count": 2,
+      "smtr_withhold_static_share_count": 4,
+      "selected_set_jaccard": 0.875,
+      "policy_outcome_disagreement_rate": 0.25,
+      "selected_set_conditioning_divergence_rate": 0.5833333333333334
+    }
+  }
+}

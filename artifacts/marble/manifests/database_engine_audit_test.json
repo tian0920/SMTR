@@ -1,0 +1,17 @@
+{
+  "database_state_source": "task.environment.init_sql plus anomalies via DBEnvironment.initialize_database",
+  "engine_constructor": "marble.engine.engine.Engine",
+  "engine_entrypoint": "/home/ecs-user/MARBLE/marble/main.py",
+  "environment_constructor": "marble.environments.DBEnvironment",
+  "known_side_effects": [
+    "DBEnvironment.start_docker_containers runs sudo docker compose down -v",
+    "DBEnvironment.start_docker_containers runs sudo docker compose up in fixed db_env_docker directory",
+    "DBEnvironment connects to fixed localhost:5432 sysbench database"
+  ],
+  "outcome_evaluator": "marble.evaluator.evaluator.Evaluator.evaluate_task_db",
+  "real_engine_execution_safe_for_paired_isolation": false,
+  "supports_custom_workspace": false,
+  "supports_generation_seed": false,
+  "supports_memory_injection": false,
+  "task_loader": "/home/ecs-user/MARBLE/multiagentbench/database/database_main.jsonl"
+}

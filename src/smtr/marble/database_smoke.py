@@ -25,6 +25,7 @@ from smtr.marble.outcome.factory import evaluator_for_scenario
 from smtr.marble.outcome.protocol import outcome_from_failure
 from smtr.marble.run_identity import RunIdentity, current_marble_commit, current_smtr_commit
 from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_MODEL, run_database_runtime_preflight
+from smtr.marble.runtime_visibility_validator import validate_runtime_visibility_from_path
 from smtr.marble.task_provider import _read_jsonl_line
 
 
@@ -85,6 +86,13 @@ def run_database_b0_smoke(
     engine_result = None
     raw_result = {"task_evaluation": None}
     if preflight.ready:
+        run_metadata = {
+            "run_id": run_id,
+            "task_id": str(task_id),
+            "scenario": "database",
+            "method": "b0",
+            "branch": "b0",
+        }
         engine_result = run_marble_engine_process(
             marble_root=marble_root,
             config_path=config_path,
@@ -93,6 +101,7 @@ def run_database_b0_smoke(
             run_identity=identity.to_dict(),
             timeout_seconds=engine_timeout_seconds,
             memory_injection=None,
+            run_metadata=run_metadata,
         )
         write_engine_process_result(output_dir / "engine_process.json", engine_result)
         raw_result = _load_last_jsonl(raw_result_path) or {}
@@ -106,6 +115,15 @@ def run_database_b0_smoke(
             reason="real_engine_not_executed",
             raw_result=raw_result,
         )
+    # Runtime visibility validation
+    audit_path = output_dir / "memory_visibility_audit.jsonl"
+    rt_val = validate_runtime_visibility_from_path(
+        method="b0",
+        branch="b0",
+        receiver_agent_ids=[],
+        expected_memory_ids=[],
+        audit_path=audit_path,
+    )
     summary = {
         "run_id": run_id,
         "task_id": str(task_id),
@@ -161,6 +179,9 @@ def run_database_b0_smoke(
         "raw_result_digest": canonical_digest(raw_result) if raw_result else None,
         "final_state_digest": env.final_state_digest(),
         "b0_memory_absent": not input_audit.contains_memory_section,
+        "runtime_visibility_audit_exists": audit_path.exists(),
+        "runtime_visibility_verified": rt_val.visibility_verified,
+        "runtime_visibility_invalid_reason": rt_val.invalid_reason,
         "outcome": outcome.__dict__,
     }
     (output_dir / "b0_smoke.json").write_text(
@@ -278,6 +299,10 @@ def run_database_paired_smoke(
         "paired_record_valid": result.paired_record_valid,
         "paired_label": result.paired_label,
         "invalid_reason": result.invalid_reason,
+        "share_input_audit_verified": result.share.input_audit.contains_memory_section,
+        "share_runtime_visibility_verified": result.share_runtime_visibility_verified,
+        "withhold_input_audit_verified": not result.withhold.input_audit.contains_memory_section,
+        "withhold_runtime_visibility_verified": result.withhold_runtime_visibility_verified,
     }
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "paired_smoke.json").write_text(

@@ -1,0 +1,9 @@
+{
+  "invalid_count": 0,
+  "label_counts": {
+    "neutral_failure": 4
+  },
+  "output_dir": "artifacts/marble/records/train/database_pilot_smoke",
+  "record_count": 4,
+  "valid_count": 4
+}

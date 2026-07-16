@@ -1,0 +1,24 @@
+{
+  "overall": {
+    "matched_run_count": 4,
+    "matched_decision_count": 48,
+    "action_agreement_rate": 1.0,
+    "smtr_share_static_withhold_count": 0,
+    "smtr_withhold_static_share_count": 0,
+    "selected_set_jaccard": 1.0,
+    "policy_outcome_disagreement_rate": 0.0,
+    "selected_set_conditioning_divergence_rate": 0.0
+  },
+  "by_scenario": {
+    "negative": {
+      "matched_run_count": 4,
+      "matched_decision_count": 48,
+      "action_agreement_rate": 1.0,
+      "smtr_share_static_withhold_count": 0,
+      "smtr_withhold_static_share_count": 0,
+      "selected_set_jaccard": 1.0,
+      "policy_outcome_disagreement_rate": 0.0,
+      "selected_set_conditioning_divergence_rate": 0.0
+    }
+  }
+}

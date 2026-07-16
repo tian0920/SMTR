@@ -1,0 +1,20 @@
+{
+  "agent_input": {
+    "agent_config": {
+      "target_receiver_agent_id": "agent1"
+    },
+    "memory_exposure": [
+      {
+        "creation_run_id": "marble_pilot_isolation",
+        "memory_id": "pilot_memory_database_8",
+        "payload_digest": "71716f944f178ef1e280a3a6cfafbb0b27f8e410a268b38669b384624e027ae2",
+        "routing_card_digest": "71716f944f178ef1e280a3a6cfafbb0b27f8e410a268b38669b384624e027ae2",
+        "source_scenario": "database",
+        "source_split": "train",
+        "source_task_id": "8"
+      }
+    ]
+  },
+  "generation_seed": 1,
+  "workspace_digest_before_run": "155478b834e975edad8e2928ac885fc186e6389899645e3822199406805a3cba"
+}

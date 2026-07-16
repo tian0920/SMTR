@@ -1,0 +1,230 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-07-15T14:33:26Z"
+modules:
+    smtr_core:
+        dir_name: SMTR 共享记忆转移路由核心包
+        title: SMTR 共享记忆转移路由核心包
+        scope:
+            - src/smtr/
+        source_files: []
+        children:
+            - smtr_core/counterfactual
+            - smtr_core/evaluation
+            - smtr_core/experiment
+            - smtr_core/marble
+            - smtr_core/memory
+            - smtr_core/policy
+            - smtr_core/robust
+            - smtr_core/router
+            - smtr_core/runtime
+            - smtr_core/toy
+        depends_on: []
+        related_to: []
+    smtr_core/counterfactual:
+        dir_name: 离线配对反事实记忆干预收集器
+        title: 离线配对反事实记忆干预收集器
+        scope:
+            - src/smtr/counterfactual/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/evaluation:
+        dir_name: SMTR 评估与诊断套件
+        title: SMTR 评估与诊断套件
+        scope:
+            - src/smtr/evaluation/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/experiment:
+        dir_name: SMTR 消融对比实验运行器
+        title: SMTR 消融对比实验运行器
+        scope:
+            - src/smtr/experiment/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble:
+        dir_name: MARBLE 多智能体基准集成层
+        title: MARBLE 多智能体基准集成层
+        scope:
+            - src/smtr/marble/
+        source_files: []
+        children:
+            - smtr_core/marble/core_orchestration
+            - smtr_core/marble/environment
+            - smtr_core/marble/outcome
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration:
+        dir_name: MARBLE 编排层（CLI + 核心原语）
+        title: MARBLE 编排层（CLI + 核心原语）
+        scope:
+            - src/smtr/marble/
+        source_files: []
+        children:
+            - smtr_core/marble/core_orchestration/cli_runtime_bootstrap
+            - smtr_core/marble/core_orchestration/core_orchestration_primitives
+            - smtr_core/marble/core_orchestration/data_pairing
+            - smtr_core/marble/core_orchestration/database_integration
+            - smtr_core/marble/core_orchestration/engine_lifecycle
+            - smtr_core/marble/core_orchestration/evaluation_training
+            - smtr_core/marble/core_orchestration/real_data_workflows
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration/cli_runtime_bootstrap:
+        dir_name: MARBLE CLI 运行时引导与能力探测
+        title: MARBLE CLI 运行时引导与能力探测
+        scope:
+            - src/smtr/marble/cli.py
+            - src/smtr/marble/task_provider.py
+            - src/smtr/marble/capabilities.py
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration/core_orchestration_primitives:
+        dir_name: MARBLE 核心编排原语（工件守卫、配对分支执行器、特征桥接）
+        title: MARBLE 核心编排原语（工件守卫、配对分支执行器、特征桥接）
+        scope:
+            - src/smtr/marble/artifacts.py
+            - src/smtr/marble/branch_runner.py
+            - src/smtr/marble/feature_bridge.py
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration/data_pairing:
+        dir_name: MARBLE 基准数据集发现与配对记录生成
+        title: MARBLE 基准数据集发现与配对记录生成
+        scope:
+            - src/smtr/marble/paired_records.py
+            - src/smtr/marble/real_pairs.py
+            - src/smtr/marble/dataset.py
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration/database_integration:
+        dir_name: 数据库场景 MARBLE 冒烟与配对 Pilot 执行
+        title: 数据库场景 MARBLE 冒烟与配对 Pilot 执行
+        scope:
+            - src/smtr/marble/database_pilot.py
+            - src/smtr/marble/database_smoke.py
+            - src/smtr/marble/memory_injection.py
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration/engine_lifecycle:
+        dir_name: MARBLE 引擎进程生命周期与运行期预检
+        title: MARBLE 引擎进程生命周期与运行期预检
+        scope:
+            - src/smtr/marble/engine_process.py
+            - src/smtr/marble/engine_audit.py
+            - src/smtr/marble/runtime_preflight.py
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration/evaluation_training:
+        dir_name: MARBLE 数据到 SMTR 的评估与训练管线
+        title: MARBLE 数据到 SMTR 的评估与训练管线
+        scope:
+            - src/smtr/marble/evaluation.py
+            - src/smtr/marble/training.py
+            - src/smtr/marble/integrity.py
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/core_orchestration/real_data_workflows:
+        dir_name: 真实数据轨迹采集与切分流水线
+        title: 真实数据轨迹采集与切分流水线
+        scope:
+            - src/smtr/marble/real_data.py
+            - src/smtr/marble/real_workflows.py
+            - src/smtr/marble/splits.py
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/environment:
+        dir_name: MARBLE 环境隔离与数据库场景适配器
+        title: MARBLE 环境隔离与数据库场景适配器
+        scope:
+            - src/smtr/marble/environment/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/marble/outcome:
+        dir_name: MARBLE 场景结果评估协议与实现
+        title: MARBLE 场景结果评估协议与实现
+        scope:
+            - src/smtr/marble/outcome/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/memory:
+        dir_name: 程序记忆存储与路由系统
+        title: 程序记忆存储与路由系统
+        scope:
+            - src/smtr/memory/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/policy:
+        dir_name: 离线反事实收集策略与在线刷新
+        title: 离线反事实收集策略与在线刷新
+        scope:
+            - src/smtr/policy/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/robust:
+        dir_name: Robust-SMTR 可选扩展（置信区间门控）
+        title: Robust-SMTR 可选扩展（置信区间门控）
+        scope:
+            - src/smtr/robust/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/router:
+        dir_name: SMTR 记忆路由与候选选择子系统
+        title: SMTR 记忆路由与候选选择子系统
+        scope:
+            - src/smtr/router/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/runtime:
+        dir_name: SMTR 运行时与多智能体工作流引擎
+        title: SMTR 运行时与多智能体工作流引擎
+        scope:
+            - src/smtr/runtime/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    smtr_core/toy:
+        dir_name: Toy 冒烟测试与训练管线占位包
+        title: Toy 冒烟测试与训练管线占位包
+        scope:
+            - src/smtr/toy/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
