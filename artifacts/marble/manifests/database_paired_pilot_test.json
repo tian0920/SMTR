@@ -1,7 +1,7 @@
 {
-  "dataset_manifest": "/tmp/pytest-of-ecs-user/pytest-43/test_database_pilot_manifest_e0/dataset.json",
+  "dataset_manifest": "/tmp/pytest-of-ecs-user/pytest-49/test_database_pilot_manifest_e0/dataset.json",
   "scenario": "database",
-  "split_manifest": "/tmp/pytest-of-ecs-user/pytest-43/test_database_pilot_manifest_e0/splits.json",
+  "split_manifest": "/tmp/pytest-of-ecs-user/pytest-49/test_database_pilot_manifest_e0/splits.json",
   "task_count": 1,
   "tasks": [
     {

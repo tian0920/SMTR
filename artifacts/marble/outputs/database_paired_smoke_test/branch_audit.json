@@ -3,7 +3,7 @@
   "candidate_memory_id": "database_1_helpful",
   "engine_name": "MARBLE.Engine(DBEnvironment)",
   "engine_version": "unknown",
-  "invalid_reason": "share_native_evaluator_executed,withhold_native_evaluator_executed,environment_valid",
+  "invalid_reason": "share_native_evaluator_executed,withhold_native_evaluator_executed,environment_valid,share_runtime_visibility_verified,withhold_runtime_visibility_verified",
   "paired_label": null,
   "paired_record_valid": false,
   "real_engine_executed": true,
@@ -14,7 +14,7 @@
     "cleanup_exit_code": 0,
     "cleanup_failure_reason": null,
     "cleanup_succeeded": true,
-    "final_digest": "06a46d5956e412c587986d8ef5bf1197c05a0417a69c6c5c561c0a4d1a5f396a",
+    "final_digest": "752c363d481830f44d532426b333d1a07393ac6375ccb2c5f8cd4833d45e9388",
     "generation_seed": 0,
     "initial_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
     "initial_logical_fingerprint": {
@@ -47,10 +47,13 @@
     },
     "raw_result_digest": "f1b7538f92d29e36a3d882ccd809e3625a7c869778b2f14eced0376622314992",
     "real_engine_executed": true,
+    "runtime_visibility_invalid_reason": "runtime_visibility_jsonl_missing",
+    "runtime_visibility_verified": false,
     "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
     "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
     "workspace": "artifacts/marble/outputs/database_paired_smoke_test/share"
   },
+  "share_runtime_visibility_verified": false,
   "task_id": "1",
   "withhold": {
     "agent_config_digest": "af16ddb2a962d120fe12f8ca9fbf5920716f2049cecf57e97deaec28ea3c9b92",
@@ -58,7 +61,7 @@
     "cleanup_exit_code": 0,
     "cleanup_failure_reason": null,
     "cleanup_succeeded": true,
-    "final_digest": "4776d12ec1355a9ad122c06dcb2582156097fd9f6d5f844a5ff33c0f693c3abf",
+    "final_digest": "199170fabeb8fd8a90e104df3a7e0b50d53adc38f68cb2e3c8ec10101a832aaa",
     "generation_seed": 0,
     "initial_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
     "initial_logical_fingerprint": {
@@ -89,8 +92,11 @@
     },
     "raw_result_digest": "f1b7538f92d29e36a3d882ccd809e3625a7c869778b2f14eced0376622314992",
     "real_engine_executed": true,
+    "runtime_visibility_invalid_reason": "runtime_visibility_jsonl_missing",
+    "runtime_visibility_verified": false,
     "task_digest": "defbb44f57f71c2e5027fdf4d2e148d9e8db549a366bc71d0394b3dc2070e915",
     "tool_config_digest": "c16cacb598118eb55aed52d69590fba0a68359fe4655ba92c2adb8bb1954895a",
     "workspace": "artifacts/marble/outputs/database_paired_smoke_test/withhold"
-  }
+  },
+  "withhold_runtime_visibility_verified": false
 }

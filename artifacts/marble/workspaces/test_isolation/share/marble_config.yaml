@@ -55,7 +55,7 @@
     "response_time": true
   },
   "output": {
-    "file_path": "/home/ecs-user/SMTR/artifacts/marble/outputs/database_paired_smoke_test/share/marble_output.jsonl"
+    "file_path": "/home/ecs-user/SMTR/artifacts/marble/workspaces/test_isolation/share/marble_output.jsonl"
   },
   "relationships": [
     [

@@ -115,24 +115,24 @@ if litellm is not None and not getattr(litellm, "_smtr_compat_patch", False):
 
 # --- SMTR Visibility Audit Env Setup ---
 import os as _os
-_os.environ["SMTR_VISIBILITY_AUDIT_PATH"] = '/home/ecs-user/SMTR/artifacts/marble/outputs/database_paired_smoke_test/share/memory_visibility_audit.jsonl'
-if '/home/ecs-user/SMTR/artifacts/marble/outputs/database_paired_smoke_test/share/runtime_shim/run_metadata.json':
-    _os.environ["SMTR_RUN_METADATA_PATH"] = '/home/ecs-user/SMTR/artifacts/marble/outputs/database_paired_smoke_test/share/runtime_shim/run_metadata.json'
-_os.environ["SMTR_RUN_ID"] = 'pair_1_database_1_helpful_0'
+_os.environ["SMTR_VISIBILITY_AUDIT_PATH"] = '/home/ecs-user/SMTR/artifacts/marble/workspaces/test_isolation/share/memory_visibility_audit.jsonl'
+if '/home/ecs-user/SMTR/artifacts/marble/workspaces/test_isolation/share/runtime_shim/run_metadata.json':
+    _os.environ["SMTR_RUN_METADATA_PATH"] = '/home/ecs-user/SMTR/artifacts/marble/workspaces/test_isolation/share/runtime_shim/run_metadata.json'
+_os.environ["SMTR_RUN_ID"] = 'pair_1_m1_0'
 _os.environ["SMTR_TASK_ID"] = '1'
 _os.environ["SMTR_SCENARIO"] = 'database'
 _os.environ["SMTR_METHOD"] = 'pair'
 _os.environ["SMTR_BRANCH"] = 'share'
 _os.environ["SMTR_RECEIVER_AGENT_IDS"] = 'agent1'
-_os.environ["SMTR_MEMORY_PAYLOAD_DIGEST"] = '11f4ccff9f192732f2bb8733c0a2844b0a2386c9088e7ee787d13e3f8e32694b'
-_os.environ["SMTR_INTERVENTION_ID"] = 'pair_database_1_helpful_0'
+_os.environ["SMTR_MEMORY_PAYLOAD_DIGEST"] = 'f5e7e19e3a493dbff1437a72d8db5fe309e7e23df93a2d6c70ddcf20bc8b7f7e'
+_os.environ["SMTR_INTERVENTION_ID"] = 'pair_m1_0'
 
 
 
 # --- SMTR Memory Injection ---
 def _smtr_inject_memories():
     import json as _json
-    payload_str = '{"intervention_id": "pair_database_1_helpful_0", "memory_ids": ["database_1_helpful"], "memory_payloads": ["Use pg_stat_statements, pg_locks, pg_stat_all_tables, pg_stat_user_indexes, and pg_indexes to diagnose MARBLE database root causes."], "receiver_agent_ids": ["agent1"]}'
+    payload_str = '{"intervention_id": "pair_m1_0", "memory_ids": ["m1"], "memory_payloads": ["diagnostic help"], "receiver_agent_ids": ["agent1"]}'
     if not payload_str:
         return
     try:
