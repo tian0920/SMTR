@@ -1,0 +1,22 @@
+[
+  {"task_id": 51, "domain": "Healthcare", "root_causes": ["VACUUM", "FETCH_LARGE_DATA"], "rc_type": "VACUUM+FETCH"},
+  {"task_id": 52, "domain": "Social Media", "root_causes": ["LOCK_CONTENTION", "REDUNDANT_INDEX"], "rc_type": "LOCK+REDUNDANT"},
+  {"task_id": 55, "domain": "E-commerce", "root_causes": ["LOCK_CONTENTION", "REDUNDANT_INDEX"], "rc_type": "LOCK+REDUNDANT"},
+  {"task_id": 56, "domain": "IoT", "root_causes": ["REDUNDANT_INDEX", "VACUUM"], "rc_type": "REDUNDANT+VACUUM"},
+  {"task_id": 57, "domain": "Finance", "root_causes": ["VACUUM", "FETCH_LARGE_DATA"], "rc_type": "VACUUM+FETCH"},
+  {"task_id": 58, "domain": "E-commerce", "root_causes": ["FETCH_LARGE_DATA", "INSERT_LARGE_DATA"], "rc_type": "FETCH+INSERT"},
+  {"task_id": 59, "domain": "Music Streaming", "root_causes": ["INSERT_LARGE_DATA", "LOCK_CONTENTION"], "rc_type": "INSERT+LOCK"},
+  {"task_id": 62, "domain": "E-commerce", "root_causes": ["INSERT_LARGE_DATA", "LOCK_CONTENTION"], "rc_type": "INSERT+LOCK"},
+  {"task_id": 67, "domain": "E-commerce", "root_causes": ["REDUNDANT_INDEX", "VACUUM"], "rc_type": "REDUNDANT+VACUUM"},
+  {"task_id": 68, "domain": "Healthcare", "root_causes": ["INSERT_LARGE_DATA", "LOCK_CONTENTION"], "rc_type": "INSERT+LOCK"},
+  {"task_id": 69, "domain": "File Sharing", "root_causes": ["LOCK_CONTENTION", "REDUNDANT_INDEX"], "rc_type": "LOCK+REDUNDANT"},
+  {"task_id": 73, "domain": "Transportation", "root_causes": ["VACUUM", "FETCH_LARGE_DATA"], "rc_type": "VACUUM+FETCH"},
+  {"task_id": 74, "domain": "IoT", "root_causes": ["FETCH_LARGE_DATA", "INSERT_LARGE_DATA"], "rc_type": "FETCH+INSERT"},
+  {"task_id": 82, "domain": "File Sharing", "root_causes": ["FETCH_LARGE_DATA", "INSERT_LARGE_DATA"], "rc_type": "FETCH+INSERT"},
+  {"task_id": 85, "domain": "Finance", "root_causes": ["INSERT_LARGE_DATA", "LOCK_CONTENTION"], "rc_type": "INSERT+LOCK"},
+  {"task_id": 87, "domain": "Education", "root_causes": ["REDUNDANT_INDEX", "VACUUM"], "rc_type": "REDUNDANT+VACUUM"},
+  {"task_id": 89, "domain": "File Sharing", "root_causes": ["VACUUM", "FETCH_LARGE_DATA"], "rc_type": "VACUUM+FETCH"},
+  {"task_id": 93, "domain": "Social Media", "root_causes": ["REDUNDANT_INDEX", "VACUUM"], "rc_type": "REDUNDANT+VACUUM"},
+  {"task_id": 94, "domain": "Finance", "root_causes": ["FETCH_LARGE_DATA", "INSERT_LARGE_DATA"], "rc_type": "FETCH+INSERT"},
+  {"task_id": 96, "domain": "IoT", "root_causes": ["LOCK_CONTENTION", "REDUNDANT_INDEX"], "rc_type": "LOCK+REDUNDANT"}
+]

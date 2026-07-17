@@ -19,6 +19,7 @@ class MarbleOutcome:
     native_evaluator_executed: bool = False
     native_evaluator_name: str | None = None
     native_evaluator_result_digest: str | None = None
+    fine_grained: dict | None = None
 
 
 class MarbleOutcomeEvaluator(Protocol):

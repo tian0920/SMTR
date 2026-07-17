@@ -1,0 +1,202 @@
+[
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "conflicting",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 41,
+    "task_id": "51"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "irrelevant",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 41,
+    "task_id": "51"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "conflicting",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 42,
+    "task_id": "51"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "irrelevant",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 43,
+    "task_id": "51"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "role_mismatched",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 43,
+    "task_id": "51"
+  },
+  {
+    "f1_effect": -0.2381,
+    "memory_type": "irrelevant",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 41,
+    "task_id": "52"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "role_mismatched",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 41,
+    "task_id": "52"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "irrelevant",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 42,
+    "task_id": "52"
+  },
+  {
+    "f1_effect": -0.2381,
+    "memory_type": "conflicting",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 43,
+    "task_id": "52"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 41,
+    "task_id": "58"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 42,
+    "task_id": "58"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "conflicting",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 42,
+    "task_id": "58"
+  },
+  {
+    "f1_effect": -0.0953,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 43,
+    "task_id": "58"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "irrelevant",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 43,
+    "task_id": "58"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "role_mismatched",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 43,
+    "task_id": "58"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 43,
+    "task_id": "59"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "conflicting",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 43,
+    "task_id": "67"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "conflicting",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 41,
+    "task_id": "73"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 42,
+    "task_id": "73"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "role_mismatched",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 42,
+    "task_id": "73"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "conflicting",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 43,
+    "task_id": "73"
+  },
+  {
+    "f1_effect": -0.2286,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": 0.0,
+    "seed": 41,
+    "task_id": "85"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 42,
+    "task_id": "85"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "beneficial",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 41,
+    "task_id": "93"
+  },
+  {
+    "f1_effect": -0.1714,
+    "memory_type": "irrelevant",
+    "n_runs": 1,
+    "score_delta": -1.0,
+    "seed": 43,
+    "task_id": "93"
+  }
+]
