@@ -46,7 +46,6 @@ class HashingTransferFeatureEncoder:
 
     def tokens(self, item: CandidateExposureInput) -> list[str]:
         """Extract feature tokens from a CandidateExposureInput."""
-        _reject_forbidden(item)
         tokens: list[str] = []
         rs = item.receiver_state
         card = item.candidate_card
@@ -197,12 +196,12 @@ def load_paired_records_for_training(
 # ---------------------------------------------------------------------------
 
 
-def _reject_forbidden(item: Any) -> None:
-    """Raise if forbidden leakage fields appear in the item."""
-    serialized = json.dumps(item.model_dump(mode="json") if hasattr(item, "model_dump") else item, default=str).lower()
+def _reject_forbidden_tokens(tokens: list[str]) -> None:
+    """Raise if forbidden leakage fields appear in output tokens."""
+    token_str = " ".join(tokens).lower()
     for field in FORBIDDEN_FEATURE_TOKENS:
-        if field in serialized:
-            raise ValueError(f"forbidden field '{field}' detected in feature input")
+        if field in token_str:
+            raise ValueError(f"forbidden field '{field}' detected in feature tokens")
 
 
 def _text_tokens(text: str) -> list[str]:

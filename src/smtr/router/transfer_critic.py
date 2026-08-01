@@ -60,7 +60,7 @@ class FourOutcomeTransferCritic:
             idx = rng.choice(len(y), size=len(y), replace=True)
             X_boot = X[idx]
             y_boot = y[idx]
-            clf = LogisticRegression(max_iter=1000, solver="lbfgs", multi_class="multinomial")
+            clf = LogisticRegression(max_iter=1000, solver="lbfgs")
             clf.fit(X_boot, y_boot)
             self.members.append(clf)
         self._fitted = True
