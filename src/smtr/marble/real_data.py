@@ -119,7 +119,8 @@ def extract_procedural_memories(
         if not trajectory.valid or not trajectory.task_success:
             continue
         for agent_slice in trajectory.agents:
-            ordered_actions = [*agent_slice.actions, *agent_slice.tool_calls]
+            # Preserve original interleaved order of actions and tool_calls
+            ordered_actions = _interleave_by_index(agent_slice.actions, agent_slice.tool_calls)
             if len(ordered_actions) < min_actions:
                 continue
 
@@ -327,16 +328,18 @@ def build_cross_task_candidates(
                 env_compat = len(env_constraints & receiver_env) / len(env_constraints)
             else:
                 env_compat = 1.0
-            score = 0.4 * task_sim + 0.2 * cap_overlap + 0.2 * wr_compat + 0.2 * role_match
+            score = 0.35 * task_sim + 0.2 * cap_overlap + 0.15 * wr_compat + 0.15 * role_match + 0.15 * env_compat
             components = {
                 "task_similarity_raw": round(task_sim, 4),
-                "task_similarity_weighted": round(0.4 * task_sim, 4),
+                "task_similarity_weighted": round(0.35 * task_sim, 4),
                 "capability_overlap_raw": round(cap_overlap, 4),
                 "capability_overlap_weighted": round(0.2 * cap_overlap, 4),
                 "writer_receiver_compatibility_raw": round(wr_compat, 4),
-                "writer_receiver_compatibility_weighted": round(0.2 * wr_compat, 4),
+                "writer_receiver_compatibility_weighted": round(0.15 * wr_compat, 4),
                 "role_match_raw": round(role_match, 4),
-                "role_match_weighted": round(0.2 * role_match, 4),
+                "role_match_weighted": round(0.15 * role_match, 4),
+                "environment_compatibility_raw": round(env_compat, 4),
+                "environment_compatibility_weighted": round(0.15 * env_compat, 4),
             }
             scored.append((score, mem, components))
         top = sorted(scored, key=lambda x: (-x[0], x[1].memory_id))[:top_k]
@@ -505,6 +508,30 @@ def file_sha256(path: Path) -> str:
 
 def _terms(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9_]+", text.lower()))
+
+
+def _interleave_by_index(
+    actions: tuple[dict[str, Any], ...],
+    tool_calls: tuple[dict[str, Any], ...],
+) -> list[dict[str, Any]]:
+    """Merge actions and tool_calls preserving original interleaved order.
+
+    Each record may carry an 'index' or 'step' field indicating its position
+    in the original execution sequence.  When absent, we fall back to
+    positional order within each list, offset so that tool_calls interleave
+    with actions rather than being appended after them.
+    """
+    tagged: list[tuple[float, dict[str, Any]]] = []
+    for i, a in enumerate(actions):
+        idx = a.get("index", a.get("step", i))
+        tagged.append((float(idx), a))
+    for i, tc in enumerate(tool_calls):
+        idx = tc.get("index", tc.get("step", i))
+        # Offset by 0.5 so that a tool_call at the same integer index
+        # sorts after the action at that index but before the next one.
+        tagged.append((float(idx) + 0.5, tc))
+    tagged.sort(key=lambda pair: pair[0])
+    return [item for _, item in tagged]
 
 
 # ---------------------------------------------------------------------------

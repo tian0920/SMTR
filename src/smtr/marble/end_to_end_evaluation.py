@@ -164,7 +164,7 @@ def run_end_to_end_evaluation(
                     selected_memory_ids=selected_ids,
                     memory_pool=memory_pool,
                     generation_seed=seed,
-                    workspace=output / "runs" / f"{method}_{task_id}_{seed}",
+                    workspace=output / "runs" / f"{method}_{task_id}_{receiver_agent_id}_{seed}",
                 )
                 all_results[method].append(result.model_dump(mode="json"))
 
@@ -172,7 +172,12 @@ def run_end_to_end_evaluation(
     e2e_metrics: list[dict[str, Any]] = []
     for method in methods:
         runs = all_results[method]
-        valid_runs = [r for r in runs if r.get("invalid_reason") is None]
+        valid_runs = [
+            r for r in runs
+            if r.get("invalid_reason") is None
+            and r.get("real_engine_executed", False)
+            and r.get("environment_valid", False)
+        ]
         n_valid = len(valid_runs)
         n_success = sum(1 for r in valid_runs if r["team_success"])
         n_invalid = len(runs) - n_valid

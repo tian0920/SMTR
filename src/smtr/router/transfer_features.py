@@ -190,8 +190,11 @@ def load_paired_records_for_training(
         receiver_state = ReceiverState(
             task_id=rec["task_id"],
             scenario=rec.get("scenario", "database"),
-            task_instruction="",
+            task_instruction=rec.get("task_instruction", ""),
             receiver=receiver,
+            environment_signature=tuple(rec.get("environment_signature", [])),
+            local_context_summary=rec.get("local_context_summary", ""),
+            team_context_summary=rec.get("team_context_summary", ""),
         )
         exposure_input = CandidateExposureInput(
             receiver_state=receiver_state,

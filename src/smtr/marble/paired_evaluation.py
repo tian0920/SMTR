@@ -95,6 +95,11 @@ def run_paired_decision_evaluation(
     all_method_metrics: list[dict[str, Any]] = []
     all_traces: dict[str, list[dict]] = {m: [] for m in methods}
 
+    # Determine generation seeds from paired records
+    paired_seeds = sorted({int(r.get("generation_seed", 0)) for r in paired_outcomes})
+    if not paired_seeds:
+        paired_seeds = [0]
+
     for entry in candidates_manifest.get("candidates", []):
         task_id = entry["task_id"]
         receiver_agent_id = entry.get("receiver_agent_id", "")
@@ -129,18 +134,19 @@ def run_paired_decision_evaluation(
             decisions = router.decide(receiver_state, candidate_cards)
             for dec in decisions:
                 card = next((c for c in candidate_cards if c.memory_id == dec.memory_id), None)
-                trace = {
-                    "task_id": task_id,
-                    "generation_seed": 0,
-                    "candidate_memory_id": dec.memory_id,
-                    "receiver_agent_id": receiver_agent_id,
-                    "receiver_role": receiver_role,
-                    "writer_role": card.writer.role if card else "unknown",
-                    "action": dec.action,
-                    "tau_hat": dec.tau_hat,
-                    "eta_hat": dec.eta_hat,
-                }
-                all_traces[method].append(trace)
+                for seed in paired_seeds:
+                    trace = {
+                        "task_id": task_id,
+                        "generation_seed": seed,
+                        "candidate_memory_id": dec.memory_id,
+                        "receiver_agent_id": receiver_agent_id,
+                        "receiver_role": receiver_role,
+                        "writer_role": card.writer.role if card else "unknown",
+                        "action": dec.action,
+                        "tau_hat": dec.tau_hat,
+                        "eta_hat": dec.eta_hat,
+                    }
+                    all_traces[method].append(trace)
 
     # Compute metrics
     output.mkdir(parents=True, exist_ok=True)
@@ -155,12 +161,15 @@ def run_paired_decision_evaluation(
 
     # Write outputs
     paths = write_result_table(all_method_metrics, output)
-    breakdown = compute_writer_receiver_breakdown(
-        decisions=[d for traces in all_traces.values() for d in traces],
-        paired_outcomes=paired_outcomes,
-    )
+    # Per-method writer-receiver breakdown (not mixed across methods)
+    per_method_breakdown: dict[str, list[dict]] = {}
+    for method in methods:
+        per_method_breakdown[method] = compute_writer_receiver_breakdown(
+            decisions=all_traces[method],
+            paired_outcomes=paired_outcomes,
+        )
     (output / "writer_receiver_breakdown.json").write_text(
-        json.dumps(breakdown, indent=2), encoding="utf-8"
+        json.dumps(per_method_breakdown, indent=2), encoding="utf-8"
     )
     (output / "traces.json").write_text(
         json.dumps(all_traces, indent=2), encoding="utf-8"

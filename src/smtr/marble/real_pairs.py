@@ -82,7 +82,7 @@ def generate_candidate_level_pairs(
             continue
 
         for seed in generation_seeds:
-            pair_workspace = output_dir / "pairs" / f"{edge['task_id']}_{edge['candidate_memory_id']}_{seed}"
+            pair_workspace = output_dir / "pairs" / f"{edge['task_id']}_{edge['receiver_agent_id']}_{edge['candidate_memory_id']}_{seed}"
 
             context = build_pair_execution_context(
                 marble_root=marble_root,
@@ -152,6 +152,11 @@ def paired_result_to_record(
         "selected_prefix_memory_ids": [],
         "candidate_rank": edge["candidate_rank"],
         "candidate_score": edge["candidate_score"],
+
+        "task_instruction": edge.get("task_instruction", ""),
+        "environment_signature": edge.get("environment_signature", []),
+        "local_context_summary": edge.get("local_context_summary", ""),
+        "team_context_summary": edge.get("team_context_summary", ""),
 
         "share": {
             "team_success": pair_result.share.outcome.success,

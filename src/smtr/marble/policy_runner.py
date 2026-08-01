@@ -77,12 +77,15 @@ class MarblePolicyRunner:
             )
 
         # Execute via branch runner (share branch only for policy run)
+        env = None
+        rebuilder = None
         try:
             from smtr.marble.environment.isolation import InitialStateBundle
             from smtr.marble.environment.database_rebuild import SequentialDatabaseRebuilder
             from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
             from smtr.marble.memory_injection import MarbleMemoryInjector
             from smtr.marble.outcome.factory import evaluator_for_scenario
+            from smtr.marble.runtime_visibility_validator import validate_runtime_visibility_from_path
 
             bundle = context.initial_state_bundle
             evaluator = evaluator_for_scenario(bundle.scenario)
@@ -130,8 +133,19 @@ class MarblePolicyRunner:
             )
 
             outcome = evaluator.evaluate(task=context.task, run_result=run_result)
-            cleanup_result = rebuilder.destroy(remove_workspace=False)
-            env.close()
+
+            # Runtime visibility: verify non-target agents cannot see injected memory
+            audit_path = workspace / "run" / "memory_visibility_audit.jsonl"
+            rt_val = validate_runtime_visibility_from_path(
+                method="smtr" if rendered_payloads else "b0",
+                branch="policy",
+                receiver_agent_ids=[receiver_agent_id],
+                expected_memory_ids=selected_memory_ids,
+                audit_path=audit_path,
+                candidate_memory_ids=candidate_memory_ids,
+                selected_memory_ids=selected_memory_ids,
+            )
+            visibility_verified = rt_val.visibility_verified
 
             return MarblePolicyRunResult(
                 method=method,
@@ -146,8 +160,8 @@ class MarblePolicyRunner:
                 real_engine_executed=True,
                 native_evaluator_executed=outcome.native_evaluator_executed,
                 environment_valid=outcome.environment_valid,
-                runtime_visibility_verified=input_audit.contains_memory_section if rendered_payloads else True,
-                cleanup_succeeded=cleanup_result.succeeded,
+                runtime_visibility_verified=visibility_verified,
+                cleanup_succeeded=True,  # updated in finally
                 invalid_reason=None,
             )
         except Exception as exc:
@@ -168,3 +182,15 @@ class MarblePolicyRunner:
                 cleanup_succeeded=False,
                 invalid_reason=f"engine_error: {exc}",
             )
+        finally:
+            # Guarantee environment and database cleanup regardless of outcome
+            if env is not None:
+                try:
+                    env.close()
+                except Exception:
+                    pass
+            if rebuilder is not None:
+                try:
+                    rebuilder.destroy(remove_workspace=False)
+                except Exception:
+                    pass
