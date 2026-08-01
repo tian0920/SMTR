@@ -54,10 +54,17 @@ class FourOutcomeTransferCritic:
         """Train bootstrap ensemble on paired record features."""
         X = self.encoder.encode_batch(inputs)
         y = np.array([LABEL_TO_INDEX[lb] for lb in labels])
+
+        unique_classes = np.unique(y)
+        if len(unique_classes) < 2:
+            raise ValueError(
+                "training data must contain at least two transfer outcome classes"
+            )
+
         rng = np.random.default_rng(self.seed)
         self.members = []
         for _ in range(self.n_bootstrap):
-            idx = rng.choice(len(y), size=len(y), replace=True)
+            idx = _stratified_bootstrap_indices(y, rng)
             X_boot = X[idx]
             y_boot = y[idx]
             clf = LogisticRegression(max_iter=1000, solver="lbfgs")
@@ -93,6 +100,7 @@ class FourOutcomeTransferCritic:
     def save(self, path: Path) -> None:
         """Save critic checkpoint."""
         path.parent.mkdir(parents=True, exist_ok=True)
+        import sklearn
         joblib.dump(
             {
                 "members": self.members,
@@ -101,6 +109,9 @@ class FourOutcomeTransferCritic:
                 "feature_block": self.feature_block,
                 "seed": self.seed,
                 "encoder": self.encoder,
+                "schema_version": self.encoder.schema_version,
+                "sklearn_version": sklearn.__version__,
+                "method_version": "1.0",
             },
             path,
         )
@@ -119,3 +130,23 @@ class FourOutcomeTransferCritic:
         critic.encoder = data["encoder"]
         critic._fitted = True
         return critic
+
+
+def _stratified_bootstrap_indices(
+    y: np.ndarray,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Stratified bootstrap ensuring all classes are represented."""
+    sampled: list[int] = []
+    for cls in np.unique(y):
+        cls_indices = np.flatnonzero(y == cls)
+        sampled.extend(
+            rng.choice(
+                cls_indices,
+                size=len(cls_indices),
+                replace=True,
+            ).tolist()
+        )
+    sampled_array = np.asarray(sampled)
+    rng.shuffle(sampled_array)
+    return sampled_array

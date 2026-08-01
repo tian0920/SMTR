@@ -21,7 +21,7 @@ def test_collect_database_trajectories_cli_passes_engine_timeout(
         captured.update(kwargs)
         return {"attempted": 1, "valid": 0, "invalid": 1, "task_ids": ["19"], "index": "i"}
 
-    monkeypatch.setattr(cli, "collect_database_trajectories", fake_collect_database_trajectories)
+    monkeypatch.setattr("smtr.marble.real_workflows.collect_database_trajectories", fake_collect_database_trajectories)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -65,13 +65,15 @@ def test_collect_database_trajectories_cli_uses_default_timeout(
         captured.update(kwargs)
         return {"attempted": 0, "valid": 0, "invalid": 0, "task_ids": [], "index": "i"}
 
-    monkeypatch.setattr(cli, "collect_database_trajectories", fake_collect_database_trajectories)
+    monkeypatch.setattr("smtr.marble.real_workflows.collect_database_trajectories", fake_collect_database_trajectories)
     monkeypatch.setattr(
         sys,
         "argv",
         [
             "python -m smtr.marble.cli",
             "collect-database-trajectories",
+            "--marble-root",
+            "/home/ecs-user/MARBLE",
             "--dataset-manifest",
             str(tmp_path / "dataset.json"),
             "--split-manifest",

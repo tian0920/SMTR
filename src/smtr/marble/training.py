@@ -58,6 +58,15 @@ def train_critic(
     # Save checkpoint
     critic.save(output_path)
 
+    # Write feature audit
+    feature_audit = _build_feature_audit(
+        critic=critic,
+        inputs=inputs,
+        feature_block=feature_block,
+    )
+    audit_path = output_path.with_suffix(".feature_audit.json")
+    audit_path.write_text(json.dumps(feature_audit, indent=2), encoding="utf-8")
+
     # Validation metrics
     metrics: dict[str, Any] = {
         "train_records": len(train_data),
@@ -100,3 +109,40 @@ def _predicted_label(pred) -> str:
     ]
     labels = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
     return labels[int(np.argmax(probs))]
+
+
+def _build_feature_audit(
+    *,
+    critic: FourOutcomeTransferCritic,
+    inputs: list[CandidateExposureInput],
+    feature_block: str,
+) -> dict[str, Any]:
+    """Build feature audit JSON for checkpoint."""
+    from smtr.router.transfer_features import FORBIDDEN_FEATURE_TOKENS
+
+    # Check a sample of tokens
+    sample = inputs[:min(100, len(inputs))]
+    all_tokens: list[str] = []
+    for item in sample:
+        all_tokens.extend(critic.encoder.tokens(item))
+
+    # Check writer-receiver features present
+    wr_present = any(t.startswith("wr_pair:") for t in all_tokens)
+
+    # Check forbidden leakage
+    forbidden_found = False
+    observed_prefixes: set[str] = set()
+    for token in all_tokens:
+        prefix = token.lower().split(":", 1)[0]
+        observed_prefixes.add(prefix)
+        if prefix in FORBIDDEN_FEATURE_TOKENS:
+            forbidden_found = True
+
+    return {
+        "schema_version": "2.0",
+        "feature_block": feature_block,
+        "sample_count": len(sample),
+        "writer_receiver_features_present": wr_present,
+        "forbidden_feature_leakage": forbidden_found,
+        "observed_prefixes": sorted(observed_prefixes),
+    }

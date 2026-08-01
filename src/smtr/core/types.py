@@ -72,6 +72,9 @@ class MemoryRoutingCard(BaseModel):
     incompatible_receiver_roles: tuple[AgentRole, ...] = ()
 
     evidence_count: int = 0
+    historical_success_count: int = 0
+    historical_failure_count: int = 0
+    historical_success_rate: float = 0.0
 
 
 class CandidateExposureInput(BaseModel):

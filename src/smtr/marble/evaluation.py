@@ -130,8 +130,8 @@ def run_evaluation(
             receiver=receiver,
             environment_signature=tuple(task.get("environment_signature", [])),
         )
-        # Get candidate cards for this task (use all cards as candidates for simplicity)
-        candidate_cards = list(cards_by_id.values())[:4]
+        # Get candidate cards for this task from candidate manifest
+        candidate_cards = [c for c in cards_by_id.values()]
 
         for method in methods:
             router = routers[method]

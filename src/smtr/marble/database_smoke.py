@@ -376,16 +376,18 @@ def _load_last_jsonl(path: Path) -> dict[str, Any] | None:
     return records[-1] if records else None
 
 
-def _memory_for_id(*, task_id: str, memory_id: str) -> dict[str, str]:
+def _memory_for_id(*, task_id: str, memory_id: str) -> dict[str, Any]:
     role = "helpful" if memory_id.endswith("_helpful") else "human"
     return {
         "memory_id": memory_id,
         "source_type": "smoke",
         "expected_role": role,
-        "payload": (
-            "Use pg_stat_statements, pg_locks, pg_stat_all_tables, "
-            "pg_stat_user_indexes, and pg_indexes to diagnose MARBLE database root causes."
-        ),
+        "payload": {
+            "procedure": (
+                "Use pg_stat_statements, pg_locks, pg_stat_all_tables, "
+                "pg_stat_user_indexes, and pg_indexes to diagnose MARBLE database root causes."
+            ),
+        },
         "payload_digest": canonical_digest(memory_id),
         "task_id": str(task_id),
     }

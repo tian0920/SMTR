@@ -19,6 +19,7 @@ from smtr.marble.environment.database_rebuild import (
 from smtr.marble.environment.isolation import InitialStateBundle
 from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.memory_injection import MarbleAgentInputAudit, MarbleMemoryInjector
+from smtr.memory.render import render_procedure_payload
 from smtr.marble.outcome.factory import evaluator_for_scenario
 from smtr.marble.outcome.protocol import MarbleOutcome, outcome_from_failure
 from smtr.marble.runtime_visibility_validator import (
@@ -102,7 +103,7 @@ class MarblePairedBranchRunner:
             )
             base_input = base_env.build_agent_input(memory_payloads=())
             base_env.close()
-            memory_payload = str(candidate_memory.get("payload", ""))
+            memory_payload = render_procedure_payload(candidate_memory)
             memory_id = str(candidate_memory.get("memory_id", "unknown"))
             receiver_agent_id = str(agent_config.get("target_receiver_agent_id", "agent1"))
             share_injection: dict[str, Any] | None = None

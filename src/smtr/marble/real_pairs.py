@@ -2,48 +2,41 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
-from smtr.core.types import PairedTransferOutcome
-
-
-def _digest(obj: Any) -> str:
-    return hashlib.sha256(json.dumps(obj, sort_keys=True, default=str).encode()).hexdigest()[:16]
-
-
-def _four_outcome_label(y_share: bool, y_withhold: bool) -> str:
-    if y_share and not y_withhold:
-        return "positive_transfer"
-    if not y_share and y_withhold:
-        return "negative_transfer"
-    if y_share and y_withhold:
-        return "neutral_success"
-    return "neutral_failure"
+from smtr.marble.io import load_split_task_ids
 
 
 def generate_candidate_level_pairs(
     *,
+    marble_root: Path,
     dataset_manifest_path: Path,
     split_manifest_path: Path,
+    split: str,
     candidate_manifest_path: Path,
     memory_pool_path: Path,
     generation_seeds: list[int],
     limit_pairs: int | None = None,
     output_dir: Path,
+    branch_execution_order: str = "share_then_withhold",
+    engine_timeout_seconds: int = 1800,
 ) -> dict[str, Any]:
-    """Generate candidate-level paired records: share one candidate vs withhold it.
+    """Generate candidate-level paired records via MarblePairedBranchRunner.run_pair.
 
     Each pair holds constant: MARBLE task, receiver agent, seed, environment snapshot,
     non-memory input. The only difference is whether the candidate payload is injected.
     """
+    from smtr.marble.branch_runner import MarblePairedBranchRunner
+    from smtr.marble.paired_context import build_pair_execution_context
+
     dataset = json.loads(dataset_manifest_path.read_text(encoding="utf-8"))
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
-    split_manifest = json.loads(split_manifest_path.read_text(encoding="utf-8"))
 
     tasks = {str(t["task_id"]): t for t in dataset.get("tasks", [])}
+    split_task_ids = load_split_task_ids(split_manifest_path, split)
+
     memory_pool: dict[str, dict] = {}
     for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
@@ -74,8 +67,13 @@ def generate_candidate_level_pairs(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, Any]] = []
+    runner = MarblePairedBranchRunner()
 
     for edge in edges:
+        # Validate edge task belongs to requested split
+        if edge["task_id"] not in split_task_ids:
+            continue
+
         mem_entry = memory_pool.get(edge["candidate_memory_id"])
         if mem_entry is None:
             continue
@@ -84,68 +82,31 @@ def generate_candidate_level_pairs(
             continue
 
         for seed in generation_seeds:
-            task_digest = _digest({"task_id": edge["task_id"], "seed": seed})
-            env_digest = _digest(edge["environment_signature"])
-            tool_digest = _digest({"scenario": "database"})
+            pair_workspace = output_dir / "pairs" / f"{edge['task_id']}_{edge['candidate_memory_id']}_{seed}"
 
-            # In a real run, branch_runner executes share/withhold on MARBLE.
-            # Here we produce the record schema; actual execution is wired via branch_runner.
-            share_result = _run_branch(
+            context = build_pair_execution_context(
+                marble_root=marble_root,
                 task_entry=task_entry,
-                memory_entry=mem_entry,
-                seed=seed,
-                inject=True,
-                output_dir=output_dir,
-            )
-            withhold_result = _run_branch(
-                task_entry=task_entry,
-                memory_entry=mem_entry,
-                seed=seed,
-                inject=False,
-                output_dir=output_dir,
+                receiver_agent_id=edge["receiver_agent_id"],
+                workspace=pair_workspace,
             )
 
-            y_share = share_result["team_success"]
-            y_withhold = withhold_result["team_success"]
-            label = _four_outcome_label(y_share, y_withhold)
+            pair_result = runner.run_pair(
+                task=context.task,
+                candidate_memory=mem_entry,
+                initial_state_bundle=context.initial_state_bundle,
+                agent_config=context.agent_config,
+                generation_seed=seed,
+                workspace=pair_workspace,
+                branch_execution_order=branch_execution_order,
+                engine_timeout_seconds=engine_timeout_seconds,
+            )
 
-            record = {
-                "record_type": "marble_candidate_level_pair",
-                "schema_version": "v1",
-                "scenario": "database",
-                "task_id": edge["task_id"],
-                "receiver_agent_id": edge["receiver_agent_id"],
-                "receiver_role": edge["receiver_role"],
-                "receiver_capabilities": edge["receiver_capabilities"],
-                "candidate_memory_id": edge["candidate_memory_id"],
-                "writer_agent_id": edge["writer_agent_id"],
-                "writer_role": edge["writer_role"],
-                "writer_capabilities": edge["writer_capabilities"],
-                "selected_prefix_memory_ids": [],
-                "candidate_rank": edge["candidate_rank"],
-                "candidate_score": edge["candidate_score"],
-                "share": {
-                    "team_success": y_share,
-                    "local_success": None,
-                    "environment_valid": share_result["environment_valid"],
-                    "native_evaluator_executed": share_result["native_evaluator_executed"],
-                },
-                "withhold": {
-                    "team_success": y_withhold,
-                    "local_success": None,
-                    "environment_valid": withhold_result["environment_valid"],
-                    "native_evaluator_executed": withhold_result["native_evaluator_executed"],
-                },
-                "label": label,
-                "valid": share_result["valid"] and withhold_result["valid"],
-                "invalid_reason": share_result.get("invalid_reason") or withhold_result.get("invalid_reason"),
-                "digests": {
-                    "share_initial_digest": share_result["initial_digest"],
-                    "withhold_initial_digest": withhold_result["initial_digest"],
-                    "task_digest": task_digest,
-                    "tool_config_digest": tool_digest,
-                },
-            }
+            record = paired_result_to_record(
+                pair_result=pair_result,
+                edge=edge,
+                seed=seed,
+            )
             records.append(record)
 
     out_path = output_dir / "paired_records.jsonl"
@@ -161,43 +122,95 @@ def generate_candidate_level_pairs(
     }
 
 
-def _run_branch(
+def paired_result_to_record(
     *,
-    task_entry: dict[str, Any],
-    memory_entry: dict[str, Any],
+    pair_result: Any,
+    edge: dict[str, Any],
     seed: int,
-    inject: bool,
-    output_dir: Path,
 ) -> dict[str, Any]:
-    """Execute a single branch (share or withhold) via MARBLE branch runner.
+    """Convert a PairedBranchResult into a serializable paired record.
 
-    Returns outcome dict. In production this calls MarblePairedBranchRunner;
-    the interface is stable for wiring.
+    All audit fields come from the real PairedBranchResult, not fabricated.
     """
-    try:
-        from smtr.marble.branch_runner import MarblePairedBranchRunner
+    return {
+        "record_type": "marble_candidate_level_pair",
+        "schema_version": "v2",
+        "scenario": pair_result.scenario,
 
-        runner = MarblePairedBranchRunner()
-        result = runner.run_single_branch(
-            task_entry=task_entry,
-            memory_entry=memory_entry if inject else None,
-            seed=seed,
-            workspace=output_dir / "branches",
-        )
-        return {
-            "team_success": result.get("team_success", False),
-            "environment_valid": result.get("environment_valid", True),
-            "native_evaluator_executed": result.get("native_evaluator_executed", True),
-            "initial_digest": result.get("initial_digest", ""),
-            "valid": result.get("valid", True),
-            "invalid_reason": result.get("invalid_reason"),
-        }
-    except Exception as exc:
-        return {
-            "team_success": False,
-            "environment_valid": False,
-            "native_evaluator_executed": False,
-            "initial_digest": "",
-            "valid": False,
-            "invalid_reason": str(exc),
-        }
+        "task_id": pair_result.task_id,
+        "generation_seed": seed,
+
+        "receiver_agent_id": edge["receiver_agent_id"],
+        "receiver_role": edge["receiver_role"],
+        "receiver_capabilities": edge["receiver_capabilities"],
+
+        "candidate_memory_id": pair_result.candidate_memory_id,
+        "writer_agent_id": edge["writer_agent_id"],
+        "writer_role": edge["writer_role"],
+        "writer_capabilities": edge["writer_capabilities"],
+
+        "selected_prefix_memory_ids": [],
+        "candidate_rank": edge["candidate_rank"],
+        "candidate_score": edge["candidate_score"],
+
+        "share": {
+            "team_success": pair_result.share.outcome.success,
+            "local_success": None,
+            "environment_valid": pair_result.share.outcome.environment_valid,
+            "native_evaluator_executed":
+                pair_result.share.outcome.native_evaluator_executed,
+            "real_engine_executed":
+                pair_result.share.real_engine_executed,
+            "runtime_visibility_verified":
+                pair_result.share.runtime_visibility_verified,
+            "cleanup_succeeded":
+                pair_result.share.cleanup_succeeded,
+        },
+
+        "withhold": {
+            "team_success": pair_result.withhold.outcome.success,
+            "local_success": None,
+            "environment_valid": pair_result.withhold.outcome.environment_valid,
+            "native_evaluator_executed":
+                pair_result.withhold.outcome.native_evaluator_executed,
+            "real_engine_executed":
+                pair_result.withhold.real_engine_executed,
+            "runtime_visibility_verified":
+                pair_result.withhold.runtime_visibility_verified,
+            "cleanup_succeeded":
+                pair_result.withhold.cleanup_succeeded,
+        },
+
+        "label": pair_result.paired_label,
+        "valid": pair_result.paired_record_valid,
+        "invalid_reason": pair_result.invalid_reason,
+
+        "branch_execution_order": pair_result.branch_execution_order,
+
+        "digests": {
+            "share_initial_digest":
+                pair_result.share.initial_digest,
+            "withhold_initial_digest":
+                pair_result.withhold.initial_digest,
+            "share_initial_logical_digest":
+                (
+                    pair_result.share.initial_logical_fingerprint or {}
+                ).get("combined_digest"),
+            "withhold_initial_logical_digest":
+                (
+                    pair_result.withhold.initial_logical_fingerprint or {}
+                ).get("combined_digest"),
+            "share_agent_config_digest":
+                pair_result.share.agent_config_digest,
+            "withhold_agent_config_digest":
+                pair_result.withhold.agent_config_digest,
+            "share_task_digest":
+                pair_result.share.task_digest,
+            "withhold_task_digest":
+                pair_result.withhold.task_digest,
+            "share_tool_config_digest":
+                pair_result.share.tool_config_digest,
+            "withhold_tool_config_digest":
+                pair_result.withhold.tool_config_digest,
+        },
+    }

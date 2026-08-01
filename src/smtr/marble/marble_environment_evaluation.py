@@ -24,7 +24,6 @@ from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.memory_injection import MarbleMemoryInjector, MemoryPayload
 from smtr.marble.outcome.factory import evaluator_for_scenario
 from smtr.marble.outcome.protocol import outcome_from_failure
-from smtr.marble.real_data import RealProceduralMemory
 from smtr.marble.router_evaluation import evaluate_router_decisions
 from smtr.marble.run_identity import RunIdentity, current_marble_commit, current_smtr_commit
 from smtr.marble.runtime_visibility_validator import validate_runtime_visibility_from_path
@@ -45,7 +44,7 @@ class MarbleEnvironmentEvaluator:
         scenario: str,
         marble_root: Path,
         output_dir: Path,
-        candidate_memories: list[RealProceduralMemory] | None = None,
+        candidate_memories: list[dict[str, Any]] | None = None,
         selected_memory_ids: list[str] | None = None,
         generation_seed: int = 0,
         engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
@@ -76,7 +75,7 @@ class MarbleEnvironmentEvaluator:
         elif method == "all_share":
             if candidate_memories:
                 payloads = [
-                    MemoryPayload(memory_id=m.memory_id, payload=m.payload)
+                    MemoryPayload(memory_id=m["memory_id"], payload=m["payload"])
                     for m in candidate_memories
                 ]
                 injection = injector.build_injection(
@@ -91,11 +90,11 @@ class MarbleEnvironmentEvaluator:
         elif method == "smtr":
             if candidate_memories and selected_memory_ids:
                 selected = [
-                    m for m in candidate_memories if m.memory_id in selected_memory_ids
+                    m for m in candidate_memories if m["memory_id"] in selected_memory_ids
                 ]
                 if selected:
                     payloads = [
-                        MemoryPayload(memory_id=m.memory_id, payload=m.payload)
+                        MemoryPayload(memory_id=m["memory_id"], payload=m["payload"])
                         for m in selected
                     ]
                     injection = injector.build_injection(

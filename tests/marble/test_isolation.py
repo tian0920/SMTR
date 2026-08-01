@@ -90,7 +90,7 @@ def test_paired_branch_runner_invalid_without_real_engine(tmp_path: Path) -> Non
 
     result = MarblePairedBranchRunner().run_pair(
         task=task,
-        candidate_memory={"memory_id": "m1", "payload": "diagnostic help"},
+        candidate_memory={"memory_id": "m1", "payload": {"procedure": "diagnostic help"}},
         initial_state_bundle=bundle,
         agent_config={"target_receiver_agent_id": "agent1"},
         generation_seed=0,

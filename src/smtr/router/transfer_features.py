@@ -113,7 +113,18 @@ class HashingTransferFeatureEncoder:
             rs_envs = set(rs.environment_signature)
             tokens.append(f"prefix_env_conflict:{not pc_envs.issubset(rs_envs) if pc_envs else False}")
 
+        self._reject_forbidden_tokens(tokens)
         return tokens
+
+    def _reject_forbidden_tokens(self, tokens: list[str]) -> None:
+        """Raise if forbidden leakage fields appear in output tokens."""
+        for token in tokens:
+            token_lower = token.lower()
+            prefix = token_lower.split(":", 1)[0]
+            if prefix in FORBIDDEN_FEATURE_TOKENS:
+                raise ValueError(
+                    f"forbidden transfer feature token detected: {token}"
+                )
 
     def encode_one(self, item: CandidateExposureInput) -> Any:
         """Encode a single input to a sparse feature vector."""
@@ -194,14 +205,6 @@ def load_paired_records_for_training(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _reject_forbidden_tokens(tokens: list[str]) -> None:
-    """Raise if forbidden leakage fields appear in output tokens."""
-    token_str = " ".join(tokens).lower()
-    for field in FORBIDDEN_FEATURE_TOKENS:
-        if field in token_str:
-            raise ValueError(f"forbidden field '{field}' detected in feature tokens")
 
 
 def _text_tokens(text: str) -> list[str]:

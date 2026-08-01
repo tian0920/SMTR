@@ -9,7 +9,7 @@ from typing import Any, cast
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.database_smoke import run_database_b0_smoke
 from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
-from smtr.marble.real_data import RealDatabaseTrajectory, SplitName, file_sha256
+from smtr.marble.real_data import AgentTrajectorySlice, RealDatabaseTrajectory, SplitName, file_sha256
 
 
 def collect_database_trajectories(
@@ -121,6 +121,9 @@ def _normalize_smoke(
         raise ValueError("native evaluator did not run")
     raw = json.loads(raw_path.read_text(encoding="utf-8"))
     structured = _structured_trace(raw)
+    agent_slices = structured["agent_slices"]
+    if not agent_slices:
+        raise ValueError("no agent-specific slices could be built from raw trace")
     return RealDatabaseTrajectory(
         trajectory_id=trajectory_id,
         task_id=task_id,
@@ -128,15 +131,14 @@ def _normalize_smoke(
         generation_seed=generation_seed,
         model_id=str(summary.get("model_id") or "unknown"),
         source_dataset_version=str(dataset.get("dataset_sha256") or dataset.get("version") or ""),
-        messages=structured["messages"],
-        actions=structured["actions"],
-        tool_calls=structured["tool_calls"],
-        sql_statements=structured["sql"],
-        observations=structured["observations"],
-        errors=structured["errors"],
-        final_answer=structured["final_answer"],
+        team_success=bool(summary.get("outcome", {}).get("success")),
         score=float(summary.get("outcome", {}).get("score") or 0.0),
         task_success=bool(summary.get("outcome", {}).get("success")),
+        task_instruction=str(raw.get("task_instruction") or raw.get("instruction") or ""),
+        environment_signature=tuple(raw.get("environment_signature") or []),
+        agents=tuple(agent_slices),
+        final_answer=structured["final_answer"],
+        errors=tuple(structured["errors"]),
         valid=True,
         failure_reason=None,
     )
@@ -155,8 +157,18 @@ def _structured_trace(raw: Any) -> dict[str, Any]:
         for call in tool_calls
         if isinstance(call, dict) and (call.get("sql") or call.get("arguments", {}).get("sql"))
     ]
+
+    # Build agent-specific slices by grouping records by agent ID
+    agent_slices = _build_agent_slices(
+        raw=raw,
+        messages=messages,
+        actions=actions,
+        tool_calls=tool_calls,
+        sql=sql,
+    )
+
     return {
-        "agents": raw.get("agents") or [],
+        "agent_slices": agent_slices,
         "messages": messages,
         "actions": actions,
         "tool_calls": tool_calls,
@@ -165,6 +177,100 @@ def _structured_trace(raw: Any) -> dict[str, Any]:
         "errors": raw.get("errors") or [],
         "final_answer": str(raw.get("final_answer") or raw.get("answer") or ""),
     }
+
+
+def _agent_id(record: dict[str, Any]) -> str | None:
+    """Extract agent ID from a record, trying multiple field names."""
+    return (
+        record.get("agent_id")
+        or record.get("sender_id")
+        or record.get("source_agent")
+        or record.get("agent")
+    )
+
+
+def _build_agent_slices(
+    *,
+    raw: dict[str, Any],
+    messages: list[dict[str, Any]],
+    actions: list[dict[str, Any]],
+    tool_calls: list[dict[str, Any]],
+    sql: list[str],
+) -> list[AgentTrajectorySlice]:
+    """Group messages/actions/tool_calls by agent ID into slices.
+
+    If no agent attribution is found, records go to unattributed.
+    If no agent-specific slice can be built, returns empty list (trajectory invalid).
+    """
+    # Collect known agents from raw config
+    agents_config = raw.get("agents") or []
+    known_agents: dict[str, dict[str, Any]] = {}
+    for agent_cfg in agents_config:
+        aid = str(agent_cfg.get("agent_id") or agent_cfg.get("id") or "")
+        if aid:
+            known_agents[aid] = agent_cfg
+
+    # Group actions/tool_calls by agent
+    agent_actions: dict[str, list[dict[str, Any]]] = {}
+    agent_tool_calls: dict[str, list[dict[str, Any]]] = {}
+    agent_messages: dict[str, list[dict[str, Any]]] = {}
+    unattributed: list[dict[str, Any]] = []
+
+    for msg in messages:
+        aid = _agent_id(msg)
+        if aid:
+            agent_messages.setdefault(aid, []).append(msg)
+        else:
+            unattributed.append(msg)
+
+    for action in actions:
+        aid = _agent_id(action)
+        if aid:
+            agent_actions.setdefault(aid, []).append(action)
+        else:
+            unattributed.append(action)
+
+    for tc in tool_calls:
+        aid = _agent_id(tc)
+        if aid:
+            agent_tool_calls.setdefault(aid, []).append(tc)
+        else:
+            unattributed.append(tc)
+
+    # Build slices for agents that have at least one action or tool call
+    all_agent_ids = set(agent_actions.keys()) | set(agent_tool_calls.keys())
+    # Also include agents from config that have messages
+    all_agent_ids |= set(agent_messages.keys()) & set(known_agents.keys())
+
+    slices: list[AgentTrajectorySlice] = []
+    for aid in sorted(all_agent_ids):
+        a_actions = agent_actions.get(aid, [])
+        a_tool_calls = agent_tool_calls.get(aid, [])
+        if not a_actions and not a_tool_calls:
+            continue  # Skip agents with no actions
+        cfg = known_agents.get(aid, {})
+        # Extract SQL for this agent
+        a_sql = [
+            str(tc.get("arguments", {}).get("sql") or tc.get("sql") or "")
+            for tc in a_tool_calls
+            if tc.get("sql") or tc.get("arguments", {}).get("sql")
+        ]
+        slices.append(AgentTrajectorySlice(
+            agent_id=aid,
+            agent_role=str(cfg.get("role") or cfg.get("agent_role") or "unknown"),
+            agent_capabilities=tuple(cfg.get("capabilities") or cfg.get("agent_capabilities") or []),
+            tool_names=tuple(sorted({
+                str(tc.get("tool") or tc.get("name") or "")
+                for tc in a_tool_calls
+                if tc.get("tool") or tc.get("name")
+            })),
+            messages=tuple(agent_messages.get(aid, [])),
+            actions=tuple(a_actions),
+            tool_calls=tuple(a_tool_calls),
+            sql_statements=tuple(s for s in a_sql if s),
+            observations=(),
+        ))
+    return slices
 
 
 def _invalid_trajectory_payload(

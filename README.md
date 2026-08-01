@@ -1,134 +1,180 @@
-# SMTR
+# SMTR: Cross-Agent Shared Procedural Memory Exposure
 
-SMTR studies cross-agent shared procedural memory exposure in MARBLE multi-agent systems.
+Research codebase for studying cross-agent shared procedural memory exposure using the MARBLE multi-agent environment.
 
-## Research Question
+## Core Estimands
 
-When should a procedural memory written by one agent be exposed to another agent?
+- **τ_{w→r}^{team}(m | o_r, S)**: expected team-level transfer effect of sharing memory m from writer w to receiver r
+- **η_{w→r}^{team}(m | o_r, S)**: expected negative transfer risk
 
-## Core Estimand
+## Pipeline Overview
 
-$$\tau^{team}_{w \rightarrow r}(m \mid o_r, S)$$
+```text
+MARBLE train trajectories
+→ agent-specific procedural memory extraction
+→ validation/test receiver-conditioned candidate generation
+→ candidate-level paired MARBLE interventions
+→ four-outcome critic training
+→ paired decision evaluation
+→ end-to-end MARBLE evaluation
+→ integrity audit
+```
 
-$$\eta^{team}_{w \rightarrow r}(m \mid o_r, S)$$
-
-Where:
-- $m$: candidate shared procedural memory
-- $w$: writer agent that produced the memory
-- $r$: receiver agent considering exposure
-- $o_r$: receiver agent's current local execution state
-- $S$: currently exposed memory prefix (empty in v1)
-- $\tau$: positive transfer effect of sharing vs withholding on team success
-- $\eta$: risk of negative transfer from sharing
-
-## Method
-
-1. **Payload-card isolated shared procedural memory**: Memory is split into a private payload (full procedure) and a public routing card (metadata only). The router only sees the card.
-2. **Receiver-conditioned candidate proposal**: For each receiver state, retrieve candidate memories using card-only features including writer-receiver compatibility.
-3. **Candidate-level share/withhold paired intervention in MARBLE**: For each candidate, run the same MARBLE task with and without that single memory payload injected, holding seed, environment, and receiver state constant.
-4. **Four-outcome transfer critic**: Train an ensemble classifier predicting P(positive_transfer), P(negative_transfer), P(neutral_success), P(neutral_failure).
-5. **Receiver-specific exposure router**: Share the candidate with highest $\hat{\tau}$ among those satisfying $\hat{\tau} > 0$ and $\hat{\eta} \leq$ budget. Withhold all others.
-6. **MARBLE evaluation and ablations**: Report team success, negative transfer, harmful exposure rejection, writer-receiver mismatch effects, and same-memory different-receiver decision flips.
-
-## Main Pipeline
+## Stage A: Training Data
 
 ```bash
-# 1. Inspect MARBLE database tasks
 python -m smtr.marble.cli inspect-dataset \
-  --marble-root /home/ecs-user/MARBLE \
+  --marble-root /path/to/MARBLE \
   --output artifacts/marble/manifests/dataset.json
 
-# 2. Create train / validation / test splits
 python -m smtr.marble.cli create-splits \
   --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --output artifacts/marble/manifests/splits.json \
-  --seed 0
+  --output artifacts/marble/manifests/splits.json
 
-# 3. Collect training trajectories
 python -m smtr.marble.cli collect-database-trajectories \
-  --marble-root /home/ecs-user/MARBLE \
+  --marble-root /path/to/MARBLE \
   --dataset-manifest artifacts/marble/manifests/dataset.json \
   --split-manifest artifacts/marble/manifests/splits.json \
   --split train \
-  --task-count 20 \
-  --generation-seeds 0 \
-  --output artifacts/marble/trajectories/train \
-  --resume
+  --output artifacts/marble/trajectories/train
 
-# 4. Extract writer-agent procedural memories
 python -m smtr.marble.cli extract-database-memories \
-  --trajectory-index artifacts/marble/trajectories/train/index.jsonl \
+  --trajectory-index artifacts/marble/trajectories/train/trajectory_index.jsonl \
   --split-manifest artifacts/marble/manifests/splits.json \
   --output artifacts/marble/memory/database_memories.jsonl
 
-# 5. Build receiver-conditioned candidates
 python -m smtr.marble.cli build-database-candidates \
   --dataset-manifest artifacts/marble/manifests/dataset.json \
   --split-manifest artifacts/marble/manifests/splits.json \
+  --split train \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --output artifacts/marble/candidates/validation_candidates.json \
-  --top-k 4
+  --output artifacts/marble/candidates/train_candidates.json
 
-# 6. Generate candidate-level paired records
 python -m smtr.marble.cli generate-database-paired-records \
+  --marble-root /path/to/MARBLE \
   --dataset-manifest artifacts/marble/manifests/dataset.json \
   --split-manifest artifacts/marble/manifests/splits.json \
+  --split train \
+  --candidate-manifest artifacts/marble/candidates/train_candidates.json \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --output artifacts/marble/paired/train
+```
+
+## Stage B: Validation & Critic Training
+
+```bash
+python -m smtr.marble.cli build-database-candidates \
+  --dataset-manifest artifacts/marble/manifests/dataset.json \
+  --split-manifest artifacts/marble/manifests/splits.json \
+  --split validation \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --output artifacts/marble/candidates/validation_candidates.json
+
+python -m smtr.marble.cli generate-database-paired-records \
+  --marble-root /path/to/MARBLE \
+  --dataset-manifest artifacts/marble/manifests/dataset.json \
+  --split-manifest artifacts/marble/manifests/splits.json \
+  --split validation \
   --candidate-manifest artifacts/marble/candidates/validation_candidates.json \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --generation-seeds 0 \
-  --limit-pairs 100 \
   --output artifacts/marble/paired/validation
 
-# 7. Train transfer critic
 python -m smtr.marble.cli train-critic \
   --train-records artifacts/marble/paired/train/paired_records.jsonl \
   --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --seed 7 \
-  --n-bootstrap 31 \
-  --n-features 512 \
   --feature-block full \
-  --output artifacts/marble/checkpoints/smtr_critic.joblib
+  --output artifacts/marble/checkpoints/smtr_full.joblib
 
-# 8. Run evaluation
-python -m smtr.marble.cli run-evaluation \
-  --marble-root /home/ecs-user/MARBLE \
+python -m smtr.marble.cli train-critic \
+  --train-records artifacts/marble/paired/train/paired_records.jsonl \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --feature-block no_writer_receiver \
+  --output artifacts/marble/checkpoints/smtr_no_writer_receiver.joblib
+```
+
+## Stage C: Test Paired Evaluation
+
+```bash
+python -m smtr.marble.cli build-database-candidates \
   --dataset-manifest artifacts/marble/manifests/dataset.json \
   --split-manifest artifacts/marble/manifests/splits.json \
   --split test \
-  --scenario database \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --checkpoint artifacts/marble/checkpoints/smtr_critic.joblib \
+  --output artifacts/marble/candidates/test_candidates.json
+
+python -m smtr.marble.cli generate-database-paired-records \
+  --marble-root /path/to/MARBLE \
+  --dataset-manifest artifacts/marble/manifests/dataset.json \
+  --split-manifest artifacts/marble/manifests/splits.json \
+  --split test \
+  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --output artifacts/marble/paired/test
+
+python -m smtr.marble.cli run-paired-decision-evaluation \
+  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
+  --paired-records artifacts/marble/paired/test/paired_records.jsonl \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
+  --checkpoint-no-writer-receiver artifacts/marble/checkpoints/smtr_no_writer_receiver.joblib \
   --methods b0_no_memory top1_relevance all_share factual_success smtr smtr_no_risk smtr_no_writer_receiver \
   --negative-risk-budget 0.2 \
-  --output artifacts/marble/eval/test
-
-# 9. Run integrity audit
-python -m smtr.marble.cli integrity-audit \
-  --run-dir artifacts/marble/eval/test \
-  --output artifacts/marble/eval/test/integrity_summary.json
+  --output artifacts/marble/eval/paired_test
 ```
 
-## Ablations
+## Stage D: End-to-End MARBLE Evaluation
+
+```bash
+python -m smtr.marble.cli run-marble-evaluation \
+  --marble-root /path/to/MARBLE \
+  --dataset-manifest artifacts/marble/manifests/dataset.json \
+  --split-manifest artifacts/marble/manifests/splits.json \
+  --split test \
+  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
+  --checkpoint-no-writer-receiver artifacts/marble/checkpoints/smtr_no_writer_receiver.joblib \
+  --methods b0_no_memory top1_relevance all_share factual_success smtr smtr_no_risk smtr_no_writer_receiver \
+  --generation-seeds 0 1 2 \
+  --negative-risk-budget 0.2 \
+  --output artifacts/marble/eval/end_to_end_test
+```
+
+## Integrity Audit
+
+```bash
+python -m smtr.marble.cli integrity-audit \
+  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
+  --paired-records artifacts/marble/paired/test/paired_records.jsonl \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --paired-eval-dir artifacts/marble/eval/paired_test \
+  --end-to-end-eval-dir artifacts/marble/eval/end_to_end_test \
+  --feature-audit artifacts/marble/checkpoints/smtr_full.feature_audit.json \
+  --output artifacts/marble/eval/integrity_summary.json
+```
+
+## Important Metric Distinctions
+
+- **`paired_policy_success_rate`**: computed from paired intervention replay (share/withhold potential outcomes)
+- **`team_success_rate`**: computed ONLY from real end-to-end MARBLE runs with native evaluator
+
+These two metrics must never be conflated.
+
+## Methods
 
 | Method | Description |
 |--------|-------------|
-| NoMemory | Never share any memory |
-| Top1Relevance | Share top-1 most relevant candidate |
-| AllShare | Share all candidates |
-| FactualSuccess | Share only high-evidence memories |
-| SMTR | Full method with $\hat{\tau}$ and $\hat{\eta}$ |
-| SMTR-no-risk | Use $\hat{\tau}$ only, ignore $\hat{\eta}$ |
+| B0-NoMemory | Never share any memory |
+| B1-Top1Relevance | Share top-1 most relevant candidate |
+| B2-AllShare | Share all candidates |
+| B3-FactualSuccess | Share only high-evidence, high-success-rate memories |
+| SMTR | Full router: τ̂>0 ∧ η̂≤budget |
+| SMTR-no-risk | Full critic, ignore η̂ constraint |
 | SMTR-no-writer-receiver | Critic trained without writer-receiver features |
 
-## Integrity Checks
+## Running Tests
 
-- **Payload isolation**: Routing card never contains procedure; candidate manifest, paired record, and router trace never contain payload.
-- **Branch isolation**: Share and withhold branches differ only by target memory injection; same task digest, seed, environment digest, tool config digest.
-- **Candidate-level paired records**: Each pair tests exactly one candidate memory.
-- **Feature leakage prevention**: Feature tokens never contain memory_id, payload, procedure, label, or outcome fields.
-- **Writer-receiver field consistency**: All candidates, paired records, and router traces include writer and receiver role/capability fields.
-
-## Removed from Mainline
-
-The mainline intentionally removes toy environments, tau3-based multi-agent construction, robust deployment extensions, and policy-iteration engineering. These are preserved in `legacy/` for reference but are not maintained.
+```bash
+pytest -q tests/core tests/memory tests/router tests/marble tests/evaluation
+```

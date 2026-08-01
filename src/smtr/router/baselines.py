@@ -66,10 +66,11 @@ class AllShareRouter:
 
 
 class FactualSuccessRouter:
-    """B3-FactualSuccess: share only memories with high evidence_count."""
+    """B3-FactualSuccess: share only memories with sufficient evidence and success rate."""
 
-    def __init__(self, min_evidence: int = 2) -> None:
+    def __init__(self, min_evidence: int = 2, min_success_rate: float = 0.7) -> None:
         self.min_evidence = min_evidence
+        self.min_success_rate = min_success_rate
 
     def decide(
         self,
@@ -79,7 +80,7 @@ class FactualSuccessRouter:
     ) -> list[RouterDecision]:
         decisions = []
         for c in candidate_cards:
-            if c.evidence_count >= self.min_evidence:
+            if c.evidence_count >= self.min_evidence and c.historical_success_rate >= self.min_success_rate:
                 decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_hat=0.0, reason="factual_success_evidence"))
             else:
                 decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="insufficient_evidence"))
