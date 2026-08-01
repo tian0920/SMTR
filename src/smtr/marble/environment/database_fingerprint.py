@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -81,3 +81,81 @@ def _split_sql(sql: str) -> list[str]:
 
 def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip())
+
+
+@dataclass(frozen=True)
+class LiveDatabaseFingerprint:
+    """Fingerprint computed from a live PostgreSQL connection."""
+
+    schema_digest: str
+    table_row_counts: dict[str, int]
+    table_count: int
+    pg_version: str
+    combined_digest: str
+
+    def to_json(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def fingerprint_live_database(
+    *,
+    host: str = "localhost",
+    port: int = 5432,
+    dbname: str = "sysbench",
+    user: str = "test",
+    password: str = "Test123_456",
+) -> LiveDatabaseFingerprint | None:
+    """Connect to PostgreSQL and compute a live fingerprint."""
+    try:
+        import psycopg2
+    except ImportError:
+        return None
+    try:
+        conn = psycopg2.connect(
+            host=host, port=port, dbname=dbname, user=user, password=password,
+            connect_timeout=5,
+        )
+        cur = conn.cursor()
+        # Get PostgreSQL version
+        cur.execute("SELECT version()")
+        pg_version = cur.fetchone()[0]
+        # Get table names and row counts
+        cur.execute("""
+            SELECT tablename FROM pg_tables
+            WHERE schemaname = 'public'
+            ORDER BY tablename
+        """)
+        tables = [row[0] for row in cur.fetchall()]
+        row_counts: dict[str, int] = {}
+        for table in tables:
+            try:
+                cur.execute(f'SELECT count(*) FROM "{table}"')
+                row_counts[table] = cur.fetchone()[0]
+            except Exception:
+                row_counts[table] = -1
+        # Get schema digest from pg_dump-like query
+        cur.execute("""
+            SELECT table_name, column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            ORDER BY table_name, ordinal_position
+        """)
+        schema_rows = cur.fetchall()
+        schema_digest = canonical_digest([list(r) for r in schema_rows])
+        cur.close()
+        conn.close()
+        combined = canonical_digest({
+            "schema_digest": schema_digest,
+            "table_row_counts": row_counts,
+            "table_count": len(tables),
+            "pg_version": pg_version,
+        })
+        return LiveDatabaseFingerprint(
+            schema_digest=schema_digest,
+            table_row_counts=row_counts,
+            table_count=len(tables),
+            pg_version=pg_version,
+            combined_digest=combined,
+        )
+    except Exception:
+        return None

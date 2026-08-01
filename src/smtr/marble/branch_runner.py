@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.artifacts import assert_marble_artifact_path
+from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
 from smtr.marble.environment.database_fingerprint import DatabaseLogicalFingerprint
 from smtr.marble.environment.database_rebuild import (
     DatabaseCleanupResult,
@@ -20,6 +21,10 @@ from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.memory_injection import MarbleAgentInputAudit, MarbleMemoryInjector
 from smtr.marble.outcome.factory import evaluator_for_scenario
 from smtr.marble.outcome.protocol import MarbleOutcome, outcome_from_failure
+from smtr.marble.runtime_visibility_validator import (
+    RuntimeVisibilityValidator,
+    validate_runtime_visibility_from_path,
+)
 
 
 class MarbleBranchAudit(BaseModel):
@@ -41,6 +46,8 @@ class MarbleBranchAudit(BaseModel):
     cleanup_succeeded: bool = False
     cleanup_exit_code: int | None = None
     cleanup_failure_reason: str | None = None
+    runtime_visibility_verified: bool = False
+    runtime_visibility_invalid_reason: str | None = None
 
 
 class PairedBranchResult(BaseModel):
@@ -58,6 +65,8 @@ class PairedBranchResult(BaseModel):
     invalid_reason: str | None
     paired_label: str | None
     branch_execution_order: str = "share_then_withhold"
+    share_runtime_visibility_verified: bool = False
+    withhold_runtime_visibility_verified: bool = False
 
 
 class MarblePairedBranchRunner:
@@ -76,6 +85,7 @@ class MarblePairedBranchRunner:
             "share_then_withhold",
             "withhold_then_share",
         ] = "share_then_withhold",
+        engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
     ) -> PairedBranchResult:
         assert_marble_artifact_path(workspace)
         evaluator = evaluator_for_scenario(initial_state_bundle.scenario)
@@ -94,6 +104,15 @@ class MarblePairedBranchRunner:
             base_env.close()
             memory_payload = str(candidate_memory.get("payload", ""))
             memory_id = str(candidate_memory.get("memory_id", "unknown"))
+            receiver_agent_id = str(agent_config.get("target_receiver_agent_id", "agent1"))
+            share_injection: dict[str, Any] | None = None
+            if memory_payload:
+                share_injection = {
+                    "receiver_agent_ids": [receiver_agent_id],
+                    "memory_payloads": [memory_payload],
+                    "memory_ids": [memory_id],
+                    "intervention_id": f"pair_{memory_id}_{generation_seed}",
+                }
             share_input, share_input_audit = injector.build_agent_input(
                 base_agent_input=base_input,
                 memory_payloads=(memory_payload,),
@@ -104,6 +123,10 @@ class MarblePairedBranchRunner:
                 memory_payloads=(),
                 memory_ids=(),
             )
+            branch_injections = {
+                "share": share_injection,
+                "withhold": None,
+            }
             branch_inputs = {
                 "share": (share_input, share_input_audit),
                 "withhold": (withhold_input, withhold_input_audit),
@@ -130,8 +153,22 @@ class MarblePairedBranchRunner:
                 else:
                     withhold_env = env
                 branch_input, branch_input_audit = branch_inputs[branch]
+                branch_inj = branch_injections[branch]
+                run_metadata = {
+                    "run_id": f"pair_{initial_state_bundle.task_id}_{memory_id}_{generation_seed}",
+                    "task_id": initial_state_bundle.task_id,
+                    "scenario": initial_state_bundle.scenario,
+                    "method": "pair",
+                    "branch": branch,
+                }
                 try:
-                    run = env.run(agent_input=branch_input, generation_seed=generation_seed)
+                    run = env.run(
+                        agent_input=branch_input,
+                        generation_seed=generation_seed,
+                        memory_injection=branch_inj,
+                        engine_timeout_seconds=engine_timeout_seconds,
+                        run_metadata=run_metadata,
+                    )
                     outcome = evaluator.evaluate(task=task, run_result=run)
                     branch_engine_executed = True
                 except Exception as exc:
@@ -154,7 +191,24 @@ class MarblePairedBranchRunner:
                     initial_logical_fingerprint=fingerprint,
                     real_engine_executed=branch_engine_executed,
                     cleanup_result=cleanup_result,
+                    runtime_visibility_verified=False,
+                    runtime_visibility_invalid_reason="pending",
                 )
+                # Runtime visibility validation
+                branch_audit_path = (workspace / branch / "memory_visibility_audit.jsonl")
+                rt_method = "pair_share" if branch == "share" else "pair_withhold"
+                rt_val = validate_runtime_visibility_from_path(
+                    method=rt_method,
+                    branch=branch,
+                    receiver_agent_ids=[receiver_agent_id],
+                    expected_memory_ids=[memory_id],
+                    audit_path=branch_audit_path,
+                    candidate_memory_ids=[memory_id],
+                )
+                audits[branch] = audits[branch].model_copy(update={
+                    "runtime_visibility_verified": rt_val.visibility_verified,
+                    "runtime_visibility_invalid_reason": rt_val.invalid_reason,
+                })
                 env.close()
                 rebuilder.destroy()
 
@@ -183,6 +237,8 @@ class MarblePairedBranchRunner:
                     else None
                 ),
                 branch_execution_order=branch_execution_order,
+                share_runtime_visibility_verified=share.runtime_visibility_verified,
+                withhold_runtime_visibility_verified=withhold.runtime_visibility_verified,
             )
             workspace.mkdir(parents=True, exist_ok=True)
             (workspace / "branch_audit.json").write_text(
@@ -211,6 +267,8 @@ class MarblePairedBranchRunner:
         initial_logical_fingerprint: DatabaseLogicalFingerprint | None = None,
         real_engine_executed: bool = False,
         cleanup_result: DatabaseCleanupResult | None = None,
+        runtime_visibility_verified: bool = False,
+        runtime_visibility_invalid_reason: str | None = None,
     ) -> MarbleBranchAudit:
         cleanup = cleanup_result or DatabaseCleanupResult(
             exit_code=None,
@@ -238,6 +296,8 @@ class MarblePairedBranchRunner:
             cleanup_succeeded=cleanup.succeeded,
             cleanup_exit_code=cleanup.exit_code,
             cleanup_failure_reason=cleanup.failure_reason,
+            runtime_visibility_verified=runtime_visibility_verified,
+            runtime_visibility_invalid_reason=runtime_visibility_invalid_reason,
         )
 
 
@@ -278,6 +338,8 @@ def _validate_pair(
         ),
         "share_memory_present": share.input_audit.contains_memory_section,
         "withhold_memory_absent": not withhold.input_audit.contains_memory_section,
+        "share_runtime_visibility_verified": share.runtime_visibility_verified,
+        "withhold_runtime_visibility_verified": withhold.runtime_visibility_verified,
     }
     failed = [key for key, passed in checks.items() if not passed]
     if failed:

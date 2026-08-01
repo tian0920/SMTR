@@ -62,6 +62,7 @@ class DatabaseOutcomeEvaluator:
         predicted = {str(item) for item in _as_prediction_list(predictions)}
         expected = {str(item) for item in root_causes}
         success = bool(expected) and expected.issubset(predicted)
+        fine_grained = _compute_fine_grained(predicted, expected)
         return MarbleOutcome(
             success=success,
             score=1.0 if success else 0.0,
@@ -72,6 +73,7 @@ class DatabaseOutcomeEvaluator:
             native_evaluator_executed=native_executed,
             native_evaluator_name=self.evaluator_name if native_executed else None,
             native_evaluator_result_digest=native_digest,
+            fine_grained=fine_grained,
         )
 
 
@@ -93,6 +95,34 @@ def _as_prediction_list(predictions: Any) -> list[str]:
         "MISSING_INDEXES",
     ]
     return [label for label in known if label in text]
+
+
+def _compute_fine_grained(predicted: set[str], expected: set[str]) -> dict[str, Any]:
+    """Compute fine-grained TP/FP/recall/precision/F1 metrics.
+
+    For dual-root-cause tasks (tasks 51-100):
+    - expected has 2 root causes
+    - predicted has up to 3 labels (number_of_labels_pred=3)
+    """
+    tp = len(predicted & expected)
+    fp = len(predicted - expected)
+    n_expected = max(len(expected), 1)
+    n_predicted = max(len(predicted), 1)
+    recall = tp / n_expected
+    precision = tp / n_predicted
+    if precision + recall > 0:
+        f1 = 2.0 * precision * recall / (precision + recall)
+    else:
+        f1 = 0.0
+    return {
+        "tp": tp,
+        "fp": fp,
+        "recall": round(recall, 4),
+        "precision": round(precision, 4),
+        "f1": round(f1, 4),
+        "predicted_labels": sorted(predicted),
+        "expected_labels": sorted(expected),
+    }
 
 
 def _call_native_evaluator(
