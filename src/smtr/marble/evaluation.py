@@ -1,14 +1,4 @@
-"""Independent MARBLE evaluation runner.
-
-Runs a trained SMTR critic against MARBLE test-split tasks using three
-evaluation layers:
-1. Router evaluation — prediction + gate decisions (no engine run)
-2. MARBLE environment evaluation — real engine runs for B0/AllShare/SMTR
-3. Paired causal evaluation — share vs withhold treatment effects
-
-The MarbleExperimentRunner orchestrates router-level decisions and can
-optionally trigger real engine runs for each method.
-"""
+"""MARBLE evaluation runner for cross-agent transfer methods."""
 
 from __future__ import annotations
 
@@ -16,91 +6,177 @@ import json
 from pathlib import Path
 from typing import Any
 
-from smtr.marble.router_evaluation import (
-    _DEFAULT_NEGATIVE_RISK_BUDGET,
-    evaluate_router_decisions,
-    run_router_evaluation,
+from smtr.core.types import AgentProfile, CandidateExposureInput, MemoryRoutingCard, ReceiverState
+from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
+from smtr.evaluation.tables import write_result_table, format_markdown_table
+from smtr.router.baselines import (
+    AllShareRouter,
+    FactualSuccessRouter,
+    NoMemoryRouter,
+    SMTRNoRiskRouter,
+    SMTRNoWriterReceiverRouter,
+    Top1RelevanceRouter,
 )
-from smtr.marble.marble_environment_evaluation import MarbleEnvironmentEvaluator
-from smtr.marble.paired_causal_evaluation import PairedCausalEvaluator
-from smtr.marble.real_data import RealProceduralMemory
-from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
+from smtr.router.exposure_router import SMTRExposureRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
-_SUPPORTED_METHODS = {"smtr", "b0_no_memory", "all_share"}
+SUPPORTED_METHODS = frozenset({
+    "b0_no_memory",
+    "top1_relevance",
+    "all_share",
+    "factual_success",
+    "smtr",
+    "smtr_no_risk",
+    "smtr_no_writer_receiver",
+})
 
 
-class MarbleExperimentRunner:
-    """MARBLE evaluation orchestrator.
+def run_evaluation(
+    *,
+    dataset_manifest: Path,
+    split_manifest: Path,
+    split: str,
+    scenario: str,
+    memory_pool: Path,
+    checkpoint: Path,
+    methods: list[str],
+    negative_risk_budget: float = 0.2,
+    output: Path,
+) -> dict[str, Any]:
+    """Run evaluation for all requested methods on MARBLE test split."""
+    unknown = [m for m in methods if m not in SUPPORTED_METHODS]
+    if unknown:
+        raise ValueError(f"unknown methods: {unknown}; supported: {sorted(SUPPORTED_METHODS)}")
 
-    Loads a trained FourOutcomeTransferCritic checkpoint and applies it to
-    candidate memories for each test-split task. The formal SMTR gate decides
-    whether to share each candidate. Baseline methods are evaluated for
-    comparison. Supports set-conditioned routing where selected cards
-    accumulate sequentially.
-    """
+    # Load critic
+    critic = FourOutcomeTransferCritic.load(checkpoint)
 
-    def run(
-        self,
-        *,
-        dataset_manifest: Path,
-        split_manifest: Path,
-        split: str,
-        scenario: str,
-        checkpoint: Path,
-        memory_pool: Path,
-        output: Path,
-        methods: list[str] | None = None,
-        negative_risk_budget: float = _DEFAULT_NEGATIVE_RISK_BUDGET,
-    ) -> dict[str, Any]:
-        """Run router-level evaluation with optional real engine runs."""
-        requested = methods or sorted(_SUPPORTED_METHODS)
-        unknown = [m for m in requested if m not in _SUPPORTED_METHODS]
-        if unknown:
-            raise ValueError(
-                f"unknown method(s): {unknown}; "
-                f"supported: {sorted(_SUPPORTED_METHODS)}"
-            )
-        result = run_router_evaluation(
-            checkpoint=checkpoint,
-            memory_pool=memory_pool,
-            dataset_manifest=dataset_manifest,
-            split_manifest=split_manifest,
-            split=split,
-            negative_risk_budget=negative_risk_budget,
-            output=output,
+    # Load memory pool (routing cards only)
+    cards_by_id: dict[str, MemoryRoutingCard] = {}
+    for line in memory_pool.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        mem = json.loads(line)
+        rc = mem.get("routing_card", {})
+        writer_data = rc.get("writer", {})
+        writer = AgentProfile(
+            agent_id=writer_data.get("agent_id", ""),
+            role=writer_data.get("role", "unknown"),
+            capabilities=tuple(writer_data.get("capabilities", [])),
         )
-        # Augment with per-method aggregates
-        method_aggregates: dict[str, dict[str, Any]] = {}
-        for method in sorted(methods or _SUPPORTED_METHODS):
-            share_count = 0
-            withhold_count = 0
-            for task_result in result.get("tasks", []):
-                for candidate in task_result.get("candidates", []):
-                    if method == "smtr":
-                        shared = candidate.get("smtr_share", False)
-                    elif method == "all_share":
-                        shared = True
-                    elif method == "b0_no_memory":
-                        shared = False
-                    else:
-                        shared = False
-                    if shared:
-                        share_count += 1
-                    else:
-                        withhold_count += 1
-            total = share_count + withhold_count
-            method_aggregates[method] = {
-                "task_count": result.get("task_count", 0),
-                "share_count": share_count,
-                "withhold_count": withhold_count,
-                "share_rate": share_count / max(1, total),
-            }
-        result["methods"] = sorted(methods or _SUPPORTED_METHODS)
-        result["aggregate"] = method_aggregates
-        # Re-write with augmented data
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+        card = MemoryRoutingCard(
+            memory_id=mem["memory_id"],
+            goal_summary=rc.get("goal_summary", ""),
+            task_tags=tuple(rc.get("task_tags", [])),
+            environment_constraints=tuple(rc.get("environment_constraints", [])),
+            positive_transfer_hints=tuple(rc.get("positive_transfer_hints", [])),
+            negative_transfer_hints=tuple(rc.get("negative_transfer_hints", [])),
+            writer=writer,
+            source_task_id=rc.get("source_task_id", ""),
+            source_scenario=rc.get("source_scenario", "database"),
+            compatible_receiver_roles=tuple(rc.get("compatible_receiver_roles", [])),
+            incompatible_receiver_roles=tuple(rc.get("incompatible_receiver_roles", [])),
+            evidence_count=rc.get("evidence_count", 0),
         )
-        return result
+        cards_by_id[mem["memory_id"]] = card
+
+    # Load dataset tasks for the split
+    dataset = json.loads(dataset_manifest.read_text(encoding="utf-8"))
+    splits = json.loads(split_manifest.read_text(encoding="utf-8"))
+    split_tasks = set(splits.get(split, []))
+    tasks = [t for t in dataset.get("tasks", []) if str(t["task_id"]) in split_tasks]
+
+    # Load paired outcomes if available
+    paired_path = output.parent / "paired" / split / "paired_records.jsonl"
+    paired_outcomes: list[dict] = []
+    if paired_path.exists():
+        for line in paired_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                paired_outcomes.append(json.loads(line))
+
+    # Build routers
+    routers: dict[str, Any] = {}
+    for method in methods:
+        if method == "b0_no_memory":
+            routers[method] = NoMemoryRouter()
+        elif method == "top1_relevance":
+            routers[method] = Top1RelevanceRouter()
+        elif method == "all_share":
+            routers[method] = AllShareRouter()
+        elif method == "factual_success":
+            routers[method] = FactualSuccessRouter()
+        elif method == "smtr":
+            routers[method] = SMTRExposureRouter(critic=critic, negative_risk_budget=negative_risk_budget)
+        elif method == "smtr_no_risk":
+            routers[method] = SMTRNoRiskRouter(critic=critic)
+        elif method == "smtr_no_writer_receiver":
+            routers[method] = SMTRNoWriterReceiverRouter(critic=critic, negative_risk_budget=negative_risk_budget)
+
+    # Run evaluation per method
+    all_method_metrics: list[dict[str, Any]] = []
+    all_traces: dict[str, list[dict]] = {m: [] for m in methods}
+
+    for task in tasks:
+        task_id = str(task["task_id"])
+        receiver = AgentProfile(
+            agent_id=task.get("agent_id", "agent1"),
+            role=task.get("agent_role", "executor"),
+            capabilities=tuple(task.get("agent_capabilities", [])),
+        )
+        receiver_state = ReceiverState(
+            task_id=task_id,
+            scenario=scenario,
+            task_instruction=task.get("instruction", ""),
+            receiver=receiver,
+            environment_signature=tuple(task.get("environment_signature", [])),
+        )
+        # Get candidate cards for this task (use all cards as candidates for simplicity)
+        candidate_cards = list(cards_by_id.values())[:4]
+
+        for method in methods:
+            router = routers[method]
+            decisions = router.decide(receiver_state, candidate_cards)
+            for dec in decisions:
+                card = next((c for c in candidate_cards if c.memory_id == dec.memory_id), None)
+                trace = {
+                    "candidate_memory_id": dec.memory_id,
+                    "receiver_agent_id": receiver.agent_id,
+                    "receiver_role": receiver.role,
+                    "writer_role": card.writer.role if card else "unknown",
+                    "action": dec.action,
+                    "tau_hat": dec.tau_hat,
+                    "eta_hat": dec.eta_hat,
+                }
+                all_traces[method].append(trace)
+
+    # Compute metrics
+    output.mkdir(parents=True, exist_ok=True)
+    for method in methods:
+        metrics = compute_method_metrics(
+            method=method,
+            decisions=all_traces[method],
+            paired_outcomes=paired_outcomes,
+        )
+        all_method_metrics.append(metrics)
+
+    # Write outputs
+    paths = write_result_table(all_method_metrics, output)
+    breakdown = compute_writer_receiver_breakdown(
+        decisions=[d for traces in all_traces.values() for d in traces],
+        paired_outcomes=paired_outcomes,
+    )
+    (output / "writer_receiver_breakdown.json").write_text(
+        json.dumps(breakdown, indent=2), encoding="utf-8"
+    )
+    (output / "traces.json").write_text(
+        json.dumps(all_traces, indent=2), encoding="utf-8"
+    )
+    md_table = format_markdown_table(all_method_metrics)
+    (output / "result_table.md").write_text(md_table, encoding="utf-8")
+
+    return {
+        "methods": methods,
+        "n_tasks": len(tasks),
+        "result_table": str(paths["json"]),
+        "metrics": all_method_metrics,
+    }
