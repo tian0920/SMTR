@@ -1,7 +1,0 @@
-{
-  "error": "real_marble_database_engine_import_failed: ModuleNotFoundError: No module named 'litellm'",
-  "final_state_digest": "33568b701179b5b38a42655faf90bc8d1a53a0e6d529a904946213d149f6d54f",
-  "initial_state_digest": "997ec1094acdd49283b43a54f971881fa82a79dd74e83895df0f776ac06bb2c0",
-  "real_engine_executed": false,
-  "task_id": "1"
-}

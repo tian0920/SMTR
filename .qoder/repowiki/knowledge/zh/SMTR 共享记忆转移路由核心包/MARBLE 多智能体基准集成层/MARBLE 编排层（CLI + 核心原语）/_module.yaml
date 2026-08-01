@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: smtr_core/marble/core_orchestration
-title: MARBLE 编排层（CLI + 核心原语）
-scope:
-    - src/smtr/marble/
-source_files: []
-depends_on: []
-related_to: []

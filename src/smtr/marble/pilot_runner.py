@@ -20,6 +20,51 @@ from smtr.marble.pilot_manifest import (
 from smtr.marble.task_provider import _read_jsonl_line
 
 
+def _extract_branch_metrics(branch_workspace: Path) -> dict[str, Any]:
+    """Extract token/latency/round metrics from branch workspace output."""
+    metrics: dict[str, Any] = {
+        "tokens": None,
+        "latency_seconds": None,
+        "rounds": None,
+        "iterations": None,
+    }
+    output_path = branch_workspace / "marble_output.jsonl"
+    if not output_path.exists():
+        return metrics
+    try:
+        with output_path.open(encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                raw = json.loads(line)
+                if "token_usage" in raw:
+                    try:
+                        metrics["tokens"] = int(raw["token_usage"])
+                    except (ValueError, TypeError):
+                        pass
+                if "iterations" in raw:
+                    iters = raw["iterations"]
+                    if isinstance(iters, list):
+                        metrics["rounds"] = len(iters)
+                        metrics["iterations"] = len(iters)
+                    elif isinstance(iters, (int, str)):
+                        try:
+                            metrics["rounds"] = int(iters)
+                            metrics["iterations"] = int(iters)
+                        except (ValueError, TypeError):
+                            pass
+                if "planning_scores" in raw:
+                    metrics["planning_scores"] = raw["planning_scores"]
+                if "total_milestones" in raw:
+                    try:
+                        metrics["total_milestones"] = int(raw["total_milestones"])
+                    except (ValueError, TypeError):
+                        pass
+    except Exception:
+        pass
+    return metrics
+
+
 def _pair_result_to_dict(result: PairedBranchResult) -> dict[str, Any]:
     """Convert a PairedBranchResult to a serialisable dict."""
     return {
@@ -35,8 +80,17 @@ def _pair_result_to_dict(result: PairedBranchResult) -> dict[str, Any]:
         "withhold_runtime_visibility_verified": result.withhold_runtime_visibility_verified,
         "share_success": result.share.outcome.success,
         "withhold_success": result.withhold.outcome.success,
-        "share_score": result.share.outcome.native_evaluator_result_digest,
-        "withhold_score": result.withhold.outcome.native_evaluator_result_digest,
+        "share_score": result.share.outcome.score,
+        "withhold_score": result.withhold.outcome.score,
+        "share_native_evaluator_executed": result.share.outcome.native_evaluator_executed,
+        "withhold_native_evaluator_executed": result.withhold.outcome.native_evaluator_executed,
+        "share_initial_digest": result.share.initial_digest,
+        "withhold_initial_digest": result.withhold.initial_digest,
+        "initial_fingerprint_match": (
+            result.share.initial_digest == result.withhold.initial_digest
+        ),
+        "share_fingerprint": result.share.initial_logical_fingerprint,
+        "withhold_fingerprint": result.withhold.initial_logical_fingerprint,
     }
 
 
@@ -47,11 +101,25 @@ def _compute_treatment_effect(
     """Compute continuous treatment effect between share and withhold."""
     share_score = share_result.get("score", 0.0) or 0.0
     withhold_score = withhold_result.get("score", 0.0) or 0.0
-    return {
+    share_success = 1.0 if share_result.get("success") else 0.0
+    withhold_success = 1.0 if withhold_result.get("success") else 0.0
+    effect: dict[str, Any] = {
         "score_delta": share_score - withhold_score,
+        "success_delta": share_success - withhold_success,
         "share_score": share_score,
         "withhold_score": withhold_score,
+        "share_success": bool(share_result.get("success")),
+        "withhold_success": bool(withhold_result.get("success")),
     }
+    # Optional metrics
+    for key in ("tokens", "latency_seconds", "rounds"):
+        s_val = share_result.get(key)
+        w_val = withhold_result.get(key)
+        if s_val is not None and w_val is not None:
+            effect[f"{key}_delta"] = s_val - w_val
+            effect[f"share_{key}"] = s_val
+            effect[f"withhold_{key}"] = w_val
+    return effect
 
 
 def run_paired_pilot(
@@ -178,22 +246,44 @@ def run_paired_pilot(
 
             result_dict = _pair_result_to_dict(result)
             result_dict["pair_key"] = pair_key
+            result_dict["pair_id"] = pair_spec.get("pair_id", "")
+            result_dict["memory_type"] = pair_spec.get("candidate_memory", {}).get("category", "")
+            result_dict["seed"] = pair_spec.get("seed", order_seed)
+
+            # Extract branch-level metrics from workspace outputs
+            share_metrics = _extract_branch_metrics(pair_output / "share")
+            withhold_metrics = _extract_branch_metrics(pair_output / "withhold")
+            result_dict["share_metrics"] = share_metrics
+            result_dict["withhold_metrics"] = withhold_metrics
 
             if result.paired_record_valid:
                 result_dict["status"] = "valid_complete"
+                result_dict["first_attempt_valid"] = True
                 valid_complete += 1
             else:
                 result_dict["status"] = "invalid_complete"
                 result_dict["invalid_reason"] = result.invalid_reason
+                result_dict["first_attempt_valid"] = False
                 invalid_complete += 1
 
-            # Compute treatment effect
+            # Compute treatment effect with full metrics
             share_outcome = result.share.outcome
             withhold_outcome = result.withhold.outcome
-            effect = _compute_treatment_effect(
-                {"score": 1.0 if share_outcome.success else 0.0},
-                {"score": 1.0 if withhold_outcome.success else 0.0},
-            )
+            share_effect_input = {
+                "score": share_outcome.score or (1.0 if share_outcome.success else 0.0),
+                "success": share_outcome.success,
+                "tokens": share_metrics.get("tokens"),
+                "latency_seconds": share_metrics.get("latency_seconds"),
+                "rounds": share_metrics.get("rounds"),
+            }
+            withhold_effect_input = {
+                "score": withhold_outcome.score or (1.0 if withhold_outcome.success else 0.0),
+                "success": withhold_outcome.success,
+                "tokens": withhold_metrics.get("tokens"),
+                "latency_seconds": withhold_metrics.get("latency_seconds"),
+                "rounds": withhold_metrics.get("rounds"),
+            }
+            effect = _compute_treatment_effect(share_effect_input, withhold_effect_input)
             effect["pair_key"] = pair_key
             effect["paired_label"] = result.paired_label
             effects.append(effect)

@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: smtr_core/marble/environment
-title: MARBLE 环境隔离与数据库场景适配器
-scope:
-    - src/smtr/marble/environment/
-source_files: []
-depends_on: []
-related_to: []

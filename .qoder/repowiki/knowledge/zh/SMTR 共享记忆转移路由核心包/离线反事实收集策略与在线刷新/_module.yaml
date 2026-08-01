@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: smtr_core/policy
-title: 离线反事实收集策略与在线刷新
-scope:
-    - src/smtr/policy/
-source_files: []
-depends_on: []
-related_to: []

@@ -29,3 +29,20 @@ dist/
 .env
 .env.*
 
+# Experiment results / artifacts
+artifacts/
+outputs/
+checkpoints/
+trajectories/
+data/*.sqlite
+data/*.jsonl
+data/*.json
+data/manifests/
+data/simulations/
+data/tau3_*/
+policies/
+
+# Qoder / Codex local files
+.qoder/
+.codex/
+

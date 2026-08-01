@@ -1,5 +1,0 @@
-memory_type,n_cases,mean_score_delta,mean_f1_effect,positive_f1,negative_f1,neutral_f1
-beneficial,24,-0.0833,-0.0183,5,8,11
-irrelevant,24,-0.0833,0.0115,7,6,11
-conflicting,24,0.0417,0.021,7,7,10
-role_mismatched,24,0.0833,0.0143,6,4,14

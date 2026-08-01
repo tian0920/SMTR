@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: smtr_core/marble/outcome
-title: MARBLE 场景结果评估协议与实现
-scope:
-    - src/smtr/marble/outcome/
-source_files: []
-depends_on: []
-related_to: []

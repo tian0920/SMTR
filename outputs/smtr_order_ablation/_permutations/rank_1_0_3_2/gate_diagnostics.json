@@ -1,8 +1,0 @@
-{
-  "note": "Gate diagnostics are included in summary method fields.",
-  "methods": [
-    "B0",
-    "SMTR",
-    "Static-SMTR"
-  ]
-}

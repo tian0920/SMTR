@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: smtr_core/counterfactual
-title: 离线配对反事实记忆干预收集器
-scope:
-    - src/smtr/counterfactual/
-source_files: []
-depends_on: []
-related_to: []

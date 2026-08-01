@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: smtr_core/evaluation
-title: SMTR 评估与诊断套件
-scope:
-    - src/smtr/evaluation/
-source_files: []
-depends_on: []
-related_to: []

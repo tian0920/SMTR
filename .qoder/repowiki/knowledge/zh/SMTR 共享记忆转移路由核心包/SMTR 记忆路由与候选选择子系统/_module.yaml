@@ -1,8 +1,0 @@
-schema_version: 1
-module_path: smtr_core/router
-title: SMTR 记忆路由与候选选择子系统
-scope:
-    - src/smtr/router/
-source_files: []
-depends_on: []
-related_to: []
