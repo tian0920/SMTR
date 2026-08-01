@@ -1,42 +1,39 @@
+"""Cross-agent transfer feature encoder with writer-receiver blocks."""
+
+from __future__ import annotations
+
+import json
 import re
 from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
 from sklearn.feature_extraction import FeatureHasher
 
-from smtr.counterfactual.schemas import (
-    PairedInterventionRecord,
-    RoutingFeatureSnapshot,
-    transfer_class_from_outcomes,
-)
-from smtr.memory.execution_evidence import selected_set_signature
-from smtr.memory.schemas import ContextFingerprint
+from smtr.core.types import CandidateExposureInput, MemoryRoutingCard, ReceiverState
 
-FORBIDDEN_FIELDS = {"steps", "payload", "procedure_payload", "visible_payloads", "chain_of_thought"}
+FORBIDDEN_FEATURE_TOKENS = frozenset({
+    "memory_id", "candidate_memory_id", "payload", "procedure", "ordered_steps",
+    "label", "team_success", "local_success", "y_share", "y_withhold",
+    "q00", "q01", "q10", "q11",
+})
+
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
-class TransferPredictionInput(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    context: ContextFingerprint
-    candidate_card: RoutingFeatureSnapshot
-    selected_cards: list[RoutingFeatureSnapshot] = Field(default_factory=list)
-
-
 class HashingTransferFeatureEncoder:
-    """Deterministic set featurizer for transfer prediction.
+    """Deterministic feature encoder for cross-agent transfer prediction.
 
-    This is a deterministic permutation-invariant set featurizer with pairwise
-    interaction features over routing cards. It is not a learned neural Set
-    Encoder: procedure payloads and ordered steps are explicitly rejected before
-    feature hashing.
+    Feature blocks:
+      - receiver block
+      - writer block
+      - writer-receiver interaction block
+      - memory card block
+      - prefix block
+
+    Forbidden: payload, procedure, labels, outcomes never enter features.
     """
 
-    schema_version = "1.0"
-    # Class-level default so checkpoints pickled before ``feature_block`` existed
-    # (pre-A-01) still load and default to the full feature set.
-    feature_block = "full"
+    schema_version = "2.0"
 
     def __init__(self, *, n_features: int = 512, feature_block: str = "full") -> None:
         self.n_features = n_features
@@ -47,300 +44,189 @@ class HashingTransferFeatureEncoder:
             input_type="string",
         )
 
-    def tokens(self, item: TransferPredictionInput) -> list[str]:
-        if not isinstance(item, TransferPredictionInput):
-            _reject_forbidden(item)
-            item = TransferPredictionInput.model_validate(item)
-        _reject_forbidden(item.model_dump(mode="json"))
+    def tokens(self, item: CandidateExposureInput) -> list[str]:
+        """Extract feature tokens from a CandidateExposureInput."""
+        _reject_forbidden(item)
         tokens: list[str] = []
-        context = item.context
-        for tag in sorted(context.task_tags):
-            tokens.append(f"task_tag:{tag}")
-        tokens.append(f"receiver_role:{context.receiver_role}")
-        for capability in sorted(context.receiver_capabilities):
-            tokens.append(f"receiver_capability:{capability}")
-        tokens.append(f"task_stage:{context.task_stage}")
-        for key, value in sorted(context.environment_facts.items()):
-            tokens.append(f"env:{key}={value}")
-        tokens.append(f"selected_count:{_count_bin(len(item.selected_cards))}")
-
+        rs = item.receiver_state
         card = item.candidate_card
-        tokens.extend(f"cand_goal:{token}" for token in _text_tokens(card.goal_summary))
+
+        # --- receiver block ---
+        tokens.append(f"scenario:{rs.scenario}")
+        tokens.append(f"receiver_role:{rs.receiver.role}")
+        for cap in sorted(rs.receiver.capabilities):
+            tokens.append(f"receiver_cap:{cap}")
+        for tool in sorted(rs.receiver.tool_names):
+            tokens.append(f"receiver_tool:{tool}")
+        for tok in _text_tokens(rs.task_instruction)[:8]:
+            tokens.append(f"task_token:{tok}")
+        for env in sorted(rs.environment_signature):
+            tokens.append(f"env:{env}")
+
+        # --- writer block ---
+        if self.feature_block != "no_writer_receiver":
+            tokens.append(f"writer_role:{card.writer.role}")
+            for cap in sorted(card.writer.capabilities):
+                tokens.append(f"writer_cap:{cap}")
+            for tool in sorted(card.writer.tool_names):
+                tokens.append(f"writer_tool:{tool}")
+            tokens.append(f"source_scenario:{card.source_scenario}")
+
+        # --- writer-receiver interaction block ---
+        if self.feature_block != "no_writer_receiver":
+            w_role = card.writer.role
+            r_role = rs.receiver.role
+            tokens.append(f"wr_pair:{w_role}->{r_role}")
+            tokens.append(f"wr_same_role:{w_role == r_role}")
+            w_caps = set(card.writer.capabilities)
+            r_caps = set(rs.receiver.capabilities)
+            tokens.append(f"wr_cap_overlap_bucket:{_overlap_bucket(w_caps, r_caps)}")
+            w_tools = set(card.writer.tool_names)
+            r_tools = set(rs.receiver.tool_names)
+            tokens.append(f"wr_tool_overlap_bucket:{_overlap_bucket(w_tools, r_tools)}")
+            tokens.append(f"writer_receiver_mismatch:{w_role != r_role}")
+
+        # --- memory card block ---
+        for tok in _text_tokens(card.goal_summary)[:6]:
+            tokens.append(f"memory_goal_token:{tok}")
         for tag in sorted(card.task_tags):
-            tokens.append(f"cand_task_tag:{tag}")
-        tokens.extend(
-            f"cand_precondition:{token}" for token in _text_tokens(card.precondition_summary)
-        )
-        tokens.extend(
-            f"cand_postcondition:{token}" for token in _text_tokens(card.postcondition_summary)
-        )
-        for key, value in sorted(card.required_environment_facts.items()):
-            tokens.append(f"cand_required_env:{key}={value}")
-        for key, value in sorted(card.forbidden_environment_facts.items()):
-            tokens.append(f"cand_forbidden_env:{key}={value}")
+            tokens.append(f"task_tag:{tag}")
+        for constraint in sorted(card.environment_constraints):
+            tokens.append(f"env_constraint:{constraint}")
         for role in sorted(card.compatible_receiver_roles):
-            tokens.append(f"cand_role:{role}")
-        for capability in sorted(card.compatible_receiver_capabilities):
-            tokens.append(f"cand_capability:{capability}")
-        tokens.extend(_card_count_tokens("cand", card))
+            tokens.append(f"compatible_receiver_role:{role}")
+        for role in sorted(card.incompatible_receiver_roles):
+            tokens.append(f"incompatible_receiver_role:{role}")
+        for hint in sorted(card.positive_transfer_hints):
+            for tok in _text_tokens(hint)[:3]:
+                tokens.append(f"positive_hint_token:{tok}")
+        for hint in sorted(card.negative_transfer_hints):
+            for tok in _text_tokens(hint)[:3]:
+                tokens.append(f"negative_hint_token:{tok}")
 
-        selected_cards = sorted(item.selected_cards, key=lambda selected: selected.memory_id)
-        for selected in selected_cards:
-            tokens.extend(f"selected_goal:{token}" for token in _text_tokens(selected.goal_summary))
-            for tag in sorted(selected.task_tags):
-                tokens.append(f"selected_task_tag:{tag}")
-            for key, value in sorted(selected.required_environment_facts.items()):
-                tokens.append(f"selected_required_env:{key}={value}")
-            for key, value in sorted(selected.forbidden_environment_facts.items()):
-                tokens.append(f"selected_forbidden_env:{key}={value}")
-            for role in sorted(selected.compatible_receiver_roles):
-                tokens.append(f"selected_role:{role}")
-            for capability in sorted(selected.compatible_receiver_capabilities):
-                tokens.append(f"selected_capability:{capability}")
+        # --- prefix block ---
+        prefix_cards = item.selected_prefix_cards
+        tokens.append(f"prefix_size:{len(prefix_cards)}")
+        for pc in prefix_cards:
+            tokens.append(f"prefix_writer_role:{pc.writer.role}")
+            tokens.append(f"prefix_candidate_role_conflict:{pc.writer.role != rs.receiver.role}")
+            pc_envs = set(pc.environment_constraints)
+            rs_envs = set(rs.environment_signature)
+            tokens.append(f"prefix_env_conflict:{not pc_envs.issubset(rs_envs) if pc_envs else False}")
 
-        if selected_cards:
-            success_mean = sum(card.execution_success_count for card in selected_cards) / len(
-                selected_cards
-            )
-            failure_mean = sum(card.execution_failure_count for card in selected_cards) / len(
-                selected_cards
-            )
-            negative_max = max(card.paired_negative_transfer_count for card in selected_cards)
-        else:
-            success_mean = failure_mean = negative_max = 0
-        tokens.append(f"selected_exec_success_mean_bin:{_count_bin(success_mean)}")
-        tokens.append(f"selected_exec_failure_mean_bin:{_count_bin(failure_mean)}")
-        tokens.append(f"selected_paired_negative_max_bin:{_count_bin(negative_max)}")
-        tokens.append(
-            "selected_role_overlap_count:"
-            + _count_bin(
-                len(
-                    set(card.compatible_receiver_roles)
-                    & {
-                        role
-                        for selected in selected_cards
-                        for role in selected.compatible_receiver_roles
-                    }
-                )
-            )
-        )
-        tokens.append(
-            "selected_environment_overlap_count:"
-            + _count_bin(
-                len(
-                    set(card.required_environment_facts)
-                    & {
-                        key
-                        for selected in selected_cards
-                        for key in selected.required_environment_facts
-                    }
-                )
-            )
-        )
-        tokens.extend(_pairwise_interaction_tokens(card, selected_cards))
-        return sorted(token for token in tokens if self._include_token(token))
+        return tokens
 
-    def transform(self, items: list[TransferPredictionInput]):
+    def encode_one(self, item: CandidateExposureInput) -> Any:
+        """Encode a single input to a sparse feature vector."""
+        return self._hasher.transform([self.tokens(item)])
+
+    def encode_batch(self, items: list[CandidateExposureInput]) -> Any:
+        """Encode a batch of inputs."""
         return self._hasher.transform([self.tokens(item) for item in items])
 
-    def _include_token(self, token: str) -> bool:
-        if self.feature_block == "full":
-            return True
-        is_candidate = token.startswith("cand_")
-        is_selected = token.startswith("selected_") or token.startswith("selected_count:")
-        is_interaction = token.startswith("interaction_")
-        if self.feature_block == "candidate_only":
-            return is_candidate
-        if self.feature_block == "selected_set_only":
-            return is_selected
-        if self.feature_block == "context_only":
-            return not is_candidate and not is_selected and not is_interaction
-        if self.feature_block == "context_plus_candidate":
-            return not is_selected and not is_interaction
-        raise ValueError(f"unknown transfer feature block: {self.feature_block}")
 
+def load_paired_records_for_training(
+    records_path: Path,
+    memory_pool_path: Path,
+) -> list[tuple[CandidateExposureInput, str]]:
+    """Load paired records and construct (input, label) pairs for critic training.
 
-def prediction_input_from_record(record: PairedInterventionRecord) -> TransferPredictionInput:
-    if record.candidate_card_snapshot is None:
-        raise ValueError(
-            "record lacks immutable routing feature snapshots; recollect with schema 1.1"
+    Only routing card metadata is used; payload is never read.
+    """
+    from smtr.core.types import AgentProfile
+
+    pool: dict[str, dict] = {}
+    for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            mem = json.loads(line)
+            pool[mem["memory_id"]] = mem
+
+    results: list[tuple[CandidateExposureInput, str]] = []
+    for line in records_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        rec = json.loads(line)
+        if not rec.get("valid", False):
+            continue
+        mem_entry = pool.get(rec["candidate_memory_id"])
+        if mem_entry is None:
+            continue
+        routing_card_data = mem_entry.get("routing_card", {})
+        writer_data = routing_card_data.get("writer", {})
+        writer = AgentProfile(
+            agent_id=writer_data.get("agent_id", rec.get("writer_agent_id", "")),
+            role=writer_data.get("role", rec.get("writer_role", "unknown")),
+            capabilities=tuple(writer_data.get("capabilities", rec.get("writer_capabilities", []))),
         )
-    return TransferPredictionInput(
-        context=record.decision_context,
-        candidate_card=record.candidate_card_snapshot,
-        selected_cards=record.selected_before_card_snapshots,
-    )
-
-
-def load_paired_records_for_training(path: Path) -> list[PairedInterventionRecord]:
-    records: list[PairedInterventionRecord] = []
-    with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip():
-                continue
-            if any(f'"{field}"' in line for field in FORBIDDEN_FIELDS):
-                raise ValueError(f"training record contains forbidden payload field: {line[:80]}")
-            record = PairedInterventionRecord.model_validate_json(line)
-            _validate_training_record(record)
-            records.append(record)
-    return records
-
-
-def _validate_training_record(record: PairedInterventionRecord) -> None:
-    if record.schema_version < "1.1" or record.candidate_card_snapshot is None:
-        raise ValueError(
-            "record lacks immutable routing feature snapshots; recollect with schema 1.1"
+        card = MemoryRoutingCard(
+            memory_id=rec["candidate_memory_id"],
+            goal_summary=routing_card_data.get("goal_summary", ""),
+            task_tags=tuple(routing_card_data.get("task_tags", [])),
+            environment_constraints=tuple(routing_card_data.get("environment_constraints", [])),
+            positive_transfer_hints=tuple(routing_card_data.get("positive_transfer_hints", [])),
+            negative_transfer_hints=tuple(routing_card_data.get("negative_transfer_hints", [])),
+            writer=writer,
+            source_task_id=routing_card_data.get("source_task_id", ""),
+            source_scenario=routing_card_data.get("source_scenario", "database"),
+            compatible_receiver_roles=tuple(routing_card_data.get("compatible_receiver_roles", [])),
+            incompatible_receiver_roles=tuple(routing_card_data.get("incompatible_receiver_roles", [])),
+            evidence_count=routing_card_data.get("evidence_count", 0),
         )
-    if record.candidate_card_snapshot.memory_id != record.candidate_memory_id:
-        raise ValueError("candidate card snapshot does not match candidate memory")
-    if record.candidate_card_snapshot.active_payload_version != record.candidate_payload_version:
-        raise ValueError("candidate card snapshot version mismatch")
-    if [card.memory_id for card in record.selected_before_card_snapshots] != record.selected_before:
-        raise ValueError("selected card snapshots do not match selected_before")
-    expected_signature = selected_set_signature(record.selected_before)
-    if record.decision_context.selected_set_signature != expected_signature:
-        raise ValueError("selected set signature mismatch")
-    expected_class = transfer_class_from_outcomes(record.y_share, record.y_withhold)
-    if record.transfer_class != expected_class:
-        raise ValueError("four-outcome label mismatch")
-    _reject_forbidden(record.model_dump(mode="json"))
+        receiver = AgentProfile(
+            agent_id=rec.get("receiver_agent_id", ""),
+            role=rec.get("receiver_role", "unknown"),
+            capabilities=tuple(rec.get("receiver_capabilities", [])),
+        )
+        receiver_state = ReceiverState(
+            task_id=rec["task_id"],
+            scenario=rec.get("scenario", "database"),
+            task_instruction="",
+            receiver=receiver,
+        )
+        exposure_input = CandidateExposureInput(
+            receiver_state=receiver_state,
+            candidate_card=card,
+            selected_prefix_cards=(),
+        )
+        results.append((exposure_input, rec["label"]))
+    return results
 
 
-def _reject_forbidden(value) -> None:
-    if isinstance(value, dict):
-        for key, inner in value.items():
-            if key in FORBIDDEN_FIELDS:
-                raise ValueError(f"forbidden payload field in training features: {key}")
-            _reject_forbidden(inner)
-    elif isinstance(value, list):
-        for inner in value:
-            _reject_forbidden(inner)
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _reject_forbidden(item: Any) -> None:
+    """Raise if forbidden leakage fields appear in the item."""
+    serialized = json.dumps(item.model_dump(mode="json") if hasattr(item, "model_dump") else item, default=str).lower()
+    for field in FORBIDDEN_FEATURE_TOKENS:
+        if field in serialized:
+            raise ValueError(f"forbidden field '{field}' detected in feature input")
 
 
 def _text_tokens(text: str) -> list[str]:
     return TOKEN_RE.findall(text.lower())
 
 
-def _count_bin(value: float | int) -> str:
-    if value <= 0:
+def _overlap_bucket(set_a: set, set_b: set) -> str:
+    if not set_a or not set_b:
+        return "none"
+    overlap = len(set_a & set_b) / max(1, len(set_a | set_b))
+    if overlap == 0:
+        return "none"
+    if overlap < 0.33:
+        return "low"
+    if overlap < 0.66:
+        return "medium"
+    return "high"
+
+
+def _count_bin(n: int) -> str:
+    if n == 0:
         return "0"
-    if value <= 1:
-        return "1"
-    if value <= 3:
-        return "2-3"
-    if value <= 7:
-        return "4-7"
-    return "8+"
-
-
-def _card_count_tokens(prefix: str, card: RoutingFeatureSnapshot) -> list[str]:
-    return [
-        f"{prefix}_exec_alpha_bin:{_count_bin(card.execution_success_alpha)}",
-        f"{prefix}_exec_beta_bin:{_count_bin(card.execution_success_beta)}",
-        f"{prefix}_exec_success_count_bin:{_count_bin(card.execution_success_count)}",
-        f"{prefix}_exec_failure_count_bin:{_count_bin(card.execution_failure_count)}",
-        f"{prefix}_paired_positive_bin:{_count_bin(card.paired_positive_transfer_count)}",
-        f"{prefix}_paired_negative_bin:{_count_bin(card.paired_negative_transfer_count)}",
-        f"{prefix}_paired_neutral_bin:{_count_bin(card.paired_neutral_transfer_count)}",
-    ]
-
-
-INTERACTION_SIGNALS = (
-    "env_agree",
-    "env_conflict",
-    "forbidden_conflict",
-    "precond_postcond_overlap",
-    "postcond_postcond_overlap",
-    "role_overlap",
-    "capability_overlap",
-    "task_tag_overlap",
-)
-
-
-def _pair_interaction_signals(
-    candidate: RoutingFeatureSnapshot,
-    selected: RoutingFeatureSnapshot,
-) -> dict[str, int]:
-    """Compute candidate-prefix pairwise interaction signals (A-01).
-
-    All signals are non-negative integer counts derived only from routing-card
-    fields (no payload steps). ``strategy`` is intentionally absent from the card
-    schema to prevent mechanism leakage, so no strategy interaction is computed.
-    """
-    cand_required = candidate.required_environment_facts
-    cand_forbidden = candidate.forbidden_environment_facts
-    sel_required = selected.required_environment_facts
-    sel_forbidden = selected.forbidden_environment_facts
-    env_shared_keys = cand_required.keys() & sel_required.keys()
-    env_agree = sum(1 for key in env_shared_keys if cand_required[key] == sel_required[key])
-    env_conflict = sum(1 for key in env_shared_keys if cand_required[key] != sel_required[key])
-    forbidden_conflict = sum(
-        1 for key in cand_forbidden.keys() & sel_required.keys()
-        if cand_forbidden[key] == sel_required[key]
-    ) + sum(
-        1 for key in cand_required.keys() & sel_forbidden.keys()
-        if cand_required[key] == sel_forbidden[key]
-    )
-    cand_precond = set(_text_tokens(candidate.precondition_summary))
-    cand_postcond = set(_text_tokens(candidate.postcondition_summary))
-    sel_postcond = set(_text_tokens(selected.postcondition_summary))
-    return {
-        "env_agree": env_agree,
-        "env_conflict": env_conflict,
-        "forbidden_conflict": forbidden_conflict,
-        "precond_postcond_overlap": len(cand_precond & sel_postcond),
-        "postcond_postcond_overlap": len(cand_postcond & sel_postcond),
-        "role_overlap": len(
-            set(candidate.compatible_receiver_roles) & set(selected.compatible_receiver_roles)
-        ),
-        "capability_overlap": len(
-            set(candidate.compatible_receiver_capabilities)
-            & set(selected.compatible_receiver_capabilities)
-        ),
-        "task_tag_overlap": len(set(candidate.task_tags) & set(selected.task_tags)),
-    }
-
-
-def _pairwise_interaction_tokens(
-    candidate: RoutingFeatureSnapshot,
-    selected_cards: list[RoutingFeatureSnapshot],
-) -> list[str]:
-    """Emit permutation-invariant candidate-prefix interaction tokens (A-01/A-02).
-
-    For every target-prefix pair we compute :func:`_pair_interaction_signals`, then
-    aggregate each signal across all prefix cards with mean/max/min plus global
-    pair-count, conflict-count and compatibility-count.
-    """
-    if not selected_cards:
-        return []
-    per_signal: dict[str, list[int]] = {name: [] for name in INTERACTION_SIGNALS}
-    conflict_pairs = 0
-    compatible_pairs = 0
-    for selected in selected_cards:
-        signals = _pair_interaction_signals(candidate, selected)
-        for name in INTERACTION_SIGNALS:
-            per_signal[name].append(signals[name])
-        if signals["env_conflict"] > 0 or signals["forbidden_conflict"] > 0:
-            conflict_pairs += 1
-        if any(
-            signals[name] > 0
-            for name in (
-                "env_agree",
-                "precond_postcond_overlap",
-                "postcond_postcond_overlap",
-                "role_overlap",
-                "capability_overlap",
-                "task_tag_overlap",
-            )
-        ):
-            compatible_pairs += 1
-    tokens: list[str] = []
-    for name in INTERACTION_SIGNALS:
-        values = per_signal[name]
-        tokens.append(f"interaction_{name}_mean_bin:{_count_bin(sum(values) / len(values))}")
-        tokens.append(f"interaction_{name}_max_bin:{_count_bin(max(values))}")
-        tokens.append(f"interaction_{name}_min_bin:{_count_bin(min(values))}")
-    tokens.append(f"interaction_pair_count:{_count_bin(len(selected_cards))}")
-    tokens.append(f"interaction_conflict_count:{_count_bin(conflict_pairs)}")
-    tokens.append(f"interaction_compatibility_count:{_count_bin(compatible_pairs)}")
-    return tokens
+    if n <= 2:
+        return "1-2"
+    if n <= 5:
+        return "3-5"
+    return "6+"
