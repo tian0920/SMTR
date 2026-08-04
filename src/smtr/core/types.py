@@ -25,6 +25,13 @@ class AgentProfile(BaseModel):
 
 
 class ReceiverState(BaseModel):
+    """Receiver context available before team execution begins.
+
+    SMTR-v1 scope: this is *pre-execution* context only (task, receiver
+    profile, environment signature). It is not an online/dynamic episode
+    state. Routing decisions are made before the team episode starts.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     task_id: str
@@ -36,6 +43,7 @@ class ReceiverState(BaseModel):
     local_context_summary: str = ""
     team_context_summary: str = ""
     environment_signature: tuple[str, ...] = ()
+    # SMTR-v1 fixes S = ∅: no selected-memory prefix is routed.
     selected_memory_ids: tuple[str, ...] = ()
 
 
@@ -78,6 +86,12 @@ class MemoryRoutingCard(BaseModel):
 
 
 class CandidateExposureInput(BaseModel):
+    """One pre-execution routing input: (x_r^pre, m, w, r).
+
+    SMTR-v1: single receiver, single candidate memory exposure, S = ∅.
+    ``selected_prefix_cards`` is always empty in v1.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     receiver_state: ReceiverState
@@ -86,6 +100,13 @@ class CandidateExposureInput(BaseModel):
 
 
 class PairedTransferOutcome(BaseModel):
+    """Paired potential outcomes on the team-level success indicator.
+
+    Y_1 = team outcome when receiver r is exposed writer w's memory m;
+    Y_0 = team outcome when m is withheld. Labels follow the four-outcome
+    taxonomy derived from (Y_1, Y_0).
+    """
+
     model_config = ConfigDict(frozen=True)
 
     y_share_team: bool
@@ -105,6 +126,15 @@ class PairedTransferOutcome(BaseModel):
 
 
 class TransferPrediction(BaseModel):
+    """Predicted four-outcome distribution q(x_r^pre, m, w, r).
+
+    Estimands:
+      tau = P(Y_1=1 | x_r^pre, m, w, r) - P(Y_0=1 | x_r^pre, m, w, r)
+          = q10 - q01   (tau_hat)
+      eta = P(Y_1=0, Y_0=1 | x_r^pre, m, w, r)
+          = q01         (eta_hat, negative-transfer risk)
+    """
+
     model_config = ConfigDict(frozen=True)
 
     q00_neutral_failure: float
