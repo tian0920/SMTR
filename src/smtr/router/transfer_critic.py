@@ -10,6 +10,15 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 
 from smtr.core.types import CandidateExposureInput, TransferPrediction
+from smtr.router.transfer_calibration import (
+    DEFAULT_EPSILONS,
+    Q01Calibrator,
+    select_epsilon,
+)
+from smtr.router.transfer_coverage import (
+    count_outcome_edges,
+    validate_transfer_label_coverage,
+)
 from smtr.router.transfer_features import HashingTransferFeatureEncoder
 
 CLASS_ORDER = ["q00", "q01", "q10", "q11"]
@@ -45,13 +54,25 @@ class FourOutcomeTransferCritic:
         )
         self.members: list[LogisticRegression] = []
         self._fitted = False
+        self.coverage_report: dict[str, Any] | None = None
+        self.q01_calibrator: Q01Calibrator | None = None
+        self.epsilon_star: float | None = None
+        self.risk_calibration: dict[str, Any] | None = None
 
     def fit(
         self,
         inputs: list[CandidateExposureInput],
         labels: list[str],
+        *,
+        coverage_mode: str = "pilot",
     ) -> None:
-        """Train bootstrap ensemble on paired record features."""
+        """Train bootstrap ensemble on paired record features.
+
+        ``coverage_mode`` enforces four-outcome label coverage (清单第七章):
+        ``formal`` requires all four classes, ``pilot`` requires at least
+        positive_transfer and negative_transfer. Training without negative
+        transfer always fails fast.
+        """
         X = self.encoder.encode_batch(inputs)
         y = np.array([LABEL_TO_INDEX[lb] for lb in labels])
 
@@ -61,15 +82,26 @@ class FourOutcomeTransferCritic:
                 "training data must contain at least two transfer outcome classes"
             )
 
+        report = validate_transfer_label_coverage(labels, mode=coverage_mode)
+        report.update(count_outcome_edges(inputs, labels))
+        self.coverage_report = report
+
+        required_classes = set(unique_classes.tolist())
         rng = np.random.default_rng(self.seed)
         self.members = []
         for _ in range(self.n_bootstrap):
-            idx = _stratified_bootstrap_indices(y, rng)
+            idx = _bootstrap_with_full_coverage(y, required_classes, rng)
+            if idx is None:
+                # Skip this member rather than fitting on a class-deficient
+                # sample; zero-padding missing classes is forbidden.
+                continue
             X_boot = X[idx]
             y_boot = y[idx]
-            clf = LogisticRegression(max_iter=1000, solver="lbfgs")
+            clf = LogisticRegression(max_iter=1000, solver="lbfgs", class_weight="balanced")
             clf.fit(X_boot, y_boot)
             self.members.append(clf)
+        if not self.members:
+            raise ValueError("no bootstrap member covered all required classes")
         self._fitted = True
 
     def predict(self, item: CandidateExposureInput) -> TransferPrediction:
@@ -97,6 +129,44 @@ class FourOutcomeTransferCritic:
         """Predict for a batch."""
         return [self.predict(item) for item in items]
 
+    def calibrate_q01(
+        self,
+        inputs: list[CandidateExposureInput],
+        labels: list[str],
+        *,
+        epsilons=DEFAULT_EPSILONS,
+        delta: float = 0.10,
+    ) -> dict[str, Any]:
+        """Calibrate q01 and select epsilon_star on validation data only.
+
+        The selected risk budget is stored on the critic and persisted in the
+        checkpoint; the test split must only read it, never re-select it.
+        """
+        if not self._fitted:
+            raise RuntimeError("critic not fitted")
+        preds = self.predict_batch(inputs)
+        q01 = np.array([p.q01_negative_transfer for p in preds])
+        tau = np.array(
+            [p.q10_positive_transfer - p.q01_negative_transfer for p in preds]
+        )
+        y_negative = np.array([1 if lb == "negative_transfer" else 0 for lb in labels])
+        self.q01_calibrator = Q01Calibrator().fit(q01, y_negative)
+        q01_calibrated = self.q01_calibrator.predict(q01)
+        selection = select_epsilon(
+            tau, q01_calibrated, labels, epsilons=epsilons, delta=delta
+        )
+        self.epsilon_star = selection["epsilon_star"]
+        self.risk_calibration = selection
+        return selection
+
+    def calibrated_q01(self, pred: TransferPrediction) -> float:
+        """Calibrated negative-transfer probability for one prediction."""
+        if self.q01_calibrator is None:
+            return pred.q01_negative_transfer
+        return float(self.q01_calibrator.predict(
+            np.array([pred.q01_negative_transfer])
+        )[0])
+
     def save(self, path: Path) -> None:
         """Save critic checkpoint."""
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -112,6 +182,10 @@ class FourOutcomeTransferCritic:
                 "schema_version": self.encoder.schema_version,
                 "sklearn_version": sklearn.__version__,
                 "method_version": "1.0",
+                "coverage_report": self.coverage_report,
+                "q01_calibrator": self.q01_calibrator,
+                "epsilon_star": self.epsilon_star,
+                "risk_calibration": self.risk_calibration,
             },
             path,
         )
@@ -128,8 +202,31 @@ class FourOutcomeTransferCritic:
         )
         critic.members = data["members"]
         critic.encoder = data["encoder"]
+        critic.coverage_report = data.get("coverage_report")
+        critic.q01_calibrator = data.get("q01_calibrator")
+        critic.epsilon_star = data.get("epsilon_star")
+        critic.risk_calibration = data.get("risk_calibration")
         critic._fitted = True
         return critic
+
+
+def _bootstrap_with_full_coverage(
+    y: np.ndarray,
+    required_classes: set[int],
+    rng: np.random.Generator,
+    *,
+    max_attempts: int = 10,
+) -> np.ndarray | None:
+    """Resample until the bootstrap draw covers all required classes.
+
+    Returns None after ``max_attempts`` failures so the caller can skip the
+    member; padding missing classes with zero probability is forbidden.
+    """
+    for _ in range(max_attempts):
+        idx = _stratified_bootstrap_indices(y, rng)
+        if required_classes.issubset(set(np.unique(y[idx]).tolist())):
+            return idx
+    return None
 
 
 def _stratified_bootstrap_indices(

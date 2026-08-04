@@ -77,6 +77,8 @@ def main() -> None:
     p.add_argument("--feature-block", default="full", choices=[
         "full", "no_pair_interaction", "no_receiver", "memory_task_only", "no_writer_receiver",
     ])
+    p.add_argument("--coverage-mode", default="formal", choices=["formal", "pilot"])
+    p.add_argument("--risk-delta", type=float, default=0.10)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("run-paired-decision-evaluation", help="Paired decision evaluation on test pairs")
@@ -257,6 +259,8 @@ def _dispatch(args: argparse.Namespace) -> None:
             n_bootstrap=args.n_bootstrap,
             n_features=args.n_features,
             feature_block=args.feature_block,
+            coverage_mode=args.coverage_mode,
+            risk_delta=args.risk_delta,
         )
         print(json.dumps(result, indent=2))
 

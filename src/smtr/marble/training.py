@@ -15,6 +15,11 @@ from typing import Any
 import numpy as np
 
 from smtr.core.types import CandidateExposureInput
+from smtr.router.transfer_calibration import (
+    compute_four_class_metrics,
+    compute_probability_metrics,
+    predicted_label,
+)
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import load_paired_records_for_training
 
@@ -34,6 +39,8 @@ def train_critic(
     n_bootstrap: int = _DEFAULT_N_BOOTSTRAP,
     n_features: int = _DEFAULT_N_FEATURES,
     feature_block: str = _DEFAULT_FEATURE_BLOCK,
+    coverage_mode: str = "formal",
+    risk_delta: float = 0.10,
 ) -> dict[str, Any]:
     """Train four-outcome transfer critic from paired records."""
     # Load training data
@@ -53,10 +60,7 @@ def train_critic(
         feature_block=feature_block,
         seed=seed,
     )
-    critic.fit(inputs, labels)
-
-    # Save checkpoint
-    critic.save(output_path)
+    critic.fit(inputs, labels, coverage_mode=coverage_mode)
 
     # Write feature audit
     feature_audit = _build_feature_audit(
@@ -67,10 +71,14 @@ def train_critic(
     audit_path = output_path.with_suffix(".feature_audit.json")
     audit_path.write_text(json.dumps(feature_audit, indent=2), encoding="utf-8")
 
-    # Validation metrics
+    # Validation metrics + q01 calibration + validation-selected epsilon_star.
+    # The risk budget is chosen here on validation data only; the test split
+    # must only read epsilon_star from the checkpoint.
     metrics: dict[str, Any] = {
         "train_records": len(train_data),
         "label_distribution": dict(label_counts),
+        "coverage_mode": coverage_mode,
+        "coverage_report": critic.coverage_report,
         "n_features": n_features,
         "n_bootstrap": n_bootstrap,
         "feature_block": feature_block,
@@ -84,13 +92,24 @@ def train_critic(
             val_inputs = [item for item, _ in val_data]
             val_labels = [label for _, label in val_data]
             preds = critic.predict_batch(val_inputs)
-            correct = sum(
-                1
-                for pred, lb in zip(preds, val_labels)
-                if _predicted_label(pred) == lb
-            )
+            pred_labels = [predicted_label(_pred_vector(pred)) for pred in preds]
             metrics["validation_records"] = len(val_data)
-            metrics["validation_accuracy"] = correct / len(val_data)
+            metrics["validation_accuracy"] = sum(
+                1 for p, t in zip(pred_labels, val_labels) if p == t
+            ) / len(val_data)
+            metrics["validation_classification"] = compute_four_class_metrics(
+                val_labels, pred_labels
+            )
+            metrics["validation_probability"] = compute_probability_metrics(
+                val_labels, np.array([_pred_vector(pred) for pred in preds])
+            )
+            selection = critic.calibrate_q01(val_inputs, val_labels, delta=risk_delta)
+            metrics["epsilon_star"] = selection["epsilon_star"]
+            metrics["risk_delta"] = risk_delta
+            metrics["epsilon_selected_on"] = "validation"
+
+    # Save checkpoint after calibration so epsilon_star is persisted.
+    critic.save(output_path)
 
     # Write metrics alongside checkpoint
     metrics_path = output_path.with_suffix(".metrics.json")
@@ -99,16 +118,20 @@ def train_critic(
     return metrics
 
 
-def _predicted_label(pred) -> str:
-    """Get the most likely label from a TransferPrediction."""
-    probs = [
+def _pred_vector(pred) -> np.ndarray:
+    """Probability vector in LABELS order from a TransferPrediction."""
+    return np.array([
         pred.q00_neutral_failure,
         pred.q01_negative_transfer,
         pred.q10_positive_transfer,
         pred.q11_neutral_success,
-    ]
+    ])
+
+
+def _predicted_label(pred) -> str:
+    """Get the most likely label from a TransferPrediction."""
     labels = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
-    return labels[int(np.argmax(probs))]
+    return labels[int(np.argmax(_pred_vector(pred)))]
 
 
 def _build_feature_audit(
