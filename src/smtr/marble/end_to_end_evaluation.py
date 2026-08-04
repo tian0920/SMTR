@@ -49,7 +49,9 @@ def run_end_to_end_evaluation(
     candidate_manifest_path: Path,
     memory_pool_path: Path,
     checkpoint_full: Path,
-    checkpoint_no_writer_receiver: Path,
+    checkpoint_no_writer_receiver: Path | None = None,
+    checkpoint_global_transfer_critic: Path | None = None,
+    checkpoint_smtr_no_pair_interaction: Path | None = None,
     methods: list[str],
     generation_seeds: list[int],
     negative_risk_budget: float = 0.2,
@@ -61,8 +63,16 @@ def run_end_to_end_evaluation(
     # Load critics
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
     assert full_critic.feature_block == "full"
-    no_wr_critic = FourOutcomeTransferCritic.load(checkpoint_no_writer_receiver)
-    assert no_wr_critic.feature_block == "no_writer_receiver"
+    no_wr_critic = None
+    if checkpoint_no_writer_receiver is not None:
+        no_wr_critic = FourOutcomeTransferCritic.load(checkpoint_no_writer_receiver)
+        assert no_wr_critic.feature_block == "no_writer_receiver"
+    global_critic = None
+    if checkpoint_global_transfer_critic is not None:
+        global_critic = FourOutcomeTransferCritic.load(checkpoint_global_transfer_critic)
+    no_pair_critic = None
+    if checkpoint_smtr_no_pair_interaction is not None:
+        no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
 
     # Load candidate manifest
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
@@ -83,6 +93,8 @@ def run_end_to_end_evaluation(
         methods=methods,
         full_critic=full_critic,
         no_wr_critic=no_wr_critic,
+        global_critic=global_critic,
+        no_pair_critic=no_pair_critic,
         negative_risk_budget=negative_risk_budget,
     )
 

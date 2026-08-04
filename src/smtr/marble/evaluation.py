@@ -13,9 +13,9 @@ from smtr.router.baselines import (
     AllShareRouter,
     FactualSuccessRouter,
     NoMemoryRouter,
+    RoleAwareTop1Router,
     SMTRNoRiskRouter,
     SMTRNoWriterReceiverRouter,
-    Top1RelevanceRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
@@ -99,8 +99,8 @@ def run_evaluation(
     for method in methods:
         if method == "b0_no_memory":
             routers[method] = NoMemoryRouter()
-        elif method == "top1_relevance":
-            routers[method] = Top1RelevanceRouter()
+        elif method in ("top1_relevance", "role_aware_top1"):
+            routers[method] = RoleAwareTop1Router()
         elif method == "all_share":
             routers[method] = AllShareRouter()
         elif method == "factual_success":

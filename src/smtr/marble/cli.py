@@ -86,8 +86,13 @@ def main() -> None:
     p.add_argument("--paired-records", required=True)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint-full", required=True)
-    p.add_argument("--checkpoint-no-writer-receiver", required=True)
-    p.add_argument("--methods", nargs="+", default=["b0_no_memory", "top1_relevance", "all_share", "factual_success", "smtr", "smtr_no_risk", "smtr_no_writer_receiver"])
+    p.add_argument("--checkpoint-no-writer-receiver", default=None)
+    p.add_argument("--checkpoint-global-transfer-critic", default=None)
+    p.add_argument("--checkpoint-smtr-no-pair-interaction", default=None)
+    p.add_argument("--methods", nargs="+", default=[
+        "b0_no_memory", "role_aware_top1", "all_share",
+        "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
+    ])
     p.add_argument("--negative-risk-budget", type=float, default=0.2)
     p.add_argument("--output", required=True)
 
@@ -99,8 +104,13 @@ def main() -> None:
     p.add_argument("--candidate-manifest", required=True)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint-full", required=True)
-    p.add_argument("--checkpoint-no-writer-receiver", required=True)
-    p.add_argument("--methods", nargs="+", default=["b0_no_memory", "top1_relevance", "all_share", "factual_success", "smtr", "smtr_no_risk", "smtr_no_writer_receiver"])
+    p.add_argument("--checkpoint-no-writer-receiver", default=None)
+    p.add_argument("--checkpoint-global-transfer-critic", default=None)
+    p.add_argument("--checkpoint-smtr-no-pair-interaction", default=None)
+    p.add_argument("--methods", nargs="+", default=[
+        "b0_no_memory", "role_aware_top1", "all_share",
+        "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
+    ])
     p.add_argument("--generation-seeds", type=int, nargs="+", default=[0, 1, 2])
     p.add_argument("--negative-risk-budget", type=float, default=0.2)
     p.add_argument("--output", required=True)
@@ -271,7 +281,9 @@ def _dispatch(args: argparse.Namespace) -> None:
             paired_records_path=Path(args.paired_records),
             memory_pool_path=Path(args.memory_pool),
             checkpoint_full=Path(args.checkpoint_full),
-            checkpoint_no_writer_receiver=Path(args.checkpoint_no_writer_receiver),
+            checkpoint_no_writer_receiver=Path(args.checkpoint_no_writer_receiver) if args.checkpoint_no_writer_receiver else None,
+            checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer_critic) if args.checkpoint_global_transfer_critic else None,
+            checkpoint_smtr_no_pair_interaction=Path(args.checkpoint_smtr_no_pair_interaction) if args.checkpoint_smtr_no_pair_interaction else None,
             methods=args.methods,
             negative_risk_budget=args.negative_risk_budget,
             output=Path(args.output),
@@ -288,7 +300,9 @@ def _dispatch(args: argparse.Namespace) -> None:
             candidate_manifest_path=Path(args.candidate_manifest),
             memory_pool_path=Path(args.memory_pool),
             checkpoint_full=Path(args.checkpoint_full),
-            checkpoint_no_writer_receiver=Path(args.checkpoint_no_writer_receiver),
+            checkpoint_no_writer_receiver=Path(args.checkpoint_no_writer_receiver) if args.checkpoint_no_writer_receiver else None,
+            checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer_critic) if args.checkpoint_global_transfer_critic else None,
+            checkpoint_smtr_no_pair_interaction=Path(args.checkpoint_smtr_no_pair_interaction) if args.checkpoint_smtr_no_pair_interaction else None,
             methods=args.methods,
             generation_seeds=args.generation_seeds,
             negative_risk_budget=args.negative_risk_budget,

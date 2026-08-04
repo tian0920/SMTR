@@ -8,18 +8,32 @@ from typing import Any
 
 from smtr.core.types import AgentProfile, MemoryRoutingCard, ReceiverState
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
+from smtr.evaluation.receiver_effect_analysis import analyze_receiver_effect, record_label
 from smtr.evaluation.tables import write_result_table, format_markdown_table
 from smtr.router.baselines import (
     AllShareRouter,
     FactualSuccessRouter,
+    GlobalTransferCriticRouter,
     NoMemoryRouter,
+    RoleAwareTop1Router,
+    SMTRNoPairInteractionRouter,
     SMTRNoRiskRouter,
     SMTRNoWriterReceiverRouter,
-    Top1RelevanceRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter
+from smtr.router.transfer_calibration import DEFAULT_EPSILONS, risk_utility_curve
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import build_routing_card_from_pool_entry
+
+MAIN_TABLE_METHODS = [
+    "b0_no_memory",
+    "role_aware_top1",
+    "all_share",
+    "global_transfer_critic",
+    "smtr_no_pair_interaction",
+    "smtr_no_risk",
+    "smtr",
+]
 
 
 def build_receiver_state_from_entry(entry: dict[str, Any]) -> ReceiverState:
@@ -53,20 +67,31 @@ def run_paired_decision_evaluation(
     paired_records_path: Path,
     memory_pool_path: Path,
     checkpoint_full: Path,
-    checkpoint_no_writer_receiver: Path,
-    methods: list[str],
+    checkpoint_no_writer_receiver: Path | None = None,
+    checkpoint_global_transfer_critic: Path | None = None,
+    checkpoint_smtr_no_pair_interaction: Path | None = None,
+    methods: list[str] | None = None,
     negative_risk_budget: float = 0.2,
     output: Path,
 ) -> dict[str, Any]:
     """Run paired decision evaluation using candidate manifest and paired records."""
+    methods = list(methods) if methods else list(MAIN_TABLE_METHODS)
     # Load critics and verify feature blocks
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
     assert full_critic.feature_block == "full", "full checkpoint must have feature_block='full'"
 
-    no_wr_critic = FourOutcomeTransferCritic.load(checkpoint_no_writer_receiver)
-    assert no_wr_critic.feature_block == "no_writer_receiver", (
-        "no_writer_receiver checkpoint must have feature_block='no_writer_receiver'"
-    )
+    no_wr_critic = None
+    if checkpoint_no_writer_receiver is not None:
+        no_wr_critic = FourOutcomeTransferCritic.load(checkpoint_no_writer_receiver)
+        assert no_wr_critic.feature_block == "no_writer_receiver", (
+            "no_writer_receiver checkpoint must have feature_block='no_writer_receiver'"
+        )
+    global_critic = None
+    if checkpoint_global_transfer_critic is not None:
+        global_critic = FourOutcomeTransferCritic.load(checkpoint_global_transfer_critic)
+    no_pair_critic = None
+    if checkpoint_smtr_no_pair_interaction is not None:
+        no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
 
     # Load memory pool (routing cards only, shared construction path)
     cards_by_id: dict[str, MemoryRoutingCard] = {}
@@ -90,6 +115,8 @@ def run_paired_decision_evaluation(
         methods=methods,
         full_critic=full_critic,
         no_wr_critic=no_wr_critic,
+        global_critic=global_critic,
+        no_pair_critic=no_pair_critic,
         negative_risk_budget=negative_risk_budget,
     )
 
@@ -164,6 +191,27 @@ def run_paired_decision_evaluation(
     (output / "traces.json").write_text(
         json.dumps(all_traces, indent=2), encoding="utf-8"
     )
+
+    # Risk-utility curve for SMTR on the evaluation split, using the
+    # validation-selected epsilon_star (reported, never re-selected).
+    if "smtr" in methods:
+        curve = _smtr_risk_utility_curve(all_traces["smtr"], paired_outcomes, full_critic)
+        (output / "risk_utility_curve.json").write_text(
+            json.dumps(curve, indent=2), encoding="utf-8"
+        )
+
+    # Receiver-effect core analysis (清单第十二章) for the full method.
+    receiver_effect: dict[str, Any] = {}
+    if "smtr" in methods:
+        receiver_effect = analyze_receiver_effect(
+            decisions=all_traces["smtr"],
+            paired_records=paired_outcomes,
+            cards_by_id=cards_by_id,
+        )
+        (output / "receiver_effect_analysis.json").write_text(
+            json.dumps(receiver_effect, indent=2), encoding="utf-8"
+        )
+
     md_table = format_markdown_table(all_method_metrics)
     (output / "result_table.md").write_text(md_table, encoding="utf-8")
 
@@ -173,6 +221,60 @@ def run_paired_decision_evaluation(
         "n_paired_records": len(paired_outcomes),
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
+        "receiver_effect_analysis": receiver_effect,
+    }
+
+
+def _smtr_risk_utility_curve(
+    decisions: list[dict],
+    paired_outcomes: list[dict],
+    critic: FourOutcomeTransferCritic,
+) -> dict[str, Any]:
+    """Candidate-level risk-utility curve for SMTR decisions.
+
+    One point per matched candidate decision: predicted tau_hat and
+    (calibrated when available) eta_hat against the empirical four-outcome
+    label from the paired potential outcomes. epsilon_star is read from the
+    checkpoint (selected on validation) and reported, never re-selected.
+    """
+    outcome_by_key: dict[tuple, dict] = {}
+    for rec in paired_outcomes:
+        seed = rec.get("generation_seed")
+        seed = int(seed) if seed is not None else int(rec.get("common_seed", 0))
+        outcome_by_key[(
+            str(rec.get("task_id", "")), seed,
+            str(rec.get("receiver_agent_id", "")),
+            str(rec.get("candidate_memory_id", "")),
+        )] = rec
+
+    tau_hat, eta_hat, labels = [], [], []
+    for d in decisions:
+        rec = outcome_by_key.get((
+            str(d.get("task_id", "")), int(d.get("generation_seed", 0)),
+            str(d.get("receiver_agent_id", "")),
+            str(d.get("candidate_memory_id", "")),
+        ))
+        if rec is None or "y_share" not in rec:
+            continue
+        tau_hat.append(float(d.get("tau_hat", 0.0)))
+        eta_hat.append(float(d.get("eta_hat", 0.0)))
+        labels.append(record_label(rec))
+
+    import numpy as np
+
+    tau_arr = np.asarray(tau_hat, dtype=float)
+    eta_raw = np.asarray(eta_hat, dtype=float)
+    eta_calibrated = (
+        critic.q01_calibrator.predict(eta_raw)
+        if getattr(critic, "q01_calibrator", None) is not None
+        else eta_raw
+    )
+    curve = risk_utility_curve(tau_arr, eta_calibrated, labels, epsilons=DEFAULT_EPSILONS)
+    return {
+        "n_matched_candidates": len(labels),
+        "epsilon_star": getattr(critic, "epsilon_star", None),
+        "epsilon_selected_on": "validation",
+        "curve": curve,
     }
 
 
@@ -180,7 +282,9 @@ def _build_routers(
     *,
     methods: list[str],
     full_critic: FourOutcomeTransferCritic,
-    no_wr_critic: FourOutcomeTransferCritic,
+    no_wr_critic: FourOutcomeTransferCritic | None = None,
+    global_critic: FourOutcomeTransferCritic | None = None,
+    no_pair_critic: FourOutcomeTransferCritic | None = None,
     negative_risk_budget: float,
 ) -> dict[str, Any]:
     """Build router instances for each method."""
@@ -188,17 +292,38 @@ def _build_routers(
     for method in methods:
         if method == "b0_no_memory":
             routers[method] = NoMemoryRouter()
-        elif method == "top1_relevance":
-            routers[method] = Top1RelevanceRouter()
+        elif method in ("top1_relevance", "role_aware_top1"):
+            routers[method] = RoleAwareTop1Router()
         elif method == "all_share":
             routers[method] = AllShareRouter()
         elif method == "factual_success":
             routers[method] = FactualSuccessRouter()
+        elif method == "global_transfer_critic":
+            if global_critic is None:
+                raise ValueError(
+                    "method global_transfer_critic requires "
+                    "checkpoint_global_transfer_critic (feature_block='memory_task_only')"
+                )
+            routers[method] = GlobalTransferCriticRouter(
+                critic=global_critic, negative_risk_budget=negative_risk_budget)
         elif method == "smtr":
             routers[method] = SMTRExposureRouter(critic=full_critic, negative_risk_budget=negative_risk_budget)
+        elif method == "smtr_no_pair_interaction":
+            if no_pair_critic is None:
+                raise ValueError(
+                    "method smtr_no_pair_interaction requires "
+                    "checkpoint_smtr_no_pair_interaction (feature_block='no_pair_interaction')"
+                )
+            routers[method] = SMTRNoPairInteractionRouter(
+                critic=no_pair_critic, negative_risk_budget=negative_risk_budget)
         elif method == "smtr_no_risk":
             routers[method] = SMTRNoRiskRouter(critic=full_critic)
         elif method == "smtr_no_writer_receiver":
+            if no_wr_critic is None:
+                raise ValueError(
+                    "method smtr_no_writer_receiver requires "
+                    "checkpoint_no_writer_receiver (legacy feature_block)"
+                )
             routers[method] = SMTRNoWriterReceiverRouter(critic=no_wr_critic, negative_risk_budget=negative_risk_budget)
         else:
             raise ValueError(f"unknown method: {method}")
