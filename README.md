@@ -66,7 +66,7 @@ MARBLE train trajectories
 
 ## Data Splits
 
-Tasks are split **by group** (database tasks by normalized schema family; other scenarios by scenario + task-id bucket), so that structurally similar tasks never cross splits. `target_task_id`, `source_trajectory_id` and `edge_id` never cross the train/validation/test boundary. The risk budget ε is selected **only on the validation split**; the test split is read-only with respect to all hyperparameters.
+Tasks are split **by group** (database tasks by normalized schema family; other scenarios by scenario + task-id bucket), so that structurally similar tasks never cross splits. `target_task_id`, `source_trajectory_id` and `edge_id` never cross the train/validation/test boundary; `smtr.evaluation.split_audit.audit_split_leakage` verifies this on the per-split paired records and fails fast on any overlap, emitting a split-audit JSON (`target_task_overlap`, `source_trajectory_overlap` and `edge_overlap` must be empty). `candidate_memory_id` / `source_task_id` overlap is reported (not fatal) because the memory pool is intentionally built from train trajectories only; candidates in validation/test are expected to reuse those memories. The risk budget ε is selected **only on the validation split**; the test split is read-only with respect to all hyperparameters. Confidence intervals are cluster bootstraps over `target_task_id` (or `target_task_id + receiver_agent_id`) — never per-record bootstraps — and are at least 95%.
 
 ## Stage A: Training Data
 

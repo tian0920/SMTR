@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 from smtr.core.types import AgentProfile, MemoryRoutingCard, ReceiverState
+from smtr.evaluation.cluster_bootstrap import (
+    CLUSTER_TARGET_TASK,
+    cluster_bootstrap_ci,
+)
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
 from smtr.evaluation.receiver_effect_analysis import analyze_receiver_effect, record_label
 from smtr.evaluation.tables import write_result_table, format_markdown_table
@@ -72,6 +77,7 @@ def run_paired_decision_evaluation(
     checkpoint_smtr_no_pair_interaction: Path | None = None,
     methods: list[str] | None = None,
     negative_risk_budget: float = 0.2,
+    ci_bootstrap: int = 1000,
     output: Path,
 ) -> dict[str, Any]:
     """Run paired decision evaluation using candidate manifest and paired records."""
@@ -176,6 +182,19 @@ def run_paired_decision_evaluation(
         )
         all_method_metrics.append(metrics)
 
+    # Cluster bootstrap confidence intervals (清单第十三章): resample whole
+    # target-task clusters, never individual candidate records.
+    ci_by_method: dict[str, Any] = {}
+    for method in methods:
+        ci_by_method[method] = _method_cluster_cis(
+            decisions=all_traces[method],
+            paired_outcomes=paired_outcomes,
+            n_bootstrap=ci_bootstrap,
+        )
+    (output / "cluster_bootstrap_ci.json").write_text(
+        json.dumps(ci_by_method, indent=2), encoding="utf-8"
+    )
+
     # Write outputs
     paths = write_result_table(all_method_metrics, output)
     # Per-method writer-receiver breakdown (not mixed across methods)
@@ -222,6 +241,103 @@ def run_paired_decision_evaluation(
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
         "receiver_effect_analysis": receiver_effect,
+        "cluster_bootstrap_ci": ci_by_method,
+    }
+
+
+def _method_cluster_cis(
+    *,
+    decisions: list[dict],
+    paired_outcomes: list[dict],
+    n_bootstrap: int,
+) -> dict[str, Any]:
+    """95% cluster bootstrap CIs for the two headline rates of one method.
+
+    * paired_policy_success_rate over receiver-episode units, clustered by
+      target_task_id;
+    * negative_transfer_exposure_rate over matched negative-transfer
+      candidates, clustered by target_task_id.
+    """
+    outcome_by_key: dict[tuple, dict] = {}
+    for rec in paired_outcomes:
+        seed = rec.get("generation_seed")
+        seed = int(seed) if seed is not None else int(rec.get("common_seed", 0))
+        outcome_by_key[(
+            str(rec.get("task_id", "")), seed,
+            str(rec.get("receiver_agent_id", "")),
+            str(rec.get("candidate_memory_id", "")),
+        )] = rec
+
+    # Episode units: one policy outcome per (task, seed, receiver).
+    episodes: dict[tuple, list[dict]] = defaultdict(list)
+    for d in decisions:
+        episodes[(
+            str(d.get("task_id", "")), int(d.get("generation_seed", 0)),
+            str(d.get("receiver_agent_id", "")),
+        )].append(d)
+
+    episode_units: list[dict] = []
+    for (task_id, seed, receiver_agent_id), episode_decisions in episodes.items():
+        shared = [d for d in episode_decisions if d["action"] == "share"]
+        if len(shared) > 1:
+            # Forbidden in SMTR-v1; the main metric path raises for this.
+            continue
+        if len(shared) == 1:
+            rec = outcome_by_key.get((
+                task_id, seed, receiver_agent_id,
+                str(shared[0].get("candidate_memory_id", "")),
+            ))
+            if rec is None:
+                continue
+            success = bool(rec.get("share", {}).get("team_success", False))
+        else:
+            withhold_outcomes: set[bool] = set()
+            for d in episode_decisions:
+                rec = outcome_by_key.get((
+                    task_id, seed, receiver_agent_id,
+                    str(d.get("candidate_memory_id", "")),
+                ))
+                if rec is not None:
+                    withhold_outcomes.add(
+                        bool(rec.get("withhold", {}).get("team_success", False)))
+            if len(withhold_outcomes) != 1:
+                continue
+            success = next(iter(withhold_outcomes))
+        episode_units.append({
+            "task_id": task_id,
+            "receiver_agent_id": receiver_agent_id,
+            "success": success,
+        })
+
+    # Candidate units restricted to matched negative-transfer labels.
+    negative_units: list[dict] = []
+    for d in decisions:
+        rec = outcome_by_key.get((
+            str(d.get("task_id", "")), int(d.get("generation_seed", 0)),
+            str(d.get("receiver_agent_id", "")),
+            str(d.get("candidate_memory_id", "")),
+        ))
+        if rec is None or rec.get("label") != "negative_transfer":
+            continue
+        negative_units.append({
+            "task_id": str(d.get("task_id", "")),
+            "receiver_agent_id": str(d.get("receiver_agent_id", "")),
+            "exposed": d["action"] == "share",
+        })
+
+    return {
+        "paired_policy_success_rate": cluster_bootstrap_ci(
+            episode_units,
+            statistic=lambda units: sum(u["success"] for u in units) / max(1, len(units)),
+            cluster_by=CLUSTER_TARGET_TASK,
+            n_bootstrap=n_bootstrap,
+        ),
+        "negative_transfer_exposure_rate": cluster_bootstrap_ci(
+            negative_units,
+            statistic=lambda units: sum(u["exposed"] for u in units) / max(1, len(units)),
+            cluster_by=CLUSTER_TARGET_TASK,
+            n_bootstrap=n_bootstrap,
+        ),
     }
 
 
