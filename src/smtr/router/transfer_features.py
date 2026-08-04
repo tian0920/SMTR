@@ -29,11 +29,24 @@ class HashingTransferFeatureEncoder:
     """Deterministic feature encoder for cross-agent transfer prediction.
 
     Feature blocks:
-      - receiver block
-      - writer block
+      - task context block (scenario, task tokens, environment)
+      - receiver marginal block (role, capabilities, tools)
+      - writer marginal block (role, capabilities, tools, source scenario)
       - writer-receiver interaction block
       - memory card block
       - prefix block
+
+    Feature modes (``feature_block``):
+      - ``full``: all blocks.
+      - ``no_pair_interaction``: keep writer and receiver marginals, drop all
+        writer-receiver interaction tokens.
+      - ``no_receiver``: drop receiver identity/profile and interaction, keep
+        task/environment/memory/writer.
+      - ``memory_task_only``: keep only task context, environment and memory
+        card (global transfer critic); drops writer, receiver and interaction.
+      - ``no_writer_receiver`` (legacy): historical block kept only for old
+        checkpoints; it removes writer and interaction while keeping receiver,
+        a mixed definition superseded by the precise modes above.
 
     Forbidden: payload, procedure, labels, outcomes never enter features.
     """
@@ -49,26 +62,47 @@ class HashingTransferFeatureEncoder:
             input_type="string",
         )
 
+    def _mode_flags(self) -> tuple[bool, bool, bool, bool]:
+        """Return (include_writer, include_receiver, include_interaction, include_prefix)."""
+        mode = self.feature_block
+        if mode == "full":
+            return True, True, True, True
+        if mode == "no_pair_interaction":
+            return True, True, False, True
+        if mode == "no_receiver":
+            return True, False, False, True
+        if mode == "memory_task_only":
+            return False, False, False, False
+        if mode == "no_writer_receiver":  # legacy mixed block
+            return False, True, False, True
+        raise ValueError(f"unknown feature_block: {mode}")
+
     def tokens(self, item: CandidateExposureInput) -> list[str]:
         """Extract feature tokens from a CandidateExposureInput."""
+        include_writer, include_receiver, include_interaction, include_prefix = (
+            self._mode_flags()
+        )
         tokens: list[str] = []
         rs = item.receiver_state
         card = item.candidate_card
 
-        # --- receiver block ---
+        # --- task context block (scenario / task / environment) ---
         tokens.append(f"scenario:{rs.scenario}")
-        tokens.append(f"receiver_role:{rs.receiver.role}")
-        for cap in sorted(rs.receiver.capabilities):
-            tokens.append(f"receiver_cap:{cap}")
-        for tool in sorted(rs.receiver.tool_names):
-            tokens.append(f"receiver_tool:{tool}")
         for tok in _text_tokens(rs.task_instruction)[:8]:
             tokens.append(f"task_token:{tok}")
         for env in sorted(rs.environment_signature):
             tokens.append(f"env:{env}")
 
-        # --- writer block ---
-        if self.feature_block != "no_writer_receiver":
+        # --- receiver marginal block ---
+        if include_receiver:
+            tokens.append(f"receiver_role:{rs.receiver.role}")
+            for cap in sorted(rs.receiver.capabilities):
+                tokens.append(f"receiver_cap:{cap}")
+            for tool in sorted(rs.receiver.tool_names):
+                tokens.append(f"receiver_tool:{tool}")
+
+        # --- writer marginal block ---
+        if include_writer:
             tokens.append(f"writer_role:{card.writer.role}")
             for cap in sorted(card.writer.capabilities):
                 tokens.append(f"writer_cap:{cap}")
@@ -77,7 +111,7 @@ class HashingTransferFeatureEncoder:
             tokens.append(f"source_scenario:{card.source_scenario}")
 
         # --- writer-receiver interaction block ---
-        if self.feature_block != "no_writer_receiver":
+        if include_interaction:
             w_role = card.writer.role
             r_role = rs.receiver.role
             tokens.append(f"wr_pair:{w_role}->{r_role}")
@@ -109,11 +143,12 @@ class HashingTransferFeatureEncoder:
                 tokens.append(f"negative_hint_token:{tok}")
 
         # --- prefix block ---
-        prefix_cards = item.selected_prefix_cards
+        prefix_cards = item.selected_prefix_cards if include_prefix else ()
         tokens.append(f"prefix_size:{len(prefix_cards)}")
         for pc in prefix_cards:
             tokens.append(f"prefix_writer_role:{pc.writer.role}")
-            tokens.append(f"prefix_candidate_role_conflict:{pc.writer.role != rs.receiver.role}")
+            if include_receiver:
+                tokens.append(f"prefix_candidate_role_conflict:{pc.writer.role != rs.receiver.role}")
             pc_envs = set(pc.environment_constraints)
             rs_envs = set(rs.environment_signature)
             tokens.append(f"prefix_env_conflict:{not pc_envs.issubset(rs_envs) if pc_envs else False}")

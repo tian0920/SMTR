@@ -74,7 +74,9 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=7)
     p.add_argument("--n-bootstrap", type=int, default=31)
     p.add_argument("--n-features", type=int, default=512)
-    p.add_argument("--feature-block", default="full", choices=["full", "no_writer_receiver"])
+    p.add_argument("--feature-block", default="full", choices=[
+        "full", "no_pair_interaction", "no_receiver", "memory_task_only", "no_writer_receiver",
+    ])
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("run-paired-decision-evaluation", help="Paired decision evaluation on test pairs")
