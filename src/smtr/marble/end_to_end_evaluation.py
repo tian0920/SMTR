@@ -8,10 +8,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from smtr.core.types import AgentProfile, MemoryRoutingCard, ReceiverState
+from smtr.core.types import MemoryRoutingCard
 from smtr.marble.io import load_split_task_ids, load_dataset_tasks
-from smtr.marble.paired_evaluation import _build_routers
+from smtr.marble.paired_evaluation import _build_routers, build_receiver_state_from_entry
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
+from smtr.router.transfer_features import build_routing_card_from_pool_entry
 
 
 class MarblePolicyRunResult(BaseModel):
@@ -85,33 +86,10 @@ def run_end_to_end_evaluation(
         negative_risk_budget=negative_risk_budget,
     )
 
-    # Build routing cards
+    # Build routing cards (shared construction path with training loader)
     cards_by_id: dict[str, MemoryRoutingCard] = {}
     for mem_id, mem in memory_pool.items():
-        rc = mem.get("routing_card", {})
-        writer_data = rc.get("writer", {})
-        writer = AgentProfile(
-            agent_id=writer_data.get("agent_id", ""),
-            role=writer_data.get("role", "unknown"),
-            capabilities=tuple(writer_data.get("capabilities", [])),
-        )
-        cards_by_id[mem_id] = MemoryRoutingCard(
-            memory_id=mem_id,
-            goal_summary=rc.get("goal_summary", ""),
-            task_tags=tuple(rc.get("task_tags", [])),
-            environment_constraints=tuple(rc.get("environment_constraints", [])),
-            positive_transfer_hints=tuple(rc.get("positive_transfer_hints", [])),
-            negative_transfer_hints=tuple(rc.get("negative_transfer_hints", [])),
-            writer=writer,
-            source_task_id=rc.get("source_task_id", ""),
-            source_scenario=rc.get("source_scenario", "database"),
-            compatible_receiver_roles=tuple(rc.get("compatible_receiver_roles", [])),
-            incompatible_receiver_roles=tuple(rc.get("incompatible_receiver_roles", [])),
-            evidence_count=rc.get("evidence_count", 0),
-            historical_success_count=rc.get("historical_success_count", 0),
-            historical_failure_count=rc.get("historical_failure_count", 0),
-            historical_success_rate=rc.get("historical_success_rate", 0.0),
-        )
+        cards_by_id[mem_id] = build_routing_card_from_pool_entry(mem)
 
     runner = MarblePolicyRunner(marble_root=marble_root)
     output.mkdir(parents=True, exist_ok=True)
@@ -137,17 +115,7 @@ def run_end_to_end_evaluation(
         if not candidate_cards:
             continue
 
-        receiver_state = ReceiverState(
-            task_id=task_id,
-            scenario="database",
-            task_instruction=entry.get("task_instruction", ""),
-            receiver=AgentProfile(
-                agent_id=receiver_agent_id,
-                role=receiver_role,
-                capabilities=tuple(entry.get("receiver_capabilities", [])),
-            ),
-            environment_signature=tuple(entry.get("environment_signature", [])),
-        )
+        receiver_state = build_receiver_state_from_entry(entry)
 
         for method in methods:
             router = routers[method]

@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from smtr.core.types import AgentProfile, CandidateExposureInput, MemoryRoutingCard, ReceiverState
+from smtr.core.types import AgentProfile, MemoryRoutingCard, ReceiverState
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
 from smtr.evaluation.tables import write_result_table, format_markdown_table
 from smtr.router.baselines import (
@@ -19,6 +19,32 @@ from smtr.router.baselines import (
 )
 from smtr.router.exposure_router import SMTRExposureRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
+from smtr.router.transfer_features import build_routing_card_from_pool_entry
+
+
+def build_receiver_state_from_entry(entry: dict[str, Any]) -> ReceiverState:
+    """Build the pre-execution ReceiverState from a candidate-manifest entry.
+
+    Shared by paired evaluation, end-to-end evaluation and tests so that the
+    inference-time receiver context matches the training loader exactly.
+    """
+    receiver = AgentProfile(
+        agent_id=entry.get("receiver_agent_id", ""),
+        role=entry.get("receiver_role", "unknown"),
+        capabilities=tuple(entry.get("receiver_capabilities", [])),
+        model_name=entry.get("receiver_model_name"),
+        tool_names=tuple(entry.get("receiver_tool_names", [])),
+    )
+    return ReceiverState(
+        task_id=entry["task_id"],
+        scenario=entry.get("scenario", "database"),
+        task_instruction=entry.get("task_instruction", ""),
+        receiver=receiver,
+        subtask=entry.get("subtask"),
+        local_context_summary=entry.get("local_context_summary", ""),
+        team_context_summary=entry.get("team_context_summary", ""),
+        environment_signature=tuple(entry.get("environment_signature", [])),
+    )
 
 
 def run_paired_decision_evaluation(
@@ -42,37 +68,13 @@ def run_paired_decision_evaluation(
         "no_writer_receiver checkpoint must have feature_block='no_writer_receiver'"
     )
 
-    # Load memory pool (routing cards only)
+    # Load memory pool (routing cards only, shared construction path)
     cards_by_id: dict[str, MemoryRoutingCard] = {}
     for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         mem = json.loads(line)
-        rc = mem.get("routing_card", {})
-        writer_data = rc.get("writer", {})
-        writer = AgentProfile(
-            agent_id=writer_data.get("agent_id", ""),
-            role=writer_data.get("role", "unknown"),
-            capabilities=tuple(writer_data.get("capabilities", [])),
-        )
-        card = MemoryRoutingCard(
-            memory_id=mem["memory_id"],
-            goal_summary=rc.get("goal_summary", ""),
-            task_tags=tuple(rc.get("task_tags", [])),
-            environment_constraints=tuple(rc.get("environment_constraints", [])),
-            positive_transfer_hints=tuple(rc.get("positive_transfer_hints", [])),
-            negative_transfer_hints=tuple(rc.get("negative_transfer_hints", [])),
-            writer=writer,
-            source_task_id=rc.get("source_task_id", ""),
-            source_scenario=rc.get("source_scenario", "database"),
-            compatible_receiver_roles=tuple(rc.get("compatible_receiver_roles", [])),
-            incompatible_receiver_roles=tuple(rc.get("incompatible_receiver_roles", [])),
-            evidence_count=rc.get("evidence_count", 0),
-            historical_success_count=rc.get("historical_success_count", 0),
-            historical_failure_count=rc.get("historical_failure_count", 0),
-            historical_success_rate=rc.get("historical_success_rate", 0.0),
-        )
-        cards_by_id[mem["memory_id"]] = card
+        cards_by_id[mem["memory_id"]] = build_routing_card_from_pool_entry(mem)
 
     # Load candidate manifest
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
@@ -104,20 +106,8 @@ def run_paired_decision_evaluation(
         task_id = entry["task_id"]
         receiver_agent_id = entry.get("receiver_agent_id", "")
         receiver_role = entry.get("receiver_role", "unknown")
-        receiver_caps = tuple(entry.get("receiver_capabilities", []))
 
-        receiver = AgentProfile(
-            agent_id=receiver_agent_id,
-            role=receiver_role,
-            capabilities=receiver_caps,
-        )
-        receiver_state = ReceiverState(
-            task_id=task_id,
-            scenario="database",
-            task_instruction=entry.get("task_instruction", ""),
-            receiver=receiver,
-            environment_signature=tuple(entry.get("environment_signature", [])),
-        )
+        receiver_state = build_receiver_state_from_entry(entry)
 
         # Get candidate cards from manifest for this entry
         candidate_cards: list[MemoryRoutingCard] = []

@@ -52,12 +52,18 @@ def generate_candidate_level_pairs(
                 "receiver_agent_id": entry.get("receiver_agent_id", ""),
                 "receiver_role": entry.get("receiver_role", "unknown"),
                 "receiver_capabilities": entry.get("receiver_capabilities", []),
+                "receiver_tool_names": entry.get("receiver_tool_names", []),
+                "receiver_model_name": entry.get("receiver_model_name"),
                 "task_instruction": entry.get("task_instruction", ""),
                 "environment_signature": entry.get("environment_signature", []),
+                "local_context_summary": entry.get("local_context_summary", ""),
+                "team_context_summary": entry.get("team_context_summary", ""),
                 "candidate_memory_id": rec["memory_id"],
                 "writer_agent_id": rec.get("writer_agent_id", ""),
                 "writer_role": rec.get("writer_role", "unknown"),
                 "writer_capabilities": rec.get("writer_capabilities", []),
+                "writer_tool_names": rec.get("writer_tool_names", []),
+                "writer_model_name": rec.get("writer_model_name"),
                 "candidate_rank": rec.get("rank", 0),
                 "candidate_score": rec.get("score", 0.0),
             })
@@ -143,11 +149,15 @@ def paired_result_to_record(
         "receiver_agent_id": edge["receiver_agent_id"],
         "receiver_role": edge["receiver_role"],
         "receiver_capabilities": edge["receiver_capabilities"],
+        "receiver_tool_names": edge.get("receiver_tool_names", []),
+        "receiver_model_name": edge.get("receiver_model_name"),
 
         "candidate_memory_id": pair_result.candidate_memory_id,
         "writer_agent_id": edge["writer_agent_id"],
         "writer_role": edge["writer_role"],
         "writer_capabilities": edge["writer_capabilities"],
+        "writer_tool_names": edge.get("writer_tool_names", []),
+        "writer_model_name": edge.get("writer_model_name"),
 
         "selected_prefix_memory_ids": [],
         "candidate_rank": edge["candidate_rank"],
@@ -155,6 +165,7 @@ def paired_result_to_record(
 
         "task_instruction": edge.get("task_instruction", ""),
         "environment_signature": edge.get("environment_signature", []),
+        "subtask": edge.get("subtask"),
         "local_context_summary": edge.get("local_context_summary", ""),
         "team_context_summary": edge.get("team_context_summary", ""),
 

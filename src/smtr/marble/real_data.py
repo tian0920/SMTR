@@ -266,6 +266,8 @@ class CandidateRecord(BaseModel):
     writer_agent_id: str
     writer_role: str
     writer_capabilities: tuple[str, ...] = ()
+    writer_tool_names: tuple[str, ...] = ()
+    writer_model_name: str | None = None
     receiver_role: str
     match_type: MatchType
     task_relation: TaskRelation = "cross_task_unknown_group"
@@ -281,6 +283,8 @@ class CandidateEntry(BaseModel):
     receiver_agent_id: str
     receiver_role: str
     receiver_capabilities: tuple[str, ...] = ()
+    receiver_tool_names: tuple[str, ...] = ()
+    receiver_model_name: str | None = None
     task_instruction: str = ""
     environment_signature: tuple[str, ...] = ()
     candidate_records: list[CandidateRecord] = []
@@ -356,6 +360,8 @@ def build_cross_task_candidates(
                 writer_agent_id=card.writer.agent_id,
                 writer_role=w_role,
                 writer_capabilities=card.writer.capabilities,
+                writer_tool_names=card.writer.tool_names,
+                writer_model_name=card.writer.model_name,
                 receiver_role=receiver_role,
                 match_type=match_type,
                 task_relation="cross_task_unknown_group",
@@ -368,6 +374,8 @@ def build_cross_task_candidates(
             receiver_agent_id=recipient.get("agent_id", ""),
             receiver_role=receiver_role,
             receiver_capabilities=tuple(recipient.get("agent_capabilities", [])),
+            receiver_tool_names=tuple(recipient.get("tool_names", [])),
+            receiver_model_name=recipient.get("model_name"),
             task_instruction=recipient.get("instruction", ""),
             environment_signature=tuple(recipient.get("environment_signature", [])),
             candidate_records=records,
@@ -465,6 +473,8 @@ def load_receiver_entries(
                     "agent_id": agent.get("agent_id", ""),
                     "agent_role": agent.get("role", "unknown"),
                     "agent_capabilities": agent.get("capabilities", []),
+                    "tool_names": agent.get("tool_names", []),
+                    "model_name": agent.get("model_name"),
                     "instruction": task.get("instruction", ""),
                     "environment_signature": task.get("environment_signature", []),
                 })
@@ -474,6 +484,8 @@ def load_receiver_entries(
                 "agent_id": task.get("agent_id", "agent1"),
                 "agent_role": task.get("agent_role", "executor"),
                 "agent_capabilities": task.get("agent_capabilities", []),
+                "tool_names": task.get("tool_names", []),
+                "model_name": task.get("model_name"),
                 "instruction": task.get("instruction", ""),
                 "environment_signature": task.get("environment_signature", []),
             })

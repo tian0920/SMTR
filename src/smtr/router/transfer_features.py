@@ -9,7 +9,12 @@ from typing import Any
 
 from sklearn.feature_extraction import FeatureHasher
 
-from smtr.core.types import CandidateExposureInput, MemoryRoutingCard, ReceiverState
+from smtr.core.types import (
+    AgentProfile,
+    CandidateExposureInput,
+    MemoryRoutingCard,
+    ReceiverState,
+)
 
 FORBIDDEN_FEATURE_TOKENS = frozenset({
     "memory_id", "candidate_memory_id", "payload", "procedure", "ordered_steps",
@@ -135,16 +140,52 @@ class HashingTransferFeatureEncoder:
         return self._hasher.transform([self.tokens(item) for item in items])
 
 
+def build_routing_card_from_pool_entry(mem_entry: dict[str, Any]) -> MemoryRoutingCard:
+    """Build a MemoryRoutingCard from a memory-pool JSONL entry.
+
+    This is the single card-construction path shared by the training loader
+    and all evaluation builders, so train/inference features stay identical.
+    Only routing-card metadata is used; the payload is never read.
+    """
+    routing_card_data = mem_entry.get("routing_card", {})
+    writer_data = routing_card_data.get("writer", {})
+    writer = AgentProfile(
+        agent_id=writer_data.get("agent_id", ""),
+        role=writer_data.get("role", "unknown"),
+        capabilities=tuple(writer_data.get("capabilities", [])),
+        model_name=writer_data.get("model_name"),
+        tool_names=tuple(writer_data.get("tool_names", [])),
+    )
+    return MemoryRoutingCard(
+        memory_id=mem_entry["memory_id"],
+        goal_summary=routing_card_data.get("goal_summary", ""),
+        task_tags=tuple(routing_card_data.get("task_tags", [])),
+        environment_constraints=tuple(routing_card_data.get("environment_constraints", [])),
+        positive_transfer_hints=tuple(routing_card_data.get("positive_transfer_hints", [])),
+        negative_transfer_hints=tuple(routing_card_data.get("negative_transfer_hints", [])),
+        writer=writer,
+        source_task_id=routing_card_data.get("source_task_id", ""),
+        source_scenario=routing_card_data.get("source_scenario", "database"),
+        compatible_receiver_roles=tuple(routing_card_data.get("compatible_receiver_roles", [])),
+        incompatible_receiver_roles=tuple(routing_card_data.get("incompatible_receiver_roles", [])),
+        evidence_count=routing_card_data.get("evidence_count", 0),
+        historical_success_count=routing_card_data.get("historical_success_count", 0),
+        historical_failure_count=routing_card_data.get("historical_failure_count", 0),
+        historical_success_rate=routing_card_data.get("historical_success_rate", 0.0),
+    )
+
+
 def load_paired_records_for_training(
     records_path: Path,
     memory_pool_path: Path,
 ) -> list[tuple[CandidateExposureInput, str]]:
     """Load paired records and construct (input, label) pairs for critic training.
 
-    Only routing card metadata is used; payload is never read.
+    Only routing card metadata is used; payload is never read. All receiver
+    context fields stored in the paired record (task instruction, environment
+    signature, subtask, context summaries, writer/receiver tool_names and
+    model_name) are restored so training features match inference features.
     """
-    from smtr.core.types import AgentProfile
-
     pool: dict[str, dict] = {}
     for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
@@ -161,37 +202,33 @@ def load_paired_records_for_training(
         mem_entry = pool.get(rec["candidate_memory_id"])
         if mem_entry is None:
             continue
+        card = build_routing_card_from_pool_entry(mem_entry)
+        # Fall back to record-persisted writer fields only when the pool
+        # entry lacks them (older pools).
         routing_card_data = mem_entry.get("routing_card", {})
         writer_data = routing_card_data.get("writer", {})
-        writer = AgentProfile(
-            agent_id=writer_data.get("agent_id", rec.get("writer_agent_id", "")),
-            role=writer_data.get("role", rec.get("writer_role", "unknown")),
-            capabilities=tuple(writer_data.get("capabilities", rec.get("writer_capabilities", []))),
-        )
-        card = MemoryRoutingCard(
-            memory_id=rec["candidate_memory_id"],
-            goal_summary=routing_card_data.get("goal_summary", ""),
-            task_tags=tuple(routing_card_data.get("task_tags", [])),
-            environment_constraints=tuple(routing_card_data.get("environment_constraints", [])),
-            positive_transfer_hints=tuple(routing_card_data.get("positive_transfer_hints", [])),
-            negative_transfer_hints=tuple(routing_card_data.get("negative_transfer_hints", [])),
-            writer=writer,
-            source_task_id=routing_card_data.get("source_task_id", ""),
-            source_scenario=routing_card_data.get("source_scenario", "database"),
-            compatible_receiver_roles=tuple(routing_card_data.get("compatible_receiver_roles", [])),
-            incompatible_receiver_roles=tuple(routing_card_data.get("incompatible_receiver_roles", [])),
-            evidence_count=routing_card_data.get("evidence_count", 0),
-        )
+        if not writer_data.get("tool_names"):
+            card = card.model_copy(update={
+                "writer": card.writer.model_copy(update={
+                    "agent_id": card.writer.agent_id or rec.get("writer_agent_id", ""),
+                    "capabilities": card.writer.capabilities or tuple(rec.get("writer_capabilities", [])),
+                    "tool_names": tuple(rec.get("writer_tool_names", [])),
+                    "model_name": card.writer.model_name or rec.get("writer_model_name"),
+                }),
+            })
         receiver = AgentProfile(
             agent_id=rec.get("receiver_agent_id", ""),
             role=rec.get("receiver_role", "unknown"),
             capabilities=tuple(rec.get("receiver_capabilities", [])),
+            model_name=rec.get("receiver_model_name"),
+            tool_names=tuple(rec.get("receiver_tool_names", [])),
         )
         receiver_state = ReceiverState(
             task_id=rec["task_id"],
             scenario=rec.get("scenario", "database"),
             task_instruction=rec.get("task_instruction", ""),
             receiver=receiver,
+            subtask=rec.get("subtask"),
             environment_signature=tuple(rec.get("environment_signature", [])),
             local_context_summary=rec.get("local_context_summary", ""),
             team_context_summary=rec.get("team_context_summary", ""),
