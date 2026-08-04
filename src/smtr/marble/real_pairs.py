@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from smtr.marble.io import load_split_task_ids
+from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 
 TREATMENT_DEFINITION_VERSION = "v1"
 
@@ -67,8 +68,7 @@ def aggregate_edge_records(records: list[dict[str, Any]]) -> list[dict[str, Any]
         n = len(valid_records)
         counts = {(0, 0): 0, (0, 1): 0, (1, 0): 0, (1, 1): 0}
         for rec in valid_records:
-            y_share = 1 if rec["share"]["team_success"] else 0
-            y_withhold = 1 if rec["withhold"]["team_success"] else 0
+            y_share, y_withhold = get_paired_outcomes(rec)
             counts[(y_share, y_withhold)] += 1
         first = valid_records[0]
         q00 = counts[(0, 0)] / n
@@ -254,7 +254,7 @@ def paired_result_to_record(
         edge["receiver_agent_id"],
         pair_result.candidate_memory_id,
     )
-    return {
+    record = {
         "record_type": "marble_candidate_level_pair",
         "schema_version": "v2",
         "scenario": pair_result.scenario,
@@ -320,7 +320,6 @@ def paired_result_to_record(
         "label": pair_result.paired_label,
         "valid": pair_result.paired_record_valid,
         "invalid_reason": pair_result.invalid_reason,
-
         "branch_execution_order": pair_result.branch_execution_order,
         "branch_order_assignment": pair_result.branch_execution_order,
 
@@ -351,3 +350,7 @@ def paired_result_to_record(
                 pair_result.withhold.tool_config_digest,
         },
     }
+    # Label is always derived from the canonical nested outcomes, never
+    # trusted from the upstream pair runner alone.
+    record["label"] = paired_record_label(record)
+    return record

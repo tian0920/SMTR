@@ -14,6 +14,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
+
 
 def _outcome_lookup(paired_outcomes: list[dict[str, Any]]) -> dict[tuple[str, int, str, str], dict]:
     """Index paired records by (task_id, seed, receiver, memory)."""
@@ -63,7 +65,7 @@ def compute_candidate_transfer_metrics(
         rec = outcome_by_key.get(key)
         if rec is None:
             continue
-        label = rec.get("label", "")
+        label = paired_record_label(rec)
         action = d["action"]
 
         if label == "positive_transfer":
@@ -159,7 +161,7 @@ def compute_receiver_policy_metrics(
                 continue
             policy_total += 1
             episodes_with_share += 1
-            if rec.get("share", {}).get("team_success", False):
+            if get_paired_outcomes(rec)[0] == 1:
                 policy_success_count += 1
         else:
             # Y_0: withhold branch must be identical across all candidates
@@ -171,7 +173,7 @@ def compute_receiver_policy_metrics(
                 ))
                 if rec is not None:
                     withhold_outcomes.add(
-                        bool(rec.get("withhold", {}).get("team_success", False)))
+                        get_paired_outcomes(rec)[1] == 1)
             if not withhold_outcomes:
                 continue
             if len(withhold_outcomes) > 1:
@@ -308,14 +310,14 @@ def compute_writer_receiver_breakdown(
     for (w_role, r_role), group_decisions in sorted(groups.items()):
         n = len(group_decisions)
         n_share = sum(1 for d in group_decisions if d["action"] == "share")
-        neg_transfer = sum(
-            1 for d in group_decisions
-            if outcome_by_key.get(
+        neg_transfer = 0
+        for d in group_decisions:
+            rec = outcome_by_key.get(
                 (str(d.get("task_id", "")), int(d.get("generation_seed", 0)),
                  str(d.get("receiver_agent_id", "")), str(d.get("candidate_memory_id", ""))),
-                {},
-            ).get("label") == "negative_transfer"
-        )
+            )
+            if rec is not None and paired_record_label(rec) == "negative_transfer":
+                neg_transfer += 1
         results.append({
             "writer_role": w_role,
             "receiver_role": r_role,

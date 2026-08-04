@@ -188,8 +188,8 @@ def _paired(memory_id, receiver, y_share, y_withhold, *, receiver_role="executor
         "candidate_memory_id": memory_id,
         "receiver_agent_id": receiver,
         "receiver_role": receiver_role,
-        "y_share": y_share,
-        "y_withhold": y_withhold,
+        "share": {"team_success": bool(y_share)},
+        "withhold": {"team_success": bool(y_withhold)},
         "task_id": "t1",
         "common_seed": 0,
         "decision_context": {

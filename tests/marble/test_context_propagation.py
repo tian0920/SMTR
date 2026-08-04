@@ -100,6 +100,8 @@ def _paired_record(entry: dict) -> dict:
         "subtask": None,
         "local_context_summary": "receiver local context",
         "team_context_summary": "team context",
+        "share": {"team_success": True},
+        "withhold": {"team_success": False},
         "label": "positive_transfer",
         "valid": True,
         "invalid_reason": None,

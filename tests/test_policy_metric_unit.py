@@ -50,7 +50,7 @@ class TestPolicyMetricUnit:
         outcomes = [
             _paired_record("m1", share_success=True, withhold_success=False,
                            label="positive_transfer"),
-            _paired_record("m2", share_success=False, withhold_success=False,
+            _paired_record("m2", share_success=False, withhold_success=True,
                            label="negative_transfer"),
             _paired_record("m3", share_success=False, withhold_success=False),
             _paired_record("m4", share_success=False, withhold_success=False),
@@ -133,7 +133,7 @@ class TestPolicyMetricUnit:
         outcomes = [
             _paired_record("m1", share_success=True, withhold_success=False,
                            label="positive_transfer"),
-            _paired_record("m2", share_success=False, withhold_success=False,
+            _paired_record("m2", share_success=False, withhold_success=True,
                            label="negative_transfer"),
         ]
         decisions = [_decision("m1", "share"), _decision("m2", "withhold")]

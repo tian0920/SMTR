@@ -15,15 +15,10 @@ import numpy as np
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 
+from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES
+
 LABELS = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
 LABEL_TO_INDEX = {label: i for i, label in enumerate(LABELS)}
-# (Y_share, Y_withhold) implied by each transfer label.
-LABEL_TO_OUTCOMES = {
-    "neutral_failure": (0, 0),
-    "negative_transfer": (0, 1),
-    "positive_transfer": (1, 0),
-    "neutral_success": (1, 1),
-}
 DEFAULT_EPSILONS = (0.05, 0.10, 0.20, 0.30)
 
 

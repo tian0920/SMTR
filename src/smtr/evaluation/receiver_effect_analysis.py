@@ -23,15 +23,8 @@ from typing import Any
 
 import numpy as np
 
+from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.transfer_features import _overlap_bucket
-
-# (y_share, y_withhold) -> four-outcome label.
-OUTCOME_TO_LABEL = {
-    (0, 0): "neutral_failure",
-    (0, 1): "negative_transfer",
-    (1, 0): "positive_transfer",
-    (1, 1): "neutral_success",
-}
 
 
 def record_seed(rec: dict[str, Any]) -> int:
@@ -42,10 +35,8 @@ def record_seed(rec: dict[str, Any]) -> int:
 
 
 def record_label(rec: dict[str, Any]) -> str:
-    """Four-outcome label derived from the paired potential outcomes."""
-    y_share = int(rec.get("y_share", 0))
-    y_withhold = int(rec.get("y_withhold", 0))
-    return OUTCOME_TO_LABEL[(y_share, y_withhold)]
+    """Four-outcome label derived from the canonical paired outcomes."""
+    return paired_record_label(rec)
 
 
 def _empirical_tau_table(paired_records: list[dict[str, Any]]) -> dict[tuple[str, str], float]:
@@ -53,7 +44,8 @@ def _empirical_tau_table(paired_records: list[dict[str, Any]]) -> dict[tuple[str
     sums: dict[tuple[str, str], list[float]] = defaultdict(list)
     for rec in paired_records:
         key = (str(rec.get("candidate_memory_id", "")), str(rec.get("receiver_agent_id", "")))
-        sums[key].append(int(rec.get("y_share", 0)) - int(rec.get("y_withhold", 0)))
+        y_share, y_withhold = get_paired_outcomes(rec)
+        sums[key].append(y_share - y_withhold)
     return {key: float(np.mean(vals)) for key, vals in sums.items()}
 
 

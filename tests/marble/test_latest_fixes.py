@@ -48,6 +48,8 @@ class TestLoadPairedRecordsContext:
             "scenario": "database",
             "valid": True,
             "label": "positive_transfer",
+            "share": {"team_success": True},
+            "withhold": {"team_success": False},
             "task_instruction": "Diagnose the slow query",
             "environment_signature": ["postgresql", "read-only"],
             "local_context_summary": "Agent is reviewing query plan",

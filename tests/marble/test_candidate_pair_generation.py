@@ -269,4 +269,6 @@ def test_invalid_pair_not_used_by_training_loader(tmp_path):
     record = paired_result_to_record(pair_result=mock_result, edge=edge, seed=0)
     assert record["valid"] is False
     assert record["invalid_reason"] == "engine_timeout"
-    assert record["label"] is None
+    # Label is always derived from the canonical nested outcomes, even for
+    # invalid records (which the training loader excludes via `valid`).
+    assert record["label"] == "positive_transfer"

@@ -182,7 +182,7 @@ class TestPairedEvaluationClusterCIArtifact:
 
         candidates = tmp_path / "candidates.json"
         candidate_entries = []
-        for task_index in range(3):
+        for task_index in range(4):
             candidate_entries.append({
                 "task_id": f"t{task_index}",
                 "receiver_agent_id": "r1",
@@ -195,18 +195,26 @@ class TestPairedEvaluationClusterCIArtifact:
         candidates.write_text(
             json.dumps({"candidates": candidate_entries}), encoding="utf-8")
 
-        # Task t0/t1 succeed when mem1 is shared; t2 fails. Y_0 always fails.
+        # Task t0/t1 succeed when mem1 is shared; sharing mem1 on t2 breaks
+        # the team (negative transfer) but its withhold control succeeds;
+        # t3 fails either way (neutral failure, Y_0 fails).
         lines = []
-        for task_index in range(3):
+        for task_index in range(4):
             success = task_index < 2
+            negative = task_index == 2
             lines.append(json.dumps({
                 "task_id": f"t{task_index}", "generation_seed": 0,
                 "receiver_agent_id": "r1", "candidate_memory_id": "mem1",
                 "valid": True,
-                "label": "positive_transfer" if success else "negative_transfer",
-                "y_share": 1 if success else 0, "y_withhold": 0,
+                "label": (
+                    "positive_transfer" if success
+                    else "negative_transfer" if negative
+                    else "neutral_failure"
+                ),
+                "y_share": 1 if success else 0,
+                "y_withhold": 1 if negative else 0,
                 "share": {"team_success": success},
-                "withhold": {"team_success": False},
+                "withhold": {"team_success": negative},
             }))
         paired_records = tmp_path / "paired.jsonl"
         paired_records.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -242,9 +250,10 @@ class TestPairedEvaluationClusterCIArtifact:
         policy_ci = ci["smtr"]["paired_policy_success_rate"]
         assert policy_ci["cluster_by"] == "target_task_id"
         assert policy_ci["confidence"] >= 0.95
-        assert policy_ci["n_clusters"] == 3
-        # SMTR shares on t0/t1 (success) and withholds on t2 (failure): 2/3.
-        assert policy_ci["point_estimate"] == pytest.approx(2 / 3)
+        assert policy_ci["n_clusters"] == 4
+        # SMTR shares on t0/t1 (success), withholds on t2 (Y_0 succeeds)
+        # and withholds on t3 (Y_0 fails): 3/4.
+        assert policy_ci["point_estimate"] == pytest.approx(3 / 4)
         assert policy_ci["ci_lower"] <= policy_ci["point_estimate"] <= policy_ci["ci_upper"]
 
         exposure_ci = ci["smtr"]["negative_transfer_exposure_rate"]

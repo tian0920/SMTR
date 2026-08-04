@@ -15,6 +15,7 @@ from smtr.core.types import (
     MemoryRoutingCard,
     ReceiverState,
 )
+from smtr.marble.paired_outcomes import paired_record_label
 
 FORBIDDEN_FEATURE_TOKENS = frozenset({
     "memory_id", "candidate_memory_id", "payload", "procedure", "ordered_steps",
@@ -273,7 +274,7 @@ def load_paired_records_for_training(
             candidate_card=card,
             selected_prefix_cards=(),
         )
-        results.append((exposure_input, rec["label"]))
+        results.append((exposure_input, paired_record_label(rec)))
     return results
 
 

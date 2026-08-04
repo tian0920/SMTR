@@ -15,6 +15,7 @@ from smtr.evaluation.cluster_bootstrap import (
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
 from smtr.evaluation.receiver_effect_analysis import analyze_receiver_effect, record_label
 from smtr.evaluation.tables import write_result_table, format_markdown_table
+from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.baselines import (
     AllShareRouter,
     FactualSuccessRouter,
@@ -289,7 +290,7 @@ def _method_cluster_cis(
             ))
             if rec is None:
                 continue
-            success = bool(rec.get("share", {}).get("team_success", False))
+            success = get_paired_outcomes(rec)[0] == 1
         else:
             withhold_outcomes: set[bool] = set()
             for d in episode_decisions:
@@ -299,7 +300,7 @@ def _method_cluster_cis(
                 ))
                 if rec is not None:
                     withhold_outcomes.add(
-                        bool(rec.get("withhold", {}).get("team_success", False)))
+                        get_paired_outcomes(rec)[1] == 1)
             if len(withhold_outcomes) != 1:
                 continue
             success = next(iter(withhold_outcomes))
@@ -317,7 +318,7 @@ def _method_cluster_cis(
             str(d.get("receiver_agent_id", "")),
             str(d.get("candidate_memory_id", "")),
         ))
-        if rec is None or rec.get("label") != "negative_transfer":
+        if rec is None or paired_record_label(rec) != "negative_transfer":
             continue
         negative_units.append({
             "task_id": str(d.get("task_id", "")),
@@ -370,7 +371,7 @@ def _smtr_risk_utility_curve(
             str(d.get("receiver_agent_id", "")),
             str(d.get("candidate_memory_id", "")),
         ))
-        if rec is None or "y_share" not in rec:
+        if rec is None:
             continue
         tau_hat.append(float(d.get("tau_hat", 0.0)))
         eta_hat.append(float(d.get("eta_hat", 0.0)))
