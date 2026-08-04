@@ -107,3 +107,78 @@ class SMTRExposureRouter:
                 "reason": dec.reason,
             })
         return traces
+
+
+class SMTRUCBRouter:
+    """SMTR-UCB: uncertainty-aware ablation variant (清单第九章 9.2).
+
+    Uses the bootstrap-ensemble distribution instead of point estimates:
+    share iff tau_lower > 0 and eta_upper <= epsilon, where
+    tau_lower = quantile(member_tau, 0.10) and
+    eta_upper = quantile(member_eta, 0.90). Among safe candidates the one
+    with the largest ensemble-mean tau is shared (v1 single memory).
+    This is an additional ablation; it never replaces the main SMTR rule.
+    """
+
+    def __init__(
+        self,
+        critic: FourOutcomeTransferCritic,
+        negative_risk_budget: float = 0.2,
+        max_shared_memories_per_receiver: int = 1,
+    ) -> None:
+        self.critic = critic
+        self.negative_risk_budget = negative_risk_budget
+        self.max_shared_memories_per_receiver = max_shared_memories_per_receiver
+
+    def decide(
+        self,
+        receiver_state: ReceiverState,
+        candidate_cards: list[MemoryRoutingCard],
+        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
+    ) -> list[RouterDecision]:
+        scored: list[tuple[float, float, float, float, MemoryRoutingCard]] = []
+        for card in candidate_cards:
+            exposure_input = CandidateExposureInput(
+                receiver_state=receiver_state,
+                candidate_card=card,
+                selected_prefix_cards=selected_prefix_cards,
+            )
+            dist = self.critic.predict_distribution(exposure_input)
+            scored.append((
+                dist.mean.tau_hat, dist.mean.eta_hat,
+                dist.tau_lower, dist.eta_upper, card,
+            ))
+
+        safe = [
+            (tau_mean, eta_mean, tau_lower, eta_upper, card)
+            for tau_mean, eta_mean, tau_lower, eta_upper, card in scored
+            if tau_lower > 0 and eta_upper <= self.negative_risk_budget
+        ]
+        safe_sorted = sorted(safe, key=lambda x: -x[0])
+        share_set = {card.memory_id for *_, card in safe_sorted[:self.max_shared_memories_per_receiver]}
+
+        decisions: list[RouterDecision] = []
+        for tau_mean, eta_mean, tau_lower, eta_upper, card in scored:
+            if card.memory_id in share_set:
+                decisions.append(RouterDecision(
+                    memory_id=card.memory_id,
+                    action="share",
+                    tau_hat=tau_mean,
+                    eta_hat=eta_mean,
+                    reason="tau_lower>0 and eta_upper<=budget",
+                ))
+            else:
+                if tau_lower <= 0:
+                    reason = "tau_lower<=0"
+                elif eta_upper > self.negative_risk_budget:
+                    reason = "eta_upper>budget"
+                else:
+                    reason = "no safe candidate" if not safe else "not top safe candidate"
+                decisions.append(RouterDecision(
+                    memory_id=card.memory_id,
+                    action="withhold",
+                    tau_hat=tau_mean,
+                    eta_hat=eta_mean,
+                    reason=reason,
+                ))
+        return decisions

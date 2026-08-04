@@ -20,7 +20,7 @@ from smtr.router.baselines import (
     SMTRNoRiskRouter,
     SMTRNoWriterReceiverRouter,
 )
-from smtr.router.exposure_router import SMTRExposureRouter
+from smtr.router.exposure_router import SMTRExposureRouter, SMTRUCBRouter
 from smtr.router.transfer_calibration import DEFAULT_EPSILONS, risk_utility_curve
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import build_routing_card_from_pool_entry
@@ -308,6 +308,10 @@ def _build_routers(
                 critic=global_critic, negative_risk_budget=negative_risk_budget)
         elif method == "smtr":
             routers[method] = SMTRExposureRouter(critic=full_critic, negative_risk_budget=negative_risk_budget)
+        elif method == "smtr_ucb":
+            # Additional ablation (清单 9.2): reuses the full checkpoint,
+            # decisions come from bootstrap-ensemble quantiles.
+            routers[method] = SMTRUCBRouter(critic=full_critic, negative_risk_budget=negative_risk_budget)
         elif method == "smtr_no_pair_interaction":
             if no_pair_critic is None:
                 raise ValueError(

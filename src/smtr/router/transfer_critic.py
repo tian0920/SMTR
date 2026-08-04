@@ -9,7 +9,11 @@ import joblib
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
-from smtr.core.types import CandidateExposureInput, TransferPrediction
+from smtr.core.types import (
+    CandidateExposureInput,
+    TransferPrediction,
+    TransferPredictionDistribution,
+)
 from smtr.router.transfer_calibration import (
     DEFAULT_EPSILONS,
     Q01Calibrator,
@@ -106,23 +110,57 @@ class FourOutcomeTransferCritic:
 
     def predict(self, item: CandidateExposureInput) -> TransferPrediction:
         """Predict four-outcome distribution for a candidate exposure."""
+        probs = self._member_probs(item).mean(axis=0)
+        return TransferPrediction(
+            q00_neutral_failure=float(probs[0]),
+            q01_negative_transfer=float(probs[1]),
+            q10_positive_transfer=float(probs[2]),
+            q11_neutral_success=float(probs[3]),
+        )
+
+    def _member_probs(self, item: CandidateExposureInput) -> np.ndarray:
+        """Per-bootstrap-member four-outcome probabilities, shape (M, 4)."""
         if not self._fitted:
             raise RuntimeError("critic not fitted")
         X = self.encoder.encode_one(item)
-        probs = np.zeros(4)
+        member_probs = []
         for clf in self.members:
             p = clf.predict_proba(X)[0]
             # Align to 4 classes
             full_p = np.zeros(4)
             for i, c in enumerate(clf.classes_):
                 full_p[int(c)] = p[i]
-            probs += full_p
-        probs /= len(self.members)
-        return TransferPrediction(
+            member_probs.append(full_p)
+        return np.asarray(member_probs)
+
+    def predict_distribution(
+        self, item: CandidateExposureInput
+    ) -> TransferPredictionDistribution:
+        """Ensemble-mean prediction plus bootstrap member uncertainty (清单第九章).
+
+        tau_lower is the 0.10 quantile of member taus and eta_upper the
+        0.90 quantile of member etas; member etas use the validation-fitted
+        q01 calibrator when available so the risk bound matches the SMTR
+        decision rule.
+        """
+        member_probs = self._member_probs(item)
+        probs = member_probs.mean(axis=0)
+        mean = TransferPrediction(
             q00_neutral_failure=float(probs[0]),
             q01_negative_transfer=float(probs[1]),
             q10_positive_transfer=float(probs[2]),
             q11_neutral_success=float(probs[3]),
+        )
+        member_tau = member_probs[:, 2] - member_probs[:, 1]
+        member_eta = member_probs[:, 1]
+        if self.q01_calibrator is not None:
+            member_eta = self.q01_calibrator.predict(member_eta)
+        return TransferPredictionDistribution(
+            mean=mean,
+            tau_std=float(member_tau.std()),
+            eta_std=float(member_eta.std()),
+            tau_lower=float(np.quantile(member_tau, 0.10)),
+            eta_upper=float(np.quantile(member_eta, 0.90)),
         )
 
     def predict_batch(self, items: list[CandidateExposureInput]) -> list[TransferPrediction]:

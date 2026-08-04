@@ -29,6 +29,7 @@ from smtr.core.types import (
 )
 from smtr.router.transfer_features import _overlap_bucket, _text_tokens
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
+from smtr.router.exposure_router import SMTRUCBRouter
 
 
 def _heuristic_relevance_score(receiver_state: ReceiverState, card: MemoryRoutingCard) -> float:
@@ -310,4 +311,5 @@ METHOD_REGISTRY: dict[str, type] = {
     "smtr_no_pair_interaction": SMTRNoPairInteractionRouter,
     "smtr_no_risk": SMTRNoRiskRouter,
     "smtr_no_writer_receiver": SMTRNoWriterReceiverRouter,
+    "smtr_ucb": SMTRUCBRouter,
 }

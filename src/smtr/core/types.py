@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
@@ -149,6 +150,23 @@ class TransferPrediction(BaseModel):
     @property
     def eta_hat(self) -> float:
         return self.q01_negative_transfer
+
+
+@dataclass(frozen=True)
+class TransferPredictionDistribution:
+    """Bootstrap-ensemble uncertainty over the transfer estimands (清单第九章).
+
+    ``mean`` is the ensemble-mean prediction; ``tau_lower`` and
+    ``eta_upper`` are the pessimistic/optimistic member quantiles used by
+    SMTR-UCB: tau_lower = quantile(member_tau, 0.10),
+    eta_upper = quantile(member_eta, 0.90).
+    """
+
+    mean: TransferPrediction
+    tau_std: float
+    eta_std: float
+    tau_lower: float
+    eta_upper: float
 
 
 class RouterDecision(BaseModel):
