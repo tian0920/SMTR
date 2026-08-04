@@ -63,7 +63,7 @@ def main() -> None:
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
     p.add_argument("--limit-pairs", type=int, default=None)
-    p.add_argument("--branch-order", choices=["share_then_withhold", "withhold_then_share"], default="share_then_withhold")
+    p.add_argument("--branch-order", choices=["counterbalanced", "share_then_withhold", "withhold_then_share"], default="counterbalanced")
     p.add_argument("--engine-timeout-seconds", type=int, default=1800)
     p.add_argument("--output", required=True)
 
