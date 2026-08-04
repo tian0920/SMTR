@@ -1,4 +1,13 @@
-"""Cross-agent transfer evaluation metrics."""
+"""Cross-agent transfer evaluation metrics.
+
+Two strictly separated levels of measurement:
+
+* candidate-level transfer evaluation — one statistical unit per
+  (task, receiver, seed, candidate_memory) decision;
+* receiver-episode-level policy evaluation — one statistical unit per
+  (task_id, receiver_agent_id, generation_seed), regardless of how many
+  candidates the router inspected.
+"""
 
 from __future__ import annotations
 
@@ -6,28 +15,8 @@ from collections import defaultdict
 from typing import Any
 
 
-def compute_method_metrics(
-    *,
-    method: str,
-    decisions: list[dict[str, Any]],
-    paired_outcomes: list[dict[str, Any]],
-    negative_risk_budget: float = 0.2,
-) -> dict[str, Any]:
-    """Compute paper-required metrics for one method.
-
-    Args:
-        method: method name
-        decisions: list of router decision dicts with keys:
-            candidate_memory_id, receiver_agent_id, receiver_role, writer_role, action,
-            task_id, generation_seed
-        paired_outcomes: list of paired record dicts
-        negative_risk_budget: threshold for quarantine (not hardcoded)
-    """
-    n_total = len(decisions)
-    n_share = sum(1 for d in decisions if d["action"] == "share")
-    share_rate = n_share / max(1, n_total)
-
-    # Build outcome lookup using full pair key: (task_id, seed, receiver, memory)
+def _outcome_lookup(paired_outcomes: list[dict[str, Any]]) -> dict[tuple[str, int, str, str], dict]:
+    """Index paired records by (task_id, seed, receiver, memory)."""
     outcome_by_key: dict[tuple[str, int, str, str], dict] = {}
     for rec in paired_outcomes:
         key = (
@@ -37,8 +26,25 @@ def compute_method_metrics(
             str(rec.get("candidate_memory_id", "")),
         )
         outcome_by_key[key] = rec
+    return outcome_by_key
 
-    # Compute transfer metrics
+
+def compute_candidate_transfer_metrics(
+    *,
+    method: str,
+    decisions: list[dict[str, Any]],
+    paired_outcomes: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Candidate-level transfer metrics: one unit per candidate decision.
+
+    Measures the router's ability to identify transfer candidates, not
+    policy success.
+    """
+    outcome_by_key = _outcome_lookup(paired_outcomes)
+
+    n_total = len(decisions)
+    n_share = sum(1 for d in decisions if d["action"] == "share")
+
     positive_transfer_total = 0
     positive_transfer_shared = 0
     negative_transfer_total = 0
@@ -46,8 +52,6 @@ def compute_method_metrics(
     negative_transfer_withheld = 0
     shared_nonharmful = 0
     all_shared_with_pair = 0
-    policy_success_count = 0
-    policy_total = 0
 
     for d in decisions:
         key = (
@@ -61,15 +65,6 @@ def compute_method_metrics(
             continue
         label = rec.get("label", "")
         action = d["action"]
-        policy_total += 1
-
-        # Policy success: use the potential outcome matching the action
-        if action == "share":
-            policy_success = rec.get("share", {}).get("team_success", False)
-        else:
-            policy_success = rec.get("withhold", {}).get("team_success", False)
-        if policy_success:
-            policy_success_count += 1
 
         if label == "positive_transfer":
             positive_transfer_total += 1
@@ -84,22 +79,157 @@ def compute_method_metrics(
                 all_shared_with_pair += 1
             else:
                 negative_transfer_withheld += 1
-        elif label == "neutral_success":
-            if action == "share":
-                shared_nonharmful += 1
-                all_shared_with_pair += 1
-        elif label == "neutral_failure":
+        elif label in ("neutral_success", "neutral_failure"):
             if action == "share":
                 shared_nonharmful += 1
                 all_shared_with_pair += 1
 
-    paired_policy_success_rate = policy_success_count / max(1, policy_total)
-    positive_transfer_share_rate = positive_transfer_shared / max(1, positive_transfer_total)
-    negative_transfer_exposure_rate = negative_transfer_shared / max(1, negative_transfer_total)
-    negative_transfer_rejection_rate = negative_transfer_withheld / max(1, negative_transfer_total)
-    safe_exposure_precision = shared_nonharmful / max(1, all_shared_with_pair)
-    safe_exposure_recall = positive_transfer_shared / max(1, positive_transfer_total)
-    decision_coverage = policy_total / max(1, n_total)
+    return {
+        "method": method,
+        "n_candidates": n_total,
+        "candidate_share_rate": round(n_share / max(1, n_total), 4),
+        "positive_transfer_share_rate": round(
+            positive_transfer_shared / max(1, positive_transfer_total), 4),
+        "negative_transfer_exposure_rate": round(
+            negative_transfer_shared / max(1, negative_transfer_total), 4),
+        "negative_transfer_rejection_rate": round(
+            negative_transfer_withheld / max(1, negative_transfer_total), 4),
+        "safe_exposure_precision": round(
+            shared_nonharmful / max(1, all_shared_with_pair), 4),
+        "safe_exposure_recall": round(
+            positive_transfer_shared / max(1, positive_transfer_total), 4),
+    }
+
+
+def compute_receiver_policy_metrics(
+    *,
+    method: str,
+    decisions: list[dict[str, Any]],
+    paired_outcomes: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Receiver-episode-level policy metrics.
+
+    The statistical unit is (task_id, receiver_agent_id, generation_seed):
+    a receiver episode contributes exactly one policy outcome no matter how
+    many candidates the router inspected.
+
+    * no memory selected -> Y_pi = Y_0 (withhold branch outcome);
+    * exactly one memory m* selected -> Y_pi = Y_1(m*) (share branch outcome);
+    * more than one memory selected -> forbidden in SMTR-v1 (raises).
+
+    The Y_0 branch must be consistent across all candidates of the same
+    episode; inconsistent withhold outcomes are reported as a data error
+    instead of silently picking one record.
+    """
+    outcome_by_key = _outcome_lookup(paired_outcomes)
+
+    episodes: dict[tuple[str, int, str], list[dict[str, Any]]] = defaultdict(list)
+    for d in decisions:
+        episode_key = (
+            str(d.get("task_id", "")),
+            int(d.get("generation_seed", 0)),
+            str(d.get("receiver_agent_id", "")),
+        )
+        episodes[episode_key].append(d)
+
+    policy_total = 0
+    policy_success_count = 0
+    episodes_with_share = 0
+    episodes_no_memory = 0
+
+    for episode_key, episode_decisions in episodes.items():
+        task_id, seed, receiver_agent_id = episode_key
+        shared = [d for d in episode_decisions if d["action"] == "share"]
+
+        if len(shared) > 1:
+            shared_ids = sorted(str(d.get("candidate_memory_id", "")) for d in shared)
+            raise ValueError(
+                "SMTR-v1 forbids selecting multiple memories for one receiver "
+                f"episode (task={task_id}, receiver={receiver_agent_id}, "
+                f"seed={seed}): {shared_ids}"
+            )
+
+        if len(shared) == 1:
+            selected = shared[0]
+            rec = outcome_by_key.get((
+                task_id, seed, receiver_agent_id,
+                str(selected.get("candidate_memory_id", "")),
+            ))
+            if rec is None:
+                continue
+            policy_total += 1
+            episodes_with_share += 1
+            if rec.get("share", {}).get("team_success", False):
+                policy_success_count += 1
+        else:
+            # Y_0: withhold branch must be identical across all candidates
+            withhold_outcomes: set[bool] = set()
+            for d in episode_decisions:
+                rec = outcome_by_key.get((
+                    task_id, seed, receiver_agent_id,
+                    str(d.get("candidate_memory_id", "")),
+                ))
+                if rec is not None:
+                    withhold_outcomes.add(
+                        bool(rec.get("withhold", {}).get("team_success", False)))
+            if not withhold_outcomes:
+                continue
+            if len(withhold_outcomes) > 1:
+                raise ValueError(
+                    "Inconsistent withhold (Y_0) outcomes within one receiver "
+                    f"episode (task={task_id}, receiver={receiver_agent_id}, "
+                    f"seed={seed}): {sorted(withhold_outcomes)}"
+                )
+            policy_total += 1
+            episodes_no_memory += 1
+            if next(iter(withhold_outcomes)):
+                policy_success_count += 1
+
+    return {
+        "method": method,
+        "policy_total": policy_total,
+        "policy_success_count": policy_success_count,
+        "paired_policy_success_rate": round(
+            policy_success_count / max(1, policy_total), 4),
+        "episodes_with_share": episodes_with_share,
+        "episodes_no_memory": episodes_no_memory,
+    }
+
+
+def compute_method_metrics(
+    *,
+    method: str,
+    decisions: list[dict[str, Any]],
+    paired_outcomes: list[dict[str, Any]],
+    negative_risk_budget: float = 0.2,
+) -> dict[str, Any]:
+    """Compute paper-required metrics for one method.
+
+    Combines the two separated measurement levels (candidate-level transfer
+    identification and receiver-episode-level policy success) plus auxiliary
+    diagnostics.
+
+    Args:
+        method: method name
+        decisions: list of router decision dicts with keys:
+            candidate_memory_id, receiver_agent_id, receiver_role, writer_role, action,
+            task_id, generation_seed
+        paired_outcomes: list of paired record dicts
+        negative_risk_budget: threshold for quarantine (not hardcoded)
+    """
+    candidate_metrics = compute_candidate_transfer_metrics(
+        method=method,
+        decisions=decisions,
+        paired_outcomes=paired_outcomes,
+    )
+    policy_metrics = compute_receiver_policy_metrics(
+        method=method,
+        decisions=decisions,
+        paired_outcomes=paired_outcomes,
+    )
+
+    n_total = len(decisions)
+    decision_coverage = policy_metrics["policy_total"] / max(1, n_total)
 
     # Writer-receiver mismatch share rate
     mismatch_share = sum(
@@ -141,13 +271,19 @@ def compute_method_metrics(
 
     return {
         "method": method,
-        "paired_policy_success_rate": round(paired_policy_success_rate, 4),
-        "share_rate": round(share_rate, 4),
-        "positive_transfer_share_rate": round(positive_transfer_share_rate, 4),
-        "negative_transfer_exposure_rate": round(negative_transfer_exposure_rate, 4),
-        "negative_transfer_rejection_rate": round(negative_transfer_rejection_rate, 4),
-        "safe_exposure_precision": round(safe_exposure_precision, 4),
-        "safe_exposure_recall": round(safe_exposure_recall, 4),
+        # Receiver-episode-level policy metrics (one unit per episode)
+        "paired_policy_success_rate": policy_metrics["paired_policy_success_rate"],
+        "policy_total": policy_metrics["policy_total"],
+        "episodes_with_share": policy_metrics["episodes_with_share"],
+        "episodes_no_memory": policy_metrics["episodes_no_memory"],
+        # Candidate-level transfer metrics (one unit per candidate decision)
+        "share_rate": candidate_metrics["candidate_share_rate"],
+        "candidate_share_rate": candidate_metrics["candidate_share_rate"],
+        "positive_transfer_share_rate": candidate_metrics["positive_transfer_share_rate"],
+        "negative_transfer_exposure_rate": candidate_metrics["negative_transfer_exposure_rate"],
+        "negative_transfer_rejection_rate": candidate_metrics["negative_transfer_rejection_rate"],
+        "safe_exposure_precision": candidate_metrics["safe_exposure_precision"],
+        "safe_exposure_recall": candidate_metrics["safe_exposure_recall"],
         "decision_coverage": round(decision_coverage, 4),
         "writer_receiver_mismatch_share_rate": round(writer_receiver_mismatch_share_rate, 4),
         "same_memory_different_receiver_flip_count": same_memory_different_receiver_flip_count,
@@ -160,15 +296,7 @@ def compute_writer_receiver_breakdown(
     paired_outcomes: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Breakdown metrics by writer_role -> receiver_role."""
-    outcome_by_key: dict[tuple[str, int, str, str], dict] = {}
-    for rec in paired_outcomes:
-        key = (
-            str(rec.get("task_id", "")),
-            int(rec.get("generation_seed", 0)),
-            str(rec.get("receiver_agent_id", "")),
-            str(rec.get("candidate_memory_id", "")),
-        )
-        outcome_by_key[key] = rec
+    outcome_by_key = _outcome_lookup(paired_outcomes)
 
     groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for d in decisions:
