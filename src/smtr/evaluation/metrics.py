@@ -17,6 +17,16 @@ from typing import Any
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 
 
+class InconsistentControlOutcomeError(ValueError):
+    """Withhold (Y_0) outcomes differ across candidates of one episode.
+
+    The common control outcome of a receiver episode is a data invariant:
+    the withhold branch does not depend on the candidate, so conflicting
+    values indicate corrupted paired records and must fail fast instead of
+    silently picking one record.
+    """
+
+
 def _outcome_lookup(paired_outcomes: list[dict[str, Any]]) -> dict[tuple[str, int, str, str], dict]:
     """Index paired records by (task_id, seed, receiver, memory)."""
     outcome_by_key: dict[tuple[str, int, str, str], dict] = {}
@@ -196,6 +206,130 @@ def compute_receiver_policy_metrics(
         "episodes_with_share": episodes_with_share,
         "episodes_no_memory": episodes_no_memory,
     }
+
+
+def compute_receiver_episode_risk_utility_curve(
+    records: list[dict[str, Any]],
+    predictions: list[dict[str, Any]],
+    epsilons: tuple[float, ...] | list[float],
+) -> list[dict[str, Any]]:
+    """Receiver-episode-level risk-utility curve over risk budgets epsilon.
+
+    The statistical unit is the receiver episode
+    (target_task_id, receiver_agent_id, generation_seed): for each epsilon
+    the policy selects at most one memory per episode (the eligible
+    candidate with the highest tau_hat, ties broken by candidate_memory_id)
+    and contributes exactly one policy outcome. When no memory is selected
+    the episode contributes the single common withhold outcome; conflicting
+    withhold outcomes within one episode raise
+    :class:`InconsistentControlOutcomeError`.
+
+    Args:
+        records: canonical paired records (nested share/withhold outcomes).
+        predictions: per-candidate predictions with keys task_id,
+            generation_seed, receiver_agent_id, candidate_memory_id,
+            tau_hat and eta_hat (calibrated risk).
+        epsilons: risk budgets to sweep.
+
+    Returns:
+        One dict per epsilon with the nine receiver-episode metrics.
+    """
+    predictions_by_key: dict[tuple[str, int, str, str], dict[str, Any]] = {}
+    for pred in predictions:
+        predictions_by_key[(
+            str(pred.get("task_id", "")),
+            int(pred.get("generation_seed", 0)),
+            str(pred.get("receiver_agent_id", "")),
+            str(pred.get("candidate_memory_id", "")),
+        )] = pred
+
+    episodes: dict[tuple[str, int, str], list[dict[str, Any]]] = defaultdict(list)
+    for rec in records:
+        episodes[(
+            str(rec.get("task_id", "")),
+            int(rec.get("generation_seed", 0)),
+            str(rec.get("receiver_agent_id", "")),
+        )].append(rec)
+
+    curve: list[dict[str, Any]] = []
+    for epsilon in epsilons:
+        policy_success = 0
+        episodes_with_exposure = 0
+        shared_candidates = 0
+        total_candidates = 0
+        positive_total = positive_shared = 0
+        negative_total = negative_shared = 0
+        shared_nonharmful = 0
+
+        for episode_key, episode_records in episodes.items():
+            task_id, seed, receiver_agent_id = episode_key
+            total_candidates += len(episode_records)
+
+            # Eligible candidates: tau_hat > 0 and calibrated eta <= epsilon.
+            eligible: list[tuple[float, str, dict[str, Any]]] = []
+            for rec in episode_records:
+                pred = predictions_by_key.get((
+                    task_id, seed, receiver_agent_id,
+                    str(rec.get("candidate_memory_id", "")),
+                ))
+                if pred is None:
+                    continue
+                tau_hat = float(pred.get("tau_hat", 0.0))
+                eta_hat = float(pred.get("eta_hat", 0.0))
+                if tau_hat > 0 and eta_hat <= epsilon:
+                    eligible.append((tau_hat, str(rec.get("candidate_memory_id", "")), rec))
+
+            if eligible:
+                # Select exactly one memory: highest tau_hat, ties broken by
+                # candidate_memory_id for determinism.
+                _, _, selected = sorted(
+                    eligible, key=lambda item: (-item[0], item[1]))[0]
+                outcome = get_paired_outcomes(selected)[0]
+                episodes_with_exposure += 1
+                shared_candidates += 1
+                label = paired_record_label(selected)
+                if label == "positive_transfer":
+                    positive_shared += 1
+                if label == "negative_transfer":
+                    negative_shared += 1
+                if label != "negative_transfer":
+                    shared_nonharmful += 1
+            else:
+                # One common withhold outcome per episode.
+                withhold_outcomes = {
+                    get_paired_outcomes(rec)[1] for rec in episode_records
+                }
+                if len(withhold_outcomes) > 1:
+                    raise InconsistentControlOutcomeError(
+                        "Inconsistent withhold (Y_0) outcomes within one "
+                        f"receiver episode (task={task_id}, "
+                        f"receiver={receiver_agent_id}, seed={seed}): "
+                        f"{sorted(withhold_outcomes)}"
+                    )
+                outcome = next(iter(withhold_outcomes))
+
+            policy_success += outcome
+            for rec in episode_records:
+                label = paired_record_label(rec)
+                if label == "positive_transfer":
+                    positive_total += 1
+                elif label == "negative_transfer":
+                    negative_total += 1
+
+        n_episodes = len(episodes)
+        curve.append({
+            "epsilon": epsilon,
+            "receiver_episode_count": n_episodes,
+            "policy_success_rate": round(policy_success / max(1, n_episodes), 4),
+            "share_coverage": round(episodes_with_exposure / max(1, n_episodes), 4),
+            "candidate_share_rate": round(shared_candidates / max(1, total_candidates), 4),
+            "positive_transfer_recall": round(positive_shared / max(1, positive_total), 4),
+            "negative_transfer_exposure_rate": round(negative_shared / max(1, negative_total), 4),
+            "negative_transfer_rejection_rate": round(
+                (negative_total - negative_shared) / max(1, negative_total), 4),
+            "safe_exposure_precision": round(shared_nonharmful / max(1, shared_candidates), 4),
+        })
+    return curve
 
 
 def compute_method_metrics(
