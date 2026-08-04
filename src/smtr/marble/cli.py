@@ -49,6 +49,10 @@ def main() -> None:
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--output", required=True)
     p.add_argument("--top-k", type=int, default=4)
+    p.add_argument("--cohort-quotas", default="",
+                   help="JSON object of cohort quotas, e.g. "
+                        "'{\"semantic_top\":2,\"role_matched\":2,\"role_mismatched\":2,\"cross_receiver_anchor\":2}'")
+    p.add_argument("--min-task-relevance", type=float, default=None)
 
     p = subparsers.add_parser("generate-database-paired-records", help="Generate candidate-level paired records")
     p.add_argument("--marble-root", required=True)
@@ -183,6 +187,8 @@ def _dispatch(args: argparse.Namespace) -> None:
             load_receiver_entries,
             build_cross_task_candidates,
             write_candidate_manifest,
+            validate_receiver_effect_coverage,
+            CandidateCohortQuotas,
         )
 
         memories = load_memory_pool(Path(args.memory_pool))
@@ -193,17 +199,31 @@ def _dispatch(args: argparse.Namespace) -> None:
             split=args.split,
         )
 
+        cohort_quotas = None
+        if getattr(args, "cohort_quotas", ""):
+            cohort_quotas = CandidateCohortQuotas(**json.loads(args.cohort_quotas))
+
         manifest = build_cross_task_candidates(
             memories=memories,
             recipients=recipients,
             top_k=args.top_k,
             target_split=args.split,
+            cohort_quotas=cohort_quotas,
+            min_task_relevance=getattr(args, "min_task_relevance", None),
         )
 
         result = write_candidate_manifest(
             manifest=manifest,
             output_path=Path(args.output),
         )
+
+        coverage = validate_receiver_effect_coverage(manifest)
+        coverage_path = Path(args.output).with_suffix(".coverage.json")
+        coverage_path.write_text(json.dumps(coverage, indent=2) + "\n", encoding="utf-8")
+        result["receiver_effect_coverage"] = coverage["statistics"]
+        result["coverage_checks"] = coverage["checks"]
+        result["coverage_ok"] = coverage["ok"]
+        result["coverage_audit"] = str(coverage_path)
 
         print(json.dumps(result, indent=2))
 

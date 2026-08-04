@@ -258,6 +258,48 @@ TaskRelation = Literal[
     "cross_task_unknown_group",
 ]
 
+CandidateSource = Literal[
+    "semantic_top",
+    "role_matched",
+    "role_mismatched",
+    "cross_receiver_anchor",
+]
+
+
+class CandidateCohortQuotas(BaseModel):
+    """Per-receiver candidate cohort quotas (configurable, not hardcoded).
+
+    Candidate selection never reads share/withhold outcomes: cohorts are
+    built from routing-card / receiver metadata only.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    semantic_top: int = 2
+    role_matched: int = 2
+    role_mismatched: int = 2
+    cross_receiver_anchor: int = 2
+    min_task_relevance: float = 0.0
+
+    @property
+    def total(self) -> int:
+        return (
+            self.semantic_top + self.role_matched
+            + self.role_mismatched + self.cross_receiver_anchor
+        )
+
+
+def quotas_from_top_k(top_k: int) -> CandidateCohortQuotas:
+    """Derive balanced cohort quotas from a total per-receiver budget."""
+    base, rem = divmod(max(0, top_k), 4)
+    counts = {
+        "semantic_top": base + (1 if rem > 0 else 0),
+        "role_matched": base + (1 if rem > 1 else 0),
+        "role_mismatched": base + (1 if rem > 2 else 0),
+        "cross_receiver_anchor": base,
+    }
+    return CandidateCohortQuotas(**counts)
+
 
 class CandidateRecord(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -271,6 +313,8 @@ class CandidateRecord(BaseModel):
     receiver_role: str
     match_type: MatchType
     task_relation: TaskRelation = "cross_task_unknown_group"
+    candidate_source: CandidateSource = "semantic_top"
+    anchor_group_id: str | None = None
     rank: int
     score: float
     score_components: dict[str, float] = {}
@@ -296,6 +340,7 @@ class DatabaseCandidateManifest(BaseModel):
     schema_version: str = "marble_candidates_v2"
     scenario: str = "database"
     top_k: int = 4
+    cohort_quotas: CandidateCohortQuotas = CandidateCohortQuotas()
     target_split: str = ""
     memory_source_split: str = "train"
     candidates: list[CandidateEntry] = []
@@ -307,48 +352,82 @@ def build_cross_task_candidates(
     recipients: list[dict[str, Any]],
     top_k: int = 4,
     target_split: str = "",
+    cohort_quotas: CandidateCohortQuotas | None = None,
+    min_task_relevance: float | None = None,
 ) -> DatabaseCandidateManifest:
-    """Build receiver-conditioned candidate sets with writer-receiver match info."""
+    """Build receiver-conditioned candidate sets as stratified cohorts.
+
+    Each receiver's candidates come from four cohorts: semantic_top,
+    role_matched, role_mismatched hard negatives and cross_receiver_anchor.
+    Cohort selection only reads routing-card / receiver metadata and never
+    reads share/withhold outcomes.
+    """
+    quotas = cohort_quotas if cohort_quotas is not None else quotas_from_top_k(top_k)
+    if min_task_relevance is not None:
+        quotas = quotas.model_copy(update={"min_task_relevance": min_task_relevance})
+
+    sorted_recipients = sorted(recipients, key=lambda r: (r["task_id"], r.get("agent_id", "")))
+
+    # Pass 1: per-receiver eligible pool (outcomes never consulted)
+    receiver_pools: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
+    for recipient in sorted_recipients:
+        pool = [
+            item
+            for mem in memories
+            if mem.routing_card.source_task_id != recipient["task_id"]
+            for item in (_score_memory_for_recipient(mem, recipient),)
+        ]
+        receiver_pools.append((recipient, pool))
+
+    # Pass 2: global anchor assignment (same memory to multiple receivers)
+    anchor_assignments = _select_anchor_assignments(receiver_pools, quotas)
+
     entries: list[CandidateEntry] = []
-    for recipient in sorted(recipients, key=lambda r: r["task_id"]):
+    for idx, (recipient, pool) in enumerate(receiver_pools):
         receiver_role = recipient.get("agent_role", "unknown")
-        receiver_caps = set(recipient.get("agent_capabilities", []))
-        recipient_terms = _terms(recipient.get("instruction", ""))
-        scored: list[tuple[float, ExtractedMemory, dict[str, float]]] = []
-        for mem in memories:
-            if mem.routing_card.source_task_id == recipient["task_id"]:
-                continue
-            card = mem.routing_card
-            card_terms = _terms(" ".join([card.goal_summary, *card.task_tags]))
-            task_sim = len(recipient_terms & card_terms) / max(1, len(recipient_terms | card_terms))
-            writer_caps = set(card.writer.capabilities)
-            cap_overlap = len(receiver_caps & writer_caps) / max(1, len(receiver_caps | writer_caps))
-            role_match = 1.0 if card.writer.role == receiver_role else 0.0
-            wr_compat = 0.5 if card.writer.role == receiver_role else -0.1
-            # Environment compatibility: constraints satisfied / total constraints
-            env_constraints = set(card.environment_constraints)
-            receiver_env = set(recipient.get("environment_signature", []))
-            if env_constraints:
-                env_compat = len(env_constraints & receiver_env) / len(env_constraints)
-            else:
-                env_compat = 1.0
-            score = 0.35 * task_sim + 0.2 * cap_overlap + 0.15 * wr_compat + 0.15 * role_match + 0.15 * env_compat
-            components = {
-                "task_similarity_raw": round(task_sim, 4),
-                "task_similarity_weighted": round(0.35 * task_sim, 4),
-                "capability_overlap_raw": round(cap_overlap, 4),
-                "capability_overlap_weighted": round(0.2 * cap_overlap, 4),
-                "writer_receiver_compatibility_raw": round(wr_compat, 4),
-                "writer_receiver_compatibility_weighted": round(0.15 * wr_compat, 4),
-                "role_match_raw": round(role_match, 4),
-                "role_match_weighted": round(0.15 * role_match, 4),
-                "environment_compatibility_raw": round(env_compat, 4),
-                "environment_compatibility_weighted": round(0.15 * env_compat, 4),
-            }
-            scored.append((score, mem, components))
-        top = sorted(scored, key=lambda x: (-x[0], x[1].memory_id))[:top_k]
+        assigned_anchor_ids = anchor_assignments.get(idx, [])
+
+        by_score = sorted(pool, key=lambda it: (-it["score"], it["mem"].memory_id))
+        relevant_pool = [
+            it for it in by_score if it["task_sim"] >= quotas.min_task_relevance
+        ]
+        matched_pool = [
+            it for it in relevant_pool
+            if it["matched"]
+        ]
+        mismatched_pool = [
+            it for it in relevant_pool
+            if it["mismatched"]
+        ]
+        anchor_pool = [
+            it for mid in assigned_anchor_ids
+            for it in relevant_pool
+            if it["mem"].memory_id == mid
+        ]
+
+        selected: list[tuple[dict[str, Any], CandidateSource]] = []
+        chosen_ids: set[str] = set()
+
+        def _fill(source_pool: list[dict[str, Any]], quota: int, source: CandidateSource) -> None:
+            for it in source_pool:
+                if len([s for s in selected if s[1] == source]) >= quota:
+                    break
+                mid = it["mem"].memory_id
+                if mid in chosen_ids:
+                    continue
+                chosen_ids.add(mid)
+                selected.append((it, source))
+
+        _fill(relevant_pool, quotas.semantic_top, "semantic_top")
+        _fill(matched_pool, quotas.role_matched, "role_matched")
+        _fill(mismatched_pool, quotas.role_mismatched, "role_mismatched")
+        _fill(anchor_pool, quotas.cross_receiver_anchor, "cross_receiver_anchor")
+        # Backfill leftover budget by overall relevance (labelled semantic_top)
+        _fill(relevant_pool, quotas.total, "semantic_top")
+
         records: list[CandidateRecord] = []
-        for rank, (score, mem, components) in enumerate(top, 1):
+        for rank, (item, source) in enumerate(selected, 1):
+            mem = item["mem"]
             card = mem.routing_card
             w_role = card.writer.role
             match_type: MatchType = (
@@ -365,9 +444,11 @@ def build_cross_task_candidates(
                 receiver_role=receiver_role,
                 match_type=match_type,
                 task_relation="cross_task_unknown_group",
+                candidate_source=source,
+                anchor_group_id=mem.memory_id if source == "cross_receiver_anchor" else None,
                 rank=rank,
-                score=round(score, 4),
-                score_components=components,
+                score=round(item["score"], 4),
+                score_components=item["components"],
             ))
         entries.append(CandidateEntry(
             task_id=recipient["task_id"],
@@ -382,10 +463,212 @@ def build_cross_task_candidates(
         ))
     return DatabaseCandidateManifest(
         top_k=top_k,
+        cohort_quotas=quotas,
         target_split=target_split,
         memory_source_split="train",
         candidates=entries,
     )
+
+
+def _score_memory_for_recipient(
+    mem: ExtractedMemory,
+    recipient: dict[str, Any],
+) -> dict[str, Any]:
+    """Score one memory for one receiver using metadata only (no outcomes)."""
+    card = mem.routing_card
+    receiver_role = recipient.get("agent_role", "unknown")
+    receiver_caps = set(recipient.get("agent_capabilities", []))
+    receiver_tools = set(recipient.get("tool_names", []))
+    recipient_terms = _terms(recipient.get("instruction", ""))
+    card_terms = _terms(" ".join([card.goal_summary, *card.task_tags]))
+    task_sim = len(recipient_terms & card_terms) / max(1, len(recipient_terms | card_terms))
+    writer_caps = set(card.writer.capabilities)
+    cap_overlap = len(receiver_caps & writer_caps) / max(1, len(receiver_caps | writer_caps))
+    role_match = 1.0 if card.writer.role == receiver_role else 0.0
+    wr_compat = 0.5 if card.writer.role == receiver_role else -0.1
+    # Environment compatibility: constraints satisfied / total constraints
+    env_constraints = set(card.environment_constraints)
+    receiver_env = set(recipient.get("environment_signature", []))
+    env_compat = (
+        len(env_constraints & receiver_env) / len(env_constraints)
+        if env_constraints else 1.0
+    )
+    score = 0.35 * task_sim + 0.2 * cap_overlap + 0.15 * wr_compat + 0.15 * role_match + 0.15 * env_compat
+    components = {
+        "task_similarity_raw": round(task_sim, 4),
+        "task_similarity_weighted": round(0.35 * task_sim, 4),
+        "capability_overlap_raw": round(cap_overlap, 4),
+        "capability_overlap_weighted": round(0.2 * cap_overlap, 4),
+        "writer_receiver_compatibility_raw": round(wr_compat, 4),
+        "writer_receiver_compatibility_weighted": round(0.15 * wr_compat, 4),
+        "role_match_raw": round(role_match, 4),
+        "role_match_weighted": round(0.15 * role_match, 4),
+        "environment_compatibility_raw": round(env_compat, 4),
+        "environment_compatibility_weighted": round(0.15 * env_compat, 4),
+    }
+    matched, mismatched = _writer_receiver_alignment(card, receiver_role, receiver_caps, receiver_tools)
+    return {
+        "mem": mem,
+        "score": score,
+        "components": components,
+        "task_sim": task_sim,
+        "matched": matched,
+        "mismatched": mismatched,
+    }
+
+
+def _writer_receiver_alignment(
+    card: MemoryRoutingCard,
+    receiver_role: str,
+    receiver_caps: set[str],
+    receiver_tools: set[str],
+) -> tuple[bool, bool]:
+    """Return (matched, mismatched) writer-receiver alignment flags.
+
+    matched: same role OR overlapping capabilities OR overlapping tools.
+    mismatched (hard negative): different role AND no capability/tool overlap.
+    """
+    role_same = card.writer.role == receiver_role
+    cap_overlaps = bool(receiver_caps & set(card.writer.capabilities))
+    tool_overlaps = bool(receiver_tools & set(card.writer.tool_names))
+    matched = role_same or cap_overlaps or tool_overlaps
+    mismatched = (not role_same) and (not cap_overlaps) and (not tool_overlaps)
+    return matched, mismatched
+
+
+def _select_anchor_assignments(
+    receiver_pools: list[tuple[dict[str, Any], list[dict[str, Any]]]],
+    quotas: CandidateCohortQuotas,
+) -> dict[int, list[str]]:
+    """Return, per receiver, an ordered list of anchor candidate memory ids.
+
+    Anchor memories are task-relevant memories eligible for >=2 receivers,
+    ranked to prefer coverage of distinct receiver roles.  Every anchor
+    candidate is by construction shared across at least two receivers.
+    Selection ignores share/withhold outcomes.
+    """
+    if quotas.cross_receiver_anchor <= 0:
+        return {}
+    eligible: dict[str, list[tuple[int, str]]] = {}
+    for idx, (recipient, pool) in enumerate(receiver_pools):
+        role = recipient.get("agent_role", "unknown")
+        for item in pool:
+            if item["task_sim"] >= quotas.min_task_relevance:
+                eligible.setdefault(item["mem"].memory_id, []).append((idx, role))
+    anchor_candidates = [
+        (mid, lst) for mid, lst in eligible.items()
+        if len({idx for idx, _ in lst}) >= 2
+    ]
+    anchor_candidates.sort(
+        key=lambda p: (
+            -len({role for _, role in p[1]}),
+            -len({idx for idx, _ in p[1]}),
+            p[0],
+        )
+    )
+    ranked_anchor_ids = [mid for mid, _ in anchor_candidates]
+    assignments: dict[int, list[str]] = {}
+    for idx, (_, pool) in enumerate(receiver_pools):
+        eligible_ids = {
+            it["mem"].memory_id
+            for it in pool
+            if it["task_sim"] >= quotas.min_task_relevance
+        }
+        assignments[idx] = [mid for mid in ranked_anchor_ids if mid in eligible_ids]
+    return assignments
+
+
+def validate_receiver_effect_coverage(
+    candidate_manifest: DatabaseCandidateManifest | dict[str, Any],
+) -> dict[str, Any]:
+    """Audit candidate coverage required for receiver-effect identification.
+
+    Checks every receiver carries matched and mismatched candidates, that at
+    least one memory is evaluated by multiple receivers (and multiple
+    receiver roles), that anchor candidates meet min task relevance, and that
+    the candidate schema never carries outcome labels.
+    """
+    if isinstance(candidate_manifest, dict):
+        manifest = DatabaseCandidateManifest.model_validate(candidate_manifest)
+    else:
+        manifest = candidate_manifest
+
+    min_relevance = manifest.cohort_quotas.min_task_relevance
+    total_records = 0
+    matched_records = 0
+    mismatched_records = 0
+    anchor_records = 0
+    receivers_without_matched: list[str] = []
+    receivers_without_mismatched: list[str] = []
+    memory_receivers: dict[str, set[tuple[str, str]]] = {}
+    memory_roles: dict[str, set[str]] = {}
+    anchor_relevance_ok = True
+
+    for entry in manifest.candidates:
+        key = (entry.task_id, entry.receiver_agent_id)
+        recs = entry.candidate_records
+        total_records += len(recs)
+        has_matched = False
+        has_mismatched = False
+        for rec in recs:
+            memory_receivers.setdefault(rec.memory_id, set()).add(key)
+            memory_roles.setdefault(rec.memory_id, set()).add(entry.receiver_role)
+            if rec.candidate_source == "role_matched":
+                matched_records += 1
+            elif rec.candidate_source == "role_mismatched":
+                mismatched_records += 1
+            elif rec.candidate_source == "cross_receiver_anchor":
+                anchor_records += 1
+                task_sim = rec.score_components.get("task_similarity_raw", 0.0)
+                if task_sim < min_relevance:
+                    anchor_relevance_ok = False
+            if rec.match_type == "matched_writer_receiver":
+                has_matched = True
+            else:
+                has_mismatched = True
+        if not has_matched:
+            receivers_without_matched.append(f"{key[0]}:{key[1]}")
+        if not has_mismatched:
+            receivers_without_mismatched.append(f"{key[0]}:{key[1]}")
+
+    total_unique_memories = len(memory_receivers)
+    seen_by_2plus_receivers = sum(1 for r in memory_receivers.values() if len(r) >= 2)
+    seen_by_2plus_roles = sum(1 for roles in memory_roles.values() if len(roles) >= 2)
+    forbidden_fields = {"y_share", "y_withhold", "label", "team_success", "outcome"}
+    no_outcome_fields = not (set(CandidateRecord.model_fields) & forbidden_fields)
+
+    statistics = {
+        "total_unique_memories": total_unique_memories,
+        "memories_seen_by_2plus_receivers": seen_by_2plus_receivers,
+        "memories_seen_by_2plus_receiver_roles": seen_by_2plus_roles,
+        "receiver_effect_coverage": round(
+            seen_by_2plus_receivers / total_unique_memories, 4
+        ) if total_unique_memories else 0.0,
+        "matched_candidate_rate": round(
+            matched_records / total_records, 4
+        ) if total_records else 0.0,
+        "mismatched_candidate_rate": round(
+            mismatched_records / total_records, 4
+        ) if total_records else 0.0,
+        "cross_receiver_anchor_rate": round(
+            anchor_records / total_records, 4
+        ) if total_records else 0.0,
+    }
+    checks = {
+        "all_receivers_have_matched_candidate": not receivers_without_matched,
+        "all_receivers_have_mismatched_candidate": not receivers_without_mismatched,
+        "has_memory_seen_by_2plus_receivers": seen_by_2plus_receivers > 0,
+        "has_memory_seen_by_2plus_receiver_roles": seen_by_2plus_roles > 0,
+        "anchor_candidates_meet_min_task_relevance": anchor_relevance_ok,
+        "candidate_selection_ignores_outcomes": no_outcome_fields,
+    }
+    return {
+        "statistics": statistics,
+        "checks": checks,
+        "receivers_without_matched_candidate": receivers_without_matched,
+        "receivers_without_mismatched_candidate": receivers_without_mismatched,
+        "ok": all(checks.values()),
+    }
 
 
 # ---------------------------------------------------------------------------
