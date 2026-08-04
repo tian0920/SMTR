@@ -105,6 +105,8 @@ python -m smtr.marble.cli generate-database-paired-records \
   --split train \
   --candidate-manifest artifacts/marble/candidates/train_candidates.json \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --generation-seeds 0 1 2 3 4 \
+  --experiment-mode formal \
   --output artifacts/marble/paired/train
 ```
 
@@ -125,6 +127,8 @@ python -m smtr.marble.cli generate-database-paired-records \
   --split validation \
   --candidate-manifest artifacts/marble/candidates/validation_candidates.json \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --generation-seeds 0 1 2 3 4 \
+  --experiment-mode formal \
   --output artifacts/marble/paired/validation
 
 python -m smtr.marble.cli train-critic \
@@ -152,6 +156,8 @@ python -m smtr.marble.cli generate-database-paired-records \
   --split test \
   --candidate-manifest artifacts/marble/candidates/test_candidates.json \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --generation-seeds 0 1 2 3 4 \
+  --experiment-mode formal \
   --output artifacts/marble/paired/test
 
 python -m smtr.marble.cli run-paired-decision-evaluation \

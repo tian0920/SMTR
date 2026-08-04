@@ -65,6 +65,7 @@ def main() -> None:
     p.add_argument("--limit-pairs", type=int, default=None)
     p.add_argument("--branch-order", choices=["counterbalanced", "share_then_withhold", "withhold_then_share"], default="counterbalanced")
     p.add_argument("--engine-timeout-seconds", type=int, default=1800)
+    p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("train-critic", help="Train four-outcome transfer critic")
@@ -255,6 +256,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             output_dir=Path(args.output),
             branch_execution_order=args.branch_order,
             engine_timeout_seconds=args.engine_timeout_seconds,
+            experiment_mode=args.experiment_mode,
         )
         print(json.dumps(result, indent=2))
 

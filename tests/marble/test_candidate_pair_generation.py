@@ -144,13 +144,13 @@ def test_each_candidate_seed_calls_run_pair_once(tmp_path):
             split="validation",
             candidate_manifest_path=candidate_manifest,
             memory_pool_path=memory_pool,
-            generation_seeds=[0, 1],
+            generation_seeds=[0, 1, 2],
             output_dir=output_dir,
         )
 
-    # 2 candidates x 2 seeds = 4 calls
-    assert mock_runner.run_pair.call_count == 4
-    assert result["attempted"] == 4
+    # 2 candidates x 3 seeds = 6 calls
+    assert mock_runner.run_pair.call_count == 6
+    assert result["attempted"] == 6
 
 
 def test_never_calls_run_single_branch(tmp_path):
@@ -189,7 +189,7 @@ def test_never_calls_run_single_branch(tmp_path):
             split="validation",
             candidate_manifest_path=candidate_manifest,
             memory_pool_path=memory_pool,
-            generation_seeds=[0],
+            generation_seeds=[0, 1, 2],
             output_dir=output_dir,
         )
 
@@ -232,15 +232,17 @@ def test_record_digests_come_from_paired_branch_result(tmp_path):
             split="validation",
             candidate_manifest_path=candidate_manifest,
             memory_pool_path=memory_pool,
-            generation_seeds=[0],
+            generation_seeds=[0, 1, 2],
             limit_pairs=1,
             output_dir=output_dir,
         )
 
-    # Read output records
+    # Read output records: 1 edge x 3 seeds = 3 replicate records
     records_path = output_dir / "paired_records.jsonl"
     records = [json.loads(l) for l in records_path.read_text().splitlines() if l.strip()]
-    assert len(records) == 1
+    assert len(records) == 3
+    replicate_ids = {rec["replicate_id"] for rec in records}
+    assert len(replicate_ids) == 3
     rec = records[0]
     # Digests must match the mock values
     assert rec["digests"]["share_initial_digest"] == "digest_abc"

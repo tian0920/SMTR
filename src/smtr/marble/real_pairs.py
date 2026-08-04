@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
@@ -19,6 +20,16 @@ from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 TREATMENT_DEFINITION_VERSION = "v1"
 
 BranchOrder = Literal["share_then_withhold", "withhold_then_share"]
+
+ExperimentMode = Literal["pilot", "formal"]
+
+# Minimum number of distinct generation seeds required before any paired
+# intervention run starts. A single seed yields one discrete outcome and
+# cannot form empirical probabilities q00/q01/q10/q11.
+MIN_SEEDS: dict[str, int] = {
+    "pilot": 3,
+    "formal": 5,
+}
 
 
 def stable_hash(*parts: object) -> int:
@@ -39,11 +50,62 @@ def compute_edge_id(
     return f"edge_{stable_hash(target_task_id, receiver_agent_id, candidate_memory_id):016x}"
 
 
-def branch_order_for_edge(edge_id: str, generation_seed: int) -> BranchOrder:
+def compute_replicate_id(edge_id: str, generation_seed: int) -> str:
+    """Stable identity for one replicate: stable_hash(edge_id, seed)."""
+    return f"rep_{stable_hash(edge_id, generation_seed):016x}"
+
+
+def assign_branch_order(edge_id: str, generation_seed: int) -> BranchOrder:
     """Deterministic counterbalanced branch order for one replicate."""
     if stable_hash(edge_id, generation_seed) % 2 == 0:
         return "share_then_withhold"
     return "withhold_then_share"
+
+
+# Backwards-compatible alias for assign_branch_order.
+branch_order_for_edge = assign_branch_order
+
+
+@dataclass(frozen=True)
+class EdgeTransferEstimate:
+    """Edge-level empirical transfer estimate from multi-seed replicates."""
+
+    edge_id: str
+    n_replicates: int
+    q00_empirical: float
+    q01_empirical: float
+    q10_empirical: float
+    q11_empirical: float
+    tau_empirical: float  # = q10_empirical - q01_empirical
+    eta_empirical: float  # = q01_empirical
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def compute_edge_transfer_estimates(
+    records: list[dict[str, Any]],
+) -> list[EdgeTransferEstimate]:
+    """Build frozen EdgeTransferEstimate objects from replicate-level records.
+
+    Receiver-effect analyses should prefer these edge-level empirical taus
+    over discrete per-replicate differences.
+    """
+    estimates: list[EdgeTransferEstimate] = []
+    for agg in aggregate_edge_records(records):
+        estimates.append(
+            EdgeTransferEstimate(
+                edge_id=agg["edge_id"],
+                n_replicates=agg["n_replicates"],
+                q00_empirical=agg["q00_empirical"],
+                q01_empirical=agg["q01_empirical"],
+                q10_empirical=agg["q10_empirical"],
+                q11_empirical=agg["q11_empirical"],
+                tau_empirical=agg["tau_empirical"],
+                eta_empirical=agg["eta_empirical"],
+            )
+        )
+    return estimates
 
 
 def aggregate_edge_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -107,6 +169,7 @@ def generate_candidate_level_pairs(
     output_dir: Path,
     branch_execution_order: str = "counterbalanced",
     engine_timeout_seconds: int = 1800,
+    experiment_mode: str = "pilot",
 ) -> dict[str, Any]:
     """Generate candidate-level paired records via MarblePairedBranchRunner.run_pair.
 
@@ -119,6 +182,19 @@ def generate_candidate_level_pairs(
     """
     from smtr.marble.branch_runner import MarblePairedBranchRunner
     from smtr.marble.paired_context import build_pair_execution_context
+
+    if experiment_mode not in MIN_SEEDS:
+        raise ValueError(
+            f"Unknown experiment_mode {experiment_mode!r}; "
+            f"expected one of {sorted(MIN_SEEDS)}."
+        )
+    min_seeds = MIN_SEEDS[experiment_mode]
+    if len(set(generation_seeds)) < min_seeds:
+        raise ValueError(
+            f"experiment_mode={experiment_mode!r} requires at least "
+            f"{min_seeds} distinct generation seeds, got "
+            f"{sorted(set(generation_seeds))}."
+        )
 
     dataset = json.loads(dataset_manifest_path.read_text(encoding="utf-8"))
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
@@ -181,11 +257,11 @@ def generate_candidate_level_pairs(
         if task_entry is None:
             continue
 
-        for replicate_index, seed in enumerate(generation_seeds):
+        for seed in generation_seeds:
             if branch_execution_order in ("share_then_withhold", "withhold_then_share"):
                 replicate_branch_order: BranchOrder = branch_execution_order  # type: ignore[assignment]
             else:
-                replicate_branch_order = branch_order_for_edge(edge["edge_id"], seed)
+                replicate_branch_order = assign_branch_order(edge["edge_id"], seed)
             pair_workspace = output_dir / "pairs" / f"{edge['task_id']}_{edge['receiver_agent_id']}_{edge['candidate_memory_id']}_{seed}"
 
             context = build_pair_execution_context(
@@ -210,7 +286,7 @@ def generate_candidate_level_pairs(
                 pair_result=pair_result,
                 edge=edge,
                 seed=seed,
-                replicate_id=f"{edge['edge_id']}:r{replicate_index}",
+                replicate_id=compute_replicate_id(edge["edge_id"], seed),
             )
             records.append(record)
 
@@ -260,7 +336,11 @@ def paired_result_to_record(
         "scenario": pair_result.scenario,
 
         "edge_id": edge_id,
-        "replicate_id": replicate_id if replicate_id is not None else f"{edge_id}:r0",
+        "replicate_id": (
+            replicate_id
+            if replicate_id is not None
+            else compute_replicate_id(edge_id, seed)
+        ),
         "treatment_definition_version": treatment_definition_version,
 
         "task_id": pair_result.task_id,
