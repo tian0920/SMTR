@@ -77,11 +77,17 @@ def run_paired_decision_evaluation(
     checkpoint_global_transfer_critic: Path | None = None,
     checkpoint_smtr_no_pair_interaction: Path | None = None,
     methods: list[str] | None = None,
-    negative_risk_budget: float = 0.2,
+    negative_risk_budget: float | None = None,
+    allow_risk_budget_override: bool = False,
     ci_bootstrap: int = 1000,
     output: Path,
 ) -> dict[str, Any]:
-    """Run paired decision evaluation using candidate manifest and paired records."""
+    """Run paired decision evaluation using candidate manifest and paired records.
+
+    Formal evaluations keep ``negative_risk_budget=None`` so every
+    risk-gated method reads epsilon_star from its critic checkpoint
+    (清单第三章); an explicit budget is a debug-only override.
+    """
     methods = list(methods) if methods else list(MAIN_TABLE_METHODS)
     # Load critics and verify feature blocks
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
@@ -125,6 +131,16 @@ def run_paired_decision_evaluation(
         global_critic=global_critic,
         no_pair_critic=no_pair_critic,
         negative_risk_budget=negative_risk_budget,
+        allow_risk_budget_override=allow_risk_budget_override,
+    )
+
+    # Risk budget used only for quarantine diagnostics; decisions themselves
+    # resolve epsilon_star inside each router.
+    eps_star = getattr(full_critic, "epsilon_star", None)
+    diagnostic_budget = (
+        negative_risk_budget
+        if negative_risk_budget is not None
+        else (float(eps_star) if isinstance(eps_star, (int, float)) else 0.2)
     )
 
     # Run evaluation per method using candidate manifest
@@ -179,7 +195,7 @@ def run_paired_decision_evaluation(
             method=method,
             decisions=all_traces[method],
             paired_outcomes=paired_outcomes,
-            negative_risk_budget=negative_risk_budget,
+            negative_risk_budget=diagnostic_budget,
         )
         all_method_metrics.append(metrics)
 
@@ -402,7 +418,8 @@ def _build_routers(
     no_wr_critic: FourOutcomeTransferCritic | None = None,
     global_critic: FourOutcomeTransferCritic | None = None,
     no_pair_critic: FourOutcomeTransferCritic | None = None,
-    negative_risk_budget: float,
+    negative_risk_budget: float | None = None,
+    allow_risk_budget_override: bool = False,
 ) -> dict[str, Any]:
     """Build router instances for each method."""
     routers: dict[str, Any] = {}
@@ -422,13 +439,18 @@ def _build_routers(
                     "checkpoint_global_transfer_critic (feature_block='memory_task_only')"
                 )
             routers[method] = GlobalTransferCriticRouter(
-                critic=global_critic, negative_risk_budget=negative_risk_budget)
+                critic=global_critic, negative_risk_budget=negative_risk_budget,
+                allow_risk_budget_override=allow_risk_budget_override)
         elif method == "smtr":
-            routers[method] = SMTRExposureRouter(critic=full_critic, negative_risk_budget=negative_risk_budget)
+            routers[method] = SMTRExposureRouter(
+                critic=full_critic, negative_risk_budget=negative_risk_budget,
+                allow_risk_budget_override=allow_risk_budget_override)
         elif method == "smtr_ucb":
             # Additional ablation (清单 9.2): reuses the full checkpoint,
             # decisions come from bootstrap-ensemble quantiles.
-            routers[method] = SMTRUCBRouter(critic=full_critic, negative_risk_budget=negative_risk_budget)
+            routers[method] = SMTRUCBRouter(
+                critic=full_critic, negative_risk_budget=negative_risk_budget,
+                allow_risk_budget_override=allow_risk_budget_override)
         elif method == "smtr_no_pair_interaction":
             if no_pair_critic is None:
                 raise ValueError(
@@ -436,7 +458,8 @@ def _build_routers(
                     "checkpoint_smtr_no_pair_interaction (feature_block='no_pair_interaction')"
                 )
             routers[method] = SMTRNoPairInteractionRouter(
-                critic=no_pair_critic, negative_risk_budget=negative_risk_budget)
+                critic=no_pair_critic, negative_risk_budget=negative_risk_budget,
+                allow_risk_budget_override=allow_risk_budget_override)
         elif method == "smtr_no_risk":
             routers[method] = SMTRNoRiskRouter(critic=full_critic)
         elif method == "smtr_no_writer_receiver":
@@ -445,7 +468,9 @@ def _build_routers(
                     "method smtr_no_writer_receiver requires "
                     "checkpoint_no_writer_receiver (legacy feature_block)"
                 )
-            routers[method] = SMTRNoWriterReceiverRouter(critic=no_wr_critic, negative_risk_budget=negative_risk_budget)
+            routers[method] = SMTRNoWriterReceiverRouter(
+                critic=no_wr_critic, negative_risk_budget=negative_risk_budget,
+                allow_risk_budget_override=allow_risk_budget_override)
         else:
             raise ValueError(f"unknown method: {method}")
     return routers

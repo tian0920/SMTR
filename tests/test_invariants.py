@@ -153,7 +153,8 @@ class TestSameMemoryDifferentReceiver:
             labels.append("positive_transfer" if recv_role == "executor" else "negative_transfer")
 
         critic.fit(inputs, labels)
-        router = SMTRExposureRouter(critic=critic, negative_risk_budget=0.5)
+        critic.epsilon_star = 0.5
+        router = SMTRExposureRouter(critic=critic)
 
         # Receiver A = executor (same as writer)
         recv_a = AgentProfile(agent_id="ra", role="executor", capabilities=("execution",))

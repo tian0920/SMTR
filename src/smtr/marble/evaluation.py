@@ -40,7 +40,8 @@ def run_evaluation(
     memory_pool: Path,
     checkpoint: Path,
     methods: list[str],
-    negative_risk_budget: float = 0.2,
+    negative_risk_budget: float | None = None,
+    allow_risk_budget_override: bool = False,
     output: Path,
 ) -> dict[str, Any]:
     """Run evaluation for all requested methods on MARBLE test split."""
@@ -106,11 +107,15 @@ def run_evaluation(
         elif method == "factual_success":
             routers[method] = FactualSuccessRouter()
         elif method == "smtr":
-            routers[method] = SMTRExposureRouter(critic=critic, negative_risk_budget=negative_risk_budget)
+            routers[method] = SMTRExposureRouter(
+                critic=critic, negative_risk_budget=negative_risk_budget,
+                allow_risk_budget_override=allow_risk_budget_override)
         elif method == "smtr_no_risk":
             routers[method] = SMTRNoRiskRouter(critic=critic)
         elif method == "smtr_no_writer_receiver":
-            routers[method] = SMTRNoWriterReceiverRouter(critic=critic, negative_risk_budget=negative_risk_budget)
+            routers[method] = SMTRNoWriterReceiverRouter(
+                critic=critic, negative_risk_budget=negative_risk_budget,
+                allow_risk_budget_override=allow_risk_budget_override)
 
     # Run evaluation per method
     all_method_metrics: list[dict[str, Any]] = []

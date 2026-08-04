@@ -169,8 +169,9 @@ class FactualSuccessRouter:
 def _critic_router(
     critic: FourOutcomeTransferCritic,
     expected_feature_block: str,
-    negative_risk_budget: float,
+    negative_risk_budget: float | None = None,
     max_shared_memories_per_receiver: int = 1,
+    allow_risk_budget_override: bool = False,
 ):
     from smtr.router.exposure_router import SMTRExposureRouter
 
@@ -182,6 +183,7 @@ def _critic_router(
         critic=critic,
         negative_risk_budget=negative_risk_budget,
         max_shared_memories_per_receiver=max_shared_memories_per_receiver,
+        allow_risk_budget_override=allow_risk_budget_override,
     )
 
 
@@ -196,10 +198,14 @@ class GlobalTransferCriticRouter:
     def __init__(
         self,
         critic: FourOutcomeTransferCritic,
-        negative_risk_budget: float = 0.2,
+        negative_risk_budget: float | None = None,
         max_shared_memories_per_receiver: int = 1,
+        allow_risk_budget_override: bool = False,
     ) -> None:
-        self._router = _critic_router(critic, "memory_task_only", negative_risk_budget, max_shared_memories_per_receiver)
+        self._router = _critic_router(
+            critic, "memory_task_only", negative_risk_budget,
+            max_shared_memories_per_receiver, allow_risk_budget_override,
+        )
 
     def decide(
         self,
@@ -216,10 +222,14 @@ class SMTRNoPairInteractionRouter:
     def __init__(
         self,
         critic: FourOutcomeTransferCritic,
-        negative_risk_budget: float = 0.2,
+        negative_risk_budget: float | None = None,
         max_shared_memories_per_receiver: int = 1,
+        allow_risk_budget_override: bool = False,
     ) -> None:
-        self._router = _critic_router(critic, "no_pair_interaction", negative_risk_budget, max_shared_memories_per_receiver)
+        self._router = _critic_router(
+            critic, "no_pair_interaction", negative_risk_budget,
+            max_shared_memories_per_receiver, allow_risk_budget_override,
+        )
 
     def decide(
         self,
@@ -277,11 +287,13 @@ class SMTRNoWriterReceiverRouter:
     def __init__(
         self,
         critic: FourOutcomeTransferCritic,
-        negative_risk_budget: float = 0.2,
+        negative_risk_budget: float | None = None,
         max_shared_memories_per_receiver: int = 1,
+        allow_risk_budget_override: bool = False,
     ) -> None:
         self.critic = critic
         self.negative_risk_budget = negative_risk_budget
+        self.allow_risk_budget_override = allow_risk_budget_override
         self.max_shared_memories_per_receiver = max_shared_memories_per_receiver
 
     def decide(
@@ -297,6 +309,7 @@ class SMTRNoWriterReceiverRouter:
             critic=self.critic,
             negative_risk_budget=self.negative_risk_budget,
             max_shared_memories_per_receiver=self.max_shared_memories_per_receiver,
+            allow_risk_budget_override=self.allow_risk_budget_override,
         )
         return router.decide(receiver_state, candidate_cards, selected_prefix_cards)
 

@@ -153,14 +153,20 @@ class TestAblationRoutersFeatureBlock:
     def test_accept_matching_feature_block_and_decide(self):
         critic = MagicMock()
         critic.feature_block = "memory_task_only"
+        critic.epsilon_star = 0.2
         critic.predict.return_value = SimpleNamespace(tau_hat=0.5, eta_hat=0.05)
-        router = GlobalTransferCriticRouter(critic=critic, negative_risk_budget=0.2)
+        critic.predict_calibrated.return_value = SimpleNamespace(
+            tau_hat=0.5, eta_hat=0.05, eta_hat_calibrated=0.05)
+        router = GlobalTransferCriticRouter(critic=critic)
         decisions = router.decide(_receiver_state(), [_card("mem1")])
         assert [d.action for d in decisions] == ["share"]
 
         critic_np = MagicMock()
         critic_np.feature_block = "no_pair_interaction"
+        critic_np.epsilon_star = 0.2
         critic_np.predict.return_value = SimpleNamespace(tau_hat=-0.1, eta_hat=0.05)
+        critic_np.predict_calibrated.return_value = SimpleNamespace(
+            tau_hat=-0.1, eta_hat=0.05, eta_hat_calibrated=0.05)
         router_np = SMTRNoPairInteractionRouter(critic=critic_np)
         decisions_np = router_np.decide(_receiver_state(), [_card("mem1")])
         assert [d.action for d in decisions_np] == ["withhold"]
@@ -364,6 +370,15 @@ class TestPairedEvaluationArtifacts:
             return SimpleNamespace(tau_hat=-0.2, eta_hat=0.4)
 
         mock_critic.predict.side_effect = _predict
+
+        def _predict_calibrated(exposure_input):
+            raw = _predict(exposure_input)
+            return SimpleNamespace(
+                tau_hat=raw.tau_hat, eta_hat=raw.eta_hat,
+                eta_hat_calibrated=raw.eta_hat,
+            )
+
+        mock_critic.predict_calibrated.side_effect = _predict_calibrated
 
         output = tmp_path / "eval_out"
         with patch("smtr.marble.paired_evaluation.FourOutcomeTransferCritic") as MockCritic:

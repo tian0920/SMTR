@@ -229,6 +229,15 @@ class TestPairedEvaluationClusterCIArtifact:
             eta_hat=0.05 if exposure_input.receiver_state.task_id in ("t0", "t1") else 0.6,
         )
 
+        def _predict_calibrated(exposure_input):
+            raw = mock_critic.predict(exposure_input)
+            return SimpleNamespace(
+                tau_hat=raw.tau_hat, eta_hat=raw.eta_hat,
+                eta_hat_calibrated=raw.eta_hat,
+            )
+
+        mock_critic.predict_calibrated.side_effect = _predict_calibrated
+
         output = tmp_path / "eval_out"
         with patch("smtr.marble.paired_evaluation.FourOutcomeTransferCritic") as MockCritic:
             MockCritic.load.return_value = mock_critic

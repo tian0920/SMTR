@@ -167,6 +167,28 @@ class FourOutcomeTransferCritic:
         """Predict for a batch."""
         return [self.predict(item) for item in items]
 
+    def predict_calibrated(self, item: CandidateExposureInput) -> TransferPrediction:
+        """Prediction with calibrated negative-transfer risk (清单第三章).
+
+        The SMTR decision rule compares the *calibrated* eta against the
+        validation-selected epsilon_star; raw eta must never drive sharing.
+        """
+        raw = self.predict(item)
+        return raw.model_copy(
+            update={"eta_hat_calibrated": self.calibrate_negative_risk(raw.eta_hat_raw)}
+        )
+
+    def calibrate_negative_risk(self, eta_raw: float) -> float:
+        """Calibrated q01 for one raw risk estimate.
+
+        Falls back to the raw probability only when no validation-fitted
+        calibrator exists (e.g. unit-test stubs); production checkpoints
+        always carry one after ``calibrate_q01``.
+        """
+        if self.q01_calibrator is None:
+            return float(eta_raw)
+        return float(self.q01_calibrator.predict(np.array([float(eta_raw)]))[0])
+
     def calibrate_q01(
         self,
         inputs: list[CandidateExposureInput],
@@ -199,11 +221,7 @@ class FourOutcomeTransferCritic:
 
     def calibrated_q01(self, pred: TransferPrediction) -> float:
         """Calibrated negative-transfer probability for one prediction."""
-        if self.q01_calibrator is None:
-            return pred.q01_negative_transfer
-        return float(self.q01_calibrator.predict(
-            np.array([pred.q01_negative_transfer])
-        )[0])
+        return self.calibrate_negative_risk(pred.q01_negative_transfer)
 
     def save(self, path: Path) -> None:
         """Save critic checkpoint."""

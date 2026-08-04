@@ -142,6 +142,7 @@ class TransferPrediction(BaseModel):
     q01_negative_transfer: float
     q10_positive_transfer: float
     q11_neutral_success: float
+    eta_hat_calibrated: float | None = None
 
     @property
     def tau_hat(self) -> float:
@@ -149,6 +150,10 @@ class TransferPrediction(BaseModel):
 
     @property
     def eta_hat(self) -> float:
+        return self.q01_negative_transfer
+
+    @property
+    def eta_hat_raw(self) -> float:
         return self.q01_negative_transfer
 
 
