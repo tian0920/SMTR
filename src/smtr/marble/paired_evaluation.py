@@ -89,6 +89,118 @@ def build_receiver_state_from_entry(entry: dict[str, Any]) -> ReceiverState:
     )
 
 
+def _receiver_episode_seed_support(
+    *,
+    task_id: str,
+    receiver_agent_id: str,
+    candidate_memory_ids: list[str],
+    edge_to_seeds: dict[tuple[str, str, str], set[int]],
+    formal_mode: bool,
+) -> list[int]:
+    """Common generation-seed support of one receiver candidate set.
+
+    Formal receiver-policy replay requires identical seed support across all
+    candidate edges of the same task/receiver; pilot mode replays the
+    intersection (never the union) so no unsupported seed trace is created.
+    """
+    seed_sets: dict[str, set[int]] = {}
+
+    for memory_id in candidate_memory_ids:
+        edge_key = (task_id, receiver_agent_id, memory_id)
+        seed_sets[memory_id] = set(edge_to_seeds.get(edge_key, set()))
+
+    missing_edges = [
+        memory_id for memory_id, seeds in seed_sets.items() if not seeds
+    ]
+
+    if missing_edges:
+        if formal_mode:
+            raise ValueError(
+                "formal paired evaluation has candidate edges without "
+                f"valid paired outcomes: {missing_edges}"
+            )
+        return []
+
+    unique_supports = {frozenset(seeds) for seeds in seed_sets.values()}
+
+    if formal_mode and len(unique_supports) != 1:
+        detail = {
+            memory_id: sorted(seeds)
+            for memory_id, seeds in seed_sets.items()
+        }
+        raise ValueError(
+            "formal receiver-policy replay requires identical seed "
+            f"support across all candidate edges: task={task_id}, "
+            f"receiver={receiver_agent_id}, support={detail}"
+        )
+
+    common_support = set.intersection(*seed_sets.values())
+
+    if not common_support:
+        raise ValueError(
+            "candidate edges have no common generation-seed support: "
+            f"task={task_id}, receiver={receiver_agent_id}"
+        )
+
+    return sorted(common_support)
+
+
+def _receiver_episode_seed_support(
+    *,
+    task_id: str,
+    receiver_agent_id: str,
+    candidate_memory_ids: list[str],
+    edge_to_seeds: dict[tuple[str, str, str], set[int]],
+    formal_mode: bool,
+) -> list[int]:
+    """Common generation-seed support of one receiver candidate set.
+
+    Formal receiver-policy replay requires identical seed support across all
+    candidate edges of the same task/receiver; pilot mode replays the
+    intersection (never the union) so no unsupported seed trace is created.
+    """
+    seed_sets: dict[str, set[int]] = {}
+
+    for memory_id in candidate_memory_ids:
+        edge_key = (task_id, receiver_agent_id, memory_id)
+        seed_sets[memory_id] = set(edge_to_seeds.get(edge_key, set()))
+
+    missing_edges = [
+        memory_id for memory_id, seeds in seed_sets.items() if not seeds
+    ]
+
+    if missing_edges:
+        if formal_mode:
+            raise ValueError(
+                "formal paired evaluation has candidate edges without "
+                f"valid paired outcomes: {missing_edges}"
+            )
+        return []
+
+    unique_supports = {frozenset(seeds) for seeds in seed_sets.values()}
+
+    if formal_mode and len(unique_supports) != 1:
+        detail = {
+            memory_id: sorted(seeds)
+            for memory_id, seeds in seed_sets.items()
+        }
+        raise ValueError(
+            "formal receiver-policy replay requires identical seed "
+            f"support across all candidate edges: task={task_id}, "
+            f"receiver={receiver_agent_id}, support={detail}"
+        )
+
+    common_support = set.intersection(*seed_sets.values())
+
+    if not common_support:
+        raise ValueError(
+            "candidate edges have no common generation-seed support: "
+            f"task={task_id}, receiver={receiver_agent_id}"
+        )
+
+    return sorted(common_support)
+
+
 def run_paired_decision_evaluation(
     *,
     candidate_manifest_path: Path,
@@ -281,6 +393,19 @@ def run_paired_decision_evaluation(
         if not candidate_cards:
             continue
 
+        # 清单 P0-13/14: every candidate decision of one receiver episode
+        # replays on the same per-receiver seed support (formal: identical
+        # sets required; pilot: intersection, never a global union).
+        episode_seeds = _receiver_episode_seed_support(
+            task_id=task_id,
+            receiver_agent_id=receiver_agent_id,
+            candidate_memory_ids=[
+                card.memory_id for card in candidate_cards
+            ],
+            edge_to_seeds=edge_to_seeds,
+            formal_mode=formal_mode,
+        )
+
         for method in methods:
             router = routers[method]
             decisions = router.decide(receiver_state, candidate_cards)
@@ -311,14 +436,8 @@ def run_paired_decision_evaluation(
 
             # Receiver policy traces (清单 P0-11): the final policy selects
             # no memory or exactly one memory per receiver episode, so each
-            # receiver/seed carries exactly one policy trace.
-            episode_seeds: set[int] = set()
-            for dec in decisions:
-                episode_seeds.update(
-                    edge_to_seeds.get(
-                        (task_id, receiver_agent_id, dec.memory_id), []
-                    )
-                )
+            # receiver/seed carries exactly one policy trace; seeds come
+            # from the receiver-level common support, never a seed union.
             shared = [dec for dec in decisions if dec.action == "share"]
             if len(shared) > 1:
                 shared_ids = sorted(dec.memory_id for dec in shared)
@@ -329,7 +448,7 @@ def run_paired_decision_evaluation(
                 )
             selected_memory_id = shared[0].memory_id if shared else None
             policy_action = "share" if shared else "withhold"
-            for seed in sorted(episode_seeds):
+            for seed in episode_seeds:
                 all_receiver_traces[method].append({
                     "trace_type": "receiver_policy",
                     "task_id": task_id,

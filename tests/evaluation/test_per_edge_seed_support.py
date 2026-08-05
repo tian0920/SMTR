@@ -165,9 +165,10 @@ def test_receiver_policy_traces_one_per_seed(tmp_path: Path):
     policy_traces = json.loads(
         (tmp_path / "eval_out" / "receiver_policy_traces.json").read_text(encoding="utf-8")
     )["smtr"]
-    # Union of observed seeds over the episode: 0..4, exactly one each.
+    # Common seed support over the episode (intersection, never union):
+    # 0..3, exactly one each; seed 4 has no memB outcome and is excluded.
     keys = [(t["receiver_agent_id"], t["generation_seed"]) for t in policy_traces]
-    assert sorted(keys) == [("r1", s) for s in range(5)]
+    assert sorted(keys) == [("r1", s) for s in range(4)]
     assert all(t["trace_type"] == "receiver_policy" for t in policy_traces)
     # SMTR shares memA and withholds memB: one selected memory per episode.
     assert all(t["selected_memory_id"] == "memA" for t in policy_traces)
