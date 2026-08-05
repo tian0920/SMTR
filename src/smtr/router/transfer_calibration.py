@@ -9,17 +9,66 @@ test split.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 
+from smtr.counterfactual.edge_keys import (
+    TreatmentEdgeKey,
+    group_records_by_edge,
+)
 from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES
 
 LABELS = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
 LABEL_TO_INDEX = {label: i for i, label in enumerate(LABELS)}
 DEFAULT_EPSILONS = (0.05, 0.10, 0.20, 0.30)
+
+
+@dataclass(frozen=True)
+class EdgeCalibrationExample:
+    """One validation edge's calibration example (清单 P0-7).
+
+    ``predicted_q01`` is the critic's mean predicted negative-transfer
+    probability across the edge's seed records; ``empirical_eta`` is the
+    observed negative-transfer rate ``N_e^01 / N_e`` on those seeds.
+    """
+
+    edge_key: TreatmentEdgeKey
+    predicted_q01: float
+    empirical_eta: float
+    seed_count: int
+
+
+def build_edge_calibration_examples(
+    records: list[dict[str, Any]],
+    predicted_q01: np.ndarray,
+    labels: list[str],
+) -> list[EdgeCalibrationExample]:
+    """Aggregate validation records into per-edge calibration examples.
+
+    Fitting on these examples instead of raw seed records avoids fitting the
+    same edge prediction repeatedly across its seeds (清单 P0-7).
+    """
+    predicted_q01 = np.asarray(predicted_q01, dtype=float)
+    if len(predicted_q01) != len(records) or len(labels) != len(records):
+        raise ValueError("records, predicted_q01 and labels must align")
+    examples: list[EdgeCalibrationExample] = []
+    for edge_key, rows in group_records_by_edge(records).items():
+        empirical_eta = float(
+            np.mean([labels[i] == "negative_transfer" for i in rows])
+        )
+        examples.append(
+            EdgeCalibrationExample(
+                edge_key=edge_key,
+                predicted_q01=float(predicted_q01[rows].mean()),
+                empirical_eta=empirical_eta,
+                seed_count=len(rows),
+            )
+        )
+    return examples
 
 
 class Q01Calibrator:
@@ -34,18 +83,39 @@ class Q01Calibrator:
         self.method: str | None = None
         self._model = None
 
-    def fit(self, q01: np.ndarray, y_negative: np.ndarray) -> Q01Calibrator:
+    def fit(
+        self,
+        q01: np.ndarray,
+        y_negative: np.ndarray,
+        sample_weight: np.ndarray | None = None,
+    ) -> Q01Calibrator:
+        """Fit on calibration targets.
+
+        Targets may be binary seed indicators or continuous edge-level
+        empirical rates (清单 P0-7); ``sample_weight`` then carries the
+        edge seed counts so edges with more seeds weigh proportionally more.
+        """
         q01 = np.asarray(q01, dtype=float)
-        y_negative = np.asarray(y_negative, dtype=int)
+        y_negative = np.asarray(y_negative, dtype=float)
+        if sample_weight is not None:
+            sample_weight = np.asarray(sample_weight, dtype=float)
+            if len(sample_weight) != len(q01):
+                raise ValueError("sample_weight must align with q01")
         both_classes = len(np.unique(y_negative)) == 2
         if both_classes and len(q01) >= self.min_isotonic_samples:
             self._model = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
-            self._model.fit(q01, y_negative)
+            self._model.fit(q01, y_negative, sample_weight=sample_weight)
             self.method = "isotonic"
         else:
             self._model = LogisticRegression(max_iter=1000, solver="lbfgs")
             if both_classes:
-                self._model.fit(q01.reshape(-1, 1), y_negative)
+                # Platt fallback needs class targets; threshold continuous
+                # edge-level rates at 0.5 for the binary decision.
+                self._model.fit(
+                    q01.reshape(-1, 1),
+                    (y_negative >= 0.5).astype(int),
+                    sample_weight=sample_weight,
+                )
                 self.method = "platt"
             else:
                 # Degenerate validation set: keep raw probabilities.

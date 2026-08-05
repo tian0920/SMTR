@@ -25,10 +25,7 @@ from smtr.router.transfer_calibration import (
     predicted_label,
 )
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
-from smtr.router.transfer_features import (
-    load_paired_records_for_training,
-    load_paired_records_with_metadata,
-)
+from smtr.router.transfer_features import load_paired_records_with_metadata
 
 _DEFAULT_SEED = 7
 _DEFAULT_N_BOOTSTRAP = 31
@@ -106,13 +103,17 @@ def train_critic(
     }
 
     if validation_records_path and validation_records_path.exists():
-        val_data = load_paired_records_for_training(validation_records_path, memory_pool_path)
+        val_data = load_paired_records_with_metadata(
+            validation_records_path, memory_pool_path
+        )
         if val_data:
-            val_inputs = [item for item, _ in val_data]
-            val_labels = [label for _, label in val_data]
+            val_inputs = [item for item, _, _ in val_data]
+            val_labels = [label for _, label, _ in val_data]
+            val_records = [rec for _, _, rec in val_data]
             preds = critic.predict_batch(val_inputs)
             pred_labels = [predicted_label(_pred_vector(pred)) for pred in preds]
             metrics["validation_records"] = len(val_data)
+            metrics["validation_edges"] = len(group_records_by_edge(val_records))
             metrics["validation_accuracy"] = sum(
                 1 for p, t in zip(pred_labels, val_labels) if p == t
             ) / len(val_data)
@@ -122,10 +123,21 @@ def train_critic(
             metrics["validation_probability"] = compute_probability_metrics(
                 val_labels, np.array([_pred_vector(pred) for pred in preds])
             )
-            selection = critic.calibrate_q01(val_inputs, val_labels, delta=risk_delta)
+            # 清单 P0-7/P0-8: edge-level q01 calibration and epsilon
+            # selection happen on validation edges only.
+            selection = critic.calibrate_q01(
+                val_inputs,
+                val_labels,
+                val_records,
+                split_name="validation",
+                delta=risk_delta,
+            )
             metrics["epsilon_star"] = selection["epsilon_star"]
             metrics["risk_delta"] = risk_delta
             metrics["epsilon_selected_on"] = "validation"
+            metrics["calibration_split"] = "validation"
+            metrics["epsilon_selection_split"] = "validation"
+            metrics["validation_edge_count"] = selection["validation_edge_count"]
 
     # Save checkpoint after calibration so epsilon_star is persisted.
     critic.save(output_path)

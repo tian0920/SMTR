@@ -17,6 +17,7 @@ from smtr.core.types import (
 from smtr.router.transfer_calibration import (
     DEFAULT_EPSILONS,
     Q01Calibrator,
+    build_edge_calibration_examples,
     select_epsilon,
 )
 from smtr.router.transfer_coverage import (
@@ -62,6 +63,9 @@ class FourOutcomeTransferCritic:
         self.q01_calibrator: Q01Calibrator | None = None
         self.epsilon_star: float | None = None
         self.risk_calibration: dict[str, Any] | None = None
+        self.calibration_split: str | None = None
+        self.epsilon_selection_split: str | None = None
+        self.validation_edge_count: int | None = None
 
     def fit(
         self,
@@ -225,30 +229,61 @@ class FourOutcomeTransferCritic:
         self,
         inputs: list[CandidateExposureInput],
         labels: list[str],
+        records: list[dict[str, Any]] | None = None,
         *,
+        split_name: str = "validation",
         epsilons=DEFAULT_EPSILONS,
         delta: float = 0.10,
     ) -> dict[str, Any]:
-        """Calibrate q01 and select epsilon_star on validation data only.
+        """Calibrate q01 and select epsilon_star on validation edges only.
 
-        The selected risk budget is stored on the critic and persisted in the
-        checkpoint; the test split must only read it, never re-select it.
+        Calibration fits one example per treatment edge (清单 P0-7): the
+        critic's mean predicted q01 for the edge against the empirical
+        negative-transfer rate ``N_e^01 / N_e``. epsilon_star is selected on
+        the same validation edges only (清单 P0-8); fitting on the test
+        split raises. The selected budget is persisted in the checkpoint and
+        the test split must only read it, never re-select it.
         """
         if not self._fitted:
             raise RuntimeError("critic not fitted")
+        if split_name == "test":
+            raise ValueError(
+                "q01 calibration and epsilon selection are forbidden on the "
+                "test split (清单 P0-8)"
+            )
+        if records is not None and len(records) != len(inputs):
+            raise ValueError("records must align with inputs")
         preds = self.predict_batch(inputs)
         q01 = np.array([p.q01_negative_transfer for p in preds])
         tau = np.array(
             [p.q10_positive_transfer - p.q01_negative_transfer for p in preds]
         )
-        y_negative = np.array([1 if lb == "negative_transfer" else 0 for lb in labels])
-        self.q01_calibrator = Q01Calibrator().fit(q01, y_negative)
+        if records is not None:
+            # Edge-level calibration: one example per treatment edge,
+            # weighted by its seed count.
+            examples = build_edge_calibration_examples(records, q01, labels)
+            self.q01_calibrator = Q01Calibrator().fit(
+                np.array([ex.predicted_q01 for ex in examples]),
+                np.array([ex.empirical_eta for ex in examples]),
+                sample_weight=np.array([ex.seed_count for ex in examples]),
+            )
+            self.validation_edge_count = len(examples)
+        else:
+            y_negative = np.array(
+                [1 if lb == "negative_transfer" else 0 for lb in labels]
+            )
+            self.q01_calibrator = Q01Calibrator().fit(q01, y_negative)
+            self.validation_edge_count = None
         q01_calibrated = self.q01_calibrator.predict(q01)
         selection = select_epsilon(
             tau, q01_calibrated, labels, epsilons=epsilons, delta=delta
         )
+        selection["calibration_level"] = "edge" if records is not None else "record"
+        selection["validation_edge_count"] = self.validation_edge_count
         self.epsilon_star = selection["epsilon_star"]
         self.risk_calibration = selection
+        self.calibration_split = split_name
+        self.epsilon_selection_split = split_name
         return selection
 
     def calibrated_q01(self, pred: TransferPrediction) -> float:
@@ -274,6 +309,11 @@ class FourOutcomeTransferCritic:
                 "q01_calibrator": self.q01_calibrator,
                 "epsilon_star": self.epsilon_star,
                 "risk_calibration": self.risk_calibration,
+                # 清单 P0-8: checkpoint must record where calibration and
+                # epsilon selection happened.
+                "calibration_split": self.calibration_split,
+                "epsilon_selection_split": self.epsilon_selection_split,
+                "validation_edge_count": self.validation_edge_count,
             },
             path,
         )
@@ -294,6 +334,9 @@ class FourOutcomeTransferCritic:
         critic.q01_calibrator = data.get("q01_calibrator")
         critic.epsilon_star = data.get("epsilon_star")
         critic.risk_calibration = data.get("risk_calibration")
+        critic.calibration_split = data.get("calibration_split")
+        critic.epsilon_selection_split = data.get("epsilon_selection_split")
+        critic.validation_edge_count = data.get("validation_edge_count")
         critic._fitted = True
         return critic
 
