@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import statistics
 from pathlib import Path
 from typing import Any, Literal
 
@@ -315,6 +316,8 @@ class CandidateRecord(BaseModel):
     task_relation: TaskRelation = "cross_task_unknown_group"
     candidate_source: CandidateSource = "semantic_top"
     anchor_group_id: str | None = None
+    anchor_receiver_count: int = 0
+    anchor_receiver_role_count: int = 0
     rank: int
     score: float
     score_components: dict[str, float] = {}
@@ -354,17 +357,25 @@ def build_cross_task_candidates(
     target_split: str = "",
     cohort_quotas: CandidateCohortQuotas | None = None,
     min_task_relevance: float | None = None,
+    experiment_mode: str | None = None,
 ) -> DatabaseCandidateManifest:
     """Build receiver-conditioned candidate sets as stratified cohorts.
 
     Each receiver's candidates come from four cohorts: semantic_top,
     role_matched, role_mismatched hard negatives and cross_receiver_anchor.
-    Cohort selection only reads routing-card / receiver metadata and never
-    reads share/withhold outcomes.
+    Construction order is anchors first, then mismatched hard negatives,
+    then role-matched, then semantic, so semantic candidates never consume
+    anchor memories. Cohort selection only reads routing-card / receiver
+    metadata and never reads share/withhold outcomes.
     """
     quotas = cohort_quotas if cohort_quotas is not None else quotas_from_top_k(top_k)
     if min_task_relevance is not None:
         quotas = quotas.model_copy(update={"min_task_relevance": min_task_relevance})
+    if experiment_mode == "formal" and quotas.min_task_relevance <= 0:
+        raise ValueError(
+            "experiment_mode='formal' requires min_task_relevance > 0 so that "
+            "mismatched hard negatives remain task-relevant."
+        )
 
     sorted_recipients = sorted(recipients, key=lambda r: (r["task_id"], r.get("agent_id", "")))
 
@@ -380,7 +391,7 @@ def build_cross_task_candidates(
         receiver_pools.append((recipient, pool))
 
     # Pass 2: global anchor assignment (same memory to multiple receivers)
-    anchor_assignments = _select_anchor_assignments(receiver_pools, quotas)
+    anchor_assignments, anchor_stats = _select_anchor_assignments(receiver_pools, quotas)
 
     entries: list[CandidateEntry] = []
     for idx, (recipient, pool) in enumerate(receiver_pools):
@@ -418,10 +429,13 @@ def build_cross_task_candidates(
                 chosen_ids.add(mid)
                 selected.append((it, source))
 
-        _fill(relevant_pool, quotas.semantic_top, "semantic_top")
-        _fill(matched_pool, quotas.role_matched, "role_matched")
-        _fill(mismatched_pool, quotas.role_mismatched, "role_mismatched")
+        # Construction order: anchors first (so semantic candidates cannot
+        # consume anchor memories), then mismatched hard negatives, then
+        # role-matched, then semantic top, finally semantic backfill.
         _fill(anchor_pool, quotas.cross_receiver_anchor, "cross_receiver_anchor")
+        _fill(mismatched_pool, quotas.role_mismatched, "role_mismatched")
+        _fill(matched_pool, quotas.role_matched, "role_matched")
+        _fill(relevant_pool, quotas.semantic_top, "semantic_top")
         # Backfill leftover budget by overall relevance (labelled semantic_top)
         _fill(relevant_pool, quotas.total, "semantic_top")
 
@@ -434,6 +448,13 @@ def build_cross_task_candidates(
                 "matched_writer_receiver" if w_role == receiver_role
                 else "mismatched_writer_receiver"
             )
+            if source == "cross_receiver_anchor":
+                anchor_receiver_count, anchor_receiver_role_count = anchor_stats.get(
+                    mem.memory_id, (0, 0)
+                )
+            else:
+                anchor_receiver_count = 0
+                anchor_receiver_role_count = 0
             records.append(CandidateRecord(
                 memory_id=mem.memory_id,
                 writer_agent_id=card.writer.agent_id,
@@ -446,6 +467,8 @@ def build_cross_task_candidates(
                 task_relation="cross_task_unknown_group",
                 candidate_source=source,
                 anchor_group_id=mem.memory_id if source == "cross_receiver_anchor" else None,
+                anchor_receiver_count=anchor_receiver_count,
+                anchor_receiver_role_count=anchor_receiver_role_count,
                 rank=rank,
                 score=round(item["score"], 4),
                 score_components=item["components"],
@@ -539,16 +562,17 @@ def _writer_receiver_alignment(
 def _select_anchor_assignments(
     receiver_pools: list[tuple[dict[str, Any], list[dict[str, Any]]]],
     quotas: CandidateCohortQuotas,
-) -> dict[int, list[str]]:
-    """Return, per receiver, an ordered list of anchor candidate memory ids.
+) -> tuple[dict[int, list[str]], dict[str, tuple[int, int]]]:
+    """Return per-receiver anchor ids plus per-memory anchor statistics.
 
     Anchor memories are task-relevant memories eligible for >=2 receivers,
     ranked to prefer coverage of distinct receiver roles.  Every anchor
     candidate is by construction shared across at least two receivers.
-    Selection ignores share/withhold outcomes.
+    The second return maps memory_id -> (anchor_receiver_count,
+    anchor_receiver_role_count). Selection ignores share/withhold outcomes.
     """
     if quotas.cross_receiver_anchor <= 0:
-        return {}
+        return {}, {}
     eligible: dict[str, list[tuple[int, str]]] = {}
     for idx, (recipient, pool) in enumerate(receiver_pools):
         role = recipient.get("agent_role", "unknown")
@@ -566,6 +590,10 @@ def _select_anchor_assignments(
             p[0],
         )
     )
+    anchor_stats = {
+        mid: (len({idx for idx, _ in lst}), len({role for _, role in lst}))
+        for mid, lst in anchor_candidates
+    }
     ranked_anchor_ids = [mid for mid, _ in anchor_candidates]
     assignments: dict[int, list[str]] = {}
     for idx, (_, pool) in enumerate(receiver_pools):
@@ -575,7 +603,7 @@ def _select_anchor_assignments(
             if it["task_sim"] >= quotas.min_task_relevance
         }
         assignments[idx] = [mid for mid in ranked_anchor_ids if mid in eligible_ids]
-    return assignments
+    return assignments, anchor_stats
 
 
 def validate_receiver_effect_coverage(
@@ -602,6 +630,9 @@ def validate_receiver_effect_coverage(
     receivers_without_mismatched: list[str] = []
     memory_receivers: dict[str, set[tuple[str, str]]] = {}
     memory_roles: dict[str, set[str]] = {}
+    anchor_memory_receivers: dict[str, set[tuple[str, str]]] = {}
+    anchor_memory_roles: dict[str, set[str]] = {}
+    cohort_relevances: dict[str, list[float]] = {}
     anchor_relevance_ok = True
 
     for entry in manifest.candidates:
@@ -613,12 +644,17 @@ def validate_receiver_effect_coverage(
         for rec in recs:
             memory_receivers.setdefault(rec.memory_id, set()).add(key)
             memory_roles.setdefault(rec.memory_id, set()).add(entry.receiver_role)
+            cohort_relevances.setdefault(rec.candidate_source, []).append(
+                rec.score_components.get("task_similarity_raw", 0.0)
+            )
             if rec.candidate_source == "role_matched":
                 matched_records += 1
             elif rec.candidate_source == "role_mismatched":
                 mismatched_records += 1
             elif rec.candidate_source == "cross_receiver_anchor":
                 anchor_records += 1
+                anchor_memory_receivers.setdefault(rec.memory_id, set()).add(key)
+                anchor_memory_roles.setdefault(rec.memory_id, set()).add(entry.receiver_role)
                 task_sim = rec.score_components.get("task_similarity_raw", 0.0)
                 if task_sim < min_relevance:
                     anchor_relevance_ok = False
@@ -634,13 +670,34 @@ def validate_receiver_effect_coverage(
     total_unique_memories = len(memory_receivers)
     seen_by_2plus_receivers = sum(1 for r in memory_receivers.values() if len(r) >= 2)
     seen_by_2plus_roles = sum(1 for roles in memory_roles.values() if len(roles) >= 2)
+    anchor_cross_receiver = sum(
+        1 for r in anchor_memory_receivers.values() if len(r) >= 2
+    )
+    anchor_cross_role = sum(
+        1 for roles in anchor_memory_roles.values() if len(roles) >= 2
+    )
     forbidden_fields = {"y_share", "y_withhold", "label", "team_success", "outcome"}
     no_outcome_fields = not (set(CandidateRecord.model_fields) & forbidden_fields)
 
-    statistics = {
+    cohort_relevance_summary = {
+        cohort: {
+            "mean": round(statistics.mean(values), 4),
+            "median": round(statistics.median(values), 4),
+            "min": round(min(values), 4),
+            "max": round(max(values), 4),
+            "count": len(values),
+        }
+        for cohort, values in sorted(cohort_relevances.items())
+    }
+
+    stats = {
+        "receiver_count": len(manifest.candidates),
+        "unique_memory_count": total_unique_memories,
         "total_unique_memories": total_unique_memories,
         "memories_seen_by_2plus_receivers": seen_by_2plus_receivers,
         "memories_seen_by_2plus_receiver_roles": seen_by_2plus_roles,
+        "cross_receiver_anchor_count": anchor_cross_receiver,
+        "cross_receiver_role_anchor_count": anchor_cross_role,
         "receiver_effect_coverage": round(
             seen_by_2plus_receivers / total_unique_memories, 4
         ) if total_unique_memories else 0.0,
@@ -653,22 +710,49 @@ def validate_receiver_effect_coverage(
         "cross_receiver_anchor_rate": round(
             anchor_records / total_records, 4
         ) if total_records else 0.0,
+        "cohort_relevance_summary": cohort_relevance_summary,
     }
     checks = {
         "all_receivers_have_matched_candidate": not receivers_without_matched,
         "all_receivers_have_mismatched_candidate": not receivers_without_mismatched,
         "has_memory_seen_by_2plus_receivers": seen_by_2plus_receivers > 0,
         "has_memory_seen_by_2plus_receiver_roles": seen_by_2plus_roles > 0,
+        "has_cross_receiver_anchor": anchor_cross_receiver > 0,
+        "has_cross_receiver_role_anchor": anchor_cross_role > 0,
         "anchor_candidates_meet_min_task_relevance": anchor_relevance_ok,
         "candidate_selection_ignores_outcomes": no_outcome_fields,
     }
     return {
-        "statistics": statistics,
+        "statistics": stats,
         "checks": checks,
         "receivers_without_matched_candidate": receivers_without_matched,
         "receivers_without_mismatched_candidate": receivers_without_mismatched,
         "ok": all(checks.values()),
     }
+
+
+class InsufficientReceiverEffectCoverageError(ValueError):
+    """Raised when formal candidate generation lacks receiver-effect coverage."""
+
+
+def require_receiver_effect_coverage(
+    coverage: dict[str, Any],
+) -> None:
+    """Fail fast when coverage checks do not pass (formal data generation).
+
+    Formal experiments must fail, not warn, when any receiver lacks
+    matched/mismatched candidates or when no cross-receiver (and
+    cross-receiver-role) anchor exists.
+    """
+    if coverage.get("ok"):
+        return
+    failed = sorted(
+        name for name, passed in coverage.get("checks", {}).items() if not passed
+    )
+    raise InsufficientReceiverEffectCoverageError(
+        "Receiver-effect coverage insufficient for formal data generation; "
+        f"failed checks: {failed}; statistics: {coverage.get('statistics', {})}"
+    )
 
 
 # ---------------------------------------------------------------------------

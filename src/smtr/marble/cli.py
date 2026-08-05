@@ -53,6 +53,7 @@ def main() -> None:
                    help="JSON object of cohort quotas, e.g. "
                         "'{\"semantic_top\":2,\"role_matched\":2,\"role_mismatched\":2,\"cross_receiver_anchor\":2}'")
     p.add_argument("--min-task-relevance", type=float, default=None)
+    p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
 
     p = subparsers.add_parser("generate-database-paired-records", help="Generate candidate-level paired records")
     p.add_argument("--marble-root", required=True)
@@ -203,6 +204,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             build_cross_task_candidates,
             write_candidate_manifest,
             validate_receiver_effect_coverage,
+            require_receiver_effect_coverage,
             CandidateCohortQuotas,
         )
 
@@ -225,6 +227,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             target_split=args.split,
             cohort_quotas=cohort_quotas,
             min_task_relevance=getattr(args, "min_task_relevance", None),
+            experiment_mode=args.experiment_mode,
         )
 
         result = write_candidate_manifest(
@@ -239,6 +242,9 @@ def _dispatch(args: argparse.Namespace) -> None:
         result["coverage_checks"] = coverage["checks"]
         result["coverage_ok"] = coverage["ok"]
         result["coverage_audit"] = str(coverage_path)
+        if args.experiment_mode == "formal":
+            # Formal data generation fails fast instead of only warning.
+            require_receiver_effect_coverage(coverage)
 
         print(json.dumps(result, indent=2))
 

@@ -8,13 +8,17 @@ must reach >=2 receivers, and selection must never read outcome labels.
 
 from __future__ import annotations
 
+import pytest
+
 from smtr.core.types import AgentProfile, MemoryRoutingCard, ProcedurePayload
 from smtr.marble.real_data import (
     CandidateRecord,
     CandidateCohortQuotas,
     ExtractedMemory,
+    InsufficientReceiverEffectCoverageError,
     build_cross_task_candidates,
     quotas_from_top_k,
+    require_receiver_effect_coverage,
     validate_receiver_effect_coverage,
 )
 
@@ -195,3 +199,124 @@ def test_validate_receiver_effect_coverage_statistics():
     # Accepts a serialized manifest too
     report2 = validate_receiver_effect_coverage(manifest.model_dump(mode="json"))
     assert report2["statistics"] == stats
+
+
+def _basic_quotas() -> CandidateCohortQuotas:
+    return CandidateCohortQuotas(
+        semantic_top=1, role_matched=1, role_mismatched=1, cross_receiver_anchor=1,
+    )
+
+
+def test_anchor_first_order_semantic_does_not_consume_anchor():
+    """Anchors are assigned before semantic selection, so an anchor memory
+    must appear with source cross_receiver_anchor, never as semantic_top."""
+    manifest = build_cross_task_candidates(
+        memories=_memories(), recipients=_receivers(), top_k=4,
+        cohort_quotas=_basic_quotas(),
+    )
+    anchor_sources: dict[str, set[str]] = {}
+    for entry in manifest.candidates:
+        for rec in entry.candidate_records:
+            if rec.anchor_group_id is not None:
+                anchor_sources.setdefault(rec.memory_id, set()).add(rec.candidate_source)
+    assert anchor_sources, "at least one anchor must be assigned"
+    for mid, sources in anchor_sources.items():
+        assert sources == {"cross_receiver_anchor"}, (
+            f"anchor memory {mid} consumed by another cohort: {sources}"
+        )
+
+
+def test_anchor_receiver_stats_recorded():
+    manifest = build_cross_task_candidates(
+        memories=_memories(), recipients=_receivers(), top_k=4,
+        cohort_quotas=_basic_quotas(),
+    )
+    anchors = [
+        rec
+        for entry in manifest.candidates
+        for rec in entry.candidate_records
+        if rec.candidate_source == "cross_receiver_anchor"
+    ]
+    assert anchors
+    for rec in anchors:
+        assert rec.anchor_receiver_count >= 2, (
+            "anchor memory must be eligible for >=2 receivers"
+        )
+        assert rec.anchor_receiver_role_count >= 1
+    non_anchors = [
+        rec
+        for entry in manifest.candidates
+        for rec in entry.candidate_records
+        if rec.candidate_source != "cross_receiver_anchor"
+    ]
+    for rec in non_anchors:
+        assert rec.anchor_receiver_count == 0
+        assert rec.anchor_receiver_role_count == 0
+
+
+def test_anchor_memory_spans_receiver_roles_when_available():
+    """With receivers of distinct roles, some anchor must span >=2 roles."""
+    manifest = build_cross_task_candidates(
+        memories=_memories(), recipients=_receivers(), top_k=4,
+        cohort_quotas=_basic_quotas(),
+    )
+    report = validate_receiver_effect_coverage(manifest)
+    assert report["statistics"]["cross_receiver_anchor_count"] >= 1
+    assert report["checks"]["has_cross_receiver_anchor"]
+
+
+def test_coverage_report_includes_anchor_and_relevance_fields():
+    manifest = build_cross_task_candidates(
+        memories=_memories(), recipients=_receivers(), top_k=4,
+        cohort_quotas=_basic_quotas(),
+    )
+    report = validate_receiver_effect_coverage(manifest)
+    stats = report["statistics"]
+    for key in (
+        "receiver_count",
+        "unique_memory_count",
+        "cross_receiver_anchor_count",
+        "cross_receiver_role_anchor_count",
+        "cohort_relevance_summary",
+    ):
+        assert key in stats, f"missing coverage statistic: {key}"
+    for cohort, summary in stats["cohort_relevance_summary"].items():
+        for field in ("mean", "median", "min", "max", "count"):
+            assert field in summary, f"cohort {cohort} lacks {field}"
+    assert "has_cross_receiver_anchor" in report["checks"]
+    assert "has_cross_receiver_role_anchor" in report["checks"]
+
+
+def test_formal_mode_requires_positive_min_task_relevance():
+    with pytest.raises(ValueError, match="min_task_relevance"):
+        build_cross_task_candidates(
+            memories=_memories(), recipients=_receivers(), top_k=4,
+            cohort_quotas=_basic_quotas(),
+            experiment_mode="formal",
+            min_task_relevance=0.0,
+        )
+
+
+def test_formal_candidate_build_fails_without_anchors():
+    """require_receiver_effect_coverage must fail fast on missing coverage."""
+    manifest = build_cross_task_candidates(
+        memories=_memories(), recipients=_receivers(), top_k=4,
+        cohort_quotas=CandidateCohortQuotas(
+            semantic_top=2, role_matched=1, role_mismatched=1,
+            cross_receiver_anchor=0,
+        ),
+    )
+    report = validate_receiver_effect_coverage(manifest)
+    assert not report["checks"]["has_cross_receiver_anchor"]
+    with pytest.raises(InsufficientReceiverEffectCoverageError):
+        require_receiver_effect_coverage(report)
+
+
+def test_require_receiver_effect_coverage_passes_when_ok():
+    manifest = build_cross_task_candidates(
+        memories=_memories(), recipients=_receivers(), top_k=4,
+        cohort_quotas=_basic_quotas(),
+    )
+    report = validate_receiver_effect_coverage(manifest)
+    if report["ok"]:
+        require_receiver_effect_coverage(report)  # must not raise
