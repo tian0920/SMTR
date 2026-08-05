@@ -44,6 +44,51 @@ class MarblePolicyRunResult(BaseModel):
     invalid_reason: str | None = None
 
 
+def is_core_valid_end_to_end_run(result: dict) -> bool:
+    """Core-valid end-to-end run (清单 P1-3).
+
+    The team-success metric may only consume runs with a real engine,
+    a native evaluator, a valid environment and receiver-specific
+    treatment visibility; ``cleanup_succeeded`` is reported separately
+    and never defines method validity.
+    """
+    return (
+        result.get("invalid_reason") is None
+        and bool(result.get("real_engine_executed"))
+        and bool(result.get("native_evaluator_executed"))
+        and bool(result.get("environment_valid"))
+        and bool(result.get("runtime_visibility_verified"))
+    )
+
+
+def compute_end_to_end_method_metrics(method: str, runs: list[dict]) -> dict[str, Any]:
+    """Per-method end-to-end metrics over core-valid runs only (清单 P1-4).
+
+    Invalid runs are reported separately and never count as task failures.
+    """
+    valid_runs = [r for r in runs if is_core_valid_end_to_end_run(r)]
+    n_total = len(runs)
+    n_valid = len(valid_runs)
+    n_success = sum(1 for r in valid_runs if r["team_success"])
+    n_engine_fail = sum(1 for r in runs if not r.get("real_engine_executed"))
+    n_visibility_fail = sum(1 for r in runs if not r.get("runtime_visibility_verified"))
+    n_cleanup_fail = sum(1 for r in runs if not r.get("cleanup_succeeded"))
+    scores = [r["score"] for r in valid_runs if r.get("score") is not None]
+
+    return {
+        "method": method,
+        "total_run_count": n_total,
+        "core_valid_run_count": n_valid,
+        "core_invalid_run_count": n_total - n_valid,
+        "core_valid_run_rate": round(n_valid / max(1, n_total), 4),
+        "team_success_rate": round(n_success / max(1, n_valid), 4),
+        "mean_native_score": round(sum(scores) / max(1, len(scores)), 4) if scores else None,
+        "engine_failure_rate": round(n_engine_fail / max(1, n_total), 4),
+        "visibility_failure_rate": round(n_visibility_fail / max(1, n_total), 4),
+        "cleanup_failure_rate": round(n_cleanup_fail / max(1, n_total), 4),
+    }
+
+
 def run_end_to_end_evaluation(
     *,
     marble_root: Path,
@@ -158,35 +203,12 @@ def run_end_to_end_evaluation(
                 )
                 all_results[method].append(result.model_dump(mode="json"))
 
-    # Compute end-to-end metrics
-    e2e_metrics: list[dict[str, Any]] = []
-    for method in methods:
-        runs = all_results[method]
-        valid_runs = [
-            r for r in runs
-            if r.get("invalid_reason") is None
-            and r.get("real_engine_executed", False)
-            and r.get("environment_valid", False)
-        ]
-        n_valid = len(valid_runs)
-        n_success = sum(1 for r in valid_runs if r["team_success"])
-        n_invalid = len(runs) - n_valid
-        n_engine_fail = sum(1 for r in runs if not r["real_engine_executed"])
-        n_visibility_fail = sum(1 for r in runs if not r["runtime_visibility_verified"])
-        n_cleanup_fail = sum(1 for r in runs if not r["cleanup_succeeded"])
-        scores = [r["score"] for r in valid_runs if r["score"] is not None]
-
-        e2e_metrics.append({
-            "method": method,
-            "team_success_rate": round(n_success / max(1, n_valid), 4),
-            "mean_native_score": round(sum(scores) / max(1, len(scores)), 4) if scores else None,
-            "valid_run_rate": round(n_valid / max(1, len(runs)), 4),
-            "invalid_run_rate": round(n_invalid / max(1, len(runs)), 4),
-            "engine_failure_rate": round(n_engine_fail / max(1, len(runs)), 4),
-            "visibility_failure_rate": round(n_visibility_fail / max(1, len(runs)), 4),
-            "cleanup_failure_rate": round(n_cleanup_fail / max(1, len(runs)), 4),
-            "total_runs": len(runs),
-        })
+    # Compute end-to-end metrics (清单 P1-3/P1-4): team success only over
+    # core-valid runs; invalid runs reported separately, never as failures.
+    e2e_metrics: list[dict[str, Any]] = [
+        compute_end_to_end_method_metrics(method, all_results[method])
+        for method in methods
+    ]
 
     # Write outputs
     (output / "end_to_end_metrics.json").write_text(
