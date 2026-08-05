@@ -45,6 +45,9 @@ testpaths = ["tests"]
 pythonpath = ["src", "."]
 markers = [
   "marble: tests that touch the local MARBLE checkout or real MARBLE adapters",
+  "marble_integration: real MARBLE engine tests requiring Docker + model credentials",
+  "requires_docker: test needs a live Docker environment",
+  "requires_model_credentials: test needs configured LLM credentials",
 ]
 
 [tool.ruff]
