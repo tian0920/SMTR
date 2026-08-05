@@ -208,12 +208,12 @@ class TestPairedEvaluationSeeds:
                 memory_pool_path=memory_pool,
                 checkpoint_full=tmp_path / "full.joblib",
                 checkpoint_no_writer_receiver=tmp_path / "no_wr.joblib",
-                methods=["all_share"],
+                methods=["semantic_top1"],
                 output=output,
             )
 
         traces = json.loads((output / "traces.json").read_text())
-        all_seeds = {t["generation_seed"] for t in traces["all_share"]}
+        all_seeds = {t["generation_seed"] for t in traces["semantic_top1"]}
         assert 7 in all_seeds, "generation_seed=7 from paired records must appear"
         assert 0 in all_seeds
 
@@ -507,12 +507,12 @@ class TestBreakdownPerMethod:
                 memory_pool_path=memory_pool,
                 checkpoint_full=tmp_path / "full.joblib",
                 checkpoint_no_writer_receiver=tmp_path / "no_wr.joblib",
-                methods=["all_share", "b0_no_memory"],
+                methods=["semantic_top1", "b0_no_memory"],
                 output=output,
             )
 
         breakdown = json.loads((output / "writer_receiver_breakdown.json").read_text())
         # Must be a dict keyed by method, not a flat list
         assert isinstance(breakdown, dict)
-        assert "all_share" in breakdown
+        assert "semantic_top1" in breakdown
         assert "b0_no_memory" in breakdown

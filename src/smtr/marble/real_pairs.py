@@ -387,6 +387,8 @@ def paired_result_to_record(
         "writer_tool_names": edge.get("writer_tool_names", []),
         "writer_model_name": edge.get("writer_model_name"),
 
+        # SMTR-v1 action space is single-memory with S = ∅; the field is
+        # persisted for schema compatibility and is always empty.
         "selected_prefix_memory_ids": [],
         "candidate_rank": edge["candidate_rank"],
         "candidate_score": edge["candidate_score"],

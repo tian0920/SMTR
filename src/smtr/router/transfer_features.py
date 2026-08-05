@@ -39,7 +39,12 @@ class HashingTransferFeatureEncoder:
       - writer marginal block (role, capabilities, tools, source scenario)
       - writer-receiver interaction block
       - memory card block
-      - prefix block
+
+    SMTR-v1 action space is A(o_r) in {∅, m_1, ..., m_K}: one receiver
+    receives at most one memory, so the selected-memory prefix S is fixed
+    to ∅ and is never encoded as features. ``selected_prefix_cards``
+    remains a compatibility-only field and must never influence
+    predictions.
 
     Feature modes (``feature_block``):
       - ``full``: all blocks.
@@ -67,26 +72,24 @@ class HashingTransferFeatureEncoder:
             input_type="string",
         )
 
-    def _mode_flags(self) -> tuple[bool, bool, bool, bool]:
-        """Return (include_writer, include_receiver, include_interaction, include_prefix)."""
+    def _mode_flags(self) -> tuple[bool, bool, bool]:
+        """Return (include_writer, include_receiver, include_interaction)."""
         mode = self.feature_block
         if mode == "full":
-            return True, True, True, True
+            return True, True, True
         if mode == "no_pair_interaction":
-            return True, True, False, True
+            return True, True, False
         if mode == "no_receiver":
-            return True, False, False, True
+            return True, False, False
         if mode == "memory_task_only":
-            return False, False, False, False
+            return False, False, False
         if mode == "no_writer_receiver":  # legacy mixed block
-            return False, True, False, True
+            return False, True, False
         raise ValueError(f"unknown feature_block: {mode}")
 
     def tokens(self, item: CandidateExposureInput) -> list[str]:
         """Extract feature tokens from a CandidateExposureInput."""
-        include_writer, include_receiver, include_interaction, include_prefix = (
-            self._mode_flags()
-        )
+        include_writer, include_receiver, include_interaction = self._mode_flags()
         tokens: list[str] = []
         rs = item.receiver_state
         card = item.candidate_card
@@ -140,16 +143,12 @@ class HashingTransferFeatureEncoder:
         for constraint in sorted(card.environment_constraints):
             tokens.append(f"env_constraint:{constraint}")
 
-        # --- prefix block ---
-        prefix_cards = item.selected_prefix_cards if include_prefix else ()
-        tokens.append(f"prefix_size:{len(prefix_cards)}")
-        for pc in prefix_cards:
-            tokens.append(f"prefix_writer_role:{pc.writer.role}")
-            if include_receiver:
-                tokens.append(f"prefix_candidate_role_conflict:{pc.writer.role != rs.receiver.role}")
-            pc_envs = set(pc.environment_constraints)
-            rs_envs = set(rs.environment_signature)
-            tokens.append(f"prefix_env_conflict:{not pc_envs.issubset(rs_envs) if pc_envs else False}")
+        # --- v1 action space marker ---
+        # The selected-memory prefix S is fixed to ∅ in SMTR-v1; prefix
+        # contents are deliberately never encoded so predictions cannot
+        # depend on a non-empty prefix passed through the compatibility
+        # interface.
+        tokens.append("prefix_size:0")
 
         self._reject_forbidden_tokens(tokens)
         return tokens

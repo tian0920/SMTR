@@ -34,7 +34,15 @@ For each receiver state, retrieve candidate memories using:
 
 Candidates include `match_type`: matched_writer_receiver, mismatched_writer_receiver, cross_task_same_group, cross_task_cross_group.
 
-## 5. Candidate-Level Paired Intervention
+## 5. Action Space (v1)
+
+The v1 action space is fixed to single-memory exposure:
+
+$$A(o_r) \in \{\varnothing, m_1, \ldots, m_K\}$$
+
+Each receiver is exposed to **at most one** candidate memory per episode. The selected-memory prefix $S$ is fixed to $S = \varnothing$; estimands are therefore written $\tau(m \mid o_r)$ and $\eta(m \mid o_r)$, never $\tau(m \mid o_r, S)$. The `selected_prefix_cards` interface exists for compatibility only and never influences features or decisions.
+
+## 6. Candidate-Level Paired Intervention
 
 For each candidate memory $m$ and receiver state:
 - **Share branch**: Run MARBLE task with $m$'s payload injected
@@ -48,7 +56,7 @@ This produces a four-outcome label:
 - neutral_success: both succeed
 - neutral_failure: both fail
 
-## 6. Four-Outcome Transfer Critic
+## 7. Four-Outcome Transfer Critic
 
 Train an ensemble classifier predicting:
 - $q_{00} = P(\text{neutral\_failure})$
@@ -56,9 +64,9 @@ Train an ensemble classifier predicting:
 - $q_{10} = P(\text{positive\_transfer})$
 - $q_{11} = P(\text{neutral\_success})$
 
-Feature blocks: receiver, writer, writer-receiver interaction, memory card, prefix.
+Feature blocks: task context, receiver marginal, writer marginal, writer-receiver interaction, memory card. There is no prefix block: $S = \varnothing$ in v1.
 
-## 7. Receiver-Specific Exposure Router
+## 8. Receiver-Specific Exposure Router
 
 Decision rule:
 $$\hat{\tau} = q_{10} - q_{01}, \quad \hat{\eta} = q_{01}$$
@@ -68,7 +76,7 @@ Share at most one memory per receiver (the safe candidate with highest $\hat{\ta
 
 This is a **receiver-specific exposure mask**, not a global memory filter.
 
-## 8. MARBLE Evaluation
+## 9. MARBLE Evaluation
 
 Metrics:
 - Team success rate

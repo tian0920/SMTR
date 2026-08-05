@@ -1,43 +1,52 @@
-# Ablation Plan
+# Ablation Plan (清单 P0-2 / 十一)
 
-## Required Methods
+## Formal Main-Table Methods
 
-| ID | Method | Description |
-|----|--------|-------------|
-| B0 | NoMemory | Never share; baseline team performance |
-| B1 | Top1Relevance | Share top-1 by card similarity |
-| B2 | AllShare | Share all candidates |
-| B3 | FactualSuccess | Share only high-evidence memories |
-| M0 | SMTR | Full method: $\hat{\tau} > 0 \land \hat{\eta} \leq \beta$ |
-| A1 | SMTR-no-risk | Ignore $\hat{\eta}$; share if $\hat{\tau} > 0$ |
-| A2 | SMTR-no-writer-receiver | Critic trained without writer-receiver features |
+| ID | Method | Definition |
+|----|--------|------------|
+| B0 | NoMemory | Never expose any memory. |
+| B1 | SemanticTop1 | Top-1 by task-memory semantic similarity only; ignores writer, receiver, role, capability, environment and the transfer critic; always exposes top-1. |
+| B2 | RoleAwareTop1 | Top-1 by task relevance + receiver role/capability compatibility; no paired intervention labels, no critic; always exposes top-1. |
+| B3 | GlobalTransferCritic | Paired transfer supervision, but without writer identity, receiver identity, writer/receiver roles and writer-receiver pair/interaction features; learns only global memory/context transfer tendency. |
+| B4 | SMTR-no-pair-interaction | Writer and receiver marginal features kept; writer_role→receiver_role pair tokens, compatibility and interaction features removed. |
+| B5 | SMTR-no-risk | Full SMTR critic; share iff `tau_hat > 0`; ignores `eta_hat` and `epsilon_star`. |
+| — | SMTR | Full writer-receiver-conditioned critic; share iff `tau_hat > 0` and calibrated `eta_hat <= epsilon_star`. |
+
+Removed from the formal table:
+
+- **AllShare** — in the v1 single-memory action space it is behaviorally
+  identical to a top-1 heuristic baseline.
+- **FactualSuccess** — no reliable memory-level historical aggregates exist.
+
+## Distinctness Requirement
+
+Any two main-table methods must be able to produce different actions; no
+two methods may be behaviorally identical on all inputs. Each ablation
+removes exactly one method component, and method names match their feature
+block / router rule.
 
 ## Ablation Goals
 
-### B0 vs M0
+### B0 vs SMTR
 Does selective sharing beat no sharing?
 
-### B2 vs M0
-Does selective sharing beat naive all-share? (Negative transfer avoidance)
+### B1 vs B2 vs SMTR
+Does receiver-aware and label-trained routing beat semantic similarity and
+role heuristics?
 
-### B1 vs M0
-Does learned routing beat simple relevance? (Critic value)
+### B3 vs SMTR
+Do writer/receiver identity and pair features matter beyond a global
+transfer tendency?
 
-### M0 vs A1
-Does risk constraint matter? (Value of $\hat{\eta}$)
+### B4 vs SMTR
+Do writer-receiver interaction features matter (marginals kept)?
 
-### M0 vs A2
-Do writer-receiver features matter? (Cross-agent signal)
+### B5 vs SMTR
+Does the calibrated risk gate (`eta_hat <= epsilon_star`) matter?
 
 ## Feature Block Ablation
 
-- `full`: All feature blocks
-- `no_writer_receiver`: Remove writer role, receiver role, wr_pair, wr_same_role, capability/tool overlap
-- `no_risk`: Full features but router ignores eta_hat
-
-## Expected Outcomes
-
-1. SMTR > NoMemory (selective sharing helps)
-2. SMTR > AllShare (risk avoidance matters)
-3. SMTR > SMTR-no-risk (eta constraint prevents harm)
-4. SMTR > SMTR-no-writer-receiver (cross-agent features improve decisions)
+- `full`: all blocks (SMTR);
+- `no_pair_interaction`: writer/receiver marginals, no interaction (B4);
+- `memory_task_only`: task/env/memory card only (B3);
+- `no_receiver`: no receiver identity/profile or interaction.

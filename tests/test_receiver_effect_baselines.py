@@ -14,9 +14,9 @@ from smtr.core.types import AgentProfile, MemoryRoutingCard, ReceiverState
 from smtr.evaluation.receiver_effect_analysis import analyze_receiver_effect
 from smtr.marble.paired_evaluation import MAIN_TABLE_METHODS, run_paired_decision_evaluation
 from smtr.router.baselines import (
-    AllShareRouter,
     GlobalTransferCriticRouter,
     RoleAwareTop1Router,
+    SemanticTop1Router,
     SMTRNoPairInteractionRouter,
 )
 
@@ -112,28 +112,35 @@ class TestRoleAwareTop1:
         assert sum(1 for d in decisions if d.action == "share") == 1
 
 
-class TestAllShareV1:
-    def test_selects_single_top1_memory(self):
-        card_a = _card("mem_a", goal_summary="unrelated topic", task_tags=("other",))
-        card_b = _card(
-            "mem_b",
-            goal_summary="review code changes",
-            task_tags=("review",),
-            compatible=("executor",),
-        )
-        rs = _receiver_state(role="executor", instruction="review code changes")
+class TestSemanticTop1:
+    def test_selects_by_semantic_similarity_ignoring_roles(self):
+        # mem_b is role-matched (writer role == receiver role) but semantically
+        # unrelated; mem_a shares task tokens with the instruction. SemanticTop1
+        # must pick mem_a because only semantic similarity may drive the choice.
+        card_a = _card("mem_a", goal_summary="review code changes", task_tags=("review",),
+                       writer_role="critic")
+        card_b = _card("mem_b", goal_summary="unrelated topic", task_tags=("other",),
+                       writer_role="executor", writer_caps=("sql",), writer_tools=("git",))
+        rs = _receiver_state(role="executor", caps=("sql",), tools=("git",),
+                             instruction="review code changes")
 
-        decisions = AllShareRouter().decide(rs, [card_a, card_b])
+        decisions = SemanticTop1Router().decide(rs, [card_a, card_b])
         shared = [d for d in decisions if d.action == "share"]
-        assert len(shared) == 1, "AllShare in v1 must share exactly one memory"
-        assert shared[0].memory_id == "mem_b"
-        assert shared[0].reason == "all_share_top1_relevance"
-        withheld = [d for d in decisions if d.action == "withhold"]
-        assert all(d.reason == "all_share_single_memory_limit" for d in withheld)
+        assert len(shared) == 1, "v1 single-memory action space"
+        assert shared[0].memory_id == "mem_a"
+        assert shared[0].reason == "semantic_top1"
 
-        # Same label-free choice as RoleAwareTop1
+        # RoleAwareTop1 adds role/capability compatibility and can differ.
         top1 = RoleAwareTop1Router().decide(rs, [card_a, card_b])
         assert [d.memory_id for d in top1 if d.action == "share"] == ["mem_b"]
+
+
+class TestRemovedBaselines:
+    def test_all_share_and_factual_success_are_gone(self):
+        import smtr.router.baselines as baselines_mod
+
+        assert not hasattr(baselines_mod, "AllShareRouter")
+        assert not hasattr(baselines_mod, "FactualSuccessRouter")
 
 
 # ---------------------------------------------------------------------------
@@ -280,14 +287,29 @@ class TestMainTableMethods:
     def test_main_table_contains_required_methods(self):
         assert MAIN_TABLE_METHODS == [
             "b0_no_memory",
+            "semantic_top1",
             "role_aware_top1",
-            "all_share",
             "global_transfer_critic",
             "smtr_no_pair_interaction",
             "smtr_no_risk",
             "smtr",
         ]
         assert "factual_success" not in MAIN_TABLE_METHODS
+        assert "all_share" not in MAIN_TABLE_METHODS
+
+    def test_removed_methods_fail_fast(self):
+        from smtr.marble.paired_evaluation import _build_routers
+
+        with pytest.raises(ValueError, match="removed from the formal main table"):
+            _build_routers(
+                methods=["all_share"],
+                full_critic=MagicMock(),
+            )
+        with pytest.raises(ValueError, match="removed from the formal main table"):
+            _build_routers(
+                methods=["factual_success"],
+                full_critic=MagicMock(),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -388,7 +410,7 @@ class TestPairedEvaluationArtifacts:
                 paired_records_path=paired_records,
                 memory_pool_path=memory_pool,
                 checkpoint_full=tmp_path / "full.joblib",
-                methods=["b0_no_memory", "role_aware_top1", "all_share", "smtr"],
+                methods=["b0_no_memory", "semantic_top1", "role_aware_top1", "smtr"],
                 output=output,
             )
 

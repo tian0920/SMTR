@@ -13,6 +13,21 @@ from smtr.core.types import (
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
 
+def _require_single_memory_action_space(max_shared_memories_per_receiver: int) -> None:
+    """SMTR-v1 action space is A(o_r) in {∅, m_1, ..., m_K}.
+
+    Each receiver may be exposed to at most one memory; the parameter stays
+    in signatures for compatibility but any value other than 1 is rejected
+    so no experiment can silently use a multi-memory action space.
+    """
+    if max_shared_memories_per_receiver != 1:
+        raise ValueError(
+            "SMTR-v1 fixes the action space to single-memory exposure: "
+            "max_shared_memories_per_receiver must be 1, got "
+            f"{max_shared_memories_per_receiver}."
+        )
+
+
 class SMTRExposureRouter:
     """Receiver-specific exposure router using four-outcome transfer critic.
 
@@ -43,6 +58,7 @@ class SMTRExposureRouter:
                 "epsilon_star and is only allowed in debug mode "
                 "(allow_risk_budget_override=True)."
             )
+        _require_single_memory_action_space(max_shared_memories_per_receiver)
         self.critic = critic
         self.negative_risk_budget = negative_risk_budget
         self.allow_risk_budget_override = allow_risk_budget_override
@@ -157,6 +173,7 @@ class SMTRUCBRouter:
                 "epsilon_star and is only allowed in debug mode "
                 "(allow_risk_budget_override=True)."
             )
+        _require_single_memory_action_space(max_shared_memories_per_receiver)
         self.critic = critic
         self.negative_risk_budget = negative_risk_budget
         self.max_shared_memories_per_receiver = max_shared_memories_per_receiver

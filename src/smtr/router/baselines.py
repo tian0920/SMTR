@@ -1,20 +1,22 @@
-"""Paper-required baselines and ablation methods (清单第十一章).
+"""Paper-required baselines and ablation methods (清单 P0-2).
 
 Main-table methods (SMTR-v1 single-memory setting):
 
 * NoMemory            — never share any memory;
+* SemanticTop1        — top-1 by task-memory semantic similarity only;
+                        ignores writer, receiver, role, capability,
+                        environment and the transfer critic;
 * RoleAwareTop1       — top-1 by task relevance + role compatibility +
                         capability/tool overlap, no paired transfer labels;
-* AllShare            — always share the single highest-relevance memory
-                        (v1 constraint: one memory per receiver episode);
 * GlobalTransferCritic— critic with task/env/memory-card features only
                         (no writer, receiver or interaction features);
 * SMTRNoPairInteraction — SMTR without writer-receiver interaction features;
 * SMTRNoRisk          — SMTR decision with tau_hat > 0 only (no risk gate);
 * SMTR                — full method.
 
-FactualSuccess is deliberately not part of the main table until reliable
-memory-level historical aggregates exist (清单 11).
+AllShare and FactualSuccess were removed: in the v1 single-memory action
+space AllShare is behaviorally identical to a top-1 heuristic baseline,
+and FactualSuccess has no reliable memory-level historical aggregates.
 """
 
 from __future__ import annotations
@@ -99,6 +101,37 @@ class NoMemoryRouter:
         ]
 
 
+class SemanticTop1Router:
+    """B1-SemanticTop1: share the top-1 candidate by task-memory semantic
+    similarity only.
+
+    Deliberately ignores writer identity, receiver role, capability/tool
+    compatibility, paired transfer labels and the transfer critic; the
+    top-1 candidate is always exposed.
+    """
+
+    def decide(
+        self,
+        receiver_state: ReceiverState,
+        candidate_cards: list[MemoryRoutingCard],
+        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
+    ) -> list[RouterDecision]:
+        if not candidate_cards:
+            return []
+        scored = sorted(
+            candidate_cards,
+            key=lambda c: (-_heuristic_relevance_score(receiver_state, c), c.memory_id),
+        )
+        top_id = scored[0].memory_id
+        decisions = []
+        for c in candidate_cards:
+            if c.memory_id == top_id:
+                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_hat=0.0, reason="semantic_top1"))
+            else:
+                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="not_semantic_top1"))
+        return decisions
+
+
 class RoleAwareTop1Router:
     """RoleAwareTop1: share the top-1 candidate by task relevance, role
     compatibility and capability/tool overlap. No paired transfer labels."""
@@ -118,58 +151,6 @@ class RoleAwareTop1Router:
                 decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_hat=0.0, reason="role_aware_top1"))
             else:
                 decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="not_top1"))
-        return decisions
-
-
-class AllShareRouter:
-    """AllShare in the SMTR-v1 single-memory setting.
-
-    Always shares exactly one memory — the highest-relevance candidate
-    (same label-free score as RoleAwareTop1). Sharing all candidates is
-    forbidden in v1 because one receiver episode receives one treatment.
-    """
-
-    def decide(
-        self,
-        receiver_state: ReceiverState,
-        candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
-    ) -> list[RouterDecision]:
-        if not candidate_cards:
-            return []
-        top_id = _select_top1(receiver_state, candidate_cards)
-        decisions = []
-        for c in candidate_cards:
-            if c.memory_id == top_id:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_hat=0.0, reason="all_share_top1_relevance"))
-            else:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="all_share_single_memory_limit"))
-        return decisions
-
-
-class FactualSuccessRouter:
-    """B3-FactualSuccess: share only memories with sufficient evidence and success rate.
-
-    Kept for legacy pipelines only; removed from the main table until
-    reliable memory-level historical aggregates exist.
-    """
-
-    def __init__(self, min_evidence: int = 2, min_success_rate: float = 0.7) -> None:
-        self.min_evidence = min_evidence
-        self.min_success_rate = min_success_rate
-
-    def decide(
-        self,
-        receiver_state: ReceiverState,
-        candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
-    ) -> list[RouterDecision]:
-        decisions = []
-        for c in candidate_cards:
-            if c.evidence_count >= self.min_evidence and c.historical_success_rate >= self.min_success_rate:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_hat=0.0, reason="factual_success_evidence"))
-            else:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="insufficient_evidence"))
         return decisions
 
 
@@ -255,6 +236,9 @@ class SMTRNoRiskRouter:
         critic: FourOutcomeTransferCritic,
         max_shared_memories_per_receiver: int = 1,
     ) -> None:
+        from smtr.router.exposure_router import _require_single_memory_action_space
+
+        _require_single_memory_action_space(max_shared_memories_per_receiver)
         self.critic = critic
         self.max_shared_memories_per_receiver = max_shared_memories_per_receiver
 
@@ -321,12 +305,14 @@ class SMTRNoWriterReceiverRouter:
         return router.decide(receiver_state, candidate_cards, selected_prefix_cards)
 
 
-# Method registry
+# Formal method registry (清单 P0-2). AllShare and FactualSuccess are
+# deliberately absent: AllShare duplicates a top-1 heuristic baseline under
+# the v1 single-memory action space, and FactualSuccess lacks reliable
+# memory-level historical aggregates.
 METHOD_REGISTRY: dict[str, type] = {
     "b0_no_memory": NoMemoryRouter,
+    "semantic_top1": SemanticTop1Router,
     "role_aware_top1": RoleAwareTop1Router,
-    "all_share": AllShareRouter,
-    "factual_success": FactualSuccessRouter,
     "global_transfer_critic": GlobalTransferCriticRouter,
     "smtr_no_pair_interaction": SMTRNoPairInteractionRouter,
     "smtr_no_risk": SMTRNoRiskRouter,

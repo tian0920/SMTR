@@ -10,10 +10,9 @@ from smtr.core.types import AgentProfile, CandidateExposureInput, MemoryRoutingC
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
 from smtr.evaluation.tables import write_result_table, format_markdown_table
 from smtr.router.baselines import (
-    AllShareRouter,
-    FactualSuccessRouter,
     NoMemoryRouter,
     RoleAwareTop1Router,
+    SemanticTop1Router,
     SMTRNoRiskRouter,
     SMTRNoWriterReceiverRouter,
 )
@@ -24,8 +23,7 @@ from smtr.router.transfer_features import build_routing_card_from_pool_entry
 SUPPORTED_METHODS = frozenset({
     "b0_no_memory",
     "top1_relevance",
-    "all_share",
-    "factual_success",
+    "semantic_top1",
     "smtr",
     "smtr_no_risk",
     "smtr_no_writer_receiver",
@@ -81,12 +79,10 @@ def run_evaluation(
     for method in methods:
         if method == "b0_no_memory":
             routers[method] = NoMemoryRouter()
+        elif method == "semantic_top1":
+            routers[method] = SemanticTop1Router()
         elif method in ("top1_relevance", "role_aware_top1"):
             routers[method] = RoleAwareTop1Router()
-        elif method == "all_share":
-            routers[method] = AllShareRouter()
-        elif method == "factual_success":
-            routers[method] = FactualSuccessRouter()
         elif method == "smtr":
             routers[method] = SMTRExposureRouter(
                 critic=critic, negative_risk_budget=negative_risk_budget,

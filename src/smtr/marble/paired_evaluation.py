@@ -18,11 +18,10 @@ from smtr.evaluation.tables import write_result_table, format_markdown_table
 from smtr.marble.core_validity import filter_core_paired_records, require_core_formal_validity
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.baselines import (
-    AllShareRouter,
-    FactualSuccessRouter,
     GlobalTransferCriticRouter,
     NoMemoryRouter,
     RoleAwareTop1Router,
+    SemanticTop1Router,
     SMTRNoPairInteractionRouter,
     SMTRNoRiskRouter,
     SMTRNoWriterReceiverRouter,
@@ -32,10 +31,12 @@ from smtr.router.transfer_calibration import DEFAULT_EPSILONS, risk_utility_curv
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import build_routing_card_from_pool_entry
 
+# Formal main table (清单 P0-2 / 十一): AllShare and FactualSuccess were
+# removed, SemanticTop1 is the semantic-similarity-only baseline.
 MAIN_TABLE_METHODS = [
     "b0_no_memory",
+    "semantic_top1",
     "role_aware_top1",
-    "all_share",
     "global_transfer_critic",
     "smtr_no_pair_interaction",
     "smtr_no_risk",
@@ -443,12 +444,17 @@ def _build_routers(
     for method in methods:
         if method == "b0_no_memory":
             routers[method] = NoMemoryRouter()
+        elif method == "semantic_top1":
+            routers[method] = SemanticTop1Router()
         elif method in ("top1_relevance", "role_aware_top1"):
             routers[method] = RoleAwareTop1Router()
-        elif method == "all_share":
-            routers[method] = AllShareRouter()
-        elif method == "factual_success":
-            routers[method] = FactualSuccessRouter()
+        elif method in ("all_share", "factual_success"):
+            raise ValueError(
+                f"method '{method}' was removed from the formal main table "
+                "(清单 P0-2): AllShare duplicates a top-1 heuristic baseline "
+                "in the v1 single-memory action space and FactualSuccess has "
+                "no reliable historical aggregates."
+            )
         elif method == "global_transfer_critic":
             if global_critic is None:
                 raise ValueError(

@@ -92,7 +92,7 @@ def main() -> None:
     p.add_argument("--checkpoint-global-transfer-critic", default=None)
     p.add_argument("--checkpoint-smtr-no-pair-interaction", default=None)
     p.add_argument("--methods", nargs="+", default=[
-        "b0_no_memory", "role_aware_top1", "all_share",
+        "b0_no_memory", "semantic_top1", "role_aware_top1",
         "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
     ])
     # Formal evaluations must read epsilon_star from the checkpoint; an
@@ -113,7 +113,7 @@ def main() -> None:
     p.add_argument("--checkpoint-global-transfer-critic", default=None)
     p.add_argument("--checkpoint-smtr-no-pair-interaction", default=None)
     p.add_argument("--methods", nargs="+", default=[
-        "b0_no_memory", "role_aware_top1", "all_share",
+        "b0_no_memory", "semantic_top1", "role_aware_top1",
         "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
     ])
     p.add_argument("--generation-seeds", type=int, nargs="+", default=[0, 1, 2])

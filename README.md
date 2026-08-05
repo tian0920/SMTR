@@ -165,8 +165,8 @@ python -m smtr.marble.cli run-paired-decision-evaluation \
   --paired-records artifacts/marble/paired/test/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --methods b0_no_memory top1_relevance all_share factual_success smtr smtr_no_risk \
-  --negative-risk-budget 0.2 \
+  --methods b0_no_memory semantic_top1 role_aware_top1 global_transfer_critic smtr_no_pair_interaction smtr_no_risk smtr \
+  --experiment-mode formal \
   --output artifacts/marble/eval/paired_test
 ```
 
@@ -181,9 +181,8 @@ python -m smtr.marble.cli run-marble-evaluation \
   --candidate-manifest artifacts/marble/candidates/test_candidates.json \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --methods b0_no_memory top1_relevance all_share factual_success smtr smtr_no_risk \
+  --methods b0_no_memory semantic_top1 role_aware_top1 global_transfer_critic smtr_no_pair_interaction smtr_no_risk smtr \
   --generation-seeds 0 1 2 \
-  --negative-risk-budget 0.2 \
   --output artifacts/marble/eval/end_to_end_test
 ```
 
@@ -209,14 +208,21 @@ These two metrics must never be conflated.
 
 ## Methods
 
+Formal main table (清单 P0-2):
+
 | Method | Description |
 |--------|-------------|
 | B0-NoMemory | Never share any memory |
-| B1-Top1Relevance | Share top-1 most relevant candidate (no paired labels) |
-| B2-AllShare | Share the most relevant candidate regardless of critic (single-memory v1 semantics) |
-| B3-FactualSuccess | Share only high-evidence, high-success-rate memories |
-| SMTR | Full router: τ̂>0 ∧ η̂≤ε with writer–receiver interaction features |
-| SMTR-no-risk | Full critic, ignore η̂ constraint (only τ̂>0) |
+| B1-SemanticTop1 | Share top-1 by task-memory semantic similarity only |
+| B2-RoleAwareTop1 | Share top-1 by relevance + role/capability compatibility (no paired labels) |
+| B3-GlobalTransferCritic | Critic without writer/receiver identity, roles or interaction features |
+| B4-SMTR-no-pair-interaction | Writer/receiver marginals kept, interaction features removed |
+| B5-SMTR-no-risk | Full critic, ignore η̂ constraint (only τ̂>0) |
+| SMTR | Full router: τ̂>0 ∧ calibrated η̂≤ε★ with writer–receiver interaction features |
+
+AllShare and FactualSuccess were removed from the formal table: AllShare
+is behaviorally identical to a top-1 heuristic under the v1 single-memory
+action space, and FactualSuccess has no reliable historical aggregates.
 
 ## Running Tests
 
