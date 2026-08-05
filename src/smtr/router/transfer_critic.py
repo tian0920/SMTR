@@ -69,6 +69,8 @@ class FourOutcomeTransferCritic:
         labels: list[str],
         *,
         coverage_mode: str = "pilot",
+        sample_weights: np.ndarray | None = None,
+        edge_clusters: dict | None = None,
     ) -> None:
         """Train bootstrap ensemble on paired record features.
 
@@ -76,9 +78,29 @@ class FourOutcomeTransferCritic:
         ``formal`` requires all four classes, ``pilot`` requires at least
         positive_transfer and negative_transfer. Training without negative
         transfer always fails fast.
+
+        Multi-seed treatment edges (清单 P0-5/P0-6): when ``edge_clusters``
+        maps treatment edges to their seed-record rows, bootstrap members
+        resample whole edges (all seeds of a drawn edge enter together);
+        ``sample_weights`` should then be the edge-equal weights ``1/n_e``
+        so every edge contributes equal total training weight. When
+        sample weights are supplied they are the only weighting scheme
+        (class balancing is disabled to avoid double weighting).
         """
         X = self.encoder.encode_batch(inputs)
         y = np.array([LABEL_TO_INDEX[lb] for lb in labels])
+        if sample_weights is not None:
+            sample_weights = np.asarray(sample_weights, dtype=float)
+            if len(sample_weights) != len(labels):
+                raise ValueError(
+                    "sample_weights must have one entry per training record"
+                )
+        if edge_clusters is not None:
+            covered = {i for rows in edge_clusters.values() for i in rows}
+            if covered != set(range(len(labels))):
+                raise ValueError(
+                    "edge_clusters must partition every training record row"
+                )
 
         unique_classes = np.unique(y)
         if len(unique_classes) < 2:
@@ -94,15 +116,25 @@ class FourOutcomeTransferCritic:
         rng = np.random.default_rng(self.seed)
         self.members = []
         for _ in range(self.n_bootstrap):
-            idx = _bootstrap_with_full_coverage(y, required_classes, rng)
+            if edge_clusters is not None:
+                idx = _edge_cluster_bootstrap_with_full_coverage(
+                    y, edge_clusters, required_classes, rng
+                )
+            else:
+                idx = _bootstrap_with_full_coverage(y, required_classes, rng)
             if idx is None:
                 # Skip this member rather than fitting on a class-deficient
                 # sample; zero-padding missing classes is forbidden.
                 continue
             X_boot = X[idx]
             y_boot = y[idx]
-            clf = LogisticRegression(max_iter=1000, solver="lbfgs", class_weight="balanced")
-            clf.fit(X_boot, y_boot)
+            w_boot = None if sample_weights is None else sample_weights[idx]
+            clf = LogisticRegression(
+                max_iter=1000,
+                solver="lbfgs",
+                class_weight=None if w_boot is not None else "balanced",
+            )
+            clf.fit(X_boot, y_boot, sample_weight=w_boot)
             self.members.append(clf)
         if not self.members:
             raise ValueError("no bootstrap member covered all required classes")
@@ -264,6 +296,32 @@ class FourOutcomeTransferCritic:
         critic.risk_calibration = data.get("risk_calibration")
         critic._fitted = True
         return critic
+
+
+def _edge_cluster_bootstrap_with_full_coverage(
+    y: np.ndarray,
+    edge_clusters: dict,
+    required_classes: set[int],
+    rng: np.random.Generator,
+    *,
+    max_attempts: int = 10,
+) -> np.ndarray | None:
+    """Edge-cluster bootstrap: resample edges, keep all seeds together.
+
+    Each draw selects treatment edges with replacement; drawing an edge
+    adds *all* of its seed records, so one edge's seeds never split across
+    a member. Returns None when no draw covers the required classes.
+    """
+    edges = list(edge_clusters.keys())
+    for _ in range(max_attempts):
+        chosen = rng.choice(len(edges), size=len(edges), replace=True)
+        idx: list[int] = []
+        for pos in chosen:
+            idx.extend(edge_clusters[edges[pos]])
+        idx_arr = np.asarray(idx, dtype=int)
+        if required_classes.issubset(set(np.unique(y[idx_arr]).tolist())):
+            return idx_arr
+    return None
 
 
 def _bootstrap_with_full_coverage(

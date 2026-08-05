@@ -218,6 +218,28 @@ def load_paired_records_for_training(
 ) -> list[tuple[CandidateExposureInput, str]]:
     """Load paired records and construct (input, label) pairs for critic training.
 
+    Thin wrapper over :func:`load_paired_records_with_metadata` for callers
+    that do not need the underlying records.
+    """
+    return [
+        (exposure_input, label)
+        for exposure_input, label, _ in load_paired_records_with_metadata(
+            records_path, memory_pool_path
+        )
+    ]
+
+
+def load_paired_records_with_metadata(
+    records_path: Path,
+    memory_pool_path: Path,
+) -> list[tuple[CandidateExposureInput, str, dict]]:
+    """Load paired records into (input, label, record) triples.
+
+    The raw record is kept alongside each training example so downstream
+    consumers can group by treatment edge (清单 P0-3): edge-equal sample
+    weights, edge-cluster bootstrap, edge-level calibration and split
+    auditing all operate on the same key definitions.
+
     Only routing card metadata is used; payload is never read. All receiver
     context fields stored in the paired record (task instruction, environment
     signature, subtask, context summaries, writer/receiver tool_names and
@@ -233,7 +255,7 @@ def load_paired_records_for_training(
             mem = json.loads(line)
             pool[mem["memory_id"]] = mem
 
-    results: list[tuple[CandidateExposureInput, str]] = []
+    results: list[tuple[CandidateExposureInput, str, dict]] = []
     for line in records_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
@@ -279,7 +301,7 @@ def load_paired_records_for_training(
             candidate_card=card,
             selected_prefix_cards=(),
         )
-        results.append((exposure_input, paired_record_label(rec)))
+        results.append((exposure_input, paired_record_label(rec), rec))
     return results
 
 

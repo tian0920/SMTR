@@ -15,13 +15,20 @@ from typing import Any
 import numpy as np
 
 from smtr.core.types import CandidateExposureInput
+from smtr.counterfactual.edge_keys import (
+    edge_equal_sample_weights,
+    group_records_by_edge,
+)
 from smtr.router.transfer_calibration import (
     compute_four_class_metrics,
     compute_probability_metrics,
     predicted_label,
 )
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
-from smtr.router.transfer_features import load_paired_records_for_training
+from smtr.router.transfer_features import (
+    load_paired_records_for_training,
+    load_paired_records_with_metadata,
+)
 
 _DEFAULT_SEED = 7
 _DEFAULT_N_BOOTSTRAP = 31
@@ -43,13 +50,18 @@ def train_critic(
     risk_delta: float = 0.10,
 ) -> dict[str, Any]:
     """Train four-outcome transfer critic from paired records."""
-    # Load training data
-    train_data = load_paired_records_for_training(train_records_path, memory_pool_path)
+    # Load training data with the underlying records so multi-seed treatment
+    # edges can be grouped (清单 P0-3): edge-equal sample weights and
+    # edge-cluster bootstrap treat seeds as repeated trials of one edge.
+    train_data = load_paired_records_with_metadata(train_records_path, memory_pool_path)
     if not train_data:
         raise ValueError(f"no valid training records in {train_records_path}")
 
-    inputs = [item for item, _ in train_data]
-    labels = [label for _, label in train_data]
+    inputs = [item for item, _, _ in train_data]
+    labels = [label for _, label, _ in train_data]
+    train_records = [rec for _, _, rec in train_data]
+    edge_clusters = group_records_by_edge(train_records)
+    sample_weights = edge_equal_sample_weights(train_records)
 
     label_counts = Counter(labels)
 
@@ -60,7 +72,13 @@ def train_critic(
         feature_block=feature_block,
         seed=seed,
     )
-    critic.fit(inputs, labels, coverage_mode=coverage_mode)
+    critic.fit(
+        inputs,
+        labels,
+        coverage_mode=coverage_mode,
+        sample_weights=sample_weights,
+        edge_clusters=edge_clusters,
+    )
 
     # Write feature audit
     feature_audit = _build_feature_audit(
@@ -76,6 +94,7 @@ def train_critic(
     # must only read epsilon_star from the checkpoint.
     metrics: dict[str, Any] = {
         "train_records": len(train_data),
+        "train_edges": len(edge_clusters),
         "label_distribution": dict(label_counts),
         "coverage_mode": coverage_mode,
         "coverage_report": critic.coverage_report,

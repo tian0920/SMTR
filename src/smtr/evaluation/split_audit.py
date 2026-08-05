@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from smtr.counterfactual.edge_keys import TreatmentEdgeKey, treatment_edge_key
+
 SPLIT_NAMES = ("train", "validation", "test")
 
 
@@ -24,6 +26,10 @@ def audit_split_leakage(
       * target_task_overlap   (task_id)
       * source_trajectory_overlap (source_trajectory_id)
       * edge_overlap          (edge_id)
+      * treatment edge split consistency (清单 P0-4): every treatment edge
+        ``(task_id, receiver_agent_id, candidate_memory_id)`` must appear in
+        exactly one split across all of its seed records, i.e.
+        ``len(edge_observed_splits[edge]) == 1`` for every edge.
 
     Advisory (reported, not fatal):
       * candidate_memory_overlap — the memory pool is built from train
@@ -34,6 +40,17 @@ def audit_split_leakage(
     missing = [name for name in SPLIT_NAMES if name not in paired_records_by_split]
     if missing:
         raise ValueError(f"split audit requires all splits, missing: {missing}")
+
+    # Treatment-edge consistency (清单 P0-4) is checked first: it is the
+    # strictest unit, since an edge crossing splits always implies a task
+    # crossing splits as well.
+    treatment_edges = _treatment_edge_overlap(paired_records_by_split)
+    if treatment_edges["treatment_edge_overlap"]:
+        raise ValueError(
+            "treatment edge seeds split across splits (清单 P0-4 requires "
+            f"len(edge_observed_splits[edge]) == 1): "
+            f"{treatment_edges['treatment_edge_overlap']}"
+        )
 
     target_tasks = {
         name: {
@@ -82,6 +99,9 @@ def audit_split_leakage(
         "source_trajectory_overlap": sorted(source_trajectory_overlap),
         "edge_overlap": sorted(edge_overlap),
         "candidate_memory_overlap": sorted(candidate_memory_overlap),
+        "treatment_edge_overlap": treatment_edges["treatment_edge_overlap"],
+        "split_inconsistent_edges": treatment_edges["split_inconsistent_edges"],
+        "treatment_edge_count_by_split": treatment_edges["edge_count_by_split"],
     }
 
 
@@ -95,6 +115,41 @@ def write_split_audit(
         json.dumps(audit, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return output_path
+
+
+def _treatment_edge_overlap(
+    paired_records_by_split: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    """Per-edge split membership for treatment edges (清单 P0-4).
+
+    Returns the set of edges observed in more than one split
+    (``treatment_edge_overlap``) plus the subset whose seeds were placed in
+    multiple splits (``split_inconsistent_edges``). Edges are identified by
+    the canonical ``(task_id, receiver_agent_id, candidate_memory_id)`` key.
+    """
+    edge_observed_splits: dict[TreatmentEdgeKey, set[str]] = {}
+    edge_count_by_split: dict[str, int] = {}
+    for name in SPLIT_NAMES:
+        split_edges = {
+            treatment_edge_key(rec)
+            for rec in paired_records_by_split[name]
+            if rec.get("task_id") is not None
+            and rec.get("receiver_agent_id") is not None
+            and rec.get("candidate_memory_id") is not None
+        }
+        edge_count_by_split[name] = len(split_edges)
+        for edge in split_edges:
+            edge_observed_splits.setdefault(edge, set()).add(name)
+
+    overlap_edges = sorted(
+        edge for edge, splits in edge_observed_splits.items() if len(splits) > 1
+    )
+    return {
+        "treatment_edge_overlap": overlap_edges,
+        "split_inconsistent_edges": overlap_edges,
+        "edge_count_by_split": edge_count_by_split,
+        "edge_observed_splits": edge_observed_splits,
+    }
 
 
 def _collect(records: list[dict[str, Any]], field: str) -> set[str]:
