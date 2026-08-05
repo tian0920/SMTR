@@ -273,6 +273,23 @@ CandidateSource = Literal[
     "cross_receiver_anchor",
 ]
 
+# 清单 P0-10: canonical cohort tags for the formal manifest. One candidate
+# can belong to several cohorts at once (e.g. an anchor that is also
+# role-matched), so records carry the full tag list.
+CandidateSourceTag = Literal[
+    "semantic_topk",
+    "role_matched",
+    "role_mismatched_hard_negative",
+    "cross_receiver_anchor",
+]
+
+_SOURCE_TAG_ORDER: tuple[CandidateSourceTag, ...] = (
+    "semantic_topk",
+    "role_matched",
+    "role_mismatched_hard_negative",
+    "cross_receiver_anchor",
+)
+
 
 class CandidateCohortQuotas(BaseModel):
     """Per-receiver candidate cohort quotas (configurable, not hardcoded).
@@ -322,6 +339,7 @@ class CandidateRecord(BaseModel):
     match_type: MatchType
     task_relation: TaskRelation = "cross_task_unknown_group"
     candidate_source: CandidateSource = "semantic_top"
+    candidate_sources: tuple[CandidateSourceTag, ...] = ()
     anchor_group_id: str | None = None
     anchor_receiver_count: int = 0
     anchor_receiver_role_count: int = 0
@@ -455,13 +473,24 @@ def build_cross_task_candidates(
                 "matched_writer_receiver" if w_role == receiver_role
                 else "mismatched_writer_receiver"
             )
-            if source == "cross_receiver_anchor":
+            is_anchor = mem.memory_id in assigned_anchor_ids
+            if source == "cross_receiver_anchor" or is_anchor:
                 anchor_receiver_count, anchor_receiver_role_count = anchor_stats.get(
                     mem.memory_id, (0, 0)
                 )
             else:
                 anchor_receiver_count = 0
                 anchor_receiver_role_count = 0
+            # 清单 P0-10: mark every cohort the candidate belongs to.
+            tags: set[str] = set()
+            if source == "semantic_top":
+                tags.add("semantic_topk")
+            if item["matched"]:
+                tags.add("role_matched")
+            if item["mismatched"]:
+                tags.add("role_mismatched_hard_negative")
+            if is_anchor:
+                tags.add("cross_receiver_anchor")
             records.append(CandidateRecord(
                 memory_id=mem.memory_id,
                 writer_agent_id=card.writer.agent_id,
@@ -473,7 +502,10 @@ def build_cross_task_candidates(
                 match_type=match_type,
                 task_relation="cross_task_unknown_group",
                 candidate_source=source,
-                anchor_group_id=mem.memory_id if source == "cross_receiver_anchor" else None,
+                candidate_sources=tuple(
+                    tag for tag in _SOURCE_TAG_ORDER if tag in tags
+                ),
+                anchor_group_id=mem.memory_id if is_anchor else None,
                 anchor_receiver_count=anchor_receiver_count,
                 anchor_receiver_role_count=anchor_receiver_role_count,
                 rank=rank,
@@ -742,6 +774,86 @@ class InsufficientReceiverEffectCoverageError(ValueError):
     """Raised when formal candidate generation lacks receiver-effect coverage."""
 
 
+def compute_proposal_support_metrics(
+    manifest: DatabaseCandidateManifest | dict[str, Any],
+) -> dict[str, Any]:
+    """Proposal support statistics required by 清单 P0-11.
+
+    These are not extra benchmarks; they verify that the proposal actually
+    exposes cross-agent heterogeneity (role-matched vs hard negatives,
+    cross-receiver anchors) for the receiver-effect analysis.
+    """
+    if isinstance(manifest, dict):
+        manifest = DatabaseCandidateManifest.model_validate(manifest)
+
+    per_receiver_counts: dict[str, int] = {}
+    source_distribution: dict[str, int] = {tag: 0 for tag in _SOURCE_TAG_ORDER}
+    total_candidates = 0
+    matched_candidates = 0
+    mismatched_candidates = 0
+    anchor_memories: dict[str, set[tuple[str, str]]] = {}
+    all_memory_receivers: dict[str, set[tuple[str, str]]] = {}
+
+    for entry in manifest.candidates:
+        receiver_key = f"{entry.task_id}:{entry.receiver_agent_id}"
+        per_receiver_counts[receiver_key] = len(entry.candidate_records)
+        for rec in entry.candidate_records:
+            total_candidates += 1
+            tags = set(rec.candidate_sources)
+            if not tags:
+                # Legacy manifests without the multi-source tag list.
+                tags = {_legacy_source_tag(rec.candidate_source)}
+            for tag in tags:
+                source_distribution[tag] = source_distribution.get(tag, 0) + 1
+            if "role_matched" in tags:
+                matched_candidates += 1
+            if "role_mismatched_hard_negative" in tags:
+                mismatched_candidates += 1
+            if "cross_receiver_anchor" in tags:
+                anchor_memories.setdefault(rec.memory_id, set()).add(
+                    (entry.task_id, entry.receiver_agent_id)
+                )
+            all_memory_receivers.setdefault(rec.memory_id, set()).add(
+                (entry.task_id, entry.receiver_agent_id)
+            )
+
+    anchor_receiver_counts = [len(rs) for rs in anchor_memories.values()]
+    return {
+        "candidate_count_per_receiver": per_receiver_counts,
+        "total_candidate_count": total_candidates,
+        "role_matched_candidate_rate": (
+            round(matched_candidates / total_candidates, 4) if total_candidates else 0.0
+        ),
+        "role_mismatched_candidate_rate": (
+            round(mismatched_candidates / total_candidates, 4)
+            if total_candidates
+            else 0.0
+        ),
+        "cross_receiver_anchor_count": len(anchor_memories),
+        "memories_with_multiple_receivers": sum(
+            1 for rs in all_memory_receivers.values() if len(rs) >= 2
+        ),
+        "receivers_per_anchor_memory": {
+            memory_id: len(rs) for memory_id, rs in sorted(anchor_memories.items())
+        },
+        "mean_receivers_per_anchor_memory": (
+            round(statistics.mean(anchor_receiver_counts), 4)
+            if anchor_receiver_counts
+            else 0.0
+        ),
+        "candidate_source_distribution": source_distribution,
+    }
+
+
+def _legacy_source_tag(source: CandidateSource) -> CandidateSourceTag:
+    """Map the legacy single-cohort label onto the canonical tag."""
+    if source == "role_mismatched":
+        return "role_mismatched_hard_negative"
+    if source == "semantic_top":
+        return "semantic_topk"
+    return source  # role_matched / cross_receiver_anchor keep their names
+
+
 def require_receiver_effect_coverage(
     coverage: dict[str, Any],
 ) -> None:
@@ -871,15 +983,25 @@ def write_candidate_manifest(
     manifest: DatabaseCandidateManifest,
     output_path: Path,
 ) -> dict[str, Any]:
-    """Write candidate manifest as JSON."""
+    """Write candidate manifest as JSON plus proposal support metrics.
+
+    The proposal support statistics (清单 P0-11) are written next to the
+    manifest as ``proposal_support_metrics.json``.
+    """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(manifest.model_dump(mode="json"), indent=2) + "\n",
         encoding="utf-8",
     )
+    support = compute_proposal_support_metrics(manifest)
+    support_path = output_path.parent / "proposal_support_metrics.json"
+    support_path.write_text(
+        json.dumps(support, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     return {
         "candidates_written": len(manifest.candidates),
         "output": str(output_path),
+        "proposal_support_output": str(support_path),
     }
 
 
