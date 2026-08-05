@@ -156,17 +156,25 @@ class RoleAwareTop1Router:
 
 def _critic_router(
     critic: FourOutcomeTransferCritic,
-    expected_feature_block: str,
+    expected_feature_blocks: str | tuple[str, ...],
     negative_risk_budget: float | None = None,
     max_shared_memories_per_receiver: int = 1,
     allow_risk_budget_override: bool = False,
 ):
     from smtr.router.exposure_router import SMTRExposureRouter
 
-    assert critic.feature_block == expected_feature_block, (
-        f"{expected_feature_block} method requires a critic trained with "
-        f"feature_block='{expected_feature_block}', got '{critic.feature_block}'"
-    )
+    if isinstance(expected_feature_blocks, str):
+        allowed = (expected_feature_blocks,)
+    else:
+        allowed = tuple(expected_feature_blocks)
+
+    if critic.feature_block not in allowed:
+        raise ValueError(
+            "critic feature block mismatch: "
+            f"expected one of {allowed}, "
+            f"got {critic.feature_block!r}"
+        )
+
     return SMTRExposureRouter(
         critic=critic,
         negative_risk_budget=negative_risk_budget,
@@ -176,11 +184,11 @@ def _critic_router(
 
 
 class GlobalTransferCriticRouter:
-    """GlobalTransferCritic: tau^global(m | task) without writer/receiver.
+    """GlobalTransferCritic.
 
-    The critic sees task, environment and memory-card features only
-    (feature_block='memory_task_only'); decisions follow the SMTR rule so
-    the comparison isolates receiver conditioning.
+    Uses task, environment and memory-card features, but removes writer,
+    receiver and pair-interaction features. Requires
+    feature_block='global_transfer'.
     """
 
     def __init__(
@@ -191,7 +199,7 @@ class GlobalTransferCriticRouter:
         allow_risk_budget_override: bool = False,
     ) -> None:
         self._router = _critic_router(
-            critic, "memory_task_only", negative_risk_budget,
+            critic, "global_transfer", negative_risk_budget,
             max_shared_memories_per_receiver, allow_risk_budget_override,
         )
 

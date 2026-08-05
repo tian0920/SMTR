@@ -152,14 +152,14 @@ class TestAblationRoutersFeatureBlock:
     def test_reject_mismatched_feature_block(self):
         critic = MagicMock()
         critic.feature_block = "full"
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             GlobalTransferCriticRouter(critic=critic)
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             SMTRNoPairInteractionRouter(critic=critic)
 
     def test_accept_matching_feature_block_and_decide(self):
         critic = MagicMock()
-        critic.feature_block = "memory_task_only"
+        critic.feature_block = "global_transfer"
         critic.epsilon_star = 0.2
         critic.predict.return_value = SimpleNamespace(tau_hat=0.5, eta_hat=0.05)
         critic.predict_calibrated.return_value = SimpleNamespace(
