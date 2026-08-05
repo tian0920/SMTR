@@ -209,8 +209,11 @@ python -m smtr.marble.cli run-marble-evaluation \
   --candidate-manifest artifacts/marble/candidates/test_candidates.json \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
+  --checkpoint-global-transfer-critic artifacts/marble/checkpoints/global_transfer.joblib \
+  --checkpoint-smtr-no-pair-interaction artifacts/marble/checkpoints/smtr_no_pair.joblib \
   --methods b0_no_memory semantic_top1 role_aware_top1 global_transfer_critic smtr_no_pair_interaction smtr_no_risk smtr \
-  --generation-seeds 0 1 2 \
+  --generation-seeds 0 1 2 3 4 \
+  --experiment-mode formal \
   --output artifacts/marble/eval/end_to_end_test
 ```
 

@@ -134,6 +134,7 @@ def main() -> None:
     p.add_argument("--generation-seeds", type=int, nargs="+", default=[0, 1, 2])
     # Same rule as run-paired-decision-evaluation: no silent 0.2 fallback.
     p.add_argument("--negative-risk-budget", type=float, default=None)
+    p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("integrity-audit", help="Run integrity audit")
@@ -273,6 +274,12 @@ def _dispatch(args: argparse.Namespace) -> None:
         print(json.dumps(result, indent=2))
 
     elif cmd == "generate-database-paired-records":
+        # 清单 P0-22: formal paired data needs at least five distinct seeds
+        # per treatment edge, so generation must fail fast before any run.
+        if args.experiment_mode == "formal" and len(set(args.generation_seeds)) < 5:
+            raise ValueError(
+                "formal paired generation requires at least five distinct seeds"
+            )
         from smtr.marble.real_pairs import generate_candidate_level_pairs
         result = generate_candidate_level_pairs(
             marble_root=Path(args.marble_root),
@@ -358,6 +365,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             methods=args.methods,
             generation_seeds=args.generation_seeds,
             negative_risk_budget=args.negative_risk_budget,
+            experiment_mode=args.experiment_mode,
             output=Path(args.output),
         )
         print(json.dumps(result, indent=2))

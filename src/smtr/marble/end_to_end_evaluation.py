@@ -10,10 +10,10 @@ from pydantic import BaseModel, ConfigDict
 
 from smtr.core.types import MemoryRoutingCard
 from smtr.marble.io import load_split_task_ids, load_dataset_tasks
+from smtr.marble.formal_protocol import verify_formal_checkpoint_blocks
 from smtr.marble.paired_evaluation import (
     _build_routers,
     build_receiver_state_from_entry,
-    verify_formal_checkpoint_blocks,
 )
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import build_routing_card_from_pool_entry
@@ -104,6 +104,7 @@ def run_end_to_end_evaluation(
     methods: list[str],
     generation_seeds: list[int],
     negative_risk_budget: float = 0.2,
+    experiment_mode: str = "pilot",
     output: Path,
 ) -> dict[str, Any]:
     """Run end-to-end MARBLE evaluation with real engine execution."""
@@ -127,6 +128,8 @@ def run_end_to_end_evaluation(
         full_critic=full_critic,
         global_critic=global_critic,
         no_pair_critic=no_pair_critic,
+        methods=methods,
+        require_calibration=(experiment_mode == "formal"),
     )
 
     # Load candidate manifest
