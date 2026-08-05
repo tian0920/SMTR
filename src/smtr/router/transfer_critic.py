@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -14,13 +15,15 @@ from smtr.core.types import (
     TransferPrediction,
     TransferPredictionDistribution,
 )
-from smtr.counterfactual.edge_keys import group_records_by_edge
+from smtr.counterfactual.edge_keys import (
+    TreatmentEdgeKey,
+    treatment_edge_key,
+)
 from smtr.router.transfer_calibration import (
     DEFAULT_EPSILONS,
     Q01Calibrator,
     build_edge_calibration_examples,
     build_edge_threshold_examples,
-    select_epsilon,
     select_epsilon_edge_level,
 )
 from smtr.router.transfer_coverage import (
@@ -241,89 +244,145 @@ class FourOutcomeTransferCritic:
         epsilons=DEFAULT_EPSILONS,
         delta: float = 0.10,
     ) -> dict[str, Any]:
-        """Calibrate q01 and select epsilon_star on validation edges only.
+        """Fit q01 calibration and select epsilon on validation treatment edges."""
 
-        Calibration fits one example per treatment edge (清单 P0-7): the
-        critic's mean predicted q01 for the edge against the empirical
-        negative-transfer rate ``N_e^01 / N_e``. epsilon_star is selected on
-        the same validation edges only (清单 P0-8); fitting on the test
-        split raises. The selected budget is persisted in the checkpoint and
-        the test split must only read it, never re-select it.
-        """
         if not self._fitted:
             raise RuntimeError("critic not fitted")
-        if split_name == "test":
+
+        if split_name != "validation":
             raise ValueError(
-                "q01 calibration and epsilon selection are forbidden on the "
-                "test split (清单 P0-8)"
+                "q01 calibration and epsilon selection must use "
+                f"the validation split, got {split_name!r}"
             )
-        if records is not None and len(records) != len(inputs):
-            raise ValueError("records must align with inputs")
-        preds = self.predict_batch(inputs)
-        q01 = np.array([p.q01_negative_transfer for p in preds])
-        tau = np.array(
-            [p.q10_positive_transfer - p.q01_negative_transfer for p in preds]
-        )
-        if records is not None:
-            # Edge-level calibration (清单 P0-2/P0-3): exactly one critic
-            # prediction and one example per treatment edge, edges equally
-            # weighted (one edge = one calibration unit).
-            predictions_by_edge: dict[tuple, dict[str, float]] = {}
-            for edge_key, rows in group_records_by_edge(records).items():
-                # Seeds do not enter features, so one representative input
-                # yields the edge's unique critic prediction.
-                pred = self.predict(inputs[rows[0]])
-                predictions_by_edge[edge_key] = {
-                    "predicted_q01": pred.q01_negative_transfer,
-                    "predicted_tau": (
-                        pred.q10_positive_transfer - pred.q01_negative_transfer
+
+        if records is None:
+            raise ValueError(
+                "edge-level calibration requires paired records; "
+                "record-level calibration is not part of formal SMTR"
+            )
+
+        if len(inputs) != len(labels) or len(inputs) != len(records):
+            raise ValueError(
+                "inputs, labels and records must have identical lengths"
+            )
+
+        if not inputs:
+            raise ValueError("validation data is empty")
+
+        predictions = self.predict_batch(inputs)
+
+        edge_predictions: dict[
+            TreatmentEdgeKey,
+            list[dict[str, float]],
+        ] = defaultdict(list)
+
+        for record, prediction in zip(records, predictions):
+            edge_key = treatment_edge_key(record)
+
+            edge_predictions[edge_key].append({
+                "predicted_q01":
+                    float(prediction.q01_negative_transfer),
+                "predicted_tau":
+                    float(
+                        prediction.q10_positive_transfer
+                        - prediction.q01_negative_transfer
                     ),
-                }
-            self._edge_calibration_examples = build_edge_calibration_examples(
-                records=records, predictions_by_edge=predictions_by_edge
+            })
+
+        predictions_by_edge: dict[
+            TreatmentEdgeKey,
+            dict[str, float],
+        ] = {}
+
+        for edge_key, rows in edge_predictions.items():
+            predictions_by_edge[edge_key] = {
+                "predicted_q01": float(
+                    np.mean([
+                        row["predicted_q01"]
+                        for row in rows
+                    ])
+                ),
+                "predicted_tau": float(
+                    np.mean([
+                        row["predicted_tau"]
+                        for row in rows
+                    ])
+                ),
+            }
+
+        calibration_examples = build_edge_calibration_examples(
+            records=records,
+            predictions_by_edge=predictions_by_edge,
+        )
+
+        if not calibration_examples:
+            raise ValueError(
+                "no validation treatment edges available for calibration"
             )
-            self.q01_calibrator = Q01Calibrator().fit(
-                np.array([ex.predicted_q01 for ex in self._edge_calibration_examples]),
-                np.array([ex.empirical_eta for ex in self._edge_calibration_examples]),
-            )
-            self.validation_edge_count = len(self._edge_calibration_examples)
-            # epsilon_star is selected over treatment edges as well (清单
-            # P0-4~7): seed-level tau/q01/label vectors must never drive
-            # threshold selection.
-            threshold_examples = build_edge_threshold_examples(
-                self._edge_calibration_examples, self.q01_calibrator
-            )
-            selection = select_epsilon_edge_level(
-                examples=threshold_examples,
-                candidate_epsilons=list(epsilons),
-                max_negative_exposure_rate=delta,
-            )
-            selection["calibration_level"] = "edge"
-            selection["risk_delta"] = delta
-        else:
-            # Legacy seed-level path, kept for unit-test stubs without
-            # paired records; the formal pipeline always passes records.
-            y_negative = np.array(
-                [1 if lb == "negative_transfer" else 0 for lb in labels]
-            )
-            self.q01_calibrator = Q01Calibrator().fit(q01, y_negative)
-            self.validation_edge_count = None
-            q01_calibrated = self.q01_calibrator.predict(q01)
-            selection = select_epsilon(
-                tau, q01_calibrated, labels, epsilons=epsilons, delta=delta
-            )
-            selection["calibration_level"] = "record"
-        selection["validation_edge_count"] = self.validation_edge_count
-        self.epsilon_star = selection["epsilon_star"]
+
+        # One edge is one calibration unit.
+        calibration_weights = np.ones(
+            len(calibration_examples),
+            dtype=float,
+        )
+
+        self.q01_calibrator = Q01Calibrator().fit(
+            np.asarray([
+                example.predicted_q01
+                for example in calibration_examples
+            ], dtype=float),
+            np.asarray([
+                example.empirical_eta
+                for example in calibration_examples
+            ], dtype=float),
+            sample_weight=calibration_weights,
+        )
+
+        threshold_examples = build_edge_threshold_examples(
+            calibration_examples,
+            self.q01_calibrator,
+        )
+
+        selection = select_epsilon_edge_level(
+            examples=threshold_examples,
+            candidate_epsilons=[
+                float(value)
+                for value in epsilons
+            ],
+            max_negative_exposure_rate=float(delta),
+        )
+
+        selection.update({
+            "calibration_unit": "treatment_edge",
+            "calibration_split": "validation",
+            "calibration_method":
+                self.q01_calibrator.method,
+            "calibration_status":
+                self.q01_calibrator.calibration_status,
+            "calibration_edge_count":
+                len(calibration_examples),
+            "epsilon_selection_unit":
+                "treatment_edge",
+            "epsilon_selection_split":
+                "validation",
+            "validation_edge_count":
+                len(calibration_examples),
+            "risk_delta":
+                float(delta),
+        })
+
+        self.epsilon_star = float(
+            selection["epsilon_star"]
+        )
         self.risk_calibration = selection
-        self.calibration_split = split_name
-        self.epsilon_selection_split = split_name
-        self.calibration_unit = (
-            "treatment_edge" if records is not None else "seed_record"
+        self.calibration_split = "validation"
+        self.epsilon_selection_split = "validation"
+        self.validation_edge_count = len(
+            calibration_examples
         )
-        self.epsilon_selection_unit = (
-            "treatment_edge" if records is not None else "seed_record"
-        )
+        self.calibration_unit = "treatment_edge"
+        self.epsilon_selection_unit = "treatment_edge"
+
         return selection
 
     def calibrated_q01(self, pred: TransferPrediction) -> float:

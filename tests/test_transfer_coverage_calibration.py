@@ -13,6 +13,7 @@ from smtr.core.types import (
     MemoryRoutingCard,
     ReceiverState,
 )
+from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES
 from smtr.router.transfer_calibration import (
     compute_four_class_metrics,
     compute_probability_metrics,
@@ -51,6 +52,25 @@ def _make_inputs_and_labels(labels: list[str]) -> tuple[list[CandidateExposureIn
 
 def _four_class_labels(n: int = 40) -> list[str]:
     return [ALL_LABELS[i % 4] for i in range(n)]
+
+
+def _records_for(inputs: list[CandidateExposureInput], labels: list[str]) -> list[dict]:
+    """Paired records aligned with inputs, one per seed record."""
+    records = []
+    for i, (inp, label) in enumerate(zip(inputs, labels)):
+        y_share, y_withhold = LABEL_TO_OUTCOMES[label]
+        records.append(
+            {
+                "task_id": inp.receiver_state.task_id,
+                "receiver_agent_id": inp.receiver_state.receiver.agent_id,
+                "candidate_memory_id": inp.candidate_card.memory_id,
+                "generation_seed": i,
+                "label": label,
+                "share": {"team_success": bool(y_share)},
+                "withhold": {"team_success": bool(y_withhold)},
+            }
+        )
+    return records
 
 
 def test_training_fails_without_negative_transfer():
@@ -131,7 +151,9 @@ def test_checkpoint_contains_validation_selected_epsilon(tmp_path):
     inputs, labels = _make_inputs_and_labels(_four_class_labels(60))
     critic = FourOutcomeTransferCritic(n_bootstrap=3, n_features=64, seed=0)
     critic.fit(inputs, labels)
-    selection = critic.calibrate_q01(inputs, labels, delta=0.5)
+    selection = critic.calibrate_q01(
+        inputs, labels, _records_for(inputs, labels), delta=0.5
+    )
 
     checkpoint = tmp_path / "critic.joblib"
     critic.save(checkpoint)

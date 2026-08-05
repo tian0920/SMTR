@@ -15,10 +15,30 @@ from smtr.core.types import (
     TransferPrediction,
     TransferPredictionDistribution,
 )
+from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES
 from smtr.router.exposure_router import SMTRExposureRouter, SMTRUCBRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
 ALL_LABELS = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
+
+
+def _records_for(inputs: list[CandidateExposureInput], labels: list[str]) -> list[dict]:
+    """Paired records aligned with inputs, one per seed record."""
+    records = []
+    for i, (inp, label) in enumerate(zip(inputs, labels)):
+        y_share, y_withhold = LABEL_TO_OUTCOMES[label]
+        records.append(
+            {
+                "task_id": inp.receiver_state.task_id,
+                "receiver_agent_id": inp.receiver_state.receiver.agent_id,
+                "candidate_memory_id": inp.candidate_card.memory_id,
+                "generation_seed": i,
+                "label": label,
+                "share": {"team_success": bool(y_share)},
+                "withhold": {"team_success": bool(y_withhold)},
+            }
+        )
+    return records
 
 
 def _make_inputs_and_labels(labels: list[str]) -> tuple[list[CandidateExposureInput], list[str]]:
@@ -106,7 +126,7 @@ class TestPredictDistribution:
         inputs, labels = _make_inputs_and_labels(labels)
         critic = FourOutcomeTransferCritic(n_bootstrap=5, n_features=64, seed=0)
         critic.fit(inputs, labels)
-        critic.calibrate_q01(inputs, labels, delta=0.5)
+        critic.calibrate_q01(inputs, labels, _records_for(inputs, labels), delta=0.5)
 
         dist = critic.predict_distribution(inputs[0])
         assert 0.0 <= dist.eta_upper <= 1.0

@@ -150,7 +150,7 @@ class TestValidationOnlyCalibration:
             (rec["task_id"], rec["receiver_agent_id"], rec["candidate_memory_id"])
             for rec in records
         }
-        assert selection["calibration_level"] == "edge"
+        assert selection["calibration_unit"] == "treatment_edge"
         assert selection["validation_edge_count"] == len(n_edges)
         assert critic.calibration_split == "validation"
         assert critic.epsilon_selection_split == "validation"
@@ -166,7 +166,7 @@ class TestValidationOnlyCalibration:
     def test_test_split_rejected_immediately(self):
         """清单验收: test records 被传入时立即报错."""
         critic, inputs, labels, records = _fitted_critic()
-        with pytest.raises(ValueError, match="test split"):
+        with pytest.raises(ValueError, match="validation split"):
             critic.calibrate_q01(
                 inputs, labels, records, split_name="test", delta=0.5
             )
@@ -176,7 +176,7 @@ class TestValidationOnlyCalibration:
 
     def test_records_must_align_with_inputs(self):
         critic, inputs, labels, records = _fitted_critic()
-        with pytest.raises(ValueError, match="align"):
+        with pytest.raises(ValueError, match="identical lengths"):
             critic.calibrate_q01(
                 inputs, labels, records[:-1], split_name="validation", delta=0.5
             )
