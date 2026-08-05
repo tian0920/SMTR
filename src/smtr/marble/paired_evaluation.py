@@ -12,6 +12,7 @@ from smtr.evaluation.cluster_bootstrap import (
     CLUSTER_TARGET_TASK,
     cluster_bootstrap_ci,
 )
+from smtr.evaluation.local_outcome import local_outcome_report
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
 from smtr.evaluation.receiver_effect_analysis import (
     analyze_receiver_effect,
@@ -301,6 +302,14 @@ def run_paired_decision_evaluation(
     md_table = format_markdown_table(all_method_metrics)
     (output / "result_table.md").write_text(md_table, encoding="utf-8")
 
+    # 清单 P0-15: no reliable receiver-local evaluator exists in v1, so
+    # local metrics are reported as null and no local-team divergence claim
+    # is made.
+    local_report = local_outcome_report()
+    (output / "local_outcome_report.json").write_text(
+        json.dumps(local_report, indent=2), encoding="utf-8"
+    )
+
     return {
         "methods": methods,
         "n_candidate_entries": len(candidates_manifest.get("candidates", [])),
@@ -316,6 +325,7 @@ def run_paired_decision_evaluation(
         "receiver_effect_analysis": receiver_effect,
         "receiver_effect_anchor_analysis": receiver_effect_anchors,
         "receiver_effect_comparison": receiver_effect_comparison,
+        "local_outcome_report": local_report,
         "cluster_bootstrap_ci": ci_by_method,
     }
 

@@ -85,3 +85,12 @@ Metrics:
 - Writer-receiver mismatch share rate
 - Same-memory different-receiver decision count
 - Receiver-specific quarantine pair count
+
+Outcome scope (v1): the only reliable supervision is the MARBLE team-level
+outcome, so the formal claim is:
+
+> SMTR controls cross-agent memory exposure using team-level transfer outcomes.
+
+No receiver-local evaluator exists in v1; local metrics are reported as
+`null` (never 0) and no local–team divergence claim is made. Local outcomes
+are a future extension only.
