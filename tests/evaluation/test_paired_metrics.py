@@ -83,8 +83,16 @@ def test_same_memory_flip_requires_different_receiver():
          "receiver_agent_id": "r2", "receiver_role": "critic", "writer_role": "planner",
          "action": "withhold", "tau_hat": -0.1, "eta_hat": 0.3},
     ]
+    outcomes = [
+        {"task_id": "t1", "generation_seed": 0, "candidate_memory_id": "m1",
+         "receiver_agent_id": "r1", "label": "positive_transfer",
+         "share": {"team_success": True}, "withhold": {"team_success": False}},
+        {"task_id": "t2", "generation_seed": 0, "candidate_memory_id": "m1",
+         "receiver_agent_id": "r2", "label": "neutral_success",
+         "share": {"team_success": True}, "withhold": {"team_success": True}},
+    ]
     metrics = compute_method_metrics(
-        method="test", decisions=decisions, paired_outcomes=[], negative_risk_budget=0.2,
+        method="test", decisions=decisions, paired_outcomes=outcomes, negative_risk_budget=0.2,
     )
     assert metrics["same_memory_different_receiver_flip_count"] == 1
 
@@ -97,11 +105,16 @@ def test_risk_budget_not_hardcoded():
          "action": "withhold", "tau_hat": 0.1, "eta_hat": 0.25},
     ]
     # With budget=0.2, eta=0.25 > 0.2 -> quarantine
-    m1 = compute_method_metrics(method="t", decisions=decisions, paired_outcomes=[], negative_risk_budget=0.2)
+    outcomes = [
+        {"task_id": "t1", "generation_seed": 0, "candidate_memory_id": "m1",
+         "receiver_agent_id": "r1", "label": "negative_transfer",
+         "share": {"team_success": False}, "withhold": {"team_success": True}},
+    ]
+    m1 = compute_method_metrics(method="t", decisions=decisions, paired_outcomes=outcomes, negative_risk_budget=0.2)
     assert m1["receiver_specific_quarantine_pair_count"] == 1
 
     # With budget=0.3, eta=0.25 < 0.3 -> no quarantine
-    m2 = compute_method_metrics(method="t", decisions=decisions, paired_outcomes=[], negative_risk_budget=0.3)
+    m2 = compute_method_metrics(method="t", decisions=decisions, paired_outcomes=outcomes, negative_risk_budget=0.3)
     assert m2["receiver_specific_quarantine_pair_count"] == 0
 
 

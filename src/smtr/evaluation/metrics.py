@@ -75,7 +75,11 @@ def compute_candidate_transfer_metrics(
         )
         rec = outcome_by_key.get(key)
         if rec is None:
-            continue
+            raise ValueError(
+                "candidate decision has no matching core-valid paired "
+                f"record: task={key[0]}, seed={key[1]}, "
+                f"receiver={key[2]}, memory={key[3]}"
+            )
         label = paired_record_label(rec)
         action = d["action"]
 
@@ -169,7 +173,12 @@ def compute_receiver_policy_metrics(
                 str(selected.get("candidate_memory_id", "")),
             ))
             if rec is None:
-                continue
+                raise ValueError(
+                    "selected memory has no paired outcome for receiver "
+                    f"policy replay: task={task_id}, "
+                    f"receiver={receiver_agent_id}, seed={seed}, "
+                    f"memory={selected.get('candidate_memory_id')}"
+                )
             policy_total += 1
             episodes_with_share += 1
             if get_paired_outcomes(rec)[0] == 1:
@@ -186,7 +195,11 @@ def compute_receiver_policy_metrics(
                     withhold_outcomes.add(
                         get_paired_outcomes(rec)[1] == 1)
             if not withhold_outcomes:
-                continue
+                raise ValueError(
+                    "receiver no-memory policy has no withhold outcome: "
+                    f"task={task_id}, receiver={receiver_agent_id}, "
+                    f"seed={seed}"
+                )
             if len(withhold_outcomes) > 1:
                 raise InconsistentControlOutcomeError(
                     "inconsistent no-memory outcome across candidates "

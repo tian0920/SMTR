@@ -145,62 +145,6 @@ def _receiver_episode_seed_support(
     return sorted(common_support)
 
 
-def _receiver_episode_seed_support(
-    *,
-    task_id: str,
-    receiver_agent_id: str,
-    candidate_memory_ids: list[str],
-    edge_to_seeds: dict[tuple[str, str, str], set[int]],
-    formal_mode: bool,
-) -> list[int]:
-    """Common generation-seed support of one receiver candidate set.
-
-    Formal receiver-policy replay requires identical seed support across all
-    candidate edges of the same task/receiver; pilot mode replays the
-    intersection (never the union) so no unsupported seed trace is created.
-    """
-    seed_sets: dict[str, set[int]] = {}
-
-    for memory_id in candidate_memory_ids:
-        edge_key = (task_id, receiver_agent_id, memory_id)
-        seed_sets[memory_id] = set(edge_to_seeds.get(edge_key, set()))
-
-    missing_edges = [
-        memory_id for memory_id, seeds in seed_sets.items() if not seeds
-    ]
-
-    if missing_edges:
-        if formal_mode:
-            raise ValueError(
-                "formal paired evaluation has candidate edges without "
-                f"valid paired outcomes: {missing_edges}"
-            )
-        return []
-
-    unique_supports = {frozenset(seeds) for seeds in seed_sets.values()}
-
-    if formal_mode and len(unique_supports) != 1:
-        detail = {
-            memory_id: sorted(seeds)
-            for memory_id, seeds in seed_sets.items()
-        }
-        raise ValueError(
-            "formal receiver-policy replay requires identical seed "
-            f"support across all candidate edges: task={task_id}, "
-            f"receiver={receiver_agent_id}, support={detail}"
-        )
-
-    common_support = set.intersection(*seed_sets.values())
-
-    if not common_support:
-        raise ValueError(
-            "candidate edges have no common generation-seed support: "
-            f"task={task_id}, receiver={receiver_agent_id}"
-        )
-
-    return sorted(common_support)
-
-
 def run_paired_decision_evaluation(
     *,
     candidate_manifest_path: Path,
@@ -478,17 +422,6 @@ def run_paired_decision_evaluation(
     (output / "coverage_report.json").write_text(
         json.dumps(coverage_by_method, indent=2), encoding="utf-8"
     )
-    if experiment_mode == "formal":
-        for method, coverage in coverage_by_method.items():
-            if (
-                coverage["candidate_decision_coverage"] != 1.0
-                or coverage["receiver_episode_coverage"] != 1.0
-                or coverage["unexpected_candidate_seed_trace_count"] != 0
-            ):
-                raise ValueError(
-                    "formal paired evaluation aborted: incomplete trace "
-                    f"coverage for method {method}: {coverage}"
-                )
 
     for method in methods:
         metrics = compute_method_metrics(
@@ -497,6 +430,37 @@ def run_paired_decision_evaluation(
             paired_outcomes=paired_outcomes,
             negative_risk_budget=diagnostic_budget,
         )
+        # 清单 P0-18: the result JSON must report both coverage levels and
+        # the unsupported-trace count as top-level fields of every method.
+        coverage = coverage_by_method[method]
+        metrics["candidate_decision_coverage"] = coverage[
+            "candidate_decision_coverage"
+        ]
+        metrics["receiver_episode_coverage"] = coverage[
+            "receiver_episode_coverage"
+        ]
+        metrics["unexpected_candidate_seed_trace_count"] = coverage[
+            "unexpected_candidate_seed_trace_count"
+        ]
+        if formal_mode:
+            candidate_coverage = metrics["candidate_decision_coverage"]
+            episode_coverage = metrics["receiver_episode_coverage"]
+            unexpected = metrics["unexpected_candidate_seed_trace_count"]
+            if candidate_coverage != 1.0:
+                raise ValueError(
+                    f"{method} candidate decision coverage is "
+                    f"{candidate_coverage}, expected 1.0"
+                )
+            if episode_coverage != 1.0:
+                raise ValueError(
+                    f"{method} receiver episode coverage is "
+                    f"{episode_coverage}, expected 1.0"
+                )
+            if unexpected != 0:
+                raise ValueError(
+                    f"{method} produced {unexpected} unsupported "
+                    "candidate-seed traces"
+                )
         all_method_metrics.append(metrics)
 
     # Cluster bootstrap confidence intervals (清单第十三章): resample whole
@@ -665,7 +629,13 @@ def _method_cluster_cis(
                 str(shared[0].get("candidate_memory_id", "")),
             ))
             if rec is None:
-                continue
+                raise ValueError(
+                    "selected memory has no paired outcome for "
+                    "cluster-bootstrap policy replay: "
+                    f"task={task_id}, receiver={receiver_agent_id}, "
+                    f"seed={seed}, "
+                    f"memory={shared[0].get('candidate_memory_id')}"
+                )
             success = get_paired_outcomes(rec)[0] == 1
         else:
             withhold_outcomes: set[bool] = set()
@@ -678,7 +648,10 @@ def _method_cluster_cis(
                     withhold_outcomes.add(
                         get_paired_outcomes(rec)[1] == 1)
             if len(withhold_outcomes) != 1:
-                continue
+                raise ValueError(
+                    "cluster-bootstrap policy unit has missing or "
+                    "inconsistent withhold outcomes"
+                )
             success = next(iter(withhold_outcomes))
         episode_units.append({
             "task_id": task_id,
