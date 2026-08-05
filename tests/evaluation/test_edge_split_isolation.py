@@ -104,3 +104,58 @@ class TestEdgeSplitIsolation:
         audit = audit_split_leakage(splits)
         assert audit["treatment_edge_overlap"] == []
         assert audit["treatment_edge_count_by_split"]["train"] == 2
+
+
+class TestSplitIntegrityReport:
+    """清单 P1-2: audit output fields must be computed, not assumed."""
+
+    def _clean_splits(self) -> dict[str, list[dict]]:
+        train = [_record("t1", "r1", "m1", 0)]
+        train[0]["source_task_id"] = "t0"
+        train[0]["memory_source_split"] = "train"
+        validation = [_record("t2", "r1", "m1", 0)]
+        validation[0]["source_task_id"] = "t0"
+        validation[0]["memory_source_split"] = "train"
+        test = [_record("t3", "r2", "m2", 0)]
+        test[0]["source_task_id"] = "t0"
+        test[0]["memory_source_split"] = "train"
+        return _splits(train=train, validation=validation, test=test)
+
+    def test_clean_audit_reports_required_p1_2_fields(self):
+        audit = audit_split_leakage(self._clean_splits())
+        assert audit["target_task_overlap"] == []
+        assert audit["treatment_edge_overlap"] == []
+        assert audit["non_train_memory_sources"] == []
+        assert audit["self_transfer_edges"] == []
+        assert audit["test_used_for_calibration"] is False
+        assert audit["split_integrity_passed"] is True
+
+    def test_non_train_memory_source_fails_audit(self):
+        splits = self._clean_splits()
+        splits["validation"][0]["memory_source_split"] = "validation"
+        with pytest.raises(ValueError, match="memory sources outside the train"):
+            audit_split_leakage(splits)
+
+    def test_self_transfer_edge_fails_audit(self):
+        splits = self._clean_splits()
+        splits["test"][0]["source_task_id"] = "t3"  # memory from target task
+        with pytest.raises(ValueError, match="self-transfer"):
+            audit_split_leakage(splits)
+
+    def test_test_calibration_provenance_fails_audit(self):
+        with pytest.raises(ValueError, match="used test records"):
+            audit_split_leakage(self._clean_splits(), calibration_split="test")
+        with pytest.raises(ValueError, match="used test records"):
+            audit_split_leakage(
+                self._clean_splits(), epsilon_selection_split="test"
+            )
+
+    def test_split_integrity_passed_is_computed(self):
+        audit = audit_split_leakage(
+            self._clean_splits(),
+            calibration_split="validation",
+            epsilon_selection_split="validation",
+        )
+        assert audit["calibration_split"] == "validation"
+        assert audit["epsilon_selection_split"] == "validation"
+        assert audit["split_integrity_passed"] is True

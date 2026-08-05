@@ -5,9 +5,12 @@ branch completion, canonical nested outcomes, cross-branch identity and
 core-config digest consistency. Full resource-cleanup or deployment-level
 auditing is deliberately out of scope for this round.
 
-Records rejected by :func:`is_valid_core_paired_record` must never enter
-critic training, risk calibration, epsilon selection, receiver-effect
-analysis or policy metrics.
+Records rejected by :func:`is_core_valid_pair` must never enter critic
+training, risk calibration, epsilon selection, receiver-effect analysis or
+policy metrics. Training, calibration and formal paired evaluation all
+reuse :func:`is_core_valid_pair` as the single validity predicate (清单
+P0-16); invalid pairs are excluded instead of being silently relabelled as
+failure samples and are reported via ``invalid_pair_rate`` (清单 P0-17).
 """
 
 from __future__ import annotations
@@ -57,7 +60,10 @@ def core_validity_exclusion_reasons(record: dict[str, Any]) -> list[str]:
     """
     reasons: list[str] = []
 
-    # Canonical nested outcomes must be present and readable.
+    # Canonical nested outcomes must be present and readable. Both branches
+    # must additionally have been scored by the MARBLE native evaluator:
+    # a missing evaluator must never be silently mapped to a transfer
+    # outcome (清单 P0-17).
     try:
         get_paired_outcomes(record)
     except ValueError:
@@ -83,6 +89,28 @@ def core_validity_exclusion_reasons(record: dict[str, Any]) -> list[str]:
             reasons.append(f"{branch}_environment_invalid")
         if "real_engine_executed" in block and not block["real_engine_executed"]:
             reasons.append(f"{branch}_engine_not_executed")
+        if "native_evaluator_executed" in block and not block["native_evaluator_executed"]:
+            reasons.append(f"{branch}_native_outcome_missing")
+        # Runtime visibility is part of the treatment definition (清单
+        # P0-16): the target receiver must see the candidate memory in the
+        # share branch and not see it in the withhold branch. A visibility
+        # failure must never count as withhold success (清单 P0-17).
+        if "runtime_visibility_verified" in block and not block["runtime_visibility_verified"]:
+            reasons.append(f"{branch}_visibility_failure")
+
+    # Cross-branch receiver identity (when recorded per branch): both
+    # branches must expose the candidate to the same target receiver.
+    receiver = record.get("receiver_agent_id")
+    for branch_receiver_key in ("share_receiver_agent_id", "withhold_receiver_agent_id"):
+        branch_receiver = record.get(branch_receiver_key)
+        if branch_receiver is not None and receiver is not None and branch_receiver != receiver:
+            reasons.append("mismatched_receiver")
+            break
+
+    # Non-target agents must never observe the candidate payload in either
+    # branch (清单 P0-16). The flag is authoritative when present.
+    if record.get("non_target_payload_leakage"):
+        reasons.append("non_target_payload_leakage")
 
     # Cross-branch generation-seed consistency (when recorded per branch).
     seed = record.get("generation_seed")
@@ -109,9 +137,17 @@ def core_validity_exclusion_reasons(record: dict[str, Any]) -> list[str]:
     return reasons
 
 
-def is_valid_core_paired_record(record: dict[str, Any]) -> bool:
-    """Whether one paired record passes all core-validity checks."""
+def is_core_valid_pair(record: dict[str, Any]) -> bool:
+    """Whether one paired record is a core-valid causal pair (清单 P0-16).
+
+    This is the single validity predicate shared by critic training, risk
+    calibration, epsilon selection and formal paired evaluation.
+    """
     return not core_validity_exclusion_reasons(record)
+
+
+# Backwards-compatible alias kept for existing loaders.
+is_valid_core_paired_record = is_core_valid_pair
 
 
 def filter_core_paired_records(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -124,11 +160,16 @@ def filter_core_paired_records(records: list[dict[str, Any]]) -> dict[str, Any]:
             reason_counts.update(reasons)
         else:
             valid_records.append(rec)
+    total = len(records)
+    excluded = total - len(valid_records)
     return {
         "valid_records": valid_records,
-        "total_paired_records": len(records),
+        "total_paired_records": total,
         "valid_paired_records": len(valid_records),
-        "excluded_paired_records": len(records) - len(valid_records),
+        "excluded_paired_records": excluded,
+        # 清单 P0-17: invalid pairs are reported explicitly instead of
+        # being silently turned into failure samples.
+        "invalid_pair_rate": (excluded / total) if total else 0.0,
         "exclusion_reasons": dict(sorted(reason_counts.items())),
     }
 

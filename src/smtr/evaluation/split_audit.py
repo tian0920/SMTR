@@ -19,6 +19,9 @@ SPLIT_NAMES = ("train", "validation", "test")
 
 def audit_split_leakage(
     paired_records_by_split: dict[str, list[dict[str, Any]]],
+    *,
+    calibration_split: str = "validation",
+    epsilon_selection_split: str = "validation",
 ) -> dict[str, Any]:
     """Audit identifier overlap across train/validation/test paired records.
 
@@ -30,12 +33,22 @@ def audit_split_leakage(
         ``(task_id, receiver_agent_id, candidate_memory_id)`` must appear in
         exactly one split across all of its seed records, i.e.
         ``len(edge_observed_splits[edge]) == 1`` for every edge.
+      * non_train_memory_sources (清单 P1-1): memory source trajectories
+        must come from the train split only.
+      * self_transfer_edges (清单 P1-2): a candidate target task must not
+        equal the memory's source task.
+      * calibration / epsilon selection must not use test records
+        (清单 P0-8 / P1-2): ``test_used_for_calibration`` is computed from
+        the recorded split provenance, never assumed.
 
     Advisory (reported, not fatal):
       * candidate_memory_overlap — the memory pool is built from train
         trajectories only, so memory ids are expected to recur in
         validation/test candidates; the overlap is reported so reviewers can
         decide whether further isolation is needed.
+
+    ``split_integrity_passed`` is computed from the real check results
+    (清单 P1-2); it is never initialized to ``True``.
     """
     missing = [name for name in SPLIT_NAMES if name not in paired_records_by_split]
     if missing:
@@ -91,6 +104,42 @@ def audit_split_leakage(
         }
     )
 
+    # 清单 P1-1/P1-2: memory source trajectories must come from train only,
+    # and no candidate may target the task that produced its memory.
+    non_train_memory_sources = _non_train_memory_sources(paired_records_by_split)
+    self_transfer_edges = _self_transfer_edges(paired_records_by_split)
+    test_used_for_calibration = "test" in {
+        calibration_split,
+        epsilon_selection_split,
+    }
+
+    # Computed from the real check results (清单 P1-2); never assumed.
+    split_integrity_passed = bool(
+        not target_task_overlap
+        and not treatment_edges["treatment_edge_overlap"]
+        and not source_trajectory_overlap
+        and not edge_overlap
+        and not non_train_memory_sources
+        and not self_transfer_edges
+        and not test_used_for_calibration
+    )
+    if non_train_memory_sources:
+        raise ValueError(
+            "memory sources outside the train split (清单 P1-1): "
+            f"{sorted(non_train_memory_sources)}"
+        )
+    if self_transfer_edges:
+        raise ValueError(
+            f"self-transfer edges (target task == memory source task): "
+            f"{sorted(self_transfer_edges)}"
+        )
+    if test_used_for_calibration:
+        raise ValueError(
+            "calibration/epsilon selection used test records "
+            f"(calibration_split={calibration_split!r}, "
+            f"epsilon_selection_split={epsilon_selection_split!r}; 清单 P0-8)."
+        )
+
     return {
         "train_target_tasks": sorted(target_tasks["train"]),
         "validation_target_tasks": sorted(target_tasks["validation"]),
@@ -102,6 +151,12 @@ def audit_split_leakage(
         "treatment_edge_overlap": treatment_edges["treatment_edge_overlap"],
         "split_inconsistent_edges": treatment_edges["split_inconsistent_edges"],
         "treatment_edge_count_by_split": treatment_edges["edge_count_by_split"],
+        "non_train_memory_sources": sorted(non_train_memory_sources),
+        "self_transfer_edges": sorted(self_transfer_edges),
+        "test_used_for_calibration": test_used_for_calibration,
+        "calibration_split": calibration_split,
+        "epsilon_selection_split": epsilon_selection_split,
+        "split_integrity_passed": split_integrity_passed,
     }
 
 
@@ -154,6 +209,46 @@ def _treatment_edge_overlap(
 
 def _collect(records: list[dict[str, Any]], field: str) -> set[str]:
     return {str(rec[field]) for rec in records if rec.get(field) is not None}
+
+
+def _non_train_memory_sources(
+    paired_records_by_split: dict[str, list[dict[str, Any]]],
+) -> set[str]:
+    """Memory ids whose recorded source split is not train (清单 P1-1).
+
+    Only records that persist ``memory_source_split`` are checked; the
+    memory pool construction itself is train-only by design, so this is a
+    provenance re-check against the persisted records.
+    """
+    offenders: set[str] = set()
+    for name in SPLIT_NAMES:
+        for rec in paired_records_by_split[name]:
+            source_split = rec.get("memory_source_split")
+            if source_split is not None and source_split != "train":
+                memory_id = rec.get("candidate_memory_id")
+                if memory_id is not None:
+                    offenders.add(str(memory_id))
+    return offenders
+
+
+def _self_transfer_edges(
+    paired_records_by_split: dict[str, list[dict[str, Any]]],
+) -> set[TreatmentEdgeKey]:
+    """Edges whose target task equals the memory's source task (清单 P1-2)."""
+    offenders: set[TreatmentEdgeKey] = set()
+    for name in SPLIT_NAMES:
+        for rec in paired_records_by_split[name]:
+            source_task = rec.get("source_task_id")
+            if source_task in (None, ""):
+                continue
+            target_task = rec.get("task_id")
+            if target_task is not None and str(source_task) == str(target_task):
+                if (
+                    rec.get("receiver_agent_id") is not None
+                    and rec.get("candidate_memory_id") is not None
+                ):
+                    offenders.add(treatment_edge_key(rec))
+    return offenders
 
 
 def _cross_split_overlap(sets: dict[str, set[str]]) -> set[str]:

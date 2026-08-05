@@ -56,6 +56,16 @@ This produces a four-outcome label:
 - neutral_success: both succeed
 - neutral_failure: both fail
 
+### Core-valid pairs
+
+A paired record enters critic training, calibration and evaluation only if it passes the single validity predicate `is_core_valid_pair`: same target task, receiver, generation seed, initial environment state and agent/tool configuration across branches; the only treatment difference is the candidate memory exposure; both branches carry MARBLE native team outcomes; the target receiver sees the memory in the share branch and not in the withhold branch; non-target agents never see the payload.
+
+Invalid pairs are excluded, never relabelled as failure samples (an invalid environment, missing evaluator, or visibility failure produces no transfer label), and are reported via `invalid_pair_rate` with per-reason counts.
+
+### Split isolation
+
+Memory source trajectories come from the train split only. Critic training uses train edges; q01 calibration and epsilon selection use validation edges; final evaluation uses test edges once. A target task or treatment edge never crosses splits. The split audit computes `target_task_overlap`, `treatment_edge_overlap`, `non_train_memory_sources`, `self_transfer_edges`, `test_used_for_calibration` and derives `split_integrity_passed` from those results.
+
 ## 7. Four-Outcome Transfer Critic
 
 Train an ensemble classifier predicting:

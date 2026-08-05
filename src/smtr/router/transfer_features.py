@@ -15,7 +15,7 @@ from smtr.core.types import (
     MemoryRoutingCard,
     ReceiverState,
 )
-from smtr.marble.core_validity import is_valid_core_paired_record
+from smtr.marble.core_validity import is_core_valid_pair
 from smtr.marble.paired_outcomes import paired_record_label
 
 FORBIDDEN_FEATURE_TOKENS = frozenset({
@@ -260,7 +260,7 @@ def load_paired_records_with_metadata(
         if not line.strip():
             continue
         rec = json.loads(line)
-        if not is_valid_core_paired_record(rec):
+        if not is_core_valid_pair(rec):
             continue
         mem_entry = pool.get(rec["candidate_memory_id"])
         if mem_entry is None:
