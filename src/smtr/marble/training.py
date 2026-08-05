@@ -38,6 +38,7 @@ def train_critic(
     train_records_path: Path,
     memory_pool_path: Path,
     validation_records_path: Path | None = None,
+    test_records_path: Path | None = None,
     output_path: Path,
     seed: int = _DEFAULT_SEED,
     n_bootstrap: int = _DEFAULT_N_BOOTSTRAP,
@@ -61,6 +62,16 @@ def train_critic(
     sample_weights = edge_equal_sample_weights(train_records)
 
     label_counts = Counter(labels)
+
+    # 清单 P0-16: formal training must pass the split audit before the
+    # critic is fitted; any leakage aborts training immediately.
+    split_audit_summary = None
+    if coverage_mode == "formal":
+        split_audit_summary = _run_training_split_audit(
+            train_records=train_records,
+            validation_records_path=validation_records_path,
+            test_records_path=test_records_path,
+        )
 
     # Fit critic
     critic = FourOutcomeTransferCritic(
@@ -101,6 +112,8 @@ def train_critic(
         "seed": seed,
         "checkpoint": str(output_path),
     }
+    if split_audit_summary is not None:
+        metrics["split_audit"] = split_audit_summary
 
     if validation_records_path and validation_records_path.exists():
         val_data = load_paired_records_with_metadata(
@@ -168,6 +181,45 @@ def train_critic(
     metrics_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     return metrics
+
+
+def _run_training_split_audit(
+    *,
+    train_records: list[dict[str, Any]],
+    validation_records_path: Path | None,
+    test_records_path: Path | None,
+) -> dict[str, Any]:
+    """Split audit gate for formal critic training (清单 P0-16).
+
+    Without a test file the audit still checks train/validation task and
+    treatment-edge isolation plus memory-source provenance; test isolation
+    is re-checked before the formal evaluation.
+    """
+    from smtr.evaluation.split_audit import audit_split_leakage, load_paired_records_file
+
+    splits: dict[str, list[dict[str, Any]]] = {"train": list(train_records)}
+    for name, path in (
+        ("validation", validation_records_path),
+        ("test", test_records_path),
+    ):
+        if path is not None and Path(path).exists():
+            splits[name] = load_paired_records_file(Path(path))
+        else:
+            splits[name] = []
+
+    try:
+        summary = audit_split_leakage(
+            splits,
+            calibration_split="validation",
+            epsilon_selection_split="validation",
+        )
+    except ValueError as exc:
+        raise ValueError(
+            f"formal critic training aborted: split audit failed: {exc}"
+        ) from exc
+    if not summary["split_integrity_passed"]:
+        raise ValueError("formal critic training aborted: split audit failed")
+    return summary
 
 
 def _pred_vector(pred) -> np.ndarray:

@@ -172,6 +172,85 @@ def write_split_audit(
     return output_path
 
 
+def load_paired_records_file(path: Path) -> list[dict[str, Any]]:
+    """Load one JSONL paired-records file."""
+    records: list[dict[str, Any]] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            records.append(json.loads(line))
+    return records
+
+
+def audit_split_files(
+    *,
+    train_records_path: Path,
+    validation_records_path: Path,
+    test_records_path: Path,
+    memory_pool_path: Path | None = None,
+    checkpoint_path: Path | None = None,
+) -> dict[str, Any]:
+    """Audit persisted split files end to end (清单 P0-15).
+
+    Calibration / epsilon-selection provenance is read from the checkpoint
+    when one is supplied; violations never raise out of this wrapper — the
+    summary reports ``split_integrity_passed=False`` plus the error so the
+    caller decides how to fail.
+    """
+    splits = {
+        "train": load_paired_records_file(train_records_path),
+        "validation": load_paired_records_file(validation_records_path),
+        "test": load_paired_records_file(test_records_path),
+    }
+    calibration_split = "validation"
+    epsilon_selection_split = "validation"
+    if checkpoint_path is not None:
+        from smtr.router.transfer_critic import FourOutcomeTransferCritic
+
+        critic = FourOutcomeTransferCritic.load(Path(checkpoint_path))
+        calibration_split = getattr(critic, "calibration_split", None) or "unknown"
+        epsilon_selection_split = (
+            getattr(critic, "epsilon_selection_split", None) or "unknown"
+        )
+
+    try:
+        summary = audit_split_leakage(
+            splits,
+            calibration_split=calibration_split,
+            epsilon_selection_split=epsilon_selection_split,
+        )
+    except ValueError as exc:
+        return {
+            "split_integrity_passed": False,
+            "error": str(exc),
+            "calibration_split": calibration_split,
+            "epsilon_selection_split": epsilon_selection_split,
+        }
+
+    non_train_pool_sources = sorted(_non_train_memory_pool_sources(memory_pool_path))
+    if non_train_pool_sources:
+        summary = dict(summary)
+        summary["non_train_memory_pool_sources"] = non_train_pool_sources
+        summary["split_integrity_passed"] = False
+    return summary
+
+
+def _non_train_memory_pool_sources(memory_pool_path: Path | None) -> set[str]:
+    """Pool entries whose recorded source split is not train."""
+    if memory_pool_path is None:
+        return set()
+    offenders: set[str] = set()
+    for line in Path(memory_pool_path).read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        entry = json.loads(line)
+        source_split = entry.get("memory_source_split", entry.get("source_split"))
+        if source_split is not None and source_split != "train":
+            memory_id = entry.get("memory_id")
+            if memory_id is not None:
+                offenders.add(str(memory_id))
+    return offenders
+
+
 def _treatment_edge_overlap(
     paired_records_by_split: dict[str, list[dict[str, Any]]],
 ) -> dict[str, Any]:

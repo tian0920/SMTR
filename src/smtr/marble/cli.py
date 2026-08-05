@@ -69,9 +69,18 @@ def main() -> None:
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
     p.add_argument("--output", required=True)
 
+    p = subparsers.add_parser("audit-splits", help="Audit train/validation/test split isolation (清单 P0-15)")
+    p.add_argument("--train-paired-records", required=True)
+    p.add_argument("--validation-paired-records", required=True)
+    p.add_argument("--test-paired-records", required=True)
+    p.add_argument("--memory-pool", required=True)
+    p.add_argument("--checkpoint", required=False, default=None)
+    p.add_argument("--output", required=True)
+
     p = subparsers.add_parser("train-critic", help="Train four-outcome transfer critic")
     p.add_argument("--train-records", required=True)
     p.add_argument("--validation-records", default=None)
+    p.add_argument("--test-records", default=None)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--seed", type=int, default=7)
     p.add_argument("--n-bootstrap", type=int, default=31)
@@ -86,6 +95,11 @@ def main() -> None:
     p = subparsers.add_parser("run-paired-decision-evaluation", help="Paired decision evaluation on test pairs")
     p.add_argument("--candidate-manifest", required=True)
     p.add_argument("--paired-records", required=True)
+    # 清单 P0-17: formal evaluations additionally require all three split
+    # paired-record files so the split audit can run before evaluation.
+    p.add_argument("--train-paired-records", default=None)
+    p.add_argument("--validation-paired-records", default=None)
+    p.add_argument("--test-paired-records", default=None)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint-full", required=True)
     p.add_argument("--checkpoint-no-writer-receiver", default=None)
@@ -128,6 +142,11 @@ def main() -> None:
     p.add_argument("--paired-eval-dir", default=None)
     p.add_argument("--end-to-end-eval-dir", default=None)
     p.add_argument("--feature-audit", default=None)
+    # 清单 P0-18: supply the three split files to run the real split audit.
+    p.add_argument("--train-paired-records", default=None)
+    p.add_argument("--validation-paired-records", default=None)
+    p.add_argument("--test-paired-records", default=None)
+    p.add_argument("--checkpoint", default=None)
     p.add_argument("--output", required=True)
 
     # --- Deprecated ---
@@ -270,11 +289,27 @@ def _dispatch(args: argparse.Namespace) -> None:
         )
         print(json.dumps(result, indent=2))
 
+    elif cmd == "audit-splits":
+        from smtr.evaluation.split_audit import audit_split_files
+        summary = audit_split_files(
+            train_records_path=Path(args.train_paired_records),
+            validation_records_path=Path(args.validation_paired_records),
+            test_records_path=Path(args.test_paired_records),
+            memory_pool_path=Path(args.memory_pool),
+            checkpoint_path=Path(args.checkpoint) if args.checkpoint else None,
+        )
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.output).write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+        print(json.dumps(summary, indent=2, sort_keys=True))
+        if not summary["split_integrity_passed"]:
+            raise SystemExit(2)
+
     elif cmd == "train-critic":
         from smtr.marble.training import train_critic
         result = train_critic(
             train_records_path=Path(args.train_records),
             validation_records_path=Path(args.validation_records) if args.validation_records else None,
+            test_records_path=Path(args.test_records) if args.test_records else None,
             memory_pool_path=Path(args.memory_pool),
             output_path=Path(args.output),
             seed=args.seed,
@@ -291,6 +326,9 @@ def _dispatch(args: argparse.Namespace) -> None:
         result = run_paired_decision_evaluation(
             candidate_manifest_path=Path(args.candidate_manifest),
             paired_records_path=Path(args.paired_records),
+            train_paired_records_path=Path(args.train_paired_records) if args.train_paired_records else None,
+            validation_paired_records_path=Path(args.validation_paired_records) if args.validation_paired_records else None,
+            test_paired_records_path=Path(args.test_paired_records) if args.test_paired_records else None,
             memory_pool_path=Path(args.memory_pool),
             checkpoint_full=Path(args.checkpoint_full),
             checkpoint_no_writer_receiver=Path(args.checkpoint_no_writer_receiver) if args.checkpoint_no_writer_receiver else None,
@@ -332,6 +370,10 @@ def _dispatch(args: argparse.Namespace) -> None:
             paired_eval_dir=Path(args.paired_eval_dir) if args.paired_eval_dir else None,
             end_to_end_eval_dir=Path(args.end_to_end_eval_dir) if args.end_to_end_eval_dir else None,
             feature_audit_path=Path(args.feature_audit) if args.feature_audit else None,
+            train_paired_records_path=Path(args.train_paired_records) if args.train_paired_records else None,
+            validation_paired_records_path=Path(args.validation_paired_records) if args.validation_paired_records else None,
+            test_paired_records_path=Path(args.test_paired_records) if args.test_paired_records else None,
+            checkpoint_path=Path(args.checkpoint) if args.checkpoint else None,
         )
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")

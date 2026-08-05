@@ -28,6 +28,7 @@ from smtr.evaluation.receiver_effect_analysis import (
     empirical_receiver_effects,
     record_label,
 )
+from smtr.evaluation.split_audit import audit_split_files
 from smtr.evaluation.tables import write_result_table, format_markdown_table
 from smtr.marble.core_validity import (
     filter_core_paired_records,
@@ -91,6 +92,9 @@ def run_paired_decision_evaluation(
     *,
     candidate_manifest_path: Path,
     paired_records_path: Path,
+    train_paired_records_path: Path | None = None,
+    validation_paired_records_path: Path | None = None,
+    test_paired_records_path: Path | None = None,
     memory_pool_path: Path,
     checkpoint_full: Path,
     checkpoint_no_writer_receiver: Path | None = None,
@@ -115,6 +119,33 @@ def run_paired_decision_evaluation(
     when filtered records lack four-label coverage or multi-seed edges.
     """
     methods = list(methods) if methods else list(MAIN_TABLE_METHODS)
+
+    # 清单 P0-17: formal evaluations must pass the split audit before any
+    # evaluation step; all three split files are required inputs.
+    if experiment_mode == "formal":
+        split_paths = {
+            "train": train_paired_records_path,
+            "validation": validation_paired_records_path,
+            "test": test_paired_records_path,
+        }
+        missing = sorted(name for name, path in split_paths.items() if path is None)
+        if missing:
+            raise ValueError(
+                "formal paired evaluation requires paired record paths for "
+                f"all splits, missing: {missing}"
+            )
+        split_summary = audit_split_files(
+            train_records_path=train_paired_records_path,
+            validation_records_path=validation_paired_records_path,
+            test_records_path=test_paired_records_path,
+            memory_pool_path=memory_pool_path,
+            checkpoint_path=checkpoint_full,
+        )
+        if not split_summary["split_integrity_passed"]:
+            raise ValueError(
+                "formal paired evaluation aborted: split audit failed"
+            )
+
     # Load critics and verify feature blocks
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
     assert full_critic.feature_block == "full", "full checkpoint must have feature_block='full'"

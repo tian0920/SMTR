@@ -15,6 +15,10 @@ def run_integrity_audit(
     paired_eval_dir: Path | None = None,
     end_to_end_eval_dir: Path | None = None,
     feature_audit_path: Path | None = None,
+    train_paired_records_path: Path | None = None,
+    validation_paired_records_path: Path | None = None,
+    test_paired_records_path: Path | None = None,
+    checkpoint_path: Path | None = None,
 ) -> dict[str, Any]:
     """Run full integrity audit on all pipeline artifacts.
 
@@ -50,7 +54,6 @@ def run_integrity_audit(
     # --- Check candidate manifest ---
     payload_leakage = False
     writer_receiver_present = True
-    split_integrity_passed = True
 
     candidates = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
     for entry in candidates.get("candidates", []):
@@ -161,6 +164,16 @@ def run_integrity_audit(
         if audit.get("feature_block") == "full" and not audit.get("writer_receiver_features_present"):
             errors.append("full critic missing writer-receiver features")
 
+    # --- Split audit (清单 P0-18): replaces the hardcoded True ---
+    split_integrity_passed, split_audit = _run_split_audit_section(
+        train_paired_records_path=train_paired_records_path,
+        validation_paired_records_path=validation_paired_records_path,
+        test_paired_records_path=test_paired_records_path,
+        memory_pool_path=memory_pool_path,
+        checkpoint_path=checkpoint_path,
+        errors=errors,
+    )
+
     audit_passed = (
         not payload_leakage
         and not feature_leakage
@@ -180,6 +193,60 @@ def run_integrity_audit(
         "writer_receiver_fields_present": writer_receiver_present,
         "candidate_level_pairs": candidate_level_pairs,
         "split_integrity_passed": split_integrity_passed,
+        "split_audit": split_audit,
         "missing_artifacts": missing_artifacts,
         "errors": errors,
     }
+
+
+def _run_split_audit_section(
+    *,
+    train_paired_records_path: Path | None,
+    validation_paired_records_path: Path | None,
+    test_paired_records_path: Path | None,
+    memory_pool_path: Path,
+    checkpoint_path: Path | None,
+    errors: list[str],
+) -> tuple[bool, dict[str, Any] | None]:
+    """Real split audit for the integrity report (清单 P0-18).
+
+    Fails closed: unless all three split paired-record files are supplied,
+    ``split_integrity_passed`` is False. The full sub-result mirrors the
+    audit summary fields required by the 清单.
+    """
+    split_paths = {
+        "train": train_paired_records_path,
+        "validation": validation_paired_records_path,
+        "test": test_paired_records_path,
+    }
+    missing = sorted(
+        name for name, path in split_paths.items()
+        if path is None or not Path(path).exists()
+    )
+    if missing:
+        errors.append(f"split audit inputs missing: {missing}")
+        return False, None
+
+    from smtr.evaluation.split_audit import audit_split_files
+
+    summary = audit_split_files(
+        train_records_path=Path(train_paired_records_path),
+        validation_records_path=Path(validation_paired_records_path),
+        test_records_path=Path(test_paired_records_path),
+        memory_pool_path=memory_pool_path,
+        checkpoint_path=checkpoint_path,
+    )
+    split_integrity_passed = bool(summary.get("split_integrity_passed"))
+    split_audit = {
+        "target_task_overlap": summary.get("target_task_overlap", []),
+        "treatment_edge_overlap": summary.get("treatment_edge_overlap", []),
+        "source_trajectory_overlap": summary.get("source_trajectory_overlap", []),
+        "non_train_memory_sources": summary.get("non_train_memory_sources", []),
+        "self_transfer_edges": summary.get("self_transfer_edges", []),
+        "test_used_for_calibration": summary.get("test_used_for_calibration", False),
+    }
+    if not split_integrity_passed:
+        errors.append(
+            f"split audit failed: {summary.get('error') or split_audit}"
+        )
+    return split_integrity_passed, split_audit
