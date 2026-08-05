@@ -52,8 +52,10 @@ class HashingTransferFeatureEncoder:
         writer-receiver interaction tokens.
       - ``no_receiver``: drop receiver identity/profile and interaction, keep
         task/environment/memory/writer.
-      - ``memory_task_only``: keep only task context, environment and memory
-        card (global transfer critic); drops writer, receiver and interaction.
+      - ``global_transfer``: keep only task context, environment and memory
+        card semantics (global transfer critic, 清单 P1-1); drops writer,
+        receiver and interaction.
+      - ``memory_task_only``: legacy alias of ``global_transfer``.
       - ``no_writer_receiver`` (legacy): historical block kept only for old
         checkpoints; it removes writer and interaction while keeping receiver,
         a mixed definition superseded by the precise modes above.
@@ -81,7 +83,7 @@ class HashingTransferFeatureEncoder:
             return True, True, False
         if mode == "no_receiver":
             return True, False, False
-        if mode == "memory_task_only":
+        if mode in ("global_transfer", "memory_task_only"):
             return False, False, False
         if mode == "no_writer_receiver":  # legacy mixed block
             return False, True, False

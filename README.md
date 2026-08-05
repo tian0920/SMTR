@@ -137,6 +137,29 @@ python -m smtr.marble.cli train-critic \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --feature-block full \
   --output artifacts/marble/checkpoints/smtr_full.joblib
+
+python -m smtr.marble.cli train-critic \
+  --train-records artifacts/marble/paired/train/paired_records.jsonl \
+  --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --feature-block global_transfer \
+  --output artifacts/marble/checkpoints/global_transfer.joblib
+
+python -m smtr.marble.cli train-critic \
+  --train-records artifacts/marble/paired/train/paired_records.jsonl \
+  --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --feature-block no_pair_interaction \
+  --output artifacts/marble/checkpoints/smtr_no_pair.joblib
+
+# Split audit: must pass (exit code 0) before any formal evaluation.
+python -m smtr.marble.cli audit-splits \
+  --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
+  --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
+  --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --checkpoint artifacts/marble/checkpoints/smtr_full.joblib \
+  --output artifacts/marble/eval/split_audit.json
 ```
 
 ## Stage C: Test Paired Evaluation
@@ -163,8 +186,13 @@ python -m smtr.marble.cli generate-database-paired-records \
 python -m smtr.marble.cli run-paired-decision-evaluation \
   --candidate-manifest artifacts/marble/candidates/test_candidates.json \
   --paired-records artifacts/marble/paired/test/paired_records.jsonl \
+  --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
+  --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
+  --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
+  --checkpoint-global-transfer-critic artifacts/marble/checkpoints/global_transfer.joblib \
+  --checkpoint-smtr-no-pair-interaction artifacts/marble/checkpoints/smtr_no_pair.joblib \
   --methods b0_no_memory semantic_top1 role_aware_top1 global_transfer_critic smtr_no_pair_interaction smtr_no_risk smtr \
   --experiment-mode formal \
   --output artifacts/marble/eval/paired_test
@@ -196,6 +224,10 @@ python -m smtr.marble.cli integrity-audit \
   --paired-eval-dir artifacts/marble/eval/paired_test \
   --end-to-end-eval-dir artifacts/marble/eval/end_to_end_test \
   --feature-audit artifacts/marble/checkpoints/smtr_full.feature_audit.json \
+  --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
+  --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
+  --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
+  --checkpoint artifacts/marble/checkpoints/smtr_full.joblib \
   --output artifacts/marble/eval/integrity_summary.json
 ```
 

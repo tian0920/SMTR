@@ -62,6 +62,46 @@ MAIN_TABLE_METHODS = [
     "smtr",
 ]
 
+# 清单 P1-1: ``global_transfer`` is the formal block name; the historical
+# ``memory_task_only`` checkpoints keep the identical feature set.
+GLOBAL_TRANSFER_BLOCKS = ("global_transfer", "memory_task_only")
+
+
+def verify_formal_checkpoint_blocks(
+    *,
+    full_critic: FourOutcomeTransferCritic,
+    global_critic: FourOutcomeTransferCritic | None = None,
+    no_pair_critic: FourOutcomeTransferCritic | None = None,
+) -> None:
+    """清单 P1-2: each formal method may only consume its own feature block.
+
+    SMTR requires the ``full`` checkpoint, GlobalTransferCritic the
+    ``global_transfer`` checkpoint and SMTR-no-pair the
+    ``no_pair_interaction`` checkpoint; anything else fails fast.
+    """
+    if full_critic.feature_block != "full":
+        raise ValueError(
+            "smtr requires a full checkpoint (feature_block='full'), "
+            f"got {full_critic.feature_block!r}"
+        )
+    if (
+        global_critic is not None
+        and global_critic.feature_block not in GLOBAL_TRANSFER_BLOCKS
+    ):
+        raise ValueError(
+            "global_transfer_critic requires a global_transfer checkpoint "
+            "(feature_block='global_transfer'), "
+            f"got {global_critic.feature_block!r}"
+        )
+    if (
+        no_pair_critic is not None
+        and no_pair_critic.feature_block != "no_pair_interaction"
+    ):
+        raise ValueError(
+            "smtr_no_pair_interaction requires a no_pair_interaction "
+            f"checkpoint, got {no_pair_critic.feature_block!r}"
+        )
+
 
 def build_receiver_state_from_entry(entry: dict[str, Any]) -> ReceiverState:
     """Build the pre-execution ReceiverState from a candidate-manifest entry.
@@ -162,6 +202,13 @@ def run_paired_decision_evaluation(
     no_pair_critic = None
     if checkpoint_smtr_no_pair_interaction is not None:
         no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
+    # 清单 P1-2: checkpoint/feature-block separation is enforced for every
+    # critic-based method, not only the full SMTR checkpoint.
+    verify_formal_checkpoint_blocks(
+        full_critic=full_critic,
+        global_critic=global_critic,
+        no_pair_critic=no_pair_critic,
+    )
 
     # 清单 P0-8: formal evaluations may only consume checkpoints whose
     # calibration and epsilon selection happened on validation edges.
@@ -697,7 +744,7 @@ def _build_routers(
             if global_critic is None:
                 raise ValueError(
                     "method global_transfer_critic requires "
-                    "checkpoint_global_transfer_critic (feature_block='memory_task_only')"
+                    "checkpoint_global_transfer_critic (feature_block='global_transfer')"
                 )
             routers[method] = GlobalTransferCriticRouter(
                 critic=global_critic, negative_risk_budget=negative_risk_budget,

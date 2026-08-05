@@ -10,7 +10,11 @@ from pydantic import BaseModel, ConfigDict
 
 from smtr.core.types import MemoryRoutingCard
 from smtr.marble.io import load_split_task_ids, load_dataset_tasks
-from smtr.marble.paired_evaluation import _build_routers, build_receiver_state_from_entry
+from smtr.marble.paired_evaluation import (
+    _build_routers,
+    build_receiver_state_from_entry,
+    verify_formal_checkpoint_blocks,
+)
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import build_routing_card_from_pool_entry
 
@@ -73,6 +77,12 @@ def run_end_to_end_evaluation(
     no_pair_critic = None
     if checkpoint_smtr_no_pair_interaction is not None:
         no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
+    # 清单 P1-2: each method may only consume its own feature-block checkpoint.
+    verify_formal_checkpoint_blocks(
+        full_critic=full_critic,
+        global_critic=global_critic,
+        no_pair_critic=no_pair_critic,
+    )
 
     # Load candidate manifest
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))

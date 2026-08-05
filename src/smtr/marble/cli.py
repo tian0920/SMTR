@@ -86,7 +86,8 @@ def main() -> None:
     p.add_argument("--n-bootstrap", type=int, default=31)
     p.add_argument("--n-features", type=int, default=512)
     p.add_argument("--feature-block", default="full", choices=[
-        "full", "no_pair_interaction", "no_receiver", "memory_task_only", "no_writer_receiver",
+        "full", "global_transfer", "no_pair_interaction",
+        "no_receiver", "memory_task_only", "no_writer_receiver",
     ])
     p.add_argument("--coverage-mode", default="formal", choices=["formal", "pilot"])
     p.add_argument("--risk-delta", type=float, default=0.10)
