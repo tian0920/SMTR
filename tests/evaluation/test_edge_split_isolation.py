@@ -71,7 +71,7 @@ class TestEdgeSplitIsolation:
             ],
             test=[_record("t3", "r9", "m9", 0)],
         )
-        with pytest.raises(ValueError, match="edge_observed_splits"):
+        with pytest.raises(ValueError, match="exactly one split"):
             audit_split_leakage(splits)
 
     def test_clean_split_by_edge_passes(self):

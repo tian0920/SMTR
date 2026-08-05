@@ -19,26 +19,38 @@ from smtr.evaluation.split_audit import audit_split_leakage, write_split_audit
 from smtr.marble.paired_evaluation import run_paired_decision_evaluation
 
 
-def _rec(task_id: str, *, trajectory: str, edge: str, memory: str) -> dict:
+def _rec(
+    task_id: str,
+    *,
+    target_trajectory: str,
+    edge: str,
+    memory: str,
+    memory_source_trajectory: str = "",
+) -> dict:
     return {
         "task_id": task_id,
-        "source_trajectory_id": trajectory,
+        "target_trajectory_id": target_trajectory,
         "edge_id": edge,
         "candidate_memory_id": memory,
+        "memory_source_trajectory_id": memory_source_trajectory,
     }
 
 
 def _clean_splits() -> dict[str, list[dict]]:
     return {
         "train": [
-            _rec("t1", trajectory="traj_a", edge="e1", memory="m1"),
-            _rec("t2", trajectory="traj_b", edge="e2", memory="m1"),
+            _rec("t1", target_trajectory="traj_ta", edge="e1", memory="m1",
+                 memory_source_trajectory="src_a"),
+            _rec("t2", target_trajectory="traj_tb", edge="e2", memory="m1",
+                 memory_source_trajectory="src_b"),
         ],
         "validation": [
-            _rec("t3", trajectory="traj_c", edge="e3", memory="m1"),
+            _rec("t3", target_trajectory="traj_tc", edge="e3", memory="m1",
+                 memory_source_trajectory="src_a"),
         ],
         "test": [
-            _rec("t4", trajectory="traj_d", edge="e4", memory="m2"),
+            _rec("t4", target_trajectory="traj_td", edge="e4", memory="m2",
+                 memory_source_trajectory="src_b"),
         ],
     }
 
@@ -50,24 +62,32 @@ class TestSplitAudit:
         assert audit["validation_target_tasks"] == ["t3"]
         assert audit["test_target_tasks"] == ["t4"]
         assert audit["target_task_overlap"] == []
-        assert audit["source_trajectory_overlap"] == []
+        assert audit["target_trajectory_overlap"] == []
         assert audit["edge_overlap"] == []
+        assert audit["split_integrity_passed"] is True
 
     def test_target_task_overlap_fails_fast(self):
         splits = _clean_splits()
-        splits["test"].append(_rec("t1", trajectory="traj_x", edge="e9", memory="m9"))
+        splits["test"].append(
+            _rec("t1", target_trajectory="traj_tx", edge="e9", memory="m9"))
         with pytest.raises(ValueError, match="target_task_id leakage"):
             audit_split_leakage(splits)
 
-    def test_source_trajectory_overlap_fails_fast(self):
-        splits = _clean_splits()
-        splits["validation"].append(_rec("t5", trajectory="traj_a", edge="e5", memory="m5"))
-        with pytest.raises(ValueError, match="source_trajectory_id leakage"):
-            audit_split_leakage(splits)
+    def test_memory_source_reuse_is_reported_but_not_fatal(self):
+        # src_a / src_b are train trajectories reused by validation/test
+        # candidates: legal memory reuse, never a fatal overlap (R6 P0-3).
+        audit = audit_split_leakage(_clean_splits())
+        assert audit["split_integrity_passed"] is True
+        assert audit["shared_train_memory_provenance_count"] == 2
+        reuse = {r["memory_source_trajectory_id"]: r for r
+                 in audit["memory_source_trajectory_reuse"]}
+        assert reuse["src_a"]["observed_target_splits"] == ["train", "validation"]
+        assert reuse["src_b"]["observed_target_splits"] == ["train", "test"]
 
     def test_edge_overlap_fails_fast(self):
         splits = _clean_splits()
-        splits["test"].append(_rec("t6", trajectory="traj_y", edge="e1", memory="m6"))
+        splits["test"].append(
+            _rec("t6", target_trajectory="traj_ty", edge="e1", memory="m6"))
         with pytest.raises(ValueError, match="edge_id leakage"):
             audit_split_leakage(splits)
 

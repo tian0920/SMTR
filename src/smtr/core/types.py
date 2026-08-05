@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
-from pydantic import BaseModel, ConfigDict
+from typing import Any, Literal
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 AgentRole = Literal[
@@ -156,6 +156,16 @@ class TransferPrediction(BaseModel):
     def eta_hat_raw(self) -> float:
         return self.q01_negative_transfer
 
+    @property
+    def eta_raw(self) -> float:
+        """Raw negative-transfer risk (= q01), before any calibration (R6 P0-6)."""
+        return self.q01_negative_transfer
+
+    @property
+    def eta_calibrated(self) -> float | None:
+        """Calibrated negative-transfer risk, or None when not calibrated (R6 P0-6)."""
+        return self.eta_hat_calibrated
+
 
 @dataclass(frozen=True)
 class TransferPredictionDistribution:
@@ -180,5 +190,27 @@ class RouterDecision(BaseModel):
     memory_id: str
     action: Literal["share", "withhold"]
     tau_hat: float
-    eta_hat: float
+    # R6 P0-7: raw and calibrated risk are stored separately; the gate only
+    # ever compares eta_calibrated against risk_budget.
+    eta_raw: float = 0.0
+    eta_calibrated: float | None = None
+    risk_budget: float | None = None
+    # Deprecated (R6 P0-7): kept for legacy traces; equals eta_calibrated
+    # (falls back to eta_raw). New code must not depend on this field.
+    eta_hat: float | None = None
     reason: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_eta_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            data = dict(data)
+            if data.get("eta_raw") is None and data.get("eta_hat") is not None:
+                # Legacy construction passed the risk value as eta_hat only.
+                data["eta_raw"] = data["eta_hat"]
+            if data.get("eta_hat") is None:
+                calibrated = data.get("eta_calibrated")
+                data["eta_hat"] = (
+                    calibrated if calibrated is not None else data.get("eta_raw")
+                )
+        return data

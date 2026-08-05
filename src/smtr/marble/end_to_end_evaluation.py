@@ -9,8 +9,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from smtr.core.types import MemoryRoutingCard
+from smtr.evaluation.experiment_protocol import (
+    MINIMUM_UNIQUE_SEEDS,
+    validate_generation_seed_protocol,
+)
+from smtr.evaluation.split_audit_validation import validate_split_audit_artifact
 from smtr.marble.io import load_split_task_ids, load_dataset_tasks
 from smtr.marble.formal_protocol import verify_formal_checkpoint_blocks
+from smtr.marble.runtime_visibility_audit import file_digest
 from smtr.marble.paired_evaluation import (
     _build_routers,
     build_receiver_state_from_entry,
@@ -105,10 +111,36 @@ def run_end_to_end_evaluation(
     generation_seeds: list[int],
     negative_risk_budget: float = 0.2,
     experiment_mode: str = "pilot",
+    split_audit_path: Path | None = None,
     output: Path,
 ) -> dict[str, Any]:
     """Run end-to-end MARBLE evaluation with real engine execution."""
     from smtr.marble.policy_runner import MarblePolicyRunner
+
+    # 清单 R6 P1-2: the seed protocol is enforced inside the function (not
+    # only at the CLI), so any call path fails fast before any MARBLE run.
+    generation_seeds = list(
+        validate_generation_seed_protocol(
+            generation_seeds=generation_seeds,
+            experiment_mode=experiment_mode,
+        )
+    )
+
+    # 清单 R6 P1-8: formal runs must bind a verified split-audit artifact
+    # before any critic load or MARBLE episode; pilots may omit it.
+    split_audit: dict[str, Any] | None = None
+    if experiment_mode == "formal":
+        if split_audit_path is None:
+            raise ValueError(
+                "formal end-to-end evaluation requires a split audit artifact"
+            )
+        split_audit = validate_split_audit_artifact(
+            split_audit_path=split_audit_path,
+            dataset_manifest_path=dataset_manifest_path,
+            split_manifest_path=split_manifest_path,
+            memory_pool_path=memory_pool_path,
+            checkpoint_path=checkpoint_full,
+        )
 
     # Load critics
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
@@ -226,4 +258,21 @@ def run_end_to_end_evaluation(
         "split": split,
         "metrics": e2e_metrics,
         "output": str(output),
+        # 清单 R6 P1-4: record the seed protocol that this run satisfied.
+        "experiment_mode": experiment_mode,
+        "generation_seeds": generation_seeds,
+        "unique_seed_count": len(generation_seeds),
+        "minimum_required_seed_count": MINIMUM_UNIQUE_SEEDS[experiment_mode],
+        "seed_protocol_passed": True,
+        # 清单 R6 P1-9: split-audit provenance bound to this evaluation.
+        "split_audit_verified": split_audit is not None,
+        "split_audit_path": str(split_audit_path) if split_audit_path else None,
+        "split_audit_digest": (
+            file_digest(Path(split_audit_path)) if split_audit_path else None
+        ),
+        "split_integrity_passed": (
+            bool(split_audit.get("split_integrity_passed"))
+            if split_audit is not None
+            else None
+        ),
     }

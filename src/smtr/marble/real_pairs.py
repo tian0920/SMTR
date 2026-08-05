@@ -55,6 +55,23 @@ def compute_replicate_id(edge_id: str, generation_seed: int) -> str:
     return f"rep_{stable_hash(edge_id, generation_seed):016x}"
 
 
+def compute_target_trajectory_id(
+    target_task_id: str,
+    receiver_agent_id: str,
+    generation_seed: int,
+) -> str:
+    """Stable identity for one target execution trajectory.
+
+    The target trajectory is the receiver's execution of the target task
+    under one generation seed. It is distinct from the memory source
+    trajectory: the same train-derived memory may serve many target
+    trajectories, but each target trajectory belongs to exactly one split.
+    """
+    return (
+        f"traj_{stable_hash('target_trajectory', target_task_id, receiver_agent_id, generation_seed):016x}"
+    )
+
+
 def assign_branch_order(edge_id: str, generation_seed: int) -> BranchOrder:
     """Deterministic counterbalanced branch order for one replicate."""
     if stable_hash(edge_id, generation_seed) % 2 == 0:
@@ -221,14 +238,25 @@ def generate_candidate_level_pairs(
                     rec["memory_id"],
                 ),
                 "task_id": entry["task_id"],
-                # Split-integrity metadata (清单第十三章): source provenance
-                # of the memory and the target task group must be persisted
-                # so train/validation/test isolation can be audited.
-                "source_task_id": mem_rc.get("source_task_id", ""),
-                "source_trajectory_id": str(
-                    mem_meta.get("source_trajectory_id")
+                # Split-integrity metadata (R6 清单 P0-1): memory provenance
+                # (source task / source trajectory / source split) is kept
+                # separate from the target trajectory identity. Memories are
+                # extracted exclusively from train trajectories; the same
+                # train-derived memory may serve validation and test targets.
+                "memory_source_task_id": mem_rc.get(
+                    "source_task_id", mem_rc.get("memory_source_task_id", "")
+                ),
+                "memory_source_trajectory_id": str(
+                    mem_meta.get("memory_source_trajectory_id")
+                    or mem_meta.get("source_trajectory_id")
+                    or mem_rc.get("memory_source_trajectory_id")
                     or mem_rc.get("source_trajectory_id")
                     or ""
+                ),
+                "memory_source_split": str(
+                    mem_meta.get("memory_source_split")
+                    or mem_meta.get("source_split")
+                    or "train"
                 ),
                 "target_task_group": str(
                     entry.get("target_task_group")
@@ -364,15 +392,21 @@ def paired_result_to_record(
         "task_id": pair_result.task_id,
         "generation_seed": seed,
 
-        # Split-integrity metadata (清单第十三章): every record persists its
-        # split, source provenance and target task group so the audit can
-        # verify that task_id / source_trajectory_id / edge_id never cross
-        # the train/validation/test boundary.
+        # Split-integrity metadata (R6 清单 P0-1): target identity
+        # (task / trajectory / task group) is disjoint across splits, while
+        # memory provenance (memory_source_*) points back to train
+        # trajectories and may legitimately recur across splits.
         "split_name": split_name,
-        "source_task_id": edge.get("source_task_id", ""),
-        "source_trajectory_id": edge.get("source_trajectory_id", ""),
         "target_task_id": pair_result.task_id,
+        "target_trajectory_id": compute_target_trajectory_id(
+            pair_result.task_id,
+            edge["receiver_agent_id"],
+            seed,
+        ),
         "target_task_group": edge.get("target_task_group", ""),
+        "memory_source_task_id": edge.get("memory_source_task_id", ""),
+        "memory_source_trajectory_id": edge.get("memory_source_trajectory_id", ""),
+        "memory_source_split": edge.get("memory_source_split", "train"),
 
         "receiver_agent_id": edge["receiver_agent_id"],
         "receiver_role": edge["receiver_role"],

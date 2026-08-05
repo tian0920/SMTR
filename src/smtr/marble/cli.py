@@ -75,6 +75,9 @@ def main() -> None:
     p.add_argument("--test-paired-records", required=True)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint", required=False, default=None)
+    # 清单 R6 P1-5: bind the manifests into the audit artifact by digest.
+    p.add_argument("--dataset-manifest", required=False, default=None)
+    p.add_argument("--split-manifest", required=False, default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("train-critic", help="Train four-outcome transfer critic")
@@ -131,10 +134,14 @@ def main() -> None:
         "b0_no_memory", "semantic_top1", "role_aware_top1",
         "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
     ])
-    p.add_argument("--generation-seeds", type=int, nargs="+", default=[0, 1, 2])
+    # 清单 R6 P1-3: no default seeds; users must supply them explicitly so
+    # nobody mistakes a default for the formal seed protocol.
+    p.add_argument("--generation-seeds", type=int, nargs="+", required=True)
     # Same rule as run-paired-decision-evaluation: no silent 0.2 fallback.
     p.add_argument("--negative-risk-budget", type=float, default=None)
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
+    # 清单 R6 P1-6: formal runs must bind a verified split-audit artifact.
+    p.add_argument("--split-audit", required=False, default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("integrity-audit", help="Run integrity audit")
@@ -160,6 +167,14 @@ def main() -> None:
     p.add_argument("--output", required=True)
 
     args = parser.parse_args()
+    # 清单 R6 P1-6: a formal end-to-end evaluation must bind a split-audit
+    # artifact; the CLI rejects the invocation before any dispatch.
+    if (
+        args.command == "run-marble-evaluation"
+        and args.experiment_mode == "formal"
+        and not args.split_audit
+    ):
+        parser.error("--split-audit is required in formal mode")
     _dispatch(args)
 
 
@@ -305,6 +320,8 @@ def _dispatch(args: argparse.Namespace) -> None:
             test_records_path=Path(args.test_paired_records),
             memory_pool_path=Path(args.memory_pool),
             checkpoint_path=Path(args.checkpoint) if args.checkpoint else None,
+            dataset_manifest_path=Path(args.dataset_manifest) if args.dataset_manifest else None,
+            split_manifest_path=Path(args.split_manifest) if args.split_manifest else None,
         )
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -366,6 +383,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             generation_seeds=args.generation_seeds,
             negative_risk_budget=args.negative_risk_budget,
             experiment_mode=args.experiment_mode,
+            split_audit_path=Path(args.split_audit) if args.split_audit else None,
             output=Path(args.output),
         )
         print(json.dumps(result, indent=2))

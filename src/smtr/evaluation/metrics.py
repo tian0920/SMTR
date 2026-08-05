@@ -407,7 +407,14 @@ def compute_receiver_episode_risk_utility_curve(
                 if pred is None:
                     continue
                 tau_hat = float(pred.get("tau_hat", 0.0))
-                eta_hat = float(pred.get("eta_hat", 0.0))
+                # R6 P0-7: the gate compares the calibrated risk against
+                # epsilon; fall back to the deprecated eta_hat for legacy
+                # traces.
+                eta_value = pred.get("eta_calibrated")
+                eta_hat = float(
+                    eta_value if eta_value is not None
+                    else pred.get("eta_hat", 0.0)
+                )
                 if tau_hat > 0 and eta_hat <= epsilon:
                     eligible.append((tau_hat, str(rec.get("candidate_memory_id", "")), rec))
 
@@ -538,9 +545,14 @@ def compute_method_metrics(
             same_memory_different_receiver_flip_count += 1
 
     # Receiver-specific quarantine pair count (P2-4: use negative_risk_budget param)
+    def _eta_for_quarantine(d: dict) -> float:
+        # R6 P0-7: prefer eta_calibrated; fall back to deprecated eta_hat.
+        value = d.get("eta_calibrated")
+        return float(value if value is not None else d.get("eta_hat", 0))
+
     quarantine_count = sum(
         1 for d in decisions
-        if d["action"] == "withhold" and d.get("eta_hat", 0) > negative_risk_budget
+        if d["action"] == "withhold" and _eta_for_quarantine(d) > negative_risk_budget
     )
 
     return {

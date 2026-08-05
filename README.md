@@ -66,7 +66,11 @@ MARBLE train trajectories
 
 ## Data Splits
 
-Tasks are split **by group** (database tasks by normalized schema family; other scenarios by scenario + task-id bucket), so that structurally similar tasks never cross splits. `target_task_id`, `source_trajectory_id` and `edge_id` never cross the train/validation/test boundary; `smtr.evaluation.split_audit.audit_split_leakage` verifies this on the per-split paired records and fails fast on any overlap, emitting a split-audit JSON (`target_task_overlap`, `source_trajectory_overlap` and `edge_overlap` must be empty). `candidate_memory_id` / `source_task_id` overlap is reported (not fatal) because the memory pool is intentionally built from train trajectories only; candidates in validation/test are expected to reuse those memories. The risk budget ε is selected **only on the validation split**; the test split is read-only with respect to all hyperparameters. Confidence intervals are cluster bootstraps over `target_task_id` (or `target_task_id + receiver_agent_id`) — never per-record bootstraps — and are at least 95%.
+Tasks are split **by group** (database tasks by normalized schema family; other scenarios by scenario + task-id bucket), so that structurally similar tasks never cross splits.
+
+**Target identity never crosses splits**: `task_id` (target task), `target_trajectory_id` (the receiver's execution trajectory under evaluation), treatment edges `(task_id, receiver_agent_id, candidate_memory_id)` and `edge_id` are each disjoint across train/validation/test. **Memory provenance may legitimately recur**: every memory is extracted from a train trajectory (`memory_source_split == "train"`), so the same train-derived memory — and its `memory_source_trajectory_id` — may serve candidates in both validation and test. The split audit (`smtr.evaluation.split_audit.audit_split_leakage`) treats target/edge overlap, non-train memory sources and self-transfer (target task == memory source task) as fatal, and reports legal provenance reuse (`shared_train_memory_provenance_count`, `memory_source_trajectory_reuse`) as statistics. `split_integrity_passed` is computed from those results, never assumed.
+
+The audit artifact (`schema_version: smtr_split_audit_v2`) additionally binds every audited file by SHA-256 digest — dataset manifest, split manifest, memory pool, the three per-split paired-record files and the checkpoint — and records `calibration_split` / `epsilon_selection_split`. A formal end-to-end evaluation must bind such an artifact (`--split-audit`); the evaluation re-verifies that the audit passed, that calibration and ε selection used only the validation split, and that every digest still matches the file actually consumed — otherwise it aborts before any MARBLE episode runs. The risk budget ε is selected **only on the validation split**; the test split is read-only with respect to all hyperparameters. Confidence intervals are cluster bootstraps over `target_task_id` (or `target_task_id + receiver_agent_id`) — never per-record bootstraps — and are at least 95%.
 
 ## Stage A: Training Data
 
@@ -152,13 +156,16 @@ python -m smtr.marble.cli train-critic \
   --feature-block no_pair_interaction \
   --output artifacts/marble/checkpoints/smtr_no_pair.joblib
 
-# Split audit: must pass (exit code 0) before any formal evaluation.
+# Split audit: must pass (exit code 0) before any formal evaluation. The
+# manifest flags bind the manifests into the audit artifact by digest.
 python -m smtr.marble.cli audit-splits \
   --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
   --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
   --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --checkpoint artifacts/marble/checkpoints/smtr_full.joblib \
+  --dataset-manifest artifacts/marble/manifests/dataset.json \
+  --split-manifest artifacts/marble/manifests/splits.json \
   --output artifacts/marble/eval/split_audit.json
 ```
 
@@ -214,8 +221,15 @@ python -m smtr.marble.cli run-marble-evaluation \
   --methods b0_no_memory semantic_top1 role_aware_top1 global_transfer_critic smtr_no_pair_interaction smtr_no_risk smtr \
   --generation-seeds 0 1 2 3 4 \
   --experiment-mode formal \
+  --split-audit artifacts/marble/eval/split_audit.json \
   --output artifacts/marble/eval/end_to_end_test
 ```
+
+Formal protocol gates (enforced inside the function API, not only the CLI):
+
+- `--generation-seeds` has no default; formal runs need at least 5 unique seeds, pilots at least 3 (`smtr.evaluation.experiment_protocol.validate_generation_seed_protocol`).
+- `--split-audit` is mandatory in formal mode; the audit must have passed and its digests must match the current dataset manifest, split manifest, memory pool and checkpoint (`smtr.evaluation.split_audit_validation.validate_split_audit_artifact`).
+- The result metadata records `seed_protocol_passed`, `split_audit_verified`, `split_audit_digest` and `split_integrity_passed`.
 
 ## Integrity Audit
 

@@ -46,6 +46,16 @@ class CandidateLevelPairedRecord(BaseModel):
     receiver_role: str
     receiver_capabilities: tuple[str, ...] = ()
 
+    # Target vs memory-source provenance (R6 清单 P0-1): the target
+    # trajectory is the receiver's execution of the target task, while
+    # memory_source_* point back to the train trajectory the candidate
+    # memory was extracted from. Legacy artifacts that only persisted
+    # ``source_trajectory_id`` are accepted via alias.
+    target_trajectory_id: str | None = None
+    memory_source_task_id: str | None = None
+    memory_source_trajectory_id: str | None = None
+    memory_source_split: str | None = None
+
     candidate_memory_id: str
     writer_agent_id: str
     writer_role: str
@@ -63,6 +73,18 @@ class CandidateLevelPairedRecord(BaseModel):
     invalid_reason: str | None = None
 
     digests: PairedDigests
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_legacy_source_trajectory(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if data.get("memory_source_trajectory_id") is None and data.get(
+                "source_trajectory_id"
+            ) is not None:
+                data = dict(data)
+                data["memory_source_trajectory_id"] = data["source_trajectory_id"]
+                data.pop("source_trajectory_id", None)
+        return data
 
     @model_validator(mode="after")
     def check_label_consistency(self) -> CandidateLevelPairedRecord:

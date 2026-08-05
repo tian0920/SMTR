@@ -261,15 +261,19 @@ def test_record_persists_split_integrity_metadata():
         "candidate_rank": 1,
         "candidate_score": 0.5,
         "source_task_id": "src-task-9",
-        "source_trajectory_id": "traj-99",
+        "memory_source_task_id": "src-task-9",
+        "memory_source_trajectory_id": "traj-99",
+        "memory_source_split": "train",
         "target_task_group": "group-latency",
     }
     record = paired_result_to_record(
         pair_result=pair_result, edge=edge, seed=3, split_name="validation",
     )
     assert record["split_name"] == "validation"
-    assert record["source_task_id"] == "src-task-9"
-    assert record["source_trajectory_id"] == "traj-99"
+    assert record["memory_source_task_id"] == "src-task-9"
+    assert record["memory_source_trajectory_id"] == "traj-99"
+    assert record["memory_source_split"] == "train"
     assert record["target_task_id"] == "205"
+    assert record["target_trajectory_id"].startswith("traj_")
     assert record["target_task_group"] == "group-latency"
     assert record["edge_id"] == "edge-x"

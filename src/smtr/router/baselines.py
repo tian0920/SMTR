@@ -96,7 +96,7 @@ class NoMemoryRouter:
         selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         return [
-            RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="no_memory_baseline")
+            RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_raw=0.0, reason="no_memory_baseline")
             for c in candidate_cards
         ]
 
@@ -126,9 +126,9 @@ class SemanticTop1Router:
         decisions = []
         for c in candidate_cards:
             if c.memory_id == top_id:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_hat=0.0, reason="semantic_top1"))
+                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_raw=0.0, reason="semantic_top1"))
             else:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="not_semantic_top1"))
+                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_raw=0.0, reason="not_semantic_top1"))
         return decisions
 
 
@@ -148,9 +148,9 @@ class RoleAwareTop1Router:
         decisions = []
         for c in candidate_cards:
             if c.memory_id == top_id:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_hat=0.0, reason="role_aware_top1"))
+                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_raw=0.0, reason="role_aware_top1"))
             else:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_hat=0.0, reason="not_top1"))
+                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_raw=0.0, reason="not_top1"))
         return decisions
 
 
@@ -274,9 +274,9 @@ class SMTRNoRiskRouter:
         decisions = []
         for tau, eta, card in scored:
             if card.memory_id in share_set:
-                decisions.append(RouterDecision(memory_id=card.memory_id, action="share", tau_hat=tau, eta_hat=eta, reason="tau>0_no_risk_constraint"))
+                decisions.append(RouterDecision(memory_id=card.memory_id, action="share", tau_hat=tau, eta_raw=eta, reason="tau>0_no_risk_constraint"))
             else:
-                decisions.append(RouterDecision(memory_id=card.memory_id, action="withhold", tau_hat=tau, eta_hat=eta, reason="tau<=0_or_not_top"))
+                decisions.append(RouterDecision(memory_id=card.memory_id, action="withhold", tau_hat=tau, eta_raw=eta, reason="tau<=0_or_not_top"))
         return decisions
 
 

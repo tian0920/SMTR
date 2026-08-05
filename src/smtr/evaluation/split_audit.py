@@ -13,8 +13,13 @@ from pathlib import Path
 from typing import Any
 
 from smtr.counterfactual.edge_keys import TreatmentEdgeKey, treatment_edge_key
+from smtr.marble.runtime_visibility_audit import file_digest
 
 SPLIT_NAMES = ("train", "validation", "test")
+
+# Artifact schema carrying per-file digests so formal evaluations can
+# re-verify that the audited files are exactly the ones evaluated (R6 P1-5).
+SPLIT_AUDIT_SCHEMA_VERSION = "smtr_split_audit_v2"
 
 
 def audit_split_leakage(
@@ -25,43 +30,50 @@ def audit_split_leakage(
 ) -> dict[str, Any]:
     """Audit identifier overlap across train/validation/test paired records.
 
-    Hard requirements (fail fast when non-empty):
-      * target_task_overlap   (task_id)
-      * source_trajectory_overlap (source_trajectory_id)
-      * edge_overlap          (edge_id)
-      * treatment edge split consistency (清单 P0-4): every treatment edge
-        ``(task_id, receiver_agent_id, candidate_memory_id)`` must appear in
-        exactly one split across all of its seed records, i.e.
-        ``len(edge_observed_splits[edge]) == 1`` for every edge.
-      * non_train_memory_sources (清单 P1-1): memory source trajectories
-        must come from the train split only.
-      * self_transfer_edges (清单 P1-2): a candidate target task must not
-        equal the memory's source task.
-      * calibration / epsilon selection must not use test records
-        (清单 P0-8 / P1-2): ``test_used_for_calibration`` is computed from
-        the recorded split provenance, never assumed.
+    Target identity (task / execution trajectory / treatment edge) must be
+    disjoint across splits, while memory provenance may legitimately recur:
+    memories are extracted exclusively from train trajectories, so the same
+    train-derived memory (and its source trajectory) may serve candidates
+    in both validation and test (R6 清单 P0-1/P0-2/P0-3).
 
-    Advisory (reported, not fatal):
+    Hard requirements (fail fast when non-empty):
+      * target_task_overlap          (task_id)
+      * target_trajectory_overlap    (target_trajectory_id)
+      * treatment_edge_overlap       ((task_id, receiver_agent_id,
+        candidate_memory_id)): every treatment edge must appear in exactly
+        one split across all of its seed records.
+      * edge_overlap                 (edge_id)
+      * non_train_memory_sources: memory source trajectories must come from
+        the train split only.
+      * self_transfer_edges: a candidate target task must not equal the
+        memory's source task.
+      * calibration / epsilon selection must not use test records:
+        ``test_used_for_calibration`` is computed from the recorded split
+        provenance, never assumed.
+
+    Statistics (reported, never fatal; R6 清单 P0-3):
+      * shared_train_memory_provenance_count / memory_source_trajectory_reuse
+        — train source trajectories observed in more than one split are
+        legal memory reuse, not target leakage.
       * candidate_memory_overlap — the memory pool is built from train
         trajectories only, so memory ids are expected to recur in
-        validation/test candidates; the overlap is reported so reviewers can
-        decide whether further isolation is needed.
+        validation/test candidates.
 
-    ``split_integrity_passed`` is computed from the real check results
-    (清单 P1-2); it is never initialized to ``True``.
+    ``split_integrity_passed`` is computed from the real check results;
+    it is never initialized to ``True``.
     """
     missing = [name for name in SPLIT_NAMES if name not in paired_records_by_split]
     if missing:
         raise ValueError(f"split audit requires all splits, missing: {missing}")
 
-    # Treatment-edge consistency (清单 P0-4) is checked first: it is the
-    # strictest unit, since an edge crossing splits always implies a task
-    # crossing splits as well.
+    # Treatment-edge consistency is checked first: it is the strictest
+    # unit, since an edge crossing splits always implies a task crossing
+    # splits as well.
     treatment_edges = _treatment_edge_overlap(paired_records_by_split)
     if treatment_edges["treatment_edge_overlap"]:
         raise ValueError(
-            "treatment edge seeds split across splits (清单 P0-4 requires "
-            f"len(edge_observed_splits[edge]) == 1): "
+            "treatment edge seeds split across splits "
+            f"(each edge must live in exactly one split): "
             f"{treatment_edges['treatment_edge_overlap']}"
         )
 
@@ -79,17 +91,22 @@ def audit_split_leakage(
             f"target_task_id leakage across splits: {sorted(target_task_overlap)}"
         )
 
-    source_trajectory_overlap = _cross_split_overlap(
+    target_trajectory_overlap = _cross_split_overlap(
         {
-            name: _collect(paired_records_by_split[name], "source_trajectory_id")
+            name: _collect(paired_records_by_split[name], "target_trajectory_id")
             for name in SPLIT_NAMES
         }
     )
-    if source_trajectory_overlap:
+    if target_trajectory_overlap:
         raise ValueError(
-            "source_trajectory_id leakage across splits: "
-            f"{sorted(source_trajectory_overlap)}"
+            "target_trajectory_id leakage across splits: "
+            f"{sorted(target_trajectory_overlap)}"
         )
+
+    # Memory source trajectories are provenance, not target identity: reuse
+    # of a train-derived memory across splits is legal and only reported
+    # (R6 清单 P0-3).
+    memory_source_reuse = _memory_source_trajectory_reuse(paired_records_by_split)
 
     edge_overlap = _cross_split_overlap(
         {name: _collect(paired_records_by_split[name], "edge_id") for name in SPLIT_NAMES}
@@ -104,8 +121,6 @@ def audit_split_leakage(
         }
     )
 
-    # 清单 P1-1/P1-2: memory source trajectories must come from train only,
-    # and no candidate may target the task that produced its memory.
     non_train_memory_sources = _non_train_memory_sources(paired_records_by_split)
     self_transfer_edges = _self_transfer_edges(paired_records_by_split)
     test_used_for_calibration = "test" in {
@@ -113,11 +128,11 @@ def audit_split_leakage(
         epsilon_selection_split,
     }
 
-    # Computed from the real check results (清单 P1-2); never assumed.
+    # Computed from the real check results; never assumed.
     split_integrity_passed = bool(
         not target_task_overlap
+        and not target_trajectory_overlap
         and not treatment_edges["treatment_edge_overlap"]
-        and not source_trajectory_overlap
         and not edge_overlap
         and not non_train_memory_sources
         and not self_transfer_edges
@@ -125,7 +140,7 @@ def audit_split_leakage(
     )
     if non_train_memory_sources:
         raise ValueError(
-            "memory sources outside the train split (清单 P1-1): "
+            "memory sources outside the train split: "
             f"{sorted(non_train_memory_sources)}"
         )
     if self_transfer_edges:
@@ -137,7 +152,7 @@ def audit_split_leakage(
         raise ValueError(
             "calibration/epsilon selection used test records "
             f"(calibration_split={calibration_split!r}, "
-            f"epsilon_selection_split={epsilon_selection_split!r}; 清单 P0-8)."
+            f"epsilon_selection_split={epsilon_selection_split!r})."
         )
 
     return {
@@ -145,7 +160,7 @@ def audit_split_leakage(
         "validation_target_tasks": sorted(target_tasks["validation"]),
         "test_target_tasks": sorted(target_tasks["test"]),
         "target_task_overlap": sorted(target_task_overlap),
-        "source_trajectory_overlap": sorted(source_trajectory_overlap),
+        "target_trajectory_overlap": sorted(target_trajectory_overlap),
         "edge_overlap": sorted(edge_overlap),
         "candidate_memory_overlap": sorted(candidate_memory_overlap),
         "treatment_edge_overlap": treatment_edges["treatment_edge_overlap"],
@@ -154,6 +169,8 @@ def audit_split_leakage(
         "non_train_memory_sources": sorted(non_train_memory_sources),
         "self_transfer_edges": sorted(self_transfer_edges),
         "test_used_for_calibration": test_used_for_calibration,
+        "shared_train_memory_provenance_count": len(memory_source_reuse),
+        "memory_source_trajectory_reuse": memory_source_reuse,
         "calibration_split": calibration_split,
         "epsilon_selection_split": epsilon_selection_split,
         "split_integrity_passed": split_integrity_passed,
@@ -188,6 +205,8 @@ def audit_split_files(
     test_records_path: Path,
     memory_pool_path: Path | None = None,
     checkpoint_path: Path | None = None,
+    dataset_manifest_path: Path | None = None,
+    split_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     """Audit persisted split files end to end (清单 P0-15).
 
@@ -195,7 +214,25 @@ def audit_split_files(
     when one is supplied; violations never raise out of this wrapper — the
     summary reports ``split_integrity_passed=False`` plus the error so the
     caller decides how to fail.
+
+    The returned summary always carries the v2 artifact metadata (R6 清单
+    P1-5): a schema version plus the SHA-256 digest of every audited file,
+    so a formal end-to-end evaluation can later prove it evaluated exactly
+    the artifacts this audit inspected. Digests use the project's canonical
+    file-digest helper, never Python's built-in ``hash()``.
     """
+    artifact_metadata = {
+        "schema_version": SPLIT_AUDIT_SCHEMA_VERSION,
+        "dataset_manifest_digest": _artifact_digest(dataset_manifest_path),
+        "split_manifest_digest": _artifact_digest(split_manifest_path),
+        "memory_pool_digest": _artifact_digest(memory_pool_path),
+        "train_paired_records_digest": _artifact_digest(train_records_path),
+        "validation_paired_records_digest": _artifact_digest(
+            validation_records_path
+        ),
+        "test_paired_records_digest": _artifact_digest(test_records_path),
+        "checkpoint_digest": _artifact_digest(checkpoint_path),
+    }
     splits = {
         "train": load_paired_records_file(train_records_path),
         "validation": load_paired_records_file(validation_records_path),
@@ -220,6 +257,7 @@ def audit_split_files(
         )
     except ValueError as exc:
         return {
+            **artifact_metadata,
             "split_integrity_passed": False,
             "error": str(exc),
             "calibration_split": calibration_split,
@@ -231,7 +269,15 @@ def audit_split_files(
         summary = dict(summary)
         summary["non_train_memory_pool_sources"] = non_train_pool_sources
         summary["split_integrity_passed"] = False
+    summary.update(artifact_metadata)
     return summary
+
+
+def _artifact_digest(path: Path | None) -> str | None:
+    """SHA-256 digest of an audited file, or None when not supplied."""
+    if path is None:
+        return None
+    return file_digest(Path(path))
 
 
 def _non_train_memory_pool_sources(memory_pool_path: Path | None) -> set[str]:
@@ -286,6 +332,34 @@ def _treatment_edge_overlap(
     }
 
 
+def _memory_source_trajectory_reuse(
+    paired_records_by_split: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    """Train source trajectories observed in more than one split (R6 P0-3).
+
+    Reuse of a train-derived memory across validation/test is legal; this
+    is a statistic, never a fatal condition. Legacy records that only
+    persist ``source_trajectory_id`` are included via fallback.
+    """
+    observed: dict[str, set[str]] = {}
+    for name in SPLIT_NAMES:
+        for rec in paired_records_by_split[name]:
+            trajectory = rec.get(
+                "memory_source_trajectory_id", rec.get("source_trajectory_id")
+            )
+            if trajectory in (None, ""):
+                continue
+            observed.setdefault(str(trajectory), set()).add(name)
+    return [
+        {
+            "memory_source_trajectory_id": trajectory,
+            "observed_target_splits": [s for s in SPLIT_NAMES if s in splits],
+        }
+        for trajectory, splits in sorted(observed.items())
+        if len(splits) > 1
+    ]
+
+
 def _collect(records: list[dict[str, Any]], field: str) -> set[str]:
     return {str(rec[field]) for rec in records if rec.get(field) is not None}
 
@@ -313,11 +387,17 @@ def _non_train_memory_sources(
 def _self_transfer_edges(
     paired_records_by_split: dict[str, list[dict[str, Any]]],
 ) -> set[TreatmentEdgeKey]:
-    """Edges whose target task equals the memory's source task (清单 P1-2)."""
+    """Edges whose target task equals the memory's source task.
+
+    Reads ``memory_source_task_id`` with a ``source_task_id`` fallback for
+    legacy artifacts (R6 清单 P0-1).
+    """
     offenders: set[TreatmentEdgeKey] = set()
     for name in SPLIT_NAMES:
         for rec in paired_records_by_split[name]:
-            source_task = rec.get("source_task_id")
+            source_task = rec.get(
+                "memory_source_task_id", rec.get("source_task_id")
+            )
             if source_task in (None, ""):
                 continue
             target_task = rec.get("task_id")

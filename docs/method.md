@@ -64,7 +64,11 @@ Invalid pairs are excluded, never relabelled as failure samples (an invalid envi
 
 ### Split isolation
 
-Memory source trajectories come from the train split only. Critic training uses train edges; q01 calibration and epsilon selection use validation edges; final evaluation uses test edges once. A target task or treatment edge never crosses splits. The split audit computes `target_task_overlap`, `treatment_edge_overlap`, `non_train_memory_sources`, `self_transfer_edges`, `test_used_for_calibration` and derives `split_integrity_passed` from those results.
+**Target identity never crosses splits**: `task_id` (target task), `target_trajectory_id` (the receiver's execution trajectory under evaluation), treatment edges `(task_id, receiver_agent_id, candidate_memory_id)` and `edge_id` are each disjoint across train/validation/test. **Memory provenance may legitimately recur**: memories are extracted from train trajectories only (`memory_source_split == "train"`), so the same train-derived memory — and its `memory_source_trajectory_id` — may serve candidates in both validation and test; this is legal reuse, not leakage.
+
+Critic training uses train edges; q01 calibration and epsilon selection use validation edges only (once, never re-applied); final evaluation uses test edges once. The split audit computes `target_task_overlap`, `target_trajectory_overlap`, `treatment_edge_overlap`, `non_train_memory_sources`, `self_transfer_edges` (target task == memory source task), `test_used_for_calibration` as fatal checks, reports legal provenance reuse (`shared_train_memory_provenance_count`, `memory_source_trajectory_reuse`) as statistics, and derives `split_integrity_passed` from those results — never assumed.
+
+The audit artifact (`schema_version: smtr_split_audit_v2`) binds every audited file by SHA-256 digest: dataset manifest, split manifest, memory pool, the three per-split paired-record files and the critic checkpoint. A formal end-to-end evaluation must bind such an artifact and re-verifies, before any episode runs, that the audit passed, that calibration and ε selection used only the validation split, and that every digest still matches the file actually consumed.
 
 ## 7. Four-Outcome Transfer Critic
 
@@ -81,12 +85,18 @@ Feature blocks: task context, receiver marginal, writer marginal, writer-receive
 Decision rule:
 $$\hat{\tau} = q_{10} - q_{01}, \quad \hat{\eta} = q_{01}$$
 
-Share candidate if $\hat{\tau} > 0$ and $\hat{\eta} \leq$ budget.
+Share candidate if $\hat{\tau} > 0$ and $\hat{\eta}_{\text{calibrated}} \leq$ budget.
 Share at most one memory per receiver (the safe candidate with highest $\hat{\tau}$).
+
+**Eta trace schema**: each `RouterDecision` stores both `eta_raw` ($q_{01}$ from the critic) and `eta_calibrated` (q01 after the single validation-split calibration). The router gate compares `eta_calibrated` against the risk budget; `eta_raw` is retained for diagnostics only. Calibration is applied **exactly once**, at routing time. Downstream consumers — including the risk–utility curve — read the calibrated value from the trace and MUST NOT invoke the calibrator again; in formal mode a trace row missing `eta_calibrated` is an error, not a silent re-calibration.
 
 This is a **receiver-specific exposure mask**, not a global memory filter.
 
 ## 9. MARBLE Evaluation
+
+**Generation seed protocol** (enforced inside the function API, not only the CLI): a formal run requires at least 5 unique generation seeds, a pilot at least 3; duplicates are deduplicated and the unique count is validated before any critic load or episode. The result records `generation_seeds`, `unique_seed_count`, `minimum_required_seed_count` and `seed_protocol_passed`.
+
+**Split-audit binding**: a formal end-to-end evaluation requires a verified split-audit artifact (see §6). Before any critic load or MARBLE episode, the evaluation validates the artifact's schema version, integrity verdict, calibration/ε-selection splits and all file digests against the files it will actually consume, and aborts on any mismatch. The result records `split_audit_verified`, `split_audit_path`, `split_audit_digest` and `split_integrity_passed`.
 
 Metrics:
 - Team success rate

@@ -239,11 +239,14 @@ def _run_split_audit_section(
     split_integrity_passed = bool(summary.get("split_integrity_passed"))
     split_audit = {
         "target_task_overlap": summary.get("target_task_overlap", []),
+        "target_trajectory_overlap": summary.get("target_trajectory_overlap", []),
         "treatment_edge_overlap": summary.get("treatment_edge_overlap", []),
-        "source_trajectory_overlap": summary.get("source_trajectory_overlap", []),
         "non_train_memory_sources": summary.get("non_train_memory_sources", []),
         "self_transfer_edges": summary.get("self_transfer_edges", []),
         "test_used_for_calibration": summary.get("test_used_for_calibration", False),
+        "memory_source_trajectory_reuse": summary.get(
+            "memory_source_trajectory_reuse", []
+        ),
     }
     if not split_integrity_passed:
         errors.append(

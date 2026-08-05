@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -374,6 +375,11 @@ def run_paired_decision_evaluation(
                         "action": dec.action,
                         "candidate_action": dec.action,
                         "tau_hat": dec.tau_hat,
+                        "eta_raw": dec.eta_raw,
+                        "eta_calibrated": dec.eta_calibrated,
+                        "risk_budget": dec.risk_budget,
+                        # Deprecated (R6 P0-7): equals eta_calibrated; kept
+                        # for legacy traces only.
                         "eta_hat": dec.eta_hat,
                     }
                     all_traces[method].append(trace)
@@ -498,7 +504,12 @@ def run_paired_decision_evaluation(
     # Risk-utility curve for SMTR on the evaluation split, using the
     # validation-selected epsilon_star (reported, never re-selected).
     if "smtr" in methods:
-        curve = _smtr_risk_utility_curve(all_traces["smtr"], paired_outcomes, full_critic)
+        curve = _smtr_risk_utility_curve(
+            all_traces["smtr"],
+            paired_outcomes,
+            full_critic,
+            experiment_mode=experiment_mode,
+        )
         (output / "risk_utility_curve.json").write_text(
             json.dumps(curve, indent=2), encoding="utf-8"
         )
@@ -695,14 +706,18 @@ def _smtr_risk_utility_curve(
     decisions: list[dict],
     paired_outcomes: list[dict],
     critic: FourOutcomeTransferCritic,
+    experiment_mode: str | None = None,
 ) -> dict[str, Any]:
     """Candidate-level risk-utility curve for SMTR decisions.
 
-    One point per matched candidate decision: predicted tau_hat and
-    (calibrated when available) eta_hat against the empirical four-outcome
-    label from the paired potential outcomes. epsilon_star is read from the
-    checkpoint (selected on validation) and reported, never re-selected.
+    One point per matched candidate decision: predicted tau_hat and the
+    router-time calibrated eta (``eta_calibrated``) against the empirical
+    four-outcome label from the paired potential outcomes. The calibrator
+    is applied exactly once, at router prediction time (R6 P0-8): this
+    curve never calls it again. epsilon_star is read from the checkpoint
+    (selected on validation) and reported, never re-selected.
     """
+    formal_mode = experiment_mode == "formal"
     outcome_by_key: dict[tuple, dict] = {}
     for rec in paired_outcomes:
         seed = rec.get("generation_seed")
@@ -713,7 +728,8 @@ def _smtr_risk_utility_curve(
             str(rec.get("candidate_memory_id", "")),
         )] = rec
 
-    tau_hat, eta_hat, labels = [], [], []
+    required_fields = {"tau_hat", "eta_raw", "eta_calibrated"}
+    tau_hat, eta_values, labels = [], [], []
     for d in decisions:
         rec = outcome_by_key.get((
             str(d.get("task_id", "")), int(d.get("generation_seed", 0)),
@@ -722,26 +738,65 @@ def _smtr_risk_utility_curve(
         ))
         if rec is None:
             continue
+        # R6 P0-9: traces must carry the raw/calibrated split; formal mode
+        # never guesses whether a legacy eta_hat is raw or calibrated.
+        missing = [
+            name for name in required_fields if d.get(name) is None
+        ]
+        if missing:
+            if formal_mode:
+                raise ValueError(
+                    "formal risk-utility curve requires trace fields "
+                    f"{sorted(required_fields)}; missing: {sorted(missing)}. "
+                    "Legacy traces carrying only eta_hat are ambiguous "
+                    "(raw vs calibrated) and are rejected in formal mode."
+                )
+            warnings.warn(
+                "SMTR trace is missing fields "
+                f"{sorted(missing)}; pilot mode falls back to "
+                "eta_calibrated = trace['eta_hat'].",
+                stacklevel=2,
+            )
+            eta_calibrated_value = float(d.get("eta_calibrated", d.get("eta_hat", 0.0)))
+        else:
+            eta_calibrated_value = float(d["eta_calibrated"])
         tau_hat.append(float(d.get("tau_hat", 0.0)))
-        eta_hat.append(float(d.get("eta_hat", 0.0)))
+        eta_values.append(eta_calibrated_value)
         labels.append(record_label(rec))
 
     import numpy as np
 
     tau_arr = np.asarray(tau_hat, dtype=float)
-    eta_raw = np.asarray(eta_hat, dtype=float)
-    eta_calibrated = (
-        critic.q01_calibrator.predict(eta_raw)
-        if getattr(critic, "q01_calibrator", None) is not None
-        else eta_raw
-    )
+    eta_calibrated = np.asarray(eta_values, dtype=float)
+    # R6 P0-8: eta was calibrated once at router prediction time; the curve
+    # enumerates epsilon against eta_calibrated directly (no re-calibration).
     curve = risk_utility_curve(tau_arr, eta_calibrated, labels, epsilons=DEFAULT_EPSILONS)
-    return {
+    epsilon_rows = [
+        {
+            "epsilon": point["epsilon"],
+            "share_rate": point["share_coverage"],
+            "paired_policy_success": point["policy_success_rate"],
+            "negative_transfer_exposure_rate": point[
+                "negative_transfer_exposure_rate"
+            ],
+        }
+        for point in curve.values()
+    ]
+    result = {
         "n_matched_candidates": len(labels),
         "epsilon_star": getattr(critic, "epsilon_star", None),
         "epsilon_selected_on": "validation",
+        # R6 P0-10: the risk axis is the router-time calibrated eta and the
+        # calibrator ran exactly once (at prediction), never inside the curve.
+        "risk_value_type": "calibrated_eta",
+        "calibration_applied_times": 1,
         "curve": curve,
+        "epsilon_rows": epsilon_rows,
     }
+    if formal_mode:
+        assert result["risk_value_type"] == "calibrated_eta"
+        assert result["calibration_applied_times"] == 1
+    return result
 
 
 def _require_formal_calibration_metadata(

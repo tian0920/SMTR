@@ -83,7 +83,7 @@ class SMTRExposureRouter:
     ) -> list[RouterDecision]:
         """Make share/withhold decisions for all candidates."""
         budget = self._effective_risk_budget()
-        scored: list[tuple[float, float, MemoryRoutingCard]] = []
+        scored: list[tuple[float, float, float, MemoryRoutingCard]] = []
         for card in candidate_cards:
             exposure_input = CandidateExposureInput(
                 receiver_state=receiver_state,
@@ -93,21 +93,30 @@ class SMTRExposureRouter:
             pred = self.critic.predict_calibrated(exposure_input)
             tau = pred.tau_hat
             eta = float(pred.eta_hat_calibrated)
-            scored.append((tau, eta, card))
+            # eta_hat is the raw q01 estimand; kept as fallback for fakes
+            # that expose the raw value only through eta_hat.
+            raw = float(getattr(pred, "eta_hat_raw", pred.eta_hat))
+            scored.append((tau, eta, raw, card))
 
         decisions: list[RouterDecision] = []
         # Find safe candidates
-        safe = [(tau, eta, card) for tau, eta, card in scored if tau > 0 and eta <= budget]
+        safe = [
+            (tau, eta, raw, card)
+            for tau, eta, raw, card in scored
+            if tau > 0 and eta <= budget
+        ]
         safe_sorted = sorted(safe, key=lambda x: -x[0])
-        share_set = {card.memory_id for _, _, card in safe_sorted[:self.max_shared_memories_per_receiver]}
+        share_set = {card.memory_id for *_, card in safe_sorted[:self.max_shared_memories_per_receiver]}
 
-        for tau, eta, card in scored:
+        for tau, eta, raw, card in scored:
             if card.memory_id in share_set:
                 decisions.append(RouterDecision(
                     memory_id=card.memory_id,
                     action="share",
                     tau_hat=tau,
-                    eta_hat=eta,
+                    eta_raw=raw,
+                    eta_calibrated=eta,
+                    risk_budget=budget,
                     reason="tau>0 and eta_calibrated<=epsilon_star",
                 ))
             else:
@@ -120,7 +129,9 @@ class SMTRExposureRouter:
                     memory_id=card.memory_id,
                     action="withhold",
                     tau_hat=tau,
-                    eta_hat=eta,
+                    eta_raw=raw,
+                    eta_calibrated=eta,
+                    risk_budget=budget,
                     reason=reason,
                 ))
         return decisions
@@ -142,7 +153,18 @@ class SMTRExposureRouter:
                 "candidate_memory_id": dec.memory_id,
                 "writer_role": card.writer.role,
                 "tau_hat": round(dec.tau_hat, 4),
-                "eta_hat": round(dec.eta_hat, 4),
+                "eta_raw": round(dec.eta_raw, 4),
+                "eta_calibrated": (
+                    round(dec.eta_calibrated, 4)
+                    if dec.eta_calibrated is not None
+                    else None
+                ),
+                "risk_budget": dec.risk_budget,
+                # Deprecated (R6 P0-7): equals eta_calibrated; kept for legacy
+                # traces only.
+                "eta_hat": (
+                    round(dec.eta_hat, 4) if dec.eta_hat is not None else None
+                ),
                 "action": dec.action,
                 "reason": dec.reason,
             })
@@ -223,7 +245,9 @@ class SMTRUCBRouter:
                     memory_id=card.memory_id,
                     action="share",
                     tau_hat=tau_mean,
-                    eta_hat=eta_mean,
+                    eta_raw=eta_mean,
+                    eta_calibrated=eta_mean,
+                    risk_budget=budget,
                     reason="tau_lower>0 and eta_upper<=epsilon_star",
                 ))
             else:
@@ -237,7 +261,9 @@ class SMTRUCBRouter:
                     memory_id=card.memory_id,
                     action="withhold",
                     tau_hat=tau_mean,
-                    eta_hat=eta_mean,
+                    eta_raw=eta_mean,
+                    eta_calibrated=eta_mean,
+                    risk_budget=budget,
                     reason=reason,
                 ))
         return decisions

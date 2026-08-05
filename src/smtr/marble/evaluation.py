@@ -127,6 +127,11 @@ def run_evaluation(
                     "writer_role": card.writer.role if card else "unknown",
                     "action": dec.action,
                     "tau_hat": dec.tau_hat,
+                    "eta_raw": dec.eta_raw,
+                    "eta_calibrated": dec.eta_calibrated,
+                    "risk_budget": dec.risk_budget,
+                    # Deprecated (R6 P0-7): equals eta_calibrated; kept for
+                    # legacy traces only.
                     "eta_hat": dec.eta_hat,
                 }
                 all_traces[method].append(trace)
