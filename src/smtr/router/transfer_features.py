@@ -15,6 +15,7 @@ from smtr.core.types import (
     MemoryRoutingCard,
     ReceiverState,
 )
+from smtr.marble.core_validity import is_valid_core_paired_record
 from smtr.marble.paired_outcomes import paired_record_label
 
 FORBIDDEN_FEATURE_TOKENS = frozenset({
@@ -222,6 +223,10 @@ def load_paired_records_for_training(
     context fields stored in the paired record (task instruction, environment
     signature, subtask, context summaries, writer/receiver tool_names and
     model_name) are restored so training features match inference features.
+
+    Records failing the core-validity filter (incomplete branches, missing
+    identity fields, cross-branch config mismatches, upstream invalid flag)
+    never enter critic training, risk calibration or epsilon selection.
     """
     pool: dict[str, dict] = {}
     for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
@@ -234,7 +239,7 @@ def load_paired_records_for_training(
         if not line.strip():
             continue
         rec = json.loads(line)
-        if not rec.get("valid", False):
+        if not is_valid_core_paired_record(rec):
             continue
         mem_entry = pool.get(rec["candidate_memory_id"])
         if mem_entry is None:

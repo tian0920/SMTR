@@ -95,7 +95,10 @@ def main() -> None:
         "b0_no_memory", "role_aware_top1", "all_share",
         "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
     ])
-    p.add_argument("--negative-risk-budget", type=float, default=0.2)
+    # Formal evaluations must read epsilon_star from the checkpoint; an
+    # explicit budget is a debug-only override, never a silent 0.2 default.
+    p.add_argument("--negative-risk-budget", type=float, default=None)
+    p.add_argument("--experiment-mode", choices=["pilot", "formal"], default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("run-marble-evaluation", help="End-to-end MARBLE evaluation")
@@ -114,7 +117,8 @@ def main() -> None:
         "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
     ])
     p.add_argument("--generation-seeds", type=int, nargs="+", default=[0, 1, 2])
-    p.add_argument("--negative-risk-budget", type=float, default=0.2)
+    # Same rule as run-paired-decision-evaluation: no silent 0.2 fallback.
+    p.add_argument("--negative-risk-budget", type=float, default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("integrity-audit", help="Run integrity audit")
@@ -294,6 +298,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             checkpoint_smtr_no_pair_interaction=Path(args.checkpoint_smtr_no_pair_interaction) if args.checkpoint_smtr_no_pair_interaction else None,
             methods=args.methods,
             negative_risk_budget=args.negative_risk_budget,
+            experiment_mode=args.experiment_mode,
             output=Path(args.output),
         )
         print(json.dumps(result, indent=2))

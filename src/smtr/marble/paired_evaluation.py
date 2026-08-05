@@ -15,6 +15,7 @@ from smtr.evaluation.cluster_bootstrap import (
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
 from smtr.evaluation.receiver_effect_analysis import analyze_receiver_effect, record_label
 from smtr.evaluation.tables import write_result_table, format_markdown_table
+from smtr.marble.core_validity import filter_core_paired_records, require_core_formal_validity
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.baselines import (
     AllShareRouter,
@@ -80,6 +81,7 @@ def run_paired_decision_evaluation(
     negative_risk_budget: float | None = None,
     allow_risk_budget_override: bool = False,
     ci_bootstrap: int = 1000,
+    experiment_mode: str | None = None,
     output: Path,
 ) -> dict[str, Any]:
     """Run paired decision evaluation using candidate manifest and paired records.
@@ -87,6 +89,11 @@ def run_paired_decision_evaluation(
     Formal evaluations keep ``negative_risk_budget=None`` so every
     risk-gated method reads epsilon_star from its critic checkpoint
     (清单第三章); an explicit budget is a debug-only override.
+
+    Records failing the core-validity filter (清单第十二章) never enter
+    policy metrics or receiver-effect analysis; with
+    ``experiment_mode='formal'`` the evaluation additionally fails fast
+    when filtered records lack four-label coverage or multi-seed edges.
     """
     methods = list(methods) if methods else list(MAIN_TABLE_METHODS)
     # Load critics and verify feature blocks
@@ -117,11 +124,15 @@ def run_paired_decision_evaluation(
     # Load candidate manifest
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
 
-    # Load paired records
-    paired_outcomes: list[dict] = []
+    # Load paired records and apply the minimal core-validity filter.
+    raw_paired_outcomes: list[dict] = []
     for line in paired_records_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
-            paired_outcomes.append(json.loads(line))
+            raw_paired_outcomes.append(json.loads(line))
+    validity = filter_core_paired_records(raw_paired_outcomes)
+    paired_outcomes = validity["valid_records"]
+    if experiment_mode is not None:
+        require_core_formal_validity(paired_outcomes, experiment_mode=experiment_mode)
 
     # Build routers
     routers: dict[str, Any] = _build_routers(
@@ -255,6 +266,12 @@ def run_paired_decision_evaluation(
         "methods": methods,
         "n_candidate_entries": len(candidates_manifest.get("candidates", [])),
         "n_paired_records": len(paired_outcomes),
+        "core_validity": {
+            "total_paired_records": validity["total_paired_records"],
+            "valid_paired_records": validity["valid_paired_records"],
+            "excluded_paired_records": validity["excluded_paired_records"],
+            "exclusion_reasons": validity["exclusion_reasons"],
+        },
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
         "receiver_effect_analysis": receiver_effect,

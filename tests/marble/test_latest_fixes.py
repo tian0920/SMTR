@@ -48,6 +48,8 @@ class TestLoadPairedRecordsContext:
             "scenario": "database",
             "valid": True,
             "label": "positive_transfer",
+            "edge_id": "edge-t1-r1-mem1",
+            "generation_seed": 0,
             "share": {"team_success": True},
             "withhold": {"team_success": False},
             "task_instruction": "Diagnose the slow query",

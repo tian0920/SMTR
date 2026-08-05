@@ -212,6 +212,8 @@ def generate_candidate_level_pairs(
     edges: list[dict[str, Any]] = []
     for entry in candidates_manifest.get("candidates", []):
         for rec in entry.get("candidate_records", []):
+            mem_meta = memory_pool.get(rec["memory_id"], {})
+            mem_rc = mem_meta.get("routing_card", {})
             edges.append({
                 "edge_id": compute_edge_id(
                     entry["task_id"],
@@ -219,6 +221,20 @@ def generate_candidate_level_pairs(
                     rec["memory_id"],
                 ),
                 "task_id": entry["task_id"],
+                # Split-integrity metadata (清单第十三章): source provenance
+                # of the memory and the target task group must be persisted
+                # so train/validation/test isolation can be audited.
+                "source_task_id": mem_rc.get("source_task_id", ""),
+                "source_trajectory_id": str(
+                    mem_meta.get("source_trajectory_id")
+                    or mem_rc.get("source_trajectory_id")
+                    or ""
+                ),
+                "target_task_group": str(
+                    entry.get("target_task_group")
+                    or entry.get("task_group")
+                    or entry["task_id"]
+                ),
                 "receiver_agent_id": entry.get("receiver_agent_id", ""),
                 "receiver_role": entry.get("receiver_role", "unknown"),
                 "receiver_capabilities": entry.get("receiver_capabilities", []),
@@ -287,6 +303,7 @@ def generate_candidate_level_pairs(
                 edge=edge,
                 seed=seed,
                 replicate_id=compute_replicate_id(edge["edge_id"], seed),
+                split_name=split,
             )
             records.append(record)
 
@@ -320,6 +337,7 @@ def paired_result_to_record(
     seed: int,
     replicate_id: str | None = None,
     treatment_definition_version: str = TREATMENT_DEFINITION_VERSION,
+    split_name: str = "",
 ) -> dict[str, Any]:
     """Convert a PairedBranchResult into a serializable paired record.
 
@@ -345,6 +363,16 @@ def paired_result_to_record(
 
         "task_id": pair_result.task_id,
         "generation_seed": seed,
+
+        # Split-integrity metadata (清单第十三章): every record persists its
+        # split, source provenance and target task group so the audit can
+        # verify that task_id / source_trajectory_id / edge_id never cross
+        # the train/validation/test boundary.
+        "split_name": split_name,
+        "source_task_id": edge.get("source_task_id", ""),
+        "source_trajectory_id": edge.get("source_trajectory_id", ""),
+        "target_task_id": pair_result.task_id,
+        "target_task_group": edge.get("target_task_group", ""),
 
         "receiver_agent_id": edge["receiver_agent_id"],
         "receiver_role": edge["receiver_role"],
