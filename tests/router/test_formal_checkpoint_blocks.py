@@ -15,7 +15,7 @@ from smtr.core.types import (
     MemoryRoutingCard,
     ReceiverState,
 )
-from smtr.marble.paired_evaluation import verify_formal_checkpoint_blocks
+from smtr.marble.formal_protocol import verify_formal_checkpoint_blocks
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import HashingTransferFeatureEncoder
 
@@ -75,25 +75,46 @@ def test_no_pair_interaction_block_keeps_marginals_drops_interactions():
 def test_smtr_only_accepts_full_checkpoint():
     """SMTR must reject checkpoints trained with any other block."""
     wrong = FourOutcomeTransferCritic(feature_block="global_transfer")
-    with pytest.raises(ValueError, match="feature_block='full'"):
-        verify_formal_checkpoint_blocks(full_critic=wrong)
+    with pytest.raises(ValueError, match="feature_block in"):
+        verify_formal_checkpoint_blocks(
+            full_critic=wrong,
+            global_critic=None,
+            no_pair_critic=None,
+            methods=["smtr"],
+            require_calibration=False,
+        )
 
 
 def test_global_transfer_critic_only_accepts_global_transfer_checkpoint():
     """GlobalTransferCritic must reject non-global_transfer checkpoints."""
-    full = FourOutcomeTransferCritic(feature_block="full")
     ok = FourOutcomeTransferCritic(feature_block="full")
+    full = FourOutcomeTransferCritic(feature_block="full")
     with pytest.raises(ValueError, match="global_transfer"):
-        verify_formal_checkpoint_blocks(full_critic=ok, global_critic=full)
-    # The formal block and its legacy alias are both accepted.
+        verify_formal_checkpoint_blocks(
+            full_critic=ok,
+            global_critic=full,
+            no_pair_critic=None,
+            methods=["smtr", "global_transfer_critic"],
+            require_calibration=False,
+        )
+    # The formal block is accepted; the legacy alias is not.
     verify_formal_checkpoint_blocks(
         full_critic=ok,
         global_critic=FourOutcomeTransferCritic(feature_block="global_transfer"),
+        no_pair_critic=None,
+        methods=["smtr", "global_transfer_critic"],
+        require_calibration=False,
     )
-    verify_formal_checkpoint_blocks(
-        full_critic=ok,
-        global_critic=FourOutcomeTransferCritic(feature_block="memory_task_only"),
-    )
+    with pytest.raises(ValueError, match="global_transfer"):
+        verify_formal_checkpoint_blocks(
+            full_critic=ok,
+            global_critic=FourOutcomeTransferCritic(
+                feature_block="memory_task_only"
+            ),
+            no_pair_critic=None,
+            methods=["smtr", "global_transfer_critic"],
+            require_calibration=False,
+        )
 
 
 def test_smtr_no_pair_only_accepts_no_pair_interaction_checkpoint():
@@ -102,9 +123,17 @@ def test_smtr_no_pair_only_accepts_no_pair_interaction_checkpoint():
     with pytest.raises(ValueError, match="no_pair_interaction"):
         verify_formal_checkpoint_blocks(
             full_critic=ok,
+            global_critic=None,
             no_pair_critic=FourOutcomeTransferCritic(feature_block="full"),
+            methods=["smtr", "smtr_no_pair_interaction"],
+            require_calibration=False,
         )
     verify_formal_checkpoint_blocks(
         full_critic=ok,
-        no_pair_critic=FourOutcomeTransferCritic(feature_block="no_pair_interaction"),
+        global_critic=None,
+        no_pair_critic=FourOutcomeTransferCritic(
+            feature_block="no_pair_interaction"
+        ),
+        methods=["smtr", "smtr_no_pair_interaction"],
+        require_calibration=False,
     )

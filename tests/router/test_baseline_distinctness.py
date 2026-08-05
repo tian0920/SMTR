@@ -93,7 +93,7 @@ class TestCriticBaselineDistinctness:
         ]
         # Global critic learned that the heuristic favourite is harmful.
         global_router = GlobalTransferCriticRouter(
-            critic=_critic("memory_task_only", {
+            critic=_critic("global_transfer", {
                 "mem_heur": (-0.4, 0.05),
                 "mem_critic": (0.3, 0.05),
             })
@@ -106,7 +106,7 @@ class TestCriticBaselineDistinctness:
         # budget while the global critic stays safe: the receiver-conditioned
         # risk gate flips the decision.
         global_router = GlobalTransferCriticRouter(
-            critic=_critic("memory_task_only", {"mem1": (0.4, 0.05)}))
+            critic=_critic("global_transfer", {"mem1": (0.4, 0.05)}))
         smtr_router = SMTRExposureRouter(
             critic=_critic("full", {"mem1": (0.4, 0.6)}))
         assert _actions(global_router, cards) != _actions(smtr_router, cards)
@@ -140,7 +140,7 @@ class TestMainTablePairwiseDistinct:
             "semantic_top1": lambda: SemanticTop1Router(),
             "role_aware_top1": lambda: RoleAwareTop1Router(),
             "global_transfer_critic": lambda: GlobalTransferCriticRouter(
-                critic=_critic("memory_task_only", {
+                critic=_critic("global_transfer", {
                     "mem_sem": (-0.4, 0.05), "mem_role": (0.3, 0.05),
                     "mem1": (0.4, 0.05), "mem2": (-0.2, 0.05),
                 })),

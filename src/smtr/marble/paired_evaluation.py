@@ -35,6 +35,7 @@ from smtr.marble.core_validity import (
     is_core_valid_pair,
     require_core_formal_validity,
 )
+from smtr.marble.formal_protocol import verify_formal_checkpoint_blocks
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.baselines import (
     GlobalTransferCriticRouter,
@@ -61,46 +62,6 @@ MAIN_TABLE_METHODS = [
     "smtr_no_risk",
     "smtr",
 ]
-
-# 清单 P1-1: ``global_transfer`` is the formal block name; the historical
-# ``memory_task_only`` checkpoints keep the identical feature set.
-GLOBAL_TRANSFER_BLOCKS = ("global_transfer", "memory_task_only")
-
-
-def verify_formal_checkpoint_blocks(
-    *,
-    full_critic: FourOutcomeTransferCritic,
-    global_critic: FourOutcomeTransferCritic | None = None,
-    no_pair_critic: FourOutcomeTransferCritic | None = None,
-) -> None:
-    """清单 P1-2: each formal method may only consume its own feature block.
-
-    SMTR requires the ``full`` checkpoint, GlobalTransferCritic the
-    ``global_transfer`` checkpoint and SMTR-no-pair the
-    ``no_pair_interaction`` checkpoint; anything else fails fast.
-    """
-    if full_critic.feature_block != "full":
-        raise ValueError(
-            "smtr requires a full checkpoint (feature_block='full'), "
-            f"got {full_critic.feature_block!r}"
-        )
-    if (
-        global_critic is not None
-        and global_critic.feature_block not in GLOBAL_TRANSFER_BLOCKS
-    ):
-        raise ValueError(
-            "global_transfer_critic requires a global_transfer checkpoint "
-            "(feature_block='global_transfer'), "
-            f"got {global_critic.feature_block!r}"
-        )
-    if (
-        no_pair_critic is not None
-        and no_pair_critic.feature_block != "no_pair_interaction"
-    ):
-        raise ValueError(
-            "smtr_no_pair_interaction requires a no_pair_interaction "
-            f"checkpoint, got {no_pair_critic.feature_block!r}"
-        )
 
 
 def build_receiver_state_from_entry(entry: dict[str, Any]) -> ReceiverState:
@@ -159,10 +120,12 @@ def run_paired_decision_evaluation(
     when filtered records lack four-label coverage or multi-seed edges.
     """
     methods = list(methods) if methods else list(MAIN_TABLE_METHODS)
+    formal_mode = experiment_mode == "formal"
+    split_audit_summary: dict[str, Any] | None = None
 
-    # 清单 P0-17: formal evaluations must pass the split audit before any
+    # 清单 P0-11/17: formal evaluations must pass the split audit before any
     # evaluation step; all three split files are required inputs.
-    if experiment_mode == "formal":
+    if formal_mode:
         split_paths = {
             "train": train_paired_records_path,
             "validation": validation_paired_records_path,
@@ -174,21 +137,20 @@ def run_paired_decision_evaluation(
                 "formal paired evaluation requires paired record paths for "
                 f"all splits, missing: {missing}"
             )
-        split_summary = audit_split_files(
+        split_audit_summary = audit_split_files(
             train_records_path=train_paired_records_path,
             validation_records_path=validation_paired_records_path,
             test_records_path=test_paired_records_path,
             memory_pool_path=memory_pool_path,
             checkpoint_path=checkpoint_full,
         )
-        if not split_summary["split_integrity_passed"]:
+        if not split_audit_summary["split_integrity_passed"]:
             raise ValueError(
                 "formal paired evaluation aborted: split audit failed"
             )
 
     # Load critics and verify feature blocks
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
-    assert full_critic.feature_block == "full", "full checkpoint must have feature_block='full'"
 
     no_wr_critic = None
     if checkpoint_no_writer_receiver is not None:
@@ -202,12 +164,15 @@ def run_paired_decision_evaluation(
     no_pair_critic = None
     if checkpoint_smtr_no_pair_interaction is not None:
         no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
-    # 清单 P1-2: checkpoint/feature-block separation is enforced for every
-    # critic-based method, not only the full SMTR checkpoint.
+    # 清单 P0-10/19: checkpoint/feature-block separation and (in formal
+    # mode) validation-edge calibration are enforced for every critic-based
+    # method, via the shared formal protocol.
     verify_formal_checkpoint_blocks(
         full_critic=full_critic,
         global_critic=global_critic,
         no_pair_critic=no_pair_critic,
+        methods=methods,
+        require_calibration=formal_mode,
     )
 
     # 清单 P0-8: formal evaluations may only consume checkpoints whose
@@ -513,6 +478,7 @@ def run_paired_decision_evaluation(
         "methods": methods,
         "n_candidate_entries": len(candidates_manifest.get("candidates", [])),
         "n_paired_records": len(paired_outcomes),
+        "split_audit": split_audit_summary,
         "core_validity": {
             "total_paired_records": validity["total_paired_records"],
             "valid_paired_records": validity["valid_paired_records"],
