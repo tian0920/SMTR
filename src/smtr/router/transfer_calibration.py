@@ -14,13 +14,12 @@ from typing import Any
 
 import numpy as np
 from sklearn.isotonic import IsotonicRegression
-from sklearn.linear_model import LogisticRegression
 
 from smtr.counterfactual.edge_keys import (
     TreatmentEdgeKey,
     group_records_by_edge,
 )
-from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES
+from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES, paired_record_label
 
 LABELS = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
 LABEL_TO_INDEX = {label: i for i, label in enumerate(LABELS)}
@@ -29,106 +28,168 @@ DEFAULT_EPSILONS = (0.05, 0.10, 0.20, 0.30)
 
 @dataclass(frozen=True)
 class EdgeCalibrationExample:
-    """One validation edge's calibration example (清单 P0-7).
+    """One validation edge's calibration example (清单 P0-2).
 
-    ``predicted_q01`` is the critic's mean predicted negative-transfer
-    probability across the edge's seed records; ``empirical_eta`` is the
-    observed negative-transfer rate ``N_e^01 / N_e`` on those seeds.
+    Exactly one example per treatment edge: ``predicted_q01`` /
+    ``predicted_tau`` come from a single critic prediction for the edge,
+    and the empirical values are rates over the edge's valid seed records
+    (``empirical_eta = N_e^01 / N_e``).
     """
 
-    edge_key: TreatmentEdgeKey
+    task_id: str
+    receiver_agent_id: str
+    candidate_memory_id: str
+
     predicted_q01: float
+    predicted_tau: float
+
     empirical_eta: float
-    seed_count: int
+    empirical_share_success: float
+    empirical_withhold_success: float
+
+    valid_seed_count: int
+
+    @property
+    def edge_key(self) -> TreatmentEdgeKey:
+        return (self.task_id, self.receiver_agent_id, self.candidate_memory_id)
 
 
 def build_edge_calibration_examples(
+    *,
     records: list[dict[str, Any]],
-    predicted_q01: np.ndarray,
-    labels: list[str],
+    predictions_by_edge: dict[TreatmentEdgeKey, dict[str, float]],
 ) -> list[EdgeCalibrationExample]:
-    """Aggregate validation records into per-edge calibration examples.
+    """Aggregate validation records into one calibration example per edge.
 
-    Fitting on these examples instead of raw seed records avoids fitting the
-    same edge prediction repeatedly across its seeds (清单 P0-7).
+    ``predictions_by_edge`` maps each treatment edge to its single critic
+    prediction ``{"predicted_q01": ..., "predicted_tau": ...}``; calling the
+    critic repeatedly on an edge's seed records and treating the copies as
+    independent calibration samples is forbidden (清单 P0-2).
     """
-    predicted_q01 = np.asarray(predicted_q01, dtype=float)
-    if len(predicted_q01) != len(records) or len(labels) != len(records):
-        raise ValueError("records, predicted_q01 and labels must align")
     examples: list[EdgeCalibrationExample] = []
     for edge_key, rows in group_records_by_edge(records).items():
-        empirical_eta = float(
-            np.mean([labels[i] == "negative_transfer" for i in rows])
+        prediction = predictions_by_edge.get(edge_key)
+        if prediction is None:
+            raise ValueError(
+                f"edge {edge_key} has records but no critic prediction; "
+                "predictions must cover every validation edge"
+            )
+        edge_records = [records[i] for i in rows]
+        n = len(edge_records)
+        negative_count = sum(
+            1
+            for record in edge_records
+            if _record_label(record) == "negative_transfer"
+        )
+        share_success_count = sum(
+            bool(record["share"]["team_success"]) for record in edge_records
+        )
+        withhold_success_count = sum(
+            bool(record["withhold"]["team_success"]) for record in edge_records
         )
         examples.append(
             EdgeCalibrationExample(
-                edge_key=edge_key,
-                predicted_q01=float(predicted_q01[rows].mean()),
-                empirical_eta=empirical_eta,
-                seed_count=len(rows),
+                task_id=str(edge_key[0]),
+                receiver_agent_id=str(edge_key[1]),
+                candidate_memory_id=str(edge_key[2]),
+                predicted_q01=float(prediction["predicted_q01"]),
+                predicted_tau=float(prediction["predicted_tau"]),
+                empirical_eta=negative_count / n,
+                empirical_share_success=share_success_count / n,
+                empirical_withhold_success=withhold_success_count / n,
+                valid_seed_count=n,
             )
         )
     return examples
 
 
-class Q01Calibrator:
-    """Calibrates predicted q01 against the negative-transfer indicator.
+def _record_label(record: dict[str, Any]) -> str:
+    """Transfer label of one record, preferring the persisted label."""
+    label = record.get("label")
+    if label:
+        return str(label)
+    return paired_record_label(record)
 
-    Uses isotonic regression when enough validation points are available,
-    otherwise falls back to Platt-style logistic calibration.
+
+class Q01Calibrator:
+    """Calibrates predicted q01 against continuous edge-level empirical eta.
+
+    Edge-level empirical negative-transfer rates are continuous
+    (``0, 1/n, ..., 1``); the calibrator therefore never requires exactly
+    two unique target values and never binarizes the targets (清单 P0-1).
+    With at least ``min_edges_for_isotonic`` validation edges an isotonic
+    regression is fitted; otherwise the calibrator reports
+    ``insufficient_validation_edges`` and applies the identity map instead
+    of pretending calibration succeeded.
     """
 
-    def __init__(self, *, min_isotonic_samples: int = 20) -> None:
-        self.min_isotonic_samples = min_isotonic_samples
-        self.method: str | None = None
-        self._model = None
+    def __init__(self, *, min_edges_for_isotonic: int = 20) -> None:
+        self.min_edges_for_isotonic = min_edges_for_isotonic
+        self.method: str = "unfitted"
+        self.model = None
+        self.calibration_status: str = "unfitted"
+        self.n_edges: int = 0
 
     def fit(
         self,
-        q01: np.ndarray,
-        y_negative: np.ndarray,
+        predicted_q01: np.ndarray,
+        empirical_eta: np.ndarray,
+        *,
         sample_weight: np.ndarray | None = None,
     ) -> Q01Calibrator:
-        """Fit on calibration targets.
-
-        Targets may be binary seed indicators or continuous edge-level
-        empirical rates (清单 P0-7); ``sample_weight`` then carries the
-        edge seed counts so edges with more seeds weigh proportionally more.
-        """
-        q01 = np.asarray(q01, dtype=float)
-        y_negative = np.asarray(y_negative, dtype=float)
+        """Fit on one (predicted q01, empirical eta) pair per edge."""
+        predicted_q01 = np.asarray(predicted_q01, dtype=float)
+        empirical_eta = np.asarray(empirical_eta, dtype=float)
+        if predicted_q01.ndim != 1:
+            raise ValueError("predicted_q01 must be one-dimensional")
+        if empirical_eta.ndim != 1:
+            raise ValueError("empirical_eta must be one-dimensional")
+        if len(predicted_q01) != len(empirical_eta):
+            raise ValueError(
+                "predicted_q01 and empirical_eta length mismatch"
+            )
+        if np.any(predicted_q01 < 0) or np.any(predicted_q01 > 1):
+            raise ValueError("predicted_q01 must lie in [0, 1]")
+        if np.any(empirical_eta < 0) or np.any(empirical_eta > 1):
+            raise ValueError("empirical_eta must lie in [0, 1]")
         if sample_weight is not None:
             sample_weight = np.asarray(sample_weight, dtype=float)
-            if len(sample_weight) != len(q01):
-                raise ValueError("sample_weight must align with q01")
-        both_classes = len(np.unique(y_negative)) == 2
-        if both_classes and len(q01) >= self.min_isotonic_samples:
-            self._model = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
-            self._model.fit(q01, y_negative, sample_weight=sample_weight)
+            if len(sample_weight) != len(predicted_q01):
+                raise ValueError("sample_weight must align with predicted_q01")
+
+        self.n_edges = int(len(predicted_q01))
+        if len(predicted_q01) >= self.min_edges_for_isotonic:
+            self.model = IsotonicRegression(
+                y_min=0.0,
+                y_max=1.0,
+                out_of_bounds="clip",
+                increasing=True,
+            )
+            self.model.fit(predicted_q01, empirical_eta, sample_weight=sample_weight)
             self.method = "isotonic"
+            self.calibration_status = "fitted"
         else:
-            self._model = LogisticRegression(max_iter=1000, solver="lbfgs")
-            if both_classes:
-                # Platt fallback needs class targets; threshold continuous
-                # edge-level rates at 0.5 for the binary decision.
-                self._model.fit(
-                    q01.reshape(-1, 1),
-                    (y_negative >= 0.5).astype(int),
-                    sample_weight=sample_weight,
-                )
-                self.method = "platt"
-            else:
-                # Degenerate validation set: keep raw probabilities.
-                self.method = "identity"
+            # Not enough validation edges for a monotone fit; keep raw
+            # probabilities and say so explicitly (清单 P0-1).
+            self.model = None
+            self.method = "identity"
+            self.calibration_status = "insufficient_validation_edges"
         return self
 
-    def predict(self, q01: np.ndarray) -> np.ndarray:
-        q01 = np.asarray(q01, dtype=float)
-        if self._model is None or self.method == "identity":
-            return q01
+    def transform(self, predicted_q01: np.ndarray) -> np.ndarray:
+        """Calibrated q01, clipped to [0, 1]."""
+        x = np.asarray(predicted_q01, dtype=float)
         if self.method == "isotonic":
-            return np.clip(self._model.predict(q01), 0.0, 1.0)
-        return self._model.predict_proba(q01.reshape(-1, 1))[:, 1]
+            calibrated = self.model.predict(x)
+        elif self.method == "identity":
+            calibrated = x
+        else:
+            raise RuntimeError("calibrator is not fitted")
+        return np.clip(calibrated, 0.0, 1.0)
+
+    # Existing call sites use ``predict``; it is the same operation.
+    def predict(self, predicted_q01: np.ndarray) -> np.ndarray:
+        return self.transform(predicted_q01)
 
 
 def predicted_label(probs: np.ndarray) -> str:

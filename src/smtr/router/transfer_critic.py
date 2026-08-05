@@ -14,6 +14,7 @@ from smtr.core.types import (
     TransferPrediction,
     TransferPredictionDistribution,
 )
+from smtr.counterfactual.edge_keys import group_records_by_edge
 from smtr.router.transfer_calibration import (
     DEFAULT_EPSILONS,
     Q01Calibrator,
@@ -66,6 +67,7 @@ class FourOutcomeTransferCritic:
         self.calibration_split: str | None = None
         self.epsilon_selection_split: str | None = None
         self.validation_edge_count: int | None = None
+        self._edge_calibration_examples: list | None = None
 
     def fit(
         self,
@@ -259,15 +261,28 @@ class FourOutcomeTransferCritic:
             [p.q10_positive_transfer - p.q01_negative_transfer for p in preds]
         )
         if records is not None:
-            # Edge-level calibration: one example per treatment edge,
-            # weighted by its seed count.
-            examples = build_edge_calibration_examples(records, q01, labels)
-            self.q01_calibrator = Q01Calibrator().fit(
-                np.array([ex.predicted_q01 for ex in examples]),
-                np.array([ex.empirical_eta for ex in examples]),
-                sample_weight=np.array([ex.seed_count for ex in examples]),
+            # Edge-level calibration (清单 P0-2/P0-3): exactly one critic
+            # prediction and one example per treatment edge, edges equally
+            # weighted (one edge = one calibration unit).
+            predictions_by_edge: dict[tuple, dict[str, float]] = {}
+            for edge_key, rows in group_records_by_edge(records).items():
+                # Seeds do not enter features, so one representative input
+                # yields the edge's unique critic prediction.
+                pred = self.predict(inputs[rows[0]])
+                predictions_by_edge[edge_key] = {
+                    "predicted_q01": pred.q01_negative_transfer,
+                    "predicted_tau": (
+                        pred.q10_positive_transfer - pred.q01_negative_transfer
+                    ),
+                }
+            self._edge_calibration_examples = build_edge_calibration_examples(
+                records=records, predictions_by_edge=predictions_by_edge
             )
-            self.validation_edge_count = len(examples)
+            self.q01_calibrator = Q01Calibrator().fit(
+                np.array([ex.predicted_q01 for ex in self._edge_calibration_examples]),
+                np.array([ex.empirical_eta for ex in self._edge_calibration_examples]),
+            )
+            self.validation_edge_count = len(self._edge_calibration_examples)
         else:
             y_negative = np.array(
                 [1 if lb == "negative_transfer" else 0 for lb in labels]

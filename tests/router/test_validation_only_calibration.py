@@ -15,10 +15,15 @@ from smtr.core.types import (
     MemoryRoutingCard,
     ReceiverState,
 )
+from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES
 from smtr.router.transfer_calibration import build_edge_calibration_examples
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
 ALL_LABELS = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
+
+
+def _branch_block(outcome: int) -> dict:
+    return {"team_success": bool(outcome)}
 
 
 def _make_dataset(labels: list[str]):
@@ -41,12 +46,16 @@ def _make_dataset(labels: list[str]):
             receiver=receiver,
         )
         inputs.append(CandidateExposureInput(receiver_state=rs, candidate_card=card))
+        y_share, y_withhold = LABEL_TO_OUTCOMES[label]
         records.append(
             {
                 "task_id": f"task{i % 4}",
                 "receiver_agent_id": f"r{i % 3}",
                 "candidate_memory_id": f"m{i % 5}",
                 "generation_seed": i,
+                "label": label,
+                "share": _branch_block(y_share),
+                "withhold": _branch_block(y_withhold),
             }
         )
     return inputs, labels, records
@@ -60,19 +69,18 @@ def _fitted_critic() -> tuple[FourOutcomeTransferCritic, list, list, list]:
     return critic, inputs, labels, records
 
 
+def _predictions_by_edge(records, q01_by_index):
+    """Single prediction per edge keyed by (task, receiver, memory)."""
+    preds = {}
+    for i, rec in enumerate(records):
+        key = (rec["task_id"], rec["receiver_agent_id"], rec["candidate_memory_id"])
+        preds.setdefault(key, {"predicted_q01": q01_by_index[i], "predicted_tau": 0.0})
+    return preds
+
+
 class TestEdgeLevelCalibrationExamples:
     def test_one_example_per_edge(self):
         """Multi-seed edges yield one calibration example each (P0-7)."""
-        records = [
-            {"task_id": "t1", "receiver_agent_id": "r1",
-             "candidate_memory_id": "m1", "generation_seed": s}
-            for s in range(4)
-        ]
-        records.append(
-            {"task_id": "t1", "receiver_agent_id": "r1",
-             "candidate_memory_id": "m2", "generation_seed": 0}
-        )
-        q01 = np.array([0.30, 0.34, 0.26, 0.30, 0.80])
         labels = [
             "negative_transfer",
             "neutral_success",
@@ -80,23 +88,55 @@ class TestEdgeLevelCalibrationExamples:
             "negative_transfer",
             "negative_transfer",
         ]
-        examples = build_edge_calibration_examples(records, q01, labels)
+        records = []
+        for s in range(4):
+            y_share, y_withhold = LABEL_TO_OUTCOMES[labels[s]]
+            records.append(
+                {"task_id": "t1", "receiver_agent_id": "r1",
+                 "candidate_memory_id": "m1", "generation_seed": s,
+                 "label": labels[s],
+                 "share": _branch_block(y_share),
+                 "withhold": _branch_block(y_withhold)}
+            )
+        y_share, y_withhold = LABEL_TO_OUTCOMES[labels[4]]
+        records.append(
+            {"task_id": "t1", "receiver_agent_id": "r1",
+             "candidate_memory_id": "m2", "generation_seed": 0,
+             "label": labels[4],
+             "share": _branch_block(y_share),
+             "withhold": _branch_block(y_withhold)}
+        )
+        predictions = {
+            ("t1", "r1", "m1"): {"predicted_q01": 0.30, "predicted_tau": 0.10},
+            ("t1", "r1", "m2"): {"predicted_q01": 0.80, "predicted_tau": -0.5},
+        }
+        examples = build_edge_calibration_examples(
+            records=records, predictions_by_edge=predictions
+        )
         assert len(examples) == 2
         by_key = {ex.edge_key: ex for ex in examples}
         edge_m1 = by_key[("t1", "r1", "m1")]
-        assert edge_m1.seed_count == 4
+        assert edge_m1.valid_seed_count == 4
         # empirical eta_e = N_e^01 / N_e = 3/4
         assert edge_m1.empirical_eta == pytest.approx(0.75)
         assert edge_m1.predicted_q01 == pytest.approx(0.30)
+        assert edge_m1.predicted_tau == pytest.approx(0.10)
+        # m1: share outcomes = (0,1,0,0) -> 1/4; withhold = (1,1,1,1) -> 1.0
+        assert edge_m1.empirical_share_success == pytest.approx(0.25)
+        assert edge_m1.empirical_withhold_success == pytest.approx(1.0)
         assert by_key[("t1", "r1", "m2")].empirical_eta == pytest.approx(1.0)
 
-    def test_misaligned_inputs_rejected(self):
+    def test_edge_without_prediction_rejected(self):
+        y_share, y_withhold = LABEL_TO_OUTCOMES["negative_transfer"]
         records = [
             {"task_id": "t1", "receiver_agent_id": "r1",
-             "candidate_memory_id": "m1", "generation_seed": 0}
+             "candidate_memory_id": "m1", "generation_seed": 0,
+             "label": "negative_transfer",
+             "share": _branch_block(y_share),
+             "withhold": _branch_block(y_withhold)}
         ]
-        with pytest.raises(ValueError):
-            build_edge_calibration_examples(records, np.array([0.1, 0.2]), ["negative_transfer"])
+        with pytest.raises(ValueError, match="no critic prediction"):
+            build_edge_calibration_examples(records=records, predictions_by_edge={})
 
 
 class TestValidationOnlyCalibration:
@@ -106,7 +146,10 @@ class TestValidationOnlyCalibration:
         selection = critic.calibrate_q01(
             inputs, labels, records, split_name="validation", delta=0.5
         )
-        n_edges = {tuple(sorted(rec.items())) for rec in records}
+        n_edges = {
+            (rec["task_id"], rec["receiver_agent_id"], rec["candidate_memory_id"])
+            for rec in records
+        }
         assert selection["calibration_level"] == "edge"
         assert selection["validation_edge_count"] == len(n_edges)
         assert critic.calibration_split == "validation"
