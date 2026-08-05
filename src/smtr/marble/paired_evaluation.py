@@ -23,7 +23,11 @@ from smtr.evaluation.receiver_effect_analysis import (
     record_label,
 )
 from smtr.evaluation.tables import write_result_table, format_markdown_table
-from smtr.marble.core_validity import filter_core_paired_records, require_core_formal_validity
+from smtr.marble.core_validity import (
+    filter_core_paired_records,
+    is_core_valid_pair,
+    require_core_formal_validity,
+)
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.baselines import (
     GlobalTransferCriticRouter,
@@ -178,11 +182,28 @@ def run_paired_decision_evaluation(
     # Run evaluation per method using candidate manifest
     all_method_metrics: list[dict[str, Any]] = []
     all_traces: dict[str, list[dict]] = {m: [] for m in methods}
+    all_receiver_traces: dict[str, list[dict]] = {m: [] for m in methods}
 
-    # Determine generation seeds from paired records
-    paired_seeds = sorted({int(r.get("generation_seed", 0)) for r in paired_outcomes})
-    if not paired_seeds:
-        paired_seeds = [0]
+    # Per-edge observed seeds (清单 P0-9): seeds are repeated trials of one
+    # treatment edge, so each edge only evaluates under the seeds actually
+    # observed for it. A global seed union backfilling every edge is
+    # forbidden.
+    edge_to_valid_records: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
+    for record in paired_outcomes:
+        if not is_core_valid_pair(record):
+            continue
+        edge_key = (
+            str(record["task_id"]),
+            str(record["receiver_agent_id"]),
+            str(record["candidate_memory_id"]),
+        )
+        edge_to_valid_records[edge_key].append(record)
+    edge_to_seeds = {
+        edge_key: sorted({int(record["generation_seed"]) for record in records})
+        for edge_key, records in edge_to_valid_records.items()
+    }
+
+    unsupported_candidate_edges: list[dict[str, str]] = []
 
     for entry in candidates_manifest.get("candidates", []):
         task_id = entry["task_id"]
@@ -197,6 +218,12 @@ def run_paired_decision_evaluation(
             card = cards_by_id.get(rec["memory_id"])
             if card is not None:
                 candidate_cards.append(card)
+                if (task_id, receiver_agent_id, rec["memory_id"]) not in edge_to_seeds:
+                    unsupported_candidate_edges.append({
+                        "task_id": task_id,
+                        "receiver_agent_id": receiver_agent_id,
+                        "candidate_memory_id": rec["memory_id"],
+                    })
 
         if not candidate_cards:
             continue
@@ -204,10 +231,18 @@ def run_paired_decision_evaluation(
         for method in methods:
             router = routers[method]
             decisions = router.decide(receiver_state, candidate_cards)
+
+            # Candidate decision traces (清单 P0-10/11): the router decision
+            # is computed once per edge and copied to that edge's own
+            # observed seeds; edges without observations produce nothing.
             for dec in decisions:
                 card = next((c for c in candidate_cards if c.memory_id == dec.memory_id), None)
-                for seed in paired_seeds:
+                observed_seeds = edge_to_seeds.get(
+                    (task_id, receiver_agent_id, dec.memory_id), []
+                )
+                for seed in observed_seeds:
                     trace = {
+                        "trace_type": "candidate_decision",
                         "task_id": task_id,
                         "generation_seed": seed,
                         "candidate_memory_id": dec.memory_id,
@@ -215,10 +250,41 @@ def run_paired_decision_evaluation(
                         "receiver_role": receiver_role,
                         "writer_role": card.writer.role if card else "unknown",
                         "action": dec.action,
+                        "candidate_action": dec.action,
                         "tau_hat": dec.tau_hat,
                         "eta_hat": dec.eta_hat,
                     }
                     all_traces[method].append(trace)
+
+            # Receiver policy traces (清单 P0-11): the final policy selects
+            # no memory or exactly one memory per receiver episode, so each
+            # receiver/seed carries exactly one policy trace.
+            episode_seeds: set[int] = set()
+            for dec in decisions:
+                episode_seeds.update(
+                    edge_to_seeds.get(
+                        (task_id, receiver_agent_id, dec.memory_id), []
+                    )
+                )
+            shared = [dec for dec in decisions if dec.action == "share"]
+            if len(shared) > 1:
+                shared_ids = sorted(dec.memory_id for dec in shared)
+                raise ValueError(
+                    "SMTR-v1 forbids selecting multiple memories for one "
+                    f"receiver episode (task={task_id}, "
+                    f"receiver={receiver_agent_id}): {shared_ids}"
+                )
+            selected_memory_id = shared[0].memory_id if shared else None
+            policy_action = "share" if shared else "withhold"
+            for seed in sorted(episode_seeds):
+                all_receiver_traces[method].append({
+                    "trace_type": "receiver_policy",
+                    "task_id": task_id,
+                    "receiver_agent_id": receiver_agent_id,
+                    "generation_seed": seed,
+                    "selected_memory_id": selected_memory_id,
+                    "policy_action": policy_action,
+                })
 
     # Compute metrics
     output.mkdir(parents=True, exist_ok=True)
@@ -258,6 +324,9 @@ def run_paired_decision_evaluation(
     )
     (output / "traces.json").write_text(
         json.dumps(all_traces, indent=2), encoding="utf-8"
+    )
+    (output / "receiver_policy_traces.json").write_text(
+        json.dumps(all_receiver_traces, indent=2), encoding="utf-8"
     )
 
     # Risk-utility curve for SMTR on the evaluation split, using the
@@ -334,6 +403,13 @@ def run_paired_decision_evaluation(
         },
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
+        "unsupported_candidate_edges": unsupported_candidate_edges,
+        "candidate_trace_counts": {
+            method: len(traces) for method, traces in all_traces.items()
+        },
+        "receiver_policy_trace_counts": {
+            method: len(traces) for method, traces in all_receiver_traces.items()
+        },
         "receiver_effect_analysis": receiver_effect,
         "receiver_effect_anchor_analysis": receiver_effect_anchors,
         "receiver_effect_comparison": receiver_effect_comparison,
