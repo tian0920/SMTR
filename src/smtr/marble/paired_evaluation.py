@@ -13,7 +13,14 @@ from smtr.evaluation.cluster_bootstrap import (
     cluster_bootstrap_ci,
 )
 from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
-from smtr.evaluation.receiver_effect_analysis import analyze_receiver_effect, record_label
+from smtr.evaluation.receiver_effect_analysis import (
+    analyze_receiver_effect,
+    analyze_receiver_effect_anchor_groups,
+    build_receiver_effect_anchor_groups,
+    compare_receiver_effect_methods,
+    empirical_receiver_effects,
+    record_label,
+)
 from smtr.evaluation.tables import write_result_table, format_markdown_table
 from smtr.marble.core_validity import filter_core_paired_records, require_core_formal_validity
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
@@ -260,6 +267,37 @@ def run_paired_decision_evaluation(
             json.dumps(receiver_effect, indent=2), encoding="utf-8"
         )
 
+    # Cross-receiver anchor analysis (清单 P0-12~14). epsilon_star is read
+    # from the validation-selected checkpoint and never re-tuned here.
+    receiver_effect_anchors: dict[str, Any] = {}
+    receiver_effect_comparison: dict[str, Any] = {}
+    if isinstance(eps_star, (int, float)):
+        anchor_groups = build_receiver_effect_anchor_groups(paired_outcomes)
+        effects = empirical_receiver_effects(paired_outcomes)
+        receiver_effect_anchors = analyze_receiver_effect_anchor_groups(
+            anchor_groups,
+            effects,
+            epsilon_star=float(eps_star),
+            decisions=all_traces.get("smtr"),
+        )
+        (output / "receiver_effect_anchor_analysis.json").write_text(
+            json.dumps(receiver_effect_anchors, indent=2), encoding="utf-8"
+        )
+        comparison_methods = [
+            m
+            for m in ("global_transfer_critic", "smtr_no_pair_interaction", "smtr")
+            if m in methods
+        ]
+        if comparison_methods:
+            receiver_effect_comparison = compare_receiver_effect_methods(
+                decisions_by_method={m: all_traces[m] for m in comparison_methods},
+                paired_records=paired_outcomes,
+                epsilon_star=float(eps_star),
+            )
+            (output / "receiver_effect_comparison.json").write_text(
+                json.dumps(receiver_effect_comparison, indent=2), encoding="utf-8"
+            )
+
     md_table = format_markdown_table(all_method_metrics)
     (output / "result_table.md").write_text(md_table, encoding="utf-8")
 
@@ -276,6 +314,8 @@ def run_paired_decision_evaluation(
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
         "receiver_effect_analysis": receiver_effect,
+        "receiver_effect_anchor_analysis": receiver_effect_anchors,
+        "receiver_effect_comparison": receiver_effect_comparison,
         "cluster_bootstrap_ci": ci_by_method,
     }
 

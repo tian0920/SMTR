@@ -26,6 +26,9 @@ import numpy as np
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.transfer_features import _overlap_bucket
 
+# 清单 P0-12: anchor group key is (target_task_id, candidate_memory_id).
+ReceiverEffectGroupKey = tuple[str, str]
+
 
 def record_seed(rec: dict[str, Any]) -> int:
     """Generation seed of a paired record (generation_seed or common_seed)."""
@@ -158,6 +161,285 @@ def analyze_receiver_effect(
         },
         "risk_heterogeneity": risk_heterogeneity,
     }
+
+
+def build_receiver_effect_anchor_groups(
+    paired_records: list[dict[str, Any]],
+    *,
+    min_seeds_per_receiver: int = 1,
+) -> dict[ReceiverEffectGroupKey, dict[str, list[dict[str, Any]]]]:
+    """Cross-receiver anchor groups (清单 P0-12).
+
+    A group ``(target_task_id, candidate_memory_id)`` is kept only when the
+    same task + memory combination is evaluated by at least two different
+    receivers and every receiver carries at least ``min_seeds_per_receiver``
+    valid seed records.
+    """
+    grouped: dict[ReceiverEffectGroupKey, dict[str, list[dict[str, Any]]]] = (
+        defaultdict(lambda: defaultdict(list))
+    )
+    for rec in paired_records:
+        key = (
+            str(rec.get("task_id", "")),
+            str(rec.get("candidate_memory_id", "")),
+        )
+        grouped[key][str(rec.get("receiver_agent_id", ""))].append(rec)
+    anchors: dict[ReceiverEffectGroupKey, dict[str, list[dict[str, Any]]]] = {}
+    for key, by_receiver in grouped.items():
+        sufficient = {
+            receiver: recs
+            for receiver, recs in by_receiver.items()
+            if len(recs) >= min_seeds_per_receiver
+        }
+        if len(sufficient) >= 2:
+            anchors[key] = dict(sufficient)
+    return anchors
+
+
+_LABEL_TO_Q_INDEX = {
+    "neutral_failure": 0,
+    "negative_transfer": 1,
+    "positive_transfer": 2,
+    "neutral_success": 3,
+}
+
+
+def empirical_receiver_effects(
+    paired_records: list[dict[str, Any]],
+) -> dict[tuple[str, str, str], dict[str, float]]:
+    """Empirical receiver-specific effects per (task, memory, receiver).
+
+    Label frequencies over the cell's seed records give q-hat_00/01/10/11;
+    tau_hat = q10 - q01 and eta_hat = q01 (清单 P0-13).
+    """
+    cells: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    for rec in paired_records:
+        cell = (
+            str(rec.get("task_id", "")),
+            str(rec.get("candidate_memory_id", "")),
+            str(rec.get("receiver_agent_id", "")),
+        )
+        cells[cell].append(record_label(rec))
+    effects: dict[tuple[str, str, str], dict[str, float]] = {}
+    for cell, labels in cells.items():
+        q = [0.0, 0.0, 0.0, 0.0]
+        for label in labels:
+            q[_LABEL_TO_Q_INDEX[label]] += 1.0
+        q = [v / len(labels) for v in q]
+        effects[cell] = {
+            "q00": q[0],
+            "q01": q[1],
+            "q10": q[2],
+            "q11": q[3],
+            "tau_hat": q[2] - q[1],
+            "eta_hat": q[1],
+            "seed_count": float(len(labels)),
+        }
+    return effects
+
+
+def analyze_receiver_effect_anchor_groups(
+    anchor_groups: dict[ReceiverEffectGroupKey, dict[str, list[dict[str, Any]]]],
+    effects: dict[tuple[str, str, str], dict[str, float]],
+    *,
+    epsilon_star: float,
+    decisions: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Per-anchor-group receiver-effect statistics (清单 P0-13).
+
+    Reports the tau range across receivers, transfer-sign flip, harm-risk
+    flip against the validation-selected epsilon_star, and (when method
+    decisions are supplied) the SMTR decision flip for identical
+    task + memory across receivers.
+    """
+    decision_cells = _decision_cell_table(decisions) if decisions else {}
+    groups: dict[str, Any] = {}
+    counts = {"transfer_sign_flip": 0, "harm_risk_flip": 0, "decision_flip": 0}
+    for (task_id, memory_id), by_receiver in anchor_groups.items():
+        taus: dict[str, float] = {}
+        etas: dict[str, float] = {}
+        for receiver in by_receiver:
+            cell = (task_id, memory_id, receiver)
+            if cell in effects:
+                taus[receiver] = effects[cell]["tau_hat"]
+                etas[receiver] = effects[cell]["eta_hat"]
+        transfer_sign_flip = (
+            any(t > 0 for t in taus.values()) and any(t < 0 for t in taus.values())
+        )
+        harm_risk_flip = (
+            any(e <= epsilon_star for e in etas.values())
+            and any(e > epsilon_star for e in etas.values())
+        )
+        actions = {
+            decision_cells[(task_id, memory_id, receiver)]["action"]
+            for receiver in by_receiver
+            if (task_id, memory_id, receiver) in decision_cells
+        }
+        decision_flip = len(actions) > 1
+        for flag, name in (
+            (transfer_sign_flip, "transfer_sign_flip"),
+            (harm_risk_flip, "harm_risk_flip"),
+            (decision_flip, "decision_flip"),
+        ):
+            if flag:
+                counts[name] += 1
+        groups[f"{task_id}|{memory_id}"] = {
+            "receivers": sorted(by_receiver),
+            "tau_by_receiver": {r: round(v, 4) for r, v in sorted(taus.items())},
+            "eta_by_receiver": {r: round(v, 4) for r, v in sorted(etas.items())},
+            "delta_tau_range": (
+                round(max(taus.values()) - min(taus.values()), 4) if taus else 0.0
+            ),
+            "transfer_sign_flip": transfer_sign_flip,
+            "harm_risk_flip": harm_risk_flip,
+            "decision_flip": decision_flip,
+        }
+    n_groups = max(1, len(anchor_groups))
+    return {
+        "epsilon_star": epsilon_star,
+        "anchor_group_count": len(anchor_groups),
+        "transfer_sign_flip_count": counts["transfer_sign_flip"],
+        "transfer_sign_flip_rate": round(counts["transfer_sign_flip"] / n_groups, 4),
+        "harm_risk_flip_count": counts["harm_risk_flip"],
+        "harm_risk_flip_rate": round(counts["harm_risk_flip"] / n_groups, 4),
+        "decision_flip_count": counts["decision_flip"],
+        "decision_flip_rate": round(counts["decision_flip"] / n_groups, 4),
+        "groups": groups,
+    }
+
+
+def compare_receiver_effect_methods(
+    *,
+    decisions_by_method: dict[str, list[dict[str, Any]]],
+    paired_records: list[dict[str, Any]],
+    epsilon_star: float,
+    min_seeds_per_receiver: int = 1,
+) -> dict[str, Any]:
+    """Receiver-effect comparison table (清单 P0-14).
+
+    Compares each method against the empirical receiver-specific effects on
+    anchor groups: sign accuracy, receiver-specific decision accuracy,
+    harmful-exposure rejection (overall and per receiver) and same-memory
+    decision flip precision/recall against empirical transfer-sign flips.
+    """
+    anchor_groups = build_receiver_effect_anchor_groups(
+        paired_records, min_seeds_per_receiver=min_seeds_per_receiver
+    )
+    effects = empirical_receiver_effects(paired_records)
+    anchor_cells = {
+        (task_id, memory_id, receiver)
+        for (task_id, memory_id), by_receiver in anchor_groups.items()
+        for receiver in by_receiver
+    }
+    table: dict[str, Any] = {}
+    for method, decisions in decisions_by_method.items():
+        cells = _decision_cell_table(decisions)
+        sign_total = sign_correct = 0
+        decision_total = decision_correct = 0
+        flip_predicted = flip_empirical = flip_both = 0
+        harmful_total = harmful_rejected = 0
+        harmful_by_receiver: dict[str, list[int]] = defaultdict(list)
+        for cell in anchor_cells:
+            emp = effects.get(cell)
+            pred = cells.get(cell)
+            if emp is None:
+                continue
+            if pred is not None:
+                sign_total += 1
+                if (pred["tau_hat"] > 0) == (emp["tau_hat"] > 0):
+                    sign_correct += 1
+                optimal_share = emp["tau_hat"] > 0 and emp["eta_hat"] <= epsilon_star
+                decision_total += 1
+                if (pred["action"] == "share") == optimal_share:
+                    decision_correct += 1
+            harmful = record_cell_is_harmful(cell, effects)
+            if pred is not None and harmful:
+                harmful_total += 1
+                rejected = pred["action"] != "share"
+                harmful_rejected += int(rejected)
+                harmful_by_receiver[cell[2]].append(int(rejected))
+        # Same-memory decision flip precision/recall over anchor groups.
+        for (task_id, memory_id), by_receiver in anchor_groups.items():
+            emp_taus = [
+                effects[(task_id, memory_id, r)]["tau_hat"]
+                for r in by_receiver
+                if (task_id, memory_id, r) in effects
+            ]
+            if len(emp_taus) < 2:
+                continue
+            emp_flip = any(t > 0 for t in emp_taus) and any(t < 0 for t in emp_taus)
+            pred_actions = {
+                cells[(task_id, memory_id, r)]["action"]
+                for r in by_receiver
+                if (task_id, memory_id, r) in cells
+            }
+            pred_flip = len(pred_actions) > 1
+            flip_predicted += int(pred_flip)
+            flip_empirical += int(emp_flip)
+            flip_both += int(pred_flip and emp_flip)
+        table[method] = {
+            "anchor_group_count": len(anchor_groups),
+            "receiver_effect_sign_accuracy": (
+                round(sign_correct / sign_total, 4) if sign_total else 0.0
+            ),
+            "receiver_specific_decision_accuracy": (
+                round(decision_correct / decision_total, 4) if decision_total else 0.0
+            ),
+            "harmful_exposure_rejection_rate": (
+                round(harmful_rejected / harmful_total, 4) if harmful_total else 1.0
+            ),
+            "harmful_exposure_rejection_by_receiver": {
+                receiver: round(float(np.mean(flags)), 4)
+                for receiver, flags in sorted(harmful_by_receiver.items())
+            },
+            "same_memory_decision_flip_precision": (
+                round(flip_both / flip_predicted, 4) if flip_predicted else 0.0
+            ),
+            "same_memory_decision_flip_recall": (
+                round(flip_both / flip_empirical, 4) if flip_empirical else 0.0
+            ),
+        }
+    return {
+        "epsilon_star": epsilon_star,
+        "min_seeds_per_receiver": min_seeds_per_receiver,
+        "methods": table,
+    }
+
+
+def record_cell_is_harmful(
+    cell: tuple[str, str, str],
+    effects: dict[tuple[str, str, str], dict[str, float]],
+) -> bool:
+    """A cell is harmful when its empirical negative-transfer rate is > 0."""
+    emp = effects.get(cell)
+    return bool(emp and emp["q01"] > 0)
+
+
+def _decision_cell_table(
+    decisions: list[dict[str, Any]],
+) -> dict[tuple[str, str, str], dict[str, Any]]:
+    """Aggregate decision traces to (task, memory, receiver) cells.
+
+    The cell action is ``share`` when at least half of the seed-level
+    decisions share; tau_hat/eta_hat are the seed means.
+    """
+    grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for d in decisions:
+        cell = (
+            str(d.get("task_id", "")),
+            str(d.get("candidate_memory_id", "")),
+            str(d.get("receiver_agent_id", "")),
+        )
+        grouped[cell].append(d)
+    cells: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for cell, entries in grouped.items():
+        share_rate = float(np.mean([d.get("action") == "share" for d in entries]))
+        cells[cell] = {
+            "action": "share" if share_rate >= 0.5 else "withhold",
+            "tau_hat": float(np.mean([float(d.get("tau_hat", 0.0)) for d in entries])),
+            "eta_hat": float(np.mean([float(d.get("eta_hat", 0.0)) for d in entries])),
+        }
+    return cells
 
 
 def decision_flip_count_for(
