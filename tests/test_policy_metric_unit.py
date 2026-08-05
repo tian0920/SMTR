@@ -106,7 +106,7 @@ class TestPolicyMetricUnit:
             _paired_record("m2", share_success=False, withhold_success=False),
         ]
         decisions = [_decision("m1", "withhold"), _decision("m2", "withhold")]
-        with pytest.raises(ValueError, match="Inconsistent withhold"):
+        with pytest.raises(ValueError, match="inconsistent no-memory outcome"):
             compute_receiver_policy_metrics(
                 method="test", decisions=decisions, paired_outcomes=outcomes,
             )

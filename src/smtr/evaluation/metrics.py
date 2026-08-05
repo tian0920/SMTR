@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from smtr.marble.core_validity import is_core_valid_pair
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 
 
@@ -187,10 +188,10 @@ def compute_receiver_policy_metrics(
             if not withhold_outcomes:
                 continue
             if len(withhold_outcomes) > 1:
-                raise ValueError(
-                    "Inconsistent withhold (Y_0) outcomes within one receiver "
-                    f"episode (task={task_id}, receiver={receiver_agent_id}, "
-                    f"seed={seed}): {sorted(withhold_outcomes)}"
+                raise InconsistentControlOutcomeError(
+                    "inconsistent no-memory outcome across candidates "
+                    f"for the same task/receiver/seed (task={task_id}, "
+                    f"receiver={receiver_agent_id}, seed={seed})"
                 )
             policy_total += 1
             episodes_no_memory += 1
@@ -206,6 +207,124 @@ def compute_receiver_policy_metrics(
         "episodes_with_share": episodes_with_share,
         "episodes_no_memory": episodes_no_memory,
     }
+
+
+def _valid_pair_keys(paired_records: list[dict[str, Any]]) -> set[tuple[str, str, str, int]]:
+    """Core-valid (task, receiver, memory, seed) keys."""
+    return {
+        (
+            str(record["task_id"]),
+            str(record["receiver_agent_id"]),
+            str(record["candidate_memory_id"]),
+            int(record["generation_seed"]),
+        )
+        for record in paired_records
+        if is_core_valid_pair(record)
+    }
+
+
+def compute_candidate_decision_coverage(
+    *,
+    candidate_decision_traces: list[dict[str, Any]],
+    paired_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Candidate decision coverage (清单 P0-12).
+
+    The denominator is the set of core-valid candidate-seed records, not
+    the number of traces: coverage counts which expected records the
+    traces actually support, and traces without a matching record are
+    reported as unexpected instead of inflating the numerator.
+    """
+    valid_pair_keys = _valid_pair_keys(paired_records)
+    trace_keys = {
+        (
+            str(trace["task_id"]),
+            str(trace["receiver_agent_id"]),
+            str(trace["candidate_memory_id"]),
+            int(trace["generation_seed"]),
+        )
+        for trace in candidate_decision_traces
+    }
+    matched_keys = valid_pair_keys & trace_keys
+    missing_keys = valid_pair_keys - trace_keys
+    unexpected_keys = trace_keys - valid_pair_keys
+    return {
+        "candidate_decision_coverage": (
+            len(matched_keys) / len(valid_pair_keys) if valid_pair_keys else 0.0
+        ),
+        "valid_candidate_seed_count": len(valid_pair_keys),
+        "matched_candidate_seed_count": len(matched_keys),
+        "missing_candidate_seed_count": len(missing_keys),
+        "unexpected_candidate_seed_trace_count": len(unexpected_keys),
+    }
+
+
+def compute_receiver_episode_coverage(
+    *,
+    receiver_policy_traces: list[dict[str, Any]],
+    paired_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Receiver episode coverage (清单 P0-13).
+
+    The denominator is the set of evaluable (task, receiver, seed)
+    episodes: how many candidates the router inspected never divides the
+    coverage, because each episode carries exactly one policy trace.
+    """
+    expected_keys = {
+        (
+            str(record["task_id"]),
+            str(record["receiver_agent_id"]),
+            int(record["generation_seed"]),
+        )
+        for record in paired_records
+        if is_core_valid_pair(record)
+    }
+    observed_keys = {
+        (
+            str(trace["task_id"]),
+            str(trace["receiver_agent_id"]),
+            int(trace["generation_seed"]),
+        )
+        for trace in receiver_policy_traces
+    }
+    matched_keys = expected_keys & observed_keys
+    return {
+        "receiver_episode_coverage": (
+            len(matched_keys) / len(expected_keys) if expected_keys else 0.0
+        ),
+        "expected_receiver_seed_count": len(expected_keys),
+        "matched_receiver_seed_count": len(matched_keys),
+        "missing_receiver_seed_count": len(expected_keys - observed_keys),
+        "unexpected_receiver_policy_trace_count": len(observed_keys - expected_keys),
+    }
+
+
+def check_receiver_withhold_consistency(
+    paired_records: list[dict[str, Any]],
+) -> None:
+    """Fail fast on conflicting no-memory outcomes within one episode.
+
+    Under the same task/receiver/seed every candidate's withhold branch
+    must observe the identical no-memory outcome (清单 P0-14); otherwise
+    the receiver-level policy baseline Y_0 is not well defined.
+    """
+    by_episode: dict[tuple[str, str, int], list[dict[str, Any]]] = defaultdict(list)
+    for record in paired_records:
+        by_episode[(
+            str(record["task_id"]),
+            str(record["receiver_agent_id"]),
+            int(record["generation_seed"]),
+        )].append(record)
+    for (task_id, receiver_agent_id, generation_seed), records in by_episode.items():
+        withhold_outcomes = {
+            bool(record["withhold"]["team_success"]) for record in records
+        }
+        if len(withhold_outcomes) != 1:
+            raise ValueError(
+                "inconsistent no-memory outcome across candidates "
+                f"for the same task/receiver/seed (task={task_id}, "
+                f"receiver={receiver_agent_id}, seed={generation_seed})"
+            )
 
 
 def compute_receiver_episode_risk_utility_curve(
@@ -365,7 +484,13 @@ def compute_method_metrics(
     )
 
     n_total = len(decisions)
-    decision_coverage = policy_metrics["policy_total"] / max(1, n_total)
+    # Candidate decision coverage (清单 P0-12): the denominator is the set
+    # of core-valid candidate-seed records, never the trace count.
+    coverage = compute_candidate_decision_coverage(
+        candidate_decision_traces=decisions,
+        paired_records=paired_outcomes,
+    )
+    decision_coverage = coverage["candidate_decision_coverage"]
 
     # Writer-receiver mismatch share rate
     mismatch_share = sum(
@@ -421,6 +546,12 @@ def compute_method_metrics(
         "safe_exposure_precision": candidate_metrics["safe_exposure_precision"],
         "safe_exposure_recall": candidate_metrics["safe_exposure_recall"],
         "decision_coverage": round(decision_coverage, 4),
+        "valid_candidate_seed_count": coverage["valid_candidate_seed_count"],
+        "matched_candidate_seed_count": coverage["matched_candidate_seed_count"],
+        "missing_candidate_seed_count": coverage["missing_candidate_seed_count"],
+        "unexpected_candidate_seed_trace_count": coverage[
+            "unexpected_candidate_seed_trace_count"
+        ],
         "writer_receiver_mismatch_share_rate": round(writer_receiver_mismatch_share_rate, 4),
         "same_memory_different_receiver_flip_count": same_memory_different_receiver_flip_count,
         "receiver_specific_quarantine_pair_count": quarantine_count,

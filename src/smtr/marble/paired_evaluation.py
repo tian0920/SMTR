@@ -13,7 +13,13 @@ from smtr.evaluation.cluster_bootstrap import (
     cluster_bootstrap_ci,
 )
 from smtr.evaluation.local_outcome import local_outcome_report
-from smtr.evaluation.metrics import compute_method_metrics, compute_writer_receiver_breakdown
+from smtr.evaluation.metrics import (
+    compute_candidate_decision_coverage,
+    compute_method_metrics,
+    compute_receiver_episode_coverage,
+    compute_writer_receiver_breakdown,
+    check_receiver_withhold_consistency,
+)
 from smtr.evaluation.receiver_effect_analysis import (
     analyze_receiver_effect,
     analyze_receiver_effect_anchor_groups,
@@ -159,6 +165,10 @@ def run_paired_decision_evaluation(
     if experiment_mode is not None:
         require_core_formal_validity(paired_outcomes, experiment_mode=experiment_mode)
 
+    # 清单 P0-14: the receiver-level no-memory baseline must be identical
+    # across all candidates of the same task/receiver/seed.
+    check_receiver_withhold_consistency(paired_outcomes)
+
     # Build routers
     routers: dict[str, Any] = _build_routers(
         methods=methods,
@@ -288,6 +298,36 @@ def run_paired_decision_evaluation(
 
     # Compute metrics
     output.mkdir(parents=True, exist_ok=True)
+
+    # Coverage report (清单 P0-12/13): denominators are the core-valid
+    # candidate-seed / receiver-seed sets, never the trace counts.
+    coverage_by_method: dict[str, dict[str, Any]] = {}
+    for method in methods:
+        coverage_by_method[method] = {
+            **compute_candidate_decision_coverage(
+                candidate_decision_traces=all_traces[method],
+                paired_records=paired_outcomes,
+            ),
+            **compute_receiver_episode_coverage(
+                receiver_policy_traces=all_receiver_traces[method],
+                paired_records=paired_outcomes,
+            ),
+        }
+    (output / "coverage_report.json").write_text(
+        json.dumps(coverage_by_method, indent=2), encoding="utf-8"
+    )
+    if experiment_mode == "formal":
+        for method, coverage in coverage_by_method.items():
+            if (
+                coverage["candidate_decision_coverage"] != 1.0
+                or coverage["receiver_episode_coverage"] != 1.0
+                or coverage["unexpected_candidate_seed_trace_count"] != 0
+            ):
+                raise ValueError(
+                    "formal paired evaluation aborted: incomplete trace "
+                    f"coverage for method {method}: {coverage}"
+                )
+
     for method in methods:
         metrics = compute_method_metrics(
             method=method,
@@ -404,6 +444,7 @@ def run_paired_decision_evaluation(
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
         "unsupported_candidate_edges": unsupported_candidate_edges,
+        "coverage_by_method": coverage_by_method,
         "candidate_trace_counts": {
             method: len(traces) for method, traces in all_traces.items()
         },
