@@ -192,6 +192,122 @@ class Q01Calibrator:
         return self.transform(predicted_q01)
 
 
+@dataclass(frozen=True)
+class EdgeThresholdExample:
+    """One validation edge's input for epsilon threshold selection (P0-4).
+
+    The selection unit is the treatment edge: each edge contributes exactly
+    one example regardless of how many seeds it was observed under.
+    """
+
+    edge_key: tuple[str, str, str]
+
+    predicted_tau: float
+    calibrated_eta: float
+
+    empirical_share_success: float
+    empirical_withhold_success: float
+    empirical_negative_transfer_rate: float
+
+    valid_seed_count: int
+
+
+def build_edge_threshold_examples(
+    examples: list[EdgeCalibrationExample],
+    calibrator: Q01Calibrator,
+) -> list[EdgeThresholdExample]:
+    """Threshold-selection examples from calibration examples + calibrator."""
+    predicted_q01 = np.array([ex.predicted_q01 for ex in examples])
+    calibrated = calibrator.transform(predicted_q01)
+    return [
+        EdgeThresholdExample(
+            edge_key=ex.edge_key,
+            predicted_tau=ex.predicted_tau,
+            calibrated_eta=float(calibrated[i]),
+            empirical_share_success=ex.empirical_share_success,
+            empirical_withhold_success=ex.empirical_withhold_success,
+            empirical_negative_transfer_rate=ex.empirical_eta,
+            valid_seed_count=ex.valid_seed_count,
+        )
+        for i, ex in enumerate(examples)
+    ]
+
+
+def select_epsilon_edge_level(
+    *,
+    examples: list[EdgeThresholdExample],
+    candidate_epsilons: list[float],
+    max_negative_exposure_rate: float | None = None,
+) -> dict[str, Any]:
+    """Select epsilon_star over validation treatment edges (清单 P0-4~7).
+
+    Each candidate epsilon is scored with an edge-equal-weight policy value:
+    shared edges contribute ``empirical_share_success``, withheld edges
+    ``empirical_withhold_success``. Edges with more seeds never gain more
+    weight. Candidates violating the negative-exposure constraint are
+    dropped; ties on policy value prefer the smaller epsilon; if nothing
+    is feasible the selection fails instead of relaxing the constraint.
+    """
+    if not examples:
+        raise ValueError("no validation edges available for epsilon selection")
+
+    rows: list[dict[str, Any]] = []
+    for epsilon in candidate_epsilons:
+        shared_flags = [
+            ex.predicted_tau > 0.0 and ex.calibrated_eta <= epsilon
+            for ex in examples
+        ]
+        edge_values = [
+            ex.empirical_share_success if flag else ex.empirical_withhold_success
+            for ex, flag in zip(examples, shared_flags)
+        ]
+        shared_examples = [
+            ex for ex, flag in zip(examples, shared_flags) if flag
+        ]
+        if shared_examples:
+            negative_exposure_rate = float(np.mean([
+                ex.empirical_negative_transfer_rate for ex in shared_examples
+            ]))
+            mean_eta_shared = float(np.mean([
+                ex.empirical_negative_transfer_rate for ex in shared_examples
+            ]))
+        else:
+            negative_exposure_rate = 0.0
+            mean_eta_shared = 0.0
+        policy_value = float(np.mean(edge_values))
+        rows.append({
+            "epsilon": float(epsilon),
+            "policy_value": policy_value,
+            "validation_policy_value": policy_value,
+            "negative_exposure_rate": negative_exposure_rate,
+            "shared_edge_rate": len(shared_examples) / len(examples),
+            "mean_empirical_eta_among_shared_edges": mean_eta_shared,
+        })
+
+    eligible = [
+        row
+        for row in rows
+        if (
+            max_negative_exposure_rate is None
+            or row["negative_exposure_rate"] <= max_negative_exposure_rate
+        )
+    ]
+    if not eligible:
+        raise ValueError("no epsilon satisfies the validation risk constraint")
+    # Max policy value first; ties prefer the smaller (safer) epsilon.
+    best = max(eligible, key=lambda row: (row["policy_value"], -row["epsilon"]))
+    return {
+        "selection_unit": "treatment_edge",
+        "validation_edge_count": len(examples),
+        "candidate_rows": rows,
+        "epsilon_star": best["epsilon"],
+        "max_negative_exposure_rate": max_negative_exposure_rate,
+        "selected_on": "validation",
+        "validation_policy_value": best["policy_value"],
+        "negative_exposure_rate": best["negative_exposure_rate"],
+    }
+
+
 def predicted_label(probs: np.ndarray) -> str:
     """Most likely label for one probability vector over LABELS order."""
     return LABELS[int(np.argmax(probs))]

@@ -122,6 +122,18 @@ def run_paired_decision_evaluation(
     if checkpoint_smtr_no_pair_interaction is not None:
         no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
 
+    # 清单 P0-8: formal evaluations may only consume checkpoints whose
+    # calibration and epsilon selection happened on validation edges.
+    if experiment_mode == "formal":
+        for name, critic in (
+            ("full", full_critic),
+            ("no_writer_receiver", no_wr_critic),
+            ("global_transfer_critic", global_critic),
+            ("smtr_no_pair_interaction", no_pair_critic),
+        ):
+            if critic is not None:
+                _require_formal_calibration_metadata(critic, name)
+
     # Load memory pool (routing cards only, shared construction path)
     cards_by_id: dict[str, MemoryRoutingCard] = {}
     for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
@@ -477,6 +489,34 @@ def _smtr_risk_utility_curve(
         "epsilon_selected_on": "validation",
         "curve": curve,
     }
+
+
+def _require_formal_calibration_metadata(
+    critic: FourOutcomeTransferCritic, name: str
+) -> None:
+    """Reject formal use of checkpoints calibrated/selected off validation.
+
+    清单 P0-8: calibration must be fitted on validation treatment edges and
+    epsilon_star must be selected on the same validation edges; anything
+    else (test-split calibration, seed-level selection) fails fast.
+    """
+    if getattr(critic, "calibration_split", None) != "validation":
+        raise ValueError(
+            f"{name} checkpoint was not calibrated on the validation split "
+            f"(calibration_split={getattr(critic, 'calibration_split', None)!r})"
+        )
+    if getattr(critic, "epsilon_selection_split", None) != "validation":
+        raise ValueError(
+            f"{name} checkpoint did not select epsilon_star on the "
+            "validation split "
+            f"(epsilon_selection_split={getattr(critic, 'epsilon_selection_split', None)!r})"
+        )
+    if getattr(critic, "epsilon_selection_unit", None) != "treatment_edge":
+        raise ValueError(
+            f"{name} checkpoint did not select epsilon_star at the "
+            "treatment-edge level "
+            f"(epsilon_selection_unit={getattr(critic, 'epsilon_selection_unit', None)!r})"
+        )
 
 
 def _build_routers(

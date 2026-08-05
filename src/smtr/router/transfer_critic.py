@@ -19,7 +19,9 @@ from smtr.router.transfer_calibration import (
     DEFAULT_EPSILONS,
     Q01Calibrator,
     build_edge_calibration_examples,
+    build_edge_threshold_examples,
     select_epsilon,
+    select_epsilon_edge_level,
 )
 from smtr.router.transfer_coverage import (
     count_outcome_edges,
@@ -67,6 +69,8 @@ class FourOutcomeTransferCritic:
         self.calibration_split: str | None = None
         self.epsilon_selection_split: str | None = None
         self.validation_edge_count: int | None = None
+        self.calibration_unit: str | None = None
+        self.epsilon_selection_unit: str | None = None
         self._edge_calibration_examples: list | None = None
 
     def fit(
@@ -283,22 +287,43 @@ class FourOutcomeTransferCritic:
                 np.array([ex.empirical_eta for ex in self._edge_calibration_examples]),
             )
             self.validation_edge_count = len(self._edge_calibration_examples)
+            # epsilon_star is selected over treatment edges as well (清单
+            # P0-4~7): seed-level tau/q01/label vectors must never drive
+            # threshold selection.
+            threshold_examples = build_edge_threshold_examples(
+                self._edge_calibration_examples, self.q01_calibrator
+            )
+            selection = select_epsilon_edge_level(
+                examples=threshold_examples,
+                candidate_epsilons=list(epsilons),
+                max_negative_exposure_rate=delta,
+            )
+            selection["calibration_level"] = "edge"
+            selection["risk_delta"] = delta
         else:
+            # Legacy seed-level path, kept for unit-test stubs without
+            # paired records; the formal pipeline always passes records.
             y_negative = np.array(
                 [1 if lb == "negative_transfer" else 0 for lb in labels]
             )
             self.q01_calibrator = Q01Calibrator().fit(q01, y_negative)
             self.validation_edge_count = None
-        q01_calibrated = self.q01_calibrator.predict(q01)
-        selection = select_epsilon(
-            tau, q01_calibrated, labels, epsilons=epsilons, delta=delta
-        )
-        selection["calibration_level"] = "edge" if records is not None else "record"
+            q01_calibrated = self.q01_calibrator.predict(q01)
+            selection = select_epsilon(
+                tau, q01_calibrated, labels, epsilons=epsilons, delta=delta
+            )
+            selection["calibration_level"] = "record"
         selection["validation_edge_count"] = self.validation_edge_count
         self.epsilon_star = selection["epsilon_star"]
         self.risk_calibration = selection
         self.calibration_split = split_name
         self.epsilon_selection_split = split_name
+        self.calibration_unit = (
+            "treatment_edge" if records is not None else "seed_record"
+        )
+        self.epsilon_selection_unit = (
+            "treatment_edge" if records is not None else "seed_record"
+        )
         return selection
 
     def calibrated_q01(self, pred: TransferPrediction) -> float:
@@ -329,6 +354,20 @@ class FourOutcomeTransferCritic:
                 "calibration_split": self.calibration_split,
                 "epsilon_selection_split": self.epsilon_selection_split,
                 "validation_edge_count": self.validation_edge_count,
+                "calibration_unit": self.calibration_unit,
+                "calibration_method": (
+                    self.q01_calibrator.method
+                    if self.q01_calibrator is not None
+                    else "unfitted"
+                ),
+                "calibration_status": (
+                    self.q01_calibrator.calibration_status
+                    if self.q01_calibrator is not None
+                    else "unfitted"
+                ),
+                "calibration_edge_count": self.validation_edge_count,
+                "epsilon_selection_unit": self.epsilon_selection_unit,
+                "epsilon_validation_edge_count": self.validation_edge_count,
             },
             path,
         )
@@ -352,6 +391,8 @@ class FourOutcomeTransferCritic:
         critic.calibration_split = data.get("calibration_split")
         critic.epsilon_selection_split = data.get("epsilon_selection_split")
         critic.validation_edge_count = data.get("validation_edge_count")
+        critic.calibration_unit = data.get("calibration_unit")
+        critic.epsilon_selection_unit = data.get("epsilon_selection_unit")
         critic._fitted = True
         return critic
 

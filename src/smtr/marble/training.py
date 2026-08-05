@@ -138,6 +138,27 @@ def train_critic(
             metrics["calibration_split"] = "validation"
             metrics["epsilon_selection_split"] = "validation"
             metrics["validation_edge_count"] = selection["validation_edge_count"]
+            # 清单 P0-8: calibration / epsilon-selection provenance.
+            metrics["calibration_unit"] = selection.get(
+                "selection_unit", "treatment_edge"
+            )
+            metrics["calibration_method"] = (
+                critic.q01_calibrator.method
+                if critic.q01_calibrator is not None
+                else "unfitted"
+            )
+            metrics["calibration_status"] = (
+                critic.q01_calibrator.calibration_status
+                if critic.q01_calibrator is not None
+                else "unfitted"
+            )
+            metrics["calibration_edge_count"] = selection["validation_edge_count"]
+            metrics["epsilon_selection_unit"] = selection.get(
+                "selection_unit", "treatment_edge"
+            )
+            metrics["epsilon_validation_edge_count"] = selection[
+                "validation_edge_count"
+            ]
 
     # Save checkpoint after calibration so epsilon_star is persisted.
     critic.save(output_path)
