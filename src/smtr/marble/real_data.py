@@ -185,16 +185,23 @@ def extract_procedural_memories(
             )
             routing_card = MemoryRoutingCard(
                 memory_id=memory_id,
-                goal_summary=f"Diagnose database issue using {len(steps)}-step evidence method.",
+                # Goal summary is derived from observable trajectory
+                # structure (operation mix), not human transfer hints, so
+                # cards differ across trajectories beyond step count.
+                goal_summary=(
+                    f"Diagnose database issue via "
+                    f"{'/'.join(sql_ops) if sql_ops else 'action'}-based "
+                    f"{len(steps)}-step evidence method."
+                ),
                 task_tags=("database", *action_names[:4], *sql_ops[:2]),
                 environment_constraints=tuple(trajectory.environment_signature) or ("read-only SQL",),
-                positive_transfer_hints=("evidence-grounded diagnosis",),
-                negative_transfer_hints=("expensive diagnostic query", "premature conclusion"),
+                # Deprecated human-authored transfer hints / fixed compatible
+                # receiver roles are intentionally never populated: cards may
+                # only carry outcome-independent, trajectory-observable
+                # attributes.
                 writer=writer,
                 source_task_id=trajectory.task_id,
                 source_scenario=trajectory.scenario,
-                compatible_receiver_roles=("executor", "critic"),
-                incompatible_receiver_roles=(),
                 evidence_count=1,
             )
             memories.append(ExtractedMemory(memory_id=memory_id, payload=payload, routing_card=routing_card))

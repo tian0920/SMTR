@@ -19,6 +19,7 @@ from smtr.router.baselines import (
 )
 from smtr.router.exposure_router import SMTRExposureRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
+from smtr.router.transfer_features import build_routing_card_from_pool_entry
 
 SUPPORTED_METHODS = frozenset({
     "b0_no_memory",
@@ -52,34 +53,14 @@ def run_evaluation(
     # Load critic
     critic = FourOutcomeTransferCritic.load(checkpoint)
 
-    # Load memory pool (routing cards only)
+    # Load memory pool (routing cards only). Uses the shared card builder so
+    # deprecated transfer-hint fields are never restored from old pools.
     cards_by_id: dict[str, MemoryRoutingCard] = {}
     for line in memory_pool.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         mem = json.loads(line)
-        rc = mem.get("routing_card", {})
-        writer_data = rc.get("writer", {})
-        writer = AgentProfile(
-            agent_id=writer_data.get("agent_id", ""),
-            role=writer_data.get("role", "unknown"),
-            capabilities=tuple(writer_data.get("capabilities", [])),
-        )
-        card = MemoryRoutingCard(
-            memory_id=mem["memory_id"],
-            goal_summary=rc.get("goal_summary", ""),
-            task_tags=tuple(rc.get("task_tags", [])),
-            environment_constraints=tuple(rc.get("environment_constraints", [])),
-            positive_transfer_hints=tuple(rc.get("positive_transfer_hints", [])),
-            negative_transfer_hints=tuple(rc.get("negative_transfer_hints", [])),
-            writer=writer,
-            source_task_id=rc.get("source_task_id", ""),
-            source_scenario=rc.get("source_scenario", "database"),
-            compatible_receiver_roles=tuple(rc.get("compatible_receiver_roles", [])),
-            incompatible_receiver_roles=tuple(rc.get("incompatible_receiver_roles", [])),
-            evidence_count=rc.get("evidence_count", 0),
-        )
-        cards_by_id[mem["memory_id"]] = card
+        cards_by_id[mem["memory_id"]] = build_routing_card_from_pool_entry(mem)
 
     # Load dataset tasks for the split
     dataset = json.loads(dataset_manifest.read_text(encoding="utf-8"))

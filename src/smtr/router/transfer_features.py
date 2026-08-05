@@ -21,6 +21,9 @@ FORBIDDEN_FEATURE_TOKENS = frozenset({
     "memory_id", "candidate_memory_id", "payload", "procedure", "ordered_steps",
     "label", "team_success", "local_success", "y_share", "y_withhold",
     "q00", "q01", "q10", "q11",
+    # Deprecated human-authored transfer hints must never become features.
+    "compatible_receiver_role", "incompatible_receiver_role",
+    "positive_hint_token", "negative_hint_token",
 })
 
 TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -126,22 +129,15 @@ class HashingTransferFeatureEncoder:
             tokens.append(f"writer_receiver_mismatch:{w_role != r_role}")
 
         # --- memory card block ---
+        # Only outcome-independent, trajectory-observable attributes enter
+        # features. Human-authored transfer hints and fixed compatible-role
+        # lists are deliberately excluded (deprecated card fields).
         for tok in _text_tokens(card.goal_summary)[:6]:
             tokens.append(f"memory_goal_token:{tok}")
         for tag in sorted(card.task_tags):
             tokens.append(f"task_tag:{tag}")
         for constraint in sorted(card.environment_constraints):
             tokens.append(f"env_constraint:{constraint}")
-        for role in sorted(card.compatible_receiver_roles):
-            tokens.append(f"compatible_receiver_role:{role}")
-        for role in sorted(card.incompatible_receiver_roles):
-            tokens.append(f"incompatible_receiver_role:{role}")
-        for hint in sorted(card.positive_transfer_hints):
-            for tok in _text_tokens(hint)[:3]:
-                tokens.append(f"positive_hint_token:{tok}")
-        for hint in sorted(card.negative_transfer_hints):
-            for tok in _text_tokens(hint)[:3]:
-                tokens.append(f"negative_hint_token:{tok}")
 
         # --- prefix block ---
         prefix_cards = item.selected_prefix_cards if include_prefix else ()
@@ -182,6 +178,11 @@ def build_routing_card_from_pool_entry(mem_entry: dict[str, Any]) -> MemoryRouti
     This is the single card-construction path shared by the training loader
     and all evaluation builders, so train/inference features stay identical.
     Only routing-card metadata is used; the payload is never read.
+
+    Deprecated human-authored fields (positive/negative transfer hints,
+    compatible/incompatible receiver roles) are never restored, even when
+    present in old pool entries, so they cannot re-enter features or
+    baseline scores.
     """
     routing_card_data = mem_entry.get("routing_card", {})
     writer_data = routing_card_data.get("writer", {})
@@ -197,13 +198,13 @@ def build_routing_card_from_pool_entry(mem_entry: dict[str, Any]) -> MemoryRouti
         goal_summary=routing_card_data.get("goal_summary", ""),
         task_tags=tuple(routing_card_data.get("task_tags", [])),
         environment_constraints=tuple(routing_card_data.get("environment_constraints", [])),
-        positive_transfer_hints=tuple(routing_card_data.get("positive_transfer_hints", [])),
-        negative_transfer_hints=tuple(routing_card_data.get("negative_transfer_hints", [])),
+        positive_transfer_hints=(),
+        negative_transfer_hints=(),
         writer=writer,
         source_task_id=routing_card_data.get("source_task_id", ""),
         source_scenario=routing_card_data.get("source_scenario", "database"),
-        compatible_receiver_roles=tuple(routing_card_data.get("compatible_receiver_roles", [])),
-        incompatible_receiver_roles=tuple(routing_card_data.get("incompatible_receiver_roles", [])),
+        compatible_receiver_roles=(),
+        incompatible_receiver_roles=(),
         evidence_count=routing_card_data.get("evidence_count", 0),
         historical_success_count=routing_card_data.get("historical_success_count", 0),
         historical_failure_count=routing_card_data.get("historical_failure_count", 0),

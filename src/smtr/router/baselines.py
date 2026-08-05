@@ -47,12 +47,19 @@ def _heuristic_relevance_score(receiver_state: ReceiverState, card: MemoryRoutin
 
 
 def _role_compatibility_score(receiver_state: ReceiverState, card: MemoryRoutingCard) -> float:
-    role = receiver_state.receiver.role
-    if role in card.incompatible_receiver_roles:
-        return 0.0
-    if card.compatible_receiver_roles and role in card.compatible_receiver_roles:
+    """Role compatibility from observable writer/receiver roles only.
+
+    Deprecated human-authored ``compatible_receiver_roles`` /
+    ``incompatible_receiver_roles`` card fields are deliberately ignored so
+    the baseline never benefits from manually pre-annotated transfer hints.
+    """
+    writer_role = card.writer.role
+    receiver_role = receiver_state.receiver.role
+    if writer_role == receiver_role:
         return 1.0
-    return 0.5
+    if writer_role in ("unknown", "") or receiver_role in ("unknown", ""):
+        return 0.5
+    return 0.25
 
 
 def role_aware_top1_score(receiver_state: ReceiverState, card: MemoryRoutingCard) -> float:
