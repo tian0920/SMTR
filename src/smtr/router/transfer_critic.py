@@ -74,6 +74,24 @@ class FourOutcomeTransferCritic:
         self.validation_edge_count: int | None = None
         self.calibration_unit: str | None = None
         self.epsilon_selection_unit: str | None = None
+        # 清单 P0-2 (3.6): training provenance bound into the checkpoint so
+        # the split audit can verify which data files produced this critic.
+        self.training_split: str | None = None
+        self.train_record_digest: str | None = None
+        self.validation_record_digest: str | None = None
+        self.memory_pool_digest: str | None = None
+        # 清单 Shared-Control 第16.1节: budget / shared-control provenance
+        # bound into every checkpoint.
+        self.training_budget_policy: str | None = None
+        self.training_budget_requested: float | None = None
+        self.training_budget_realized: float | None = None
+        self.parent_train_candidate_manifest_digest: str | None = None
+        self.budget_train_candidate_manifest_digest: str | None = None
+        self.shared_control_definition_version: str | None = None
+        self.loss_weighting_unit: str | None = None
+        self.bootstrap_cluster_unit: str | None = None
+        self.adaptive_sampling_used: bool = False
+        self.adaptive_stopping_used: bool = False
         self._edge_calibration_examples: list | None = None
 
     def fit(
@@ -83,6 +101,7 @@ class FourOutcomeTransferCritic:
         *,
         coverage_mode: str = "pilot",
         sample_weights: np.ndarray | None = None,
+        bootstrap_clusters: dict | None = None,
         edge_clusters: dict | None = None,
     ) -> None:
         """Train bootstrap ensemble on paired record features.
@@ -92,14 +111,23 @@ class FourOutcomeTransferCritic:
         positive_transfer and negative_transfer. Training without negative
         transfer always fails fast.
 
-        Multi-seed treatment edges (清单 P0-5/P0-6): when ``edge_clusters``
-        maps treatment edges to their seed-record rows, bootstrap members
-        resample whole edges (all seeds of a drawn edge enter together);
+        ``sample_weights`` define the loss contribution of each treatment
+        edge. ``bootstrap_clusters`` define dependence groups for ensemble
+        resampling. Under shared controls, one bootstrap cluster is a
+        task-receiver control family containing all candidates and seeds,
+        so rows sharing one no-memory control never split across a member.
         ``sample_weights`` should then be the edge-equal weights ``1/n_e``
-        so every edge contributes equal total training weight. When
-        sample weights are supplied they are the only weighting scheme
-        (class balancing is disabled to avoid double weighting).
+        so every edge contributes equal total training weight. When sample
+        weights are supplied they are the only weighting scheme (class
+        balancing is disabled to avoid double weighting).
+
+        ``edge_clusters`` is the deprecated alias kept for legacy callers;
+        passing both raises.
         """
+        if bootstrap_clusters is not None and edge_clusters is not None:
+            raise ValueError("provide only bootstrap_clusters")
+        if bootstrap_clusters is None:
+            bootstrap_clusters = edge_clusters
         X = self.encoder.encode_batch(inputs)
         y = np.array([LABEL_TO_INDEX[lb] for lb in labels])
         if sample_weights is not None:
@@ -108,11 +136,11 @@ class FourOutcomeTransferCritic:
                 raise ValueError(
                     "sample_weights must have one entry per training record"
                 )
-        if edge_clusters is not None:
-            covered = {i for rows in edge_clusters.values() for i in rows}
+        if bootstrap_clusters is not None:
+            covered = {i for rows in bootstrap_clusters.values() for i in rows}
             if covered != set(range(len(labels))):
                 raise ValueError(
-                    "edge_clusters must partition every training record row"
+                    "bootstrap_clusters must partition every training record row"
                 )
 
         unique_classes = np.unique(y)
@@ -129,9 +157,9 @@ class FourOutcomeTransferCritic:
         rng = np.random.default_rng(self.seed)
         self.members = []
         for _ in range(self.n_bootstrap):
-            if edge_clusters is not None:
-                idx = _edge_cluster_bootstrap_with_full_coverage(
-                    y, edge_clusters, required_classes, rng
+            if bootstrap_clusters is not None:
+                idx = _cluster_bootstrap_with_full_coverage(
+                    y, bootstrap_clusters, required_classes, rng
                 )
             else:
                 idx = _bootstrap_with_full_coverage(y, required_classes, rng)
@@ -427,6 +455,29 @@ class FourOutcomeTransferCritic:
                 "calibration_edge_count": self.validation_edge_count,
                 "epsilon_selection_unit": self.epsilon_selection_unit,
                 "epsilon_validation_edge_count": self.validation_edge_count,
+                # 清单 P0-2 (3.6): training provenance digests.
+                "training_split": self.training_split,
+                "train_record_digest": self.train_record_digest,
+                "validation_record_digest": self.validation_record_digest,
+                "memory_pool_digest": self.memory_pool_digest,
+                # 清单 Shared-Control 第16.1节: budget / shared-control
+                # provenance for every checkpoint.
+                "training_budget_policy": self.training_budget_policy,
+                "training_budget_requested": self.training_budget_requested,
+                "training_budget_realized": self.training_budget_realized,
+                "parent_train_candidate_manifest_digest": (
+                    self.parent_train_candidate_manifest_digest
+                ),
+                "budget_train_candidate_manifest_digest": (
+                    self.budget_train_candidate_manifest_digest
+                ),
+                "shared_control_definition_version": (
+                    self.shared_control_definition_version
+                ),
+                "loss_weighting_unit": self.loss_weighting_unit,
+                "bootstrap_cluster_unit": self.bootstrap_cluster_unit,
+                "adaptive_sampling_used": self.adaptive_sampling_used,
+                "adaptive_stopping_used": self.adaptive_stopping_used,
             },
             path,
         )
@@ -452,30 +503,57 @@ class FourOutcomeTransferCritic:
         critic.validation_edge_count = data.get("validation_edge_count")
         critic.calibration_unit = data.get("calibration_unit")
         critic.epsilon_selection_unit = data.get("epsilon_selection_unit")
+        critic.training_split = data.get("training_split")
+        critic.train_record_digest = data.get("train_record_digest")
+        critic.validation_record_digest = data.get("validation_record_digest")
+        critic.memory_pool_digest = data.get("memory_pool_digest")
+        critic.training_budget_policy = data.get("training_budget_policy")
+        critic.training_budget_requested = data.get("training_budget_requested")
+        critic.training_budget_realized = data.get("training_budget_realized")
+        critic.parent_train_candidate_manifest_digest = data.get(
+            "parent_train_candidate_manifest_digest"
+        )
+        critic.budget_train_candidate_manifest_digest = data.get(
+            "budget_train_candidate_manifest_digest"
+        )
+        critic.shared_control_definition_version = data.get(
+            "shared_control_definition_version"
+        )
+        critic.loss_weighting_unit = data.get("loss_weighting_unit")
+        critic.bootstrap_cluster_unit = data.get("bootstrap_cluster_unit")
+        critic.adaptive_sampling_used = bool(
+            data.get("adaptive_sampling_used", False)
+        )
+        critic.adaptive_stopping_used = bool(
+            data.get("adaptive_stopping_used", False)
+        )
         critic._fitted = True
         return critic
 
 
-def _edge_cluster_bootstrap_with_full_coverage(
+def _cluster_bootstrap_with_full_coverage(
     y: np.ndarray,
-    edge_clusters: dict,
+    clusters: dict,
     required_classes: set[int],
     rng: np.random.Generator,
     *,
     max_attempts: int = 10,
 ) -> np.ndarray | None:
-    """Edge-cluster bootstrap: resample edges, keep all seeds together.
+    """Cluster bootstrap: resample clusters, keep all member rows together.
 
-    Each draw selects treatment edges with replacement; drawing an edge
-    adds *all* of its seed records, so one edge's seeds never split across
-    a member. Returns None when no draw covers the required classes.
+    Each draw selects clusters with replacement; drawing a cluster adds
+    *all* of its rows, so one cluster's rows never split across a member.
+    Under shared controls a cluster is a task-receiver control family.
+    Returns None when no draw covers the required classes.
     """
-    edges = list(edge_clusters.keys())
+    cluster_keys = list(clusters.keys())
     for _ in range(max_attempts):
-        chosen = rng.choice(len(edges), size=len(edges), replace=True)
+        chosen = rng.choice(
+            len(cluster_keys), size=len(cluster_keys), replace=True
+        )
         idx: list[int] = []
         for pos in chosen:
-            idx.extend(edge_clusters[edges[pos]])
+            idx.extend(clusters[cluster_keys[pos]])
         idx_arr = np.asarray(idx, dtype=int)
         if required_classes.issubset(set(np.unique(y[idx_arr]).tolist())):
             return idx_arr

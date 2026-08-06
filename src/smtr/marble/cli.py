@@ -74,7 +74,16 @@ def main() -> None:
     p.add_argument("--validation-paired-records", required=True)
     p.add_argument("--test-paired-records", required=True)
     p.add_argument("--memory-pool", required=True)
+    # 清单 P0-2: per-role checkpoint binding; --checkpoint remains a legacy
+    # alias that binds the full SMTR checkpoint only.
     p.add_argument("--checkpoint", required=False, default=None)
+    p.add_argument("--checkpoint-full", required=False, default=None)
+    p.add_argument("--checkpoint-global-transfer", required=False, default=None)
+    p.add_argument("--checkpoint-no-pair-interaction", required=False, default=None)
+    # 清单 P0-1: bind the test candidate manifest into the audit artifact.
+    p.add_argument("--test-candidate-manifest", required=False, default=None)
+    p.add_argument("--methods", nargs="+", default=None)
+    p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
     # 清单 R6 P1-5: bind the manifests into the audit artifact by digest.
     p.add_argument("--dataset-manifest", required=False, default=None)
     p.add_argument("--split-manifest", required=False, default=None)
@@ -94,6 +103,9 @@ def main() -> None:
     ])
     p.add_argument("--coverage-mode", default="formal", choices=["formal", "pilot"])
     p.add_argument("--risk-delta", type=float, default=0.10)
+    # 清单 Shared-Control 第16章: budget checkpoints bind the budgeted train
+    # candidate manifest so provenance records requested/realized fractions.
+    p.add_argument("--budget-candidate-manifest", default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("run-paired-decision-evaluation", help="Paired decision evaluation on test pairs")
@@ -116,6 +128,7 @@ def main() -> None:
     # Formal evaluations must read epsilon_star from the checkpoint; an
     # explicit budget is a debug-only override, never a silent 0.2 default.
     p.add_argument("--negative-risk-budget", type=float, default=None)
+    p.add_argument("--allow-risk-budget-override", action="store_true")
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default=None)
     p.add_argument("--output", required=True)
 
@@ -139,6 +152,7 @@ def main() -> None:
     p.add_argument("--generation-seeds", type=int, nargs="+", required=True)
     # Same rule as run-paired-decision-evaluation: no silent 0.2 fallback.
     p.add_argument("--negative-risk-budget", type=float, default=None)
+    p.add_argument("--allow-risk-budget-override", action="store_true")
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
     # 清单 R6 P1-6: formal runs must bind a verified split-audit artifact.
     p.add_argument("--split-audit", required=False, default=None)
@@ -156,6 +170,22 @@ def main() -> None:
     p.add_argument("--validation-paired-records", default=None)
     p.add_argument("--test-paired-records", default=None)
     p.add_argument("--checkpoint", default=None)
+    p.add_argument("--output", required=True)
+
+    p = subparsers.add_parser(
+        "build-budgeted-candidates",
+        help=(
+            "Build a fixed stratified train "
+            "candidate subset for budget analysis"
+        ),
+    )
+    p.add_argument("--candidate-manifest", required=True)
+    p.add_argument(
+        "--budget-fraction",
+        type=float,
+        required=True,
+        choices=[0.25, 0.50, 0.75, 1.00],
+    )
     p.add_argument("--output", required=True)
 
     # --- Deprecated ---
@@ -314,14 +344,40 @@ def _dispatch(args: argparse.Namespace) -> None:
 
     elif cmd == "audit-splits":
         from smtr.evaluation.split_audit import audit_split_files
+        # 清单 P0-2: formal audits must bind the full checkpoint at minimum;
+        # pilot audits keep the legacy optional single-checkpoint behaviour.
+        checkpoint_paths: dict[str, str] = {}
+        if args.checkpoint_full:
+            checkpoint_paths["full"] = args.checkpoint_full
+        if args.checkpoint_global_transfer:
+            checkpoint_paths["global_transfer"] = args.checkpoint_global_transfer
+        if args.checkpoint_no_pair_interaction:
+            checkpoint_paths["no_pair_interaction"] = args.checkpoint_no_pair_interaction
+        if args.checkpoint and "full" not in checkpoint_paths:
+            checkpoint_paths["full"] = args.checkpoint
+        if args.experiment_mode == "formal" and "full" not in checkpoint_paths:
+            raise SystemExit(
+                "audit-splits --checkpoint-full is required in formal mode"
+            )
         summary = audit_split_files(
             train_records_path=Path(args.train_paired_records),
             validation_records_path=Path(args.validation_paired_records),
             test_records_path=Path(args.test_paired_records),
             memory_pool_path=Path(args.memory_pool),
-            checkpoint_path=Path(args.checkpoint) if args.checkpoint else None,
+            test_candidate_manifest_path=(
+                Path(args.test_candidate_manifest)
+                if args.test_candidate_manifest
+                else None
+            ),
+            checkpoint_paths=(
+                {role: Path(path) for role, path in checkpoint_paths.items()}
+                or None
+            ),
+            methods=args.methods,
             dataset_manifest_path=Path(args.dataset_manifest) if args.dataset_manifest else None,
             split_manifest_path=Path(args.split_manifest) if args.split_manifest else None,
+            strict_candidate_support=True,
+            experiment_mode=args.experiment_mode,
         )
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
@@ -343,6 +399,11 @@ def _dispatch(args: argparse.Namespace) -> None:
             feature_block=args.feature_block,
             coverage_mode=args.coverage_mode,
             risk_delta=args.risk_delta,
+            budget_candidate_manifest_path=(
+                Path(args.budget_candidate_manifest)
+                if getattr(args, "budget_candidate_manifest", None)
+                else None
+            ),
         )
         print(json.dumps(result, indent=2))
 
@@ -361,6 +422,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             checkpoint_smtr_no_pair_interaction=Path(args.checkpoint_smtr_no_pair_interaction) if args.checkpoint_smtr_no_pair_interaction else None,
             methods=args.methods,
             negative_risk_budget=args.negative_risk_budget,
+            allow_risk_budget_override=args.allow_risk_budget_override,
             experiment_mode=args.experiment_mode,
             output=Path(args.output),
         )
@@ -382,6 +444,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             methods=args.methods,
             generation_seeds=args.generation_seeds,
             negative_risk_budget=args.negative_risk_budget,
+            allow_risk_budget_override=args.allow_risk_budget_override,
             experiment_mode=args.experiment_mode,
             split_audit_path=Path(args.split_audit) if args.split_audit else None,
             output=Path(args.output),
@@ -404,6 +467,38 @@ def _dispatch(args: argparse.Namespace) -> None:
         )
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
+        print(json.dumps(result, indent=2))
+
+    elif cmd == "build-budgeted-candidates":
+        from smtr.marble.budget_sampling import (
+            build_budgeted_candidate_manifest,
+        )
+        from smtr.marble.real_data import (
+            DatabaseCandidateManifest,
+            write_candidate_manifest,
+        )
+
+        parent = DatabaseCandidateManifest.model_validate_json(
+            Path(args.candidate_manifest).read_text(encoding="utf-8")
+        )
+        manifest = build_budgeted_candidate_manifest(
+            parent_manifest=parent,
+            budget_fraction=args.budget_fraction,
+        )
+        result = write_candidate_manifest(
+            manifest=manifest,
+            output_path=Path(args.output),
+        )
+        if manifest.budget_metadata is not None:
+            result["requested_fraction"] = (
+                manifest.budget_metadata.requested_fraction
+            )
+            result["realized_edge_fraction"] = (
+                manifest.budget_metadata.realized_edge_fraction
+            )
+            result["selected_edge_count"] = (
+                manifest.budget_metadata.selected_edge_count
+            )
         print(json.dumps(result, indent=2))
 
     elif cmd == "run-evaluation":

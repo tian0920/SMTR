@@ -1,10 +1,16 @@
-"""Paired share/withhold branch runner for MARBLE database pilot."""
+"""Paired share/withhold branch runner for MARBLE database pilot.
+
+Formal paired generation uses shared-control execution (清单
+Shared-Control 第3章): one no-memory control per (task, receiver, seed)
+group is paired with one candidate-specific share per treatment edge.
+``run_pair`` remains as a legacy convenience API.
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
@@ -23,7 +29,6 @@ from smtr.memory.render import render_procedure_payload
 from smtr.marble.outcome.factory import evaluator_for_scenario
 from smtr.marble.outcome.protocol import MarbleOutcome, outcome_from_failure
 from smtr.marble.runtime_visibility_validator import (
-    RuntimeVisibilityValidator,
     validate_runtime_visibility_from_path,
 )
 
@@ -70,8 +75,254 @@ class PairedBranchResult(BaseModel):
     withhold_runtime_visibility_verified: bool = False
 
 
+class SharedControlResult(BaseModel):
+    """One shared no-memory control execution for a (task, receiver, seed)
+    group (清单 Shared-Control 第3章).
+
+    The control carries no candidate-specific identity: no memory ID,
+    writer, rank, score or candidate source appears in its metadata.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    control_group_id: str
+    scenario: str
+    task_id: str
+    receiver_agent_id: str
+    generation_seed: int
+    engine_name: str
+    engine_version: str
+    audit: MarbleBranchAudit
+    valid: bool
+    invalid_reason: str | None = None
+    forbidden_memory_ids: tuple[str, ...] = ()
+    control_definition_version: str = "shared_no_memory_control_v1"
+
+
 class MarblePairedBranchRunner:
-    """Run a paired memory intervention, invalidating pairs without real engine execution."""
+    """Run paired memory interventions, invalidating pairs without real engine execution.
+
+    Formal paired generation uses shared-control execution:
+    ``run_no_memory_control`` + ``run_candidate_share`` +
+    ``assemble_shared_control_pair``. ``run_pair`` is kept as a legacy
+    convenience API.
+    """
+
+    # ------------------------------------------------------------------
+    # Shared-control execution (清单 Shared-Control 第3章)
+    # ------------------------------------------------------------------
+
+    def run_no_memory_control(
+        self,
+        *,
+        control_group_id: str,
+        task: dict[str, Any],
+        initial_state_bundle: InitialStateBundle,
+        agent_config: dict[str, Any],
+        generation_seed: int,
+        workspace: Path,
+        forbidden_memory_ids: Sequence[str] = (),
+        engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
+    ) -> SharedControlResult:
+        """Execute the one shared no-memory control of a control group.
+
+        ``memory_injection`` is always None and the agent input carries
+        no memory payloads. ``forbidden_memory_ids`` is the fixed set of
+        every candidate memory in the group, computed before execution
+        and never changed afterwards (清单 Shared-Control 第4章).
+        """
+        assert_marble_artifact_path(workspace)
+        injector = MarbleMemoryInjector()
+        receiver_agent_id = str(
+            agent_config.get("target_receiver_agent_id", "agent1")
+        )
+        base_env = MarbleDatabaseEnvironment(
+            task=task,
+            workspace=workspace / "_base_input",
+            initial_state_bundle=initial_state_bundle,
+            agent_config=agent_config,
+        )
+        base_input = base_env.build_agent_input(memory_payloads=())
+        base_env.close()
+        control_input, control_input_audit = injector.build_agent_input(
+            base_agent_input=base_input,
+            memory_payloads=(),
+            memory_ids=(),
+        )
+        # Control metadata must never carry candidate-specific identity:
+        # no candidate_memory_id / writer_agent_id / rank / score / source.
+        run_metadata = {
+            "run_id": f"control_{control_group_id}",
+            "task_id": initial_state_bundle.task_id,
+            "scenario": initial_state_bundle.scenario,
+            "method": "shared_no_memory_control",
+            "branch": "withhold",
+            "control_group_id": control_group_id,
+            "receiver_agent_id": receiver_agent_id,
+            "generation_seed": generation_seed,
+        }
+        audit, engine_name, engine_version = self._run_branch(
+            branch_id="control",
+            task=task,
+            initial_state_bundle=initial_state_bundle,
+            agent_config=agent_config,
+            generation_seed=generation_seed,
+            workspace=workspace,
+            agent_input=control_input,
+            input_audit=control_input_audit,
+            memory_injection=None,
+            run_metadata=run_metadata,
+            receiver_agent_id=receiver_agent_id,
+            visibility_method="shared_control",
+            expected_memory_ids=(),
+            forbidden_memory_ids=tuple(forbidden_memory_ids),
+            engine_timeout_seconds=engine_timeout_seconds,
+        )
+        valid, invalid_reason = _validate_control(audit)
+        return SharedControlResult(
+            control_group_id=control_group_id,
+            scenario=initial_state_bundle.scenario,
+            task_id=initial_state_bundle.task_id,
+            receiver_agent_id=receiver_agent_id,
+            generation_seed=generation_seed,
+            engine_name=engine_name,
+            engine_version=engine_version,
+            audit=audit,
+            valid=valid,
+            invalid_reason=invalid_reason,
+            forbidden_memory_ids=tuple(forbidden_memory_ids),
+        )
+
+    def run_candidate_share(
+        self,
+        *,
+        edge_id: str,
+        task: dict[str, Any],
+        candidate_memory: dict[str, Any],
+        initial_state_bundle: InitialStateBundle,
+        agent_config: dict[str, Any],
+        generation_seed: int,
+        workspace: Path,
+        engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
+    ) -> MarbleBranchAudit:
+        """Execute one candidate-specific share branch.
+
+        The payload is injected into the target receiver only. The share
+        is paired with its group's shared control, never with its own
+        private withhold branch (清单 Shared-Control 第1章).
+        """
+        assert_marble_artifact_path(workspace)
+        injector = MarbleMemoryInjector()
+        receiver_agent_id = str(
+            agent_config.get("target_receiver_agent_id", "agent1")
+        )
+        base_env = MarbleDatabaseEnvironment(
+            task=task,
+            workspace=workspace / "_base_input",
+            initial_state_bundle=initial_state_bundle,
+            agent_config=agent_config,
+        )
+        base_input = base_env.build_agent_input(memory_payloads=())
+        base_env.close()
+        memory_payload = render_procedure_payload(candidate_memory)
+        memory_id = str(candidate_memory.get("memory_id", "unknown"))
+        share_injection: dict[str, Any] | None = None
+        if memory_payload:
+            share_injection = {
+                "receiver_agent_ids": [receiver_agent_id],
+                "memory_payloads": [memory_payload],
+                "memory_ids": [memory_id],
+                "intervention_id": f"share_{memory_id}_{generation_seed}",
+            }
+        share_input, share_input_audit = injector.build_agent_input(
+            base_agent_input=base_input,
+            memory_payloads=(memory_payload,),
+            memory_ids=(memory_id,),
+        )
+        run_metadata = {
+            "run_id": f"share_{edge_id}_{generation_seed}",
+            "task_id": initial_state_bundle.task_id,
+            "scenario": initial_state_bundle.scenario,
+            "method": "shared_control_share",
+            "branch": "share",
+            "edge_id": edge_id,
+            "receiver_agent_id": receiver_agent_id,
+            "generation_seed": generation_seed,
+        }
+        audit, _engine_name, _engine_version = self._run_branch(
+            branch_id="share",
+            task=task,
+            initial_state_bundle=initial_state_bundle,
+            agent_config=agent_config,
+            generation_seed=generation_seed,
+            workspace=workspace,
+            agent_input=share_input,
+            input_audit=share_input_audit,
+            memory_injection=share_injection,
+            run_metadata=run_metadata,
+            receiver_agent_id=receiver_agent_id,
+            visibility_method="pair_share",
+            expected_memory_ids=(memory_id,),
+            forbidden_memory_ids=(),
+            engine_timeout_seconds=engine_timeout_seconds,
+        )
+        return audit
+
+    def assemble_shared_control_pair(
+        self,
+        *,
+        control: SharedControlResult,
+        share: MarbleBranchAudit,
+        candidate_memory_id: str,
+        branch_execution_order: str = "control_first",
+    ) -> PairedBranchResult:
+        """Pair one share audit with its group's shared control.
+
+        Reuses the standard pair validation and the unchanged
+        four-outcome label mapping (清单 Shared-Control 第1/3章). An
+        invalid control invalidates every record of its group.
+        """
+        real_engine_executed = (
+            control.audit.real_engine_executed and share.real_engine_executed
+        )
+        valid, reason = _validate_pair(
+            share=share,
+            withhold=control.audit,
+            real_engine_executed=real_engine_executed,
+        )
+        if not control.valid:
+            valid = False
+            reason = (
+                f"shared_control_invalid:{control.invalid_reason}"
+                if control.invalid_reason
+                else "shared_control_invalid:unknown"
+            )
+        return PairedBranchResult(
+            scenario=control.scenario,
+            task_id=control.task_id,
+            candidate_memory_id=candidate_memory_id,
+            engine_name=control.engine_name,
+            engine_version=control.engine_version,
+            real_engine_executed=real_engine_executed,
+            share=share,
+            withhold=control.audit,
+            paired_record_valid=valid,
+            invalid_reason=reason,
+            paired_label=(
+                _paired_label(share.outcome.success, control.audit.outcome.success)
+                if valid
+                else None
+            ),
+            branch_execution_order=branch_execution_order,
+            share_runtime_visibility_verified=share.runtime_visibility_verified,
+            withhold_runtime_visibility_verified=(
+                control.audit.runtime_visibility_verified
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Legacy convenience API
+    # ------------------------------------------------------------------
 
     def run_pair(
         self,
@@ -88,171 +339,223 @@ class MarblePairedBranchRunner:
         ] = "share_then_withhold",
         engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
     ) -> PairedBranchResult:
+        """Legacy convenience API. Formal paired generation uses
+        shared-control execution (see ``run_no_memory_control`` /
+        ``run_candidate_share`` / ``assemble_shared_control_pair``)."""
         assert_marble_artifact_path(workspace)
-        evaluator = evaluator_for_scenario(initial_state_bundle.scenario)
         injector = MarbleMemoryInjector()
-        rebuilder = SequentialDatabaseRebuilder()
-        share_env: MarbleDatabaseEnvironment | None = None
-        withhold_env: MarbleDatabaseEnvironment | None = None
-        try:
-            base_env = MarbleDatabaseEnvironment(
+        base_env = MarbleDatabaseEnvironment(
+            task=task,
+            workspace=workspace / "_base_input",
+            initial_state_bundle=initial_state_bundle,
+            agent_config=agent_config,
+        )
+        base_input = base_env.build_agent_input(memory_payloads=())
+        base_env.close()
+        memory_payload = render_procedure_payload(candidate_memory)
+        memory_id = str(candidate_memory.get("memory_id", "unknown"))
+        receiver_agent_id = str(agent_config.get("target_receiver_agent_id", "agent1"))
+        share_injection: dict[str, Any] | None = None
+        if memory_payload:
+            share_injection = {
+                "receiver_agent_ids": [receiver_agent_id],
+                "memory_payloads": [memory_payload],
+                "memory_ids": [memory_id],
+                "intervention_id": f"pair_{memory_id}_{generation_seed}",
+            }
+        share_input, share_input_audit = injector.build_agent_input(
+            base_agent_input=base_input,
+            memory_payloads=(memory_payload,),
+            memory_ids=(memory_id,),
+        )
+        withhold_input, withhold_input_audit = injector.build_agent_input(
+            base_agent_input=base_input,
+            memory_payloads=(),
+            memory_ids=(),
+        )
+        branch_injections = {
+            "share": share_injection,
+            "withhold": None,
+        }
+        branch_inputs = {
+            "share": (share_input, share_input_audit),
+            "withhold": (withhold_input, withhold_input_audit),
+        }
+        audits: dict[str, MarbleBranchAudit] = {}
+        engine_names: dict[str, str] = {}
+        engine_versions: dict[str, str] = {}
+        order = (
+            ("share", "withhold")
+            if branch_execution_order == "share_then_withhold"
+            else ("withhold", "share")
+        )
+        for branch in order:
+            branch_input, branch_input_audit = branch_inputs[branch]
+            run_metadata = {
+                "run_id": f"pair_{initial_state_bundle.task_id}_{memory_id}_{generation_seed}",
+                "task_id": initial_state_bundle.task_id,
+                "scenario": initial_state_bundle.scenario,
+                "method": "pair",
+                "branch": branch,
+            }
+            audit, engine_name, engine_version = self._run_branch(
+                branch_id=branch,
                 task=task,
-                workspace=workspace / "_base_input",
                 initial_state_bundle=initial_state_bundle,
                 agent_config=agent_config,
-            )
-            base_input = base_env.build_agent_input(memory_payloads=())
-            base_env.close()
-            memory_payload = render_procedure_payload(candidate_memory)
-            memory_id = str(candidate_memory.get("memory_id", "unknown"))
-            receiver_agent_id = str(agent_config.get("target_receiver_agent_id", "agent1"))
-            share_injection: dict[str, Any] | None = None
-            if memory_payload:
-                share_injection = {
-                    "receiver_agent_ids": [receiver_agent_id],
-                    "memory_payloads": [memory_payload],
-                    "memory_ids": [memory_id],
-                    "intervention_id": f"pair_{memory_id}_{generation_seed}",
-                }
-            share_input, share_input_audit = injector.build_agent_input(
-                base_agent_input=base_input,
-                memory_payloads=(memory_payload,),
-                memory_ids=(memory_id,),
-            )
-            withhold_input, withhold_input_audit = injector.build_agent_input(
-                base_agent_input=base_input,
-                memory_payloads=(),
-                memory_ids=(),
-            )
-            branch_injections = {
-                "share": share_injection,
-                "withhold": None,
-            }
-            branch_inputs = {
-                "share": (share_input, share_input_audit),
-                "withhold": (withhold_input, withhold_input_audit),
-            }
-            audits: dict[str, MarbleBranchAudit] = {}
-            order = (
-                ("share", "withhold")
-                if branch_execution_order == "share_then_withhold"
-                else ("withhold", "share")
-            )
-            for branch in order:
-                fingerprint = rebuilder.materialize(
-                    initial_state_bundle=initial_state_bundle,
-                    branch_workspace=workspace / branch,
-                )
-                env = MarbleDatabaseEnvironment(
-                    task=task,
-                    workspace=workspace / branch,
-                    initial_state_bundle=initial_state_bundle,
-                    agent_config=agent_config,
-                )
-                if branch == "share":
-                    share_env = env
-                else:
-                    withhold_env = env
-                branch_input, branch_input_audit = branch_inputs[branch]
-                branch_inj = branch_injections[branch]
-                run_metadata = {
-                    "run_id": f"pair_{initial_state_bundle.task_id}_{memory_id}_{generation_seed}",
-                    "task_id": initial_state_bundle.task_id,
-                    "scenario": initial_state_bundle.scenario,
-                    "method": "pair",
-                    "branch": branch,
-                }
-                try:
-                    run = env.run(
-                        agent_input=branch_input,
-                        generation_seed=generation_seed,
-                        memory_injection=branch_inj,
-                        engine_timeout_seconds=engine_timeout_seconds,
-                        run_metadata=run_metadata,
-                    )
-                    outcome = evaluator.evaluate(task=task, run_result=run)
-                    branch_engine_executed = True
-                except Exception as exc:
-                    run = {"branch": branch, "error": str(exc)}
-                    outcome = outcome_from_failure(
-                        evaluator_name="marble_database_engine",
-                        reason=str(exc),
-                        raw_result=run,
-                    )
-                    branch_engine_executed = False
-                cleanup_result = rebuilder.destroy(remove_workspace=False)
-                audits[branch] = self._audit(
-                    branch_id=branch,
-                    env=env,
-                    raw_result=run,
-                    input_audit=branch_input_audit,
-                    bundle=initial_state_bundle,
-                    generation_seed=generation_seed,
-                    outcome=outcome,
-                    initial_logical_fingerprint=fingerprint,
-                    real_engine_executed=branch_engine_executed,
-                    cleanup_result=cleanup_result,
-                    runtime_visibility_verified=False,
-                    runtime_visibility_invalid_reason="pending",
-                )
-                # Runtime visibility validation
-                branch_audit_path = (workspace / branch / "memory_visibility_audit.jsonl")
-                rt_method = "pair_share" if branch == "share" else "pair_withhold"
-                rt_val = validate_runtime_visibility_from_path(
-                    method=rt_method,
-                    branch=branch,
-                    receiver_agent_ids=[receiver_agent_id],
-                    expected_memory_ids=[memory_id],
-                    audit_path=branch_audit_path,
-                    candidate_memory_ids=[memory_id],
-                )
-                audits[branch] = audits[branch].model_copy(update={
-                    "runtime_visibility_verified": rt_val.visibility_verified,
-                    "runtime_visibility_invalid_reason": rt_val.invalid_reason,
-                })
-                env.close()
-                rebuilder.destroy()
-
-            share = audits["share"]
-            withhold = audits["withhold"]
-            real_engine_executed = share.real_engine_executed and withhold.real_engine_executed
-            valid, reason = _validate_pair(
-                share=share,
-                withhold=withhold,
-                real_engine_executed=real_engine_executed,
-            )
-            result = PairedBranchResult(
-                scenario=initial_state_bundle.scenario,
-                task_id=initial_state_bundle.task_id,
-                candidate_memory_id=memory_id,
-                engine_name=share_env.engine_name,
-                engine_version=share_env.engine_version,
-                real_engine_executed=real_engine_executed,
-                share=share,
-                withhold=withhold,
-                paired_record_valid=valid,
-                invalid_reason=reason,
-                paired_label=(
-                    _paired_label(share.outcome.success, withhold.outcome.success)
-                    if valid
-                    else None
+                generation_seed=generation_seed,
+                workspace=workspace,
+                agent_input=branch_input,
+                input_audit=branch_input_audit,
+                memory_injection=branch_injections[branch],
+                run_metadata=run_metadata,
+                receiver_agent_id=receiver_agent_id,
+                visibility_method=(
+                    "pair_share" if branch == "share" else "pair_withhold"
                 ),
-                branch_execution_order=branch_execution_order,
-                share_runtime_visibility_verified=share.runtime_visibility_verified,
-                withhold_runtime_visibility_verified=withhold.runtime_visibility_verified,
+                expected_memory_ids=(memory_id,),
+                forbidden_memory_ids=(
+                    () if branch == "share" else (memory_id,)
+                ),
+                engine_timeout_seconds=engine_timeout_seconds,
             )
-            workspace.mkdir(parents=True, exist_ok=True)
-            (workspace / "branch_audit.json").write_text(
-                json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True)
-                + "\n",
-                encoding="utf-8",
+            audits[branch] = audit
+            engine_names[branch] = engine_name
+            engine_versions[branch] = engine_version
+
+        share = audits["share"]
+        withhold = audits["withhold"]
+        real_engine_executed = share.real_engine_executed and withhold.real_engine_executed
+        valid, reason = _validate_pair(
+            share=share,
+            withhold=withhold,
+            real_engine_executed=real_engine_executed,
+        )
+        result = PairedBranchResult(
+            scenario=initial_state_bundle.scenario,
+            task_id=initial_state_bundle.task_id,
+            candidate_memory_id=memory_id,
+            engine_name=engine_names["share"],
+            engine_version=engine_versions["share"],
+            real_engine_executed=real_engine_executed,
+            share=share,
+            withhold=withhold,
+            paired_record_valid=valid,
+            invalid_reason=reason,
+            paired_label=(
+                _paired_label(share.outcome.success, withhold.outcome.success)
+                if valid
+                else None
+            ),
+            branch_execution_order=branch_execution_order,
+            share_runtime_visibility_verified=share.runtime_visibility_verified,
+            withhold_runtime_visibility_verified=withhold.runtime_visibility_verified,
+        )
+        workspace.mkdir(parents=True, exist_ok=True)
+        (workspace / "branch_audit.json").write_text(
+            json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True)
+            + "\n",
+            encoding="utf-8",
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Internals
+    # ------------------------------------------------------------------
+
+    def _run_branch(
+        self,
+        *,
+        branch_id: str,
+        task: dict[str, Any],
+        initial_state_bundle: InitialStateBundle,
+        agent_config: dict[str, Any],
+        generation_seed: int,
+        workspace: Path,
+        agent_input: Any,
+        input_audit: MarbleAgentInputAudit,
+        memory_injection: dict[str, Any] | None,
+        run_metadata: dict[str, Any],
+        receiver_agent_id: str,
+        visibility_method: str,
+        expected_memory_ids: Sequence[str] = (),
+        forbidden_memory_ids: Sequence[str] = (),
+        engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
+    ) -> tuple[MarbleBranchAudit, str, str]:
+        """Materialize, execute, evaluate, clean up and audit one branch.
+
+        ``expected_memory_ids`` (must be visible) and
+        ``forbidden_memory_ids`` (must be completely invisible) are
+        distinct semantics and are never encoded in one field
+        (清单 Shared-Control 第3/4章).
+        """
+        evaluator = evaluator_for_scenario(initial_state_bundle.scenario)
+        rebuilder = SequentialDatabaseRebuilder()
+        env = MarbleDatabaseEnvironment(
+            task=task,
+            workspace=workspace / branch_id,
+            initial_state_bundle=initial_state_bundle,
+            agent_config=agent_config,
+        )
+        engine_name = env.engine_name
+        engine_version = env.engine_version
+        try:
+            fingerprint = rebuilder.materialize(
+                initial_state_bundle=initial_state_bundle,
+                branch_workspace=workspace / branch_id,
             )
-            return result
+            try:
+                run = env.run(
+                    agent_input=agent_input,
+                    generation_seed=generation_seed,
+                    memory_injection=memory_injection,
+                    engine_timeout_seconds=engine_timeout_seconds,
+                    run_metadata=run_metadata,
+                )
+                outcome = evaluator.evaluate(task=task, run_result=run)
+                branch_engine_executed = True
+            except Exception as exc:
+                run = {"branch": branch_id, "error": str(exc)}
+                outcome = outcome_from_failure(
+                    evaluator_name="marble_database_engine",
+                    reason=str(exc),
+                    raw_result=run,
+                )
+                branch_engine_executed = False
+            cleanup_result = rebuilder.destroy(remove_workspace=False)
+            audit = self._audit(
+                branch_id=branch_id,
+                env=env,
+                raw_result=run,
+                input_audit=input_audit,
+                bundle=initial_state_bundle,
+                generation_seed=generation_seed,
+                outcome=outcome,
+                initial_logical_fingerprint=fingerprint,
+                real_engine_executed=branch_engine_executed,
+                cleanup_result=cleanup_result,
+                runtime_visibility_verified=False,
+                runtime_visibility_invalid_reason="pending",
+            )
+            # Runtime visibility validation
+            branch_audit_path = (
+                workspace / branch_id / "memory_visibility_audit.jsonl"
+            )
+            rt_val = validate_runtime_visibility_from_path(
+                method=visibility_method,
+                branch=branch_id,
+                receiver_agent_ids=[receiver_agent_id],
+                expected_memory_ids=list(expected_memory_ids),
+                audit_path=branch_audit_path,
+                forbidden_memory_ids=list(forbidden_memory_ids),
+            )
+            audit = audit.model_copy(update={
+                "runtime_visibility_verified": rt_val.visibility_verified,
+                "runtime_visibility_invalid_reason": rt_val.invalid_reason,
+            })
+            return audit, engine_name, engine_version
         finally:
-            if share_env is not None:
-                share_env.close()
-            if withhold_env is not None:
-                withhold_env.close()
+            env.close()
             rebuilder.destroy()
 
     def _audit(
@@ -300,6 +603,28 @@ class MarblePairedBranchRunner:
             runtime_visibility_verified=runtime_visibility_verified,
             runtime_visibility_invalid_reason=runtime_visibility_invalid_reason,
         )
+
+
+def _validate_control(audit: MarbleBranchAudit) -> tuple[bool, str | None]:
+    """Fail-closed validity of one shared control execution (清单
+    Shared-Control 第6章). Any single failure invalidates every paired
+    record of the group; automatic withhold re-runs are forbidden."""
+    if not audit.real_engine_executed:
+        return False, "real_marble_engine_not_executed"
+    if not audit.outcome.native_evaluator_executed:
+        return False, "native_evaluator_not_executed"
+    if not audit.outcome.environment_valid:
+        return False, "environment_invalid"
+    if audit.initial_logical_fingerprint is None:
+        return False, "initial_state_audit_failed"
+    if not audit.runtime_visibility_verified:
+        reason = audit.runtime_visibility_invalid_reason or ""
+        if "leaked" in reason:
+            return False, "candidate_memory_leaked"
+        return False, "runtime_visibility_not_verified"
+    if not audit.cleanup_succeeded:
+        return False, "cleanup_failed"
+    return True, None
 
 
 def _validate_pair(

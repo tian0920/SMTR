@@ -98,7 +98,17 @@ class ProductionSequentialRouter:
                 "use NoMemoryRouter for the no-memory baseline"
             )
         self.critic = critic
-        self.gate = gate or SMTRGate(SMTRGateConfig())
+        if gate is None:
+            # Resolve the gate budget from the checkpoint epsilon_star;
+            # a checkpoint without validation-selected epsilon_star fails
+            # closed instead of using a hard-coded default (清单 P1-2).
+            epsilon_star = getattr(critic, "epsilon_star", None)
+            if epsilon_star is None:
+                raise ValueError(
+                    "Checkpoint does not contain validation-selected epsilon_star."
+                )
+            gate = SMTRGate(SMTRGateConfig(negative_risk_budget=float(epsilon_star)))
+        self.gate = gate
         self.conditioning_policy = conditioning_policy or DynamicSelectedSetConditioning()
         self.traversal_policy = traversal_policy or RandomTraversal()
         self.config = config or SequentialRouterConfig()

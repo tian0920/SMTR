@@ -17,8 +17,10 @@ import numpy as np
 from smtr.core.types import CandidateExposureInput
 from smtr.counterfactual.edge_keys import (
     edge_equal_sample_weights,
+    group_records_by_control_family,
     group_records_by_edge,
 )
+from smtr.marble.runtime_visibility_audit import file_digest
 from smtr.router.transfer_calibration import (
     compute_four_class_metrics,
     compute_probability_metrics,
@@ -46,11 +48,14 @@ def train_critic(
     feature_block: str = _DEFAULT_FEATURE_BLOCK,
     coverage_mode: str = "formal",
     risk_delta: float = 0.10,
+    budget_candidate_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     """Train four-outcome transfer critic from paired records."""
     # Load training data with the underlying records so multi-seed treatment
-    # edges can be grouped (清单 P0-3): edge-equal sample weights and
-    # edge-cluster bootstrap treat seeds as repeated trials of one edge.
+    # edges can be grouped (清单 P0-3): edge-equal sample weights keep loss
+    # balanced per treatment edge, while bootstrap clusters are
+    # task-receiver control families (清单 Shared-Control 第10章) so rows
+    # sharing one no-memory control resample together.
     train_data = load_paired_records_with_metadata(train_records_path, memory_pool_path)
     if not train_data:
         raise ValueError(f"no valid training records in {train_records_path}")
@@ -58,7 +63,8 @@ def train_critic(
     inputs = [item for item, _, _ in train_data]
     labels = [label for _, label, _ in train_data]
     train_records = [rec for _, _, rec in train_data]
-    edge_clusters = group_records_by_edge(train_records)
+    edge_groups = group_records_by_edge(train_records)
+    bootstrap_clusters = group_records_by_control_family(train_records)
     sample_weights = edge_equal_sample_weights(train_records)
 
     label_counts = Counter(labels)
@@ -85,7 +91,7 @@ def train_critic(
         labels,
         coverage_mode=coverage_mode,
         sample_weights=sample_weights,
-        edge_clusters=edge_clusters,
+        bootstrap_clusters=bootstrap_clusters,
     )
 
     # Write feature audit
@@ -102,7 +108,10 @@ def train_critic(
     # must only read epsilon_star from the checkpoint.
     metrics: dict[str, Any] = {
         "train_records": len(train_data),
-        "train_edges": len(edge_clusters),
+        "train_edges": len(edge_groups),
+        "train_control_families": len(bootstrap_clusters),
+        "loss_weighting_unit": "treatment_edge",
+        "bootstrap_cluster_unit": "task_receiver_control_family",
         "label_distribution": dict(label_counts),
         "coverage_mode": coverage_mode,
         "coverage_report": critic.coverage_report,
@@ -172,6 +181,56 @@ def train_critic(
             metrics["epsilon_validation_edge_count"] = selection[
                 "validation_edge_count"
             ]
+
+    # 清单 P0-2: bind the training provenance into the checkpoint so a later
+    # split audit can verify the exact artifacts this critic was fitted on,
+    # not just the checkpoint file digest.
+    critic.training_split = "train"
+    critic.train_record_digest = file_digest(Path(train_records_path))
+    critic.validation_record_digest = (
+        file_digest(Path(validation_records_path))
+        if validation_records_path and Path(validation_records_path).exists()
+        else None
+    )
+    critic.memory_pool_digest = file_digest(Path(memory_pool_path))
+
+    # 清单 Shared-Control 第16.1节: shared-control and budget provenance are
+    # bound into every checkpoint; budget fields come from the budgeted
+    # train candidate manifest when this checkpoint trains a B subset.
+    from smtr.counterfactual.paired_record import (
+        SHARED_CONTROL_DEFINITION_VERSION,
+    )
+
+    critic.shared_control_definition_version = SHARED_CONTROL_DEFINITION_VERSION
+    critic.loss_weighting_unit = "treatment_edge"
+    critic.bootstrap_cluster_unit = "task_receiver_control_family"
+    critic.adaptive_sampling_used = False
+    critic.adaptive_stopping_used = False
+    if budget_candidate_manifest_path is not None:
+        from smtr.marble.budget_sampling import manifest_canonical_digest
+        from smtr.marble.real_data import DatabaseCandidateManifest
+
+        budget_manifest = DatabaseCandidateManifest.model_validate_json(
+            Path(budget_candidate_manifest_path).read_text(encoding="utf-8")
+        )
+        budget_meta = budget_manifest.budget_metadata
+        if budget_meta is None:
+            raise ValueError(
+                "budget candidate manifest lacks budget_metadata: "
+                f"{budget_candidate_manifest_path}"
+            )
+        critic.training_budget_policy = budget_meta.policy_version
+        critic.training_budget_requested = budget_meta.requested_fraction
+        critic.training_budget_realized = budget_meta.realized_edge_fraction
+        critic.parent_train_candidate_manifest_digest = (
+            budget_meta.parent_manifest_digest
+        )
+        critic.budget_train_candidate_manifest_digest = (
+            manifest_canonical_digest(budget_manifest)
+        )
+        metrics["training_budget_policy"] = budget_meta.policy_version
+        metrics["training_budget_requested"] = budget_meta.requested_fraction
+        metrics["training_budget_realized"] = budget_meta.realized_edge_fraction
 
     # Save checkpoint after calibration so epsilon_star is persisted.
     critic.save(output_path)

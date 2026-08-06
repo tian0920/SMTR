@@ -20,6 +20,15 @@ TreatmentEdgeKey = tuple[str, str, str]
 # Seed-level key adds generation_seed as the fourth element.
 SeedPairKey = tuple[str, str, str, int]
 
+# Shared no-memory control identity (清单 Shared-Control 第2章): one
+# control execution per (task, receiver, seed) group, reused by every
+# candidate share on that group.
+ControlGroupKey = tuple[str, str, int]
+
+# Control family spans all seeds of one (task, receiver) group and is
+# the critic bootstrap cluster unit.
+ControlFamilyKey = tuple[str, str]
+
 
 def treatment_edge_key(record: dict[str, Any]) -> TreatmentEdgeKey:
     """Edge identity of one paired record: (task, receiver, memory)."""
@@ -40,6 +49,23 @@ def seed_pair_key(record: dict[str, Any]) -> SeedPairKey:
     )
 
 
+def control_group_key(record: dict[str, Any]) -> ControlGroupKey:
+    """Shared-control group identity: (task, receiver, seed)."""
+    return (
+        str(record["task_id"]),
+        str(record["receiver_agent_id"]),
+        int(record["generation_seed"]),
+    )
+
+
+def control_family_key(record: dict[str, Any]) -> ControlFamilyKey:
+    """Control family identity: (task, receiver) across all seeds."""
+    return (
+        str(record["task_id"]),
+        str(record["receiver_agent_id"]),
+    )
+
+
 def group_records_by_edge(
     records: list[dict[str, Any]],
 ) -> dict[TreatmentEdgeKey, list[int]]:
@@ -47,6 +73,22 @@ def group_records_by_edge(
     groups: dict[TreatmentEdgeKey, list[int]] = defaultdict(list)
     for idx, rec in enumerate(records):
         groups[treatment_edge_key(rec)].append(idx)
+    return dict(groups)
+
+
+def group_records_by_control_family(
+    records: list[dict[str, Any]],
+) -> dict[ControlFamilyKey, list[int]]:
+    """Map each control family to the row indices of its records.
+
+    One family covers all candidates, seeds and shared controls of a
+    (task, receiver) group; bootstrap members resample whole families so
+    the statistically dependent share/control pairs never split across
+    a member (清单 Shared-Control 第10章).
+    """
+    groups: dict[ControlFamilyKey, list[int]] = defaultdict(list)
+    for idx, rec in enumerate(records):
+        groups[control_family_key(rec)].append(idx)
     return dict(groups)
 
 

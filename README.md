@@ -64,6 +64,39 @@ MARBLE train trajectories
 → integrity audit
 ```
 
+## Shared No-Memory Control
+
+For each target task, receiver, and generation seed, SMTR executes one shared no-memory control. Candidate-specific share executions under the same context are paired with this common control. This removes redundant control executions without changing the four-outcome transfer estimand.
+
+- Controls are never shared across receivers or across generation seeds; the control group key is `(task_id, receiver_agent_id, generation_seed)`.
+- Each candidate still runs its own independent share branch.
+- Every paired record (`schema_version: marble_candidate_pair_v3`) carries `control_group_id` plus the control provenance digests of the shared control.
+- The control execution never sees any candidate memory of its group, and its metadata contains no candidate/writer identity, score or source.
+- An invalid control invalidates the whole group (`invalid_reason` starts with `shared_control_invalid:`); an invalid share branch invalidates only that candidate's record.
+- Paired-record generation reports actual share/control/total episode counts, the legacy-equivalent episode count and the saving fraction.
+
+Because candidates within the same task–receiver family share control outcomes, critic bootstrap members resample complete task–receiver control families. Loss weighting remains equal across treatment edges.
+
+## Intervention-Budget Analysis
+
+B is an intervention-budget axis rather than a tuned hyperparameter. We report fixed nested budgets of 25%, 50%, 75%, and 100%, subsampling train treatment edges before observing outcomes while keeping validation and test support fixed.
+
+```bash
+python -m smtr.marble.cli build-budgeted-candidates \
+  --candidate-manifest artifacts/marble/candidates/train_candidates.json \
+  --budget-fraction 0.5 \
+  --output artifacts/marble/candidates/train_candidates_budget50.json
+
+python -m smtr.marble.cli train-critic \
+  --train-records artifacts/marble/paired/train/paired_records.jsonl \
+  --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
+  --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget50.json \
+  --output artifacts/marble/checkpoints/smtr_full_budget50.joblib
+```
+
+Budget selection is deterministic, stratified and nested (`B25 ⊆ B50 ⊆ B75 ⊆ B100`); it only applies to train candidate manifests, never reads outcomes or critic predictions, and keeps cross-receiver anchor groups atomic. Budget checkpoints record the requested/realized fractions and manifest digests. B never enters the router or validation-time tuning.
+
 ## Data Splits
 
 Tasks are split **by group** (database tasks by normalized schema family; other scenarios by scenario + task-id bucket), so that structurally similar tasks never cross splits.

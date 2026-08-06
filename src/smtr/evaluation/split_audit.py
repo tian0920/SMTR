@@ -19,7 +19,17 @@ SPLIT_NAMES = ("train", "validation", "test")
 
 # Artifact schema carrying per-file digests so formal evaluations can
 # re-verify that the audited files are exactly the ones evaluated (R6 P1-5).
-SPLIT_AUDIT_SCHEMA_VERSION = "smtr_split_audit_v2"
+# v3 additionally binds the test candidate manifest, a per-role checkpoint
+# digest map and fail-closed provenance validation (清单 P0-1/P0-2/P1-1).
+SPLIT_AUDIT_SCHEMA_VERSION = "smtr_split_audit_v3"
+
+# Method -> checkpoint role required to run that method (清单 3.4).
+_METHOD_CHECKPOINT_ROLES = {
+    "smtr": "full",
+    "smtr_no_risk": "full",
+    "global_transfer_critic": "global_transfer",
+    "smtr_no_pair_interaction": "no_pair_interaction",
+}
 
 
 def audit_split_leakage(
@@ -198,31 +208,85 @@ def load_paired_records_file(path: Path) -> list[dict[str, Any]]:
     return records
 
 
+def validate_candidate_manifest_for_formal_evaluation(
+    manifest: dict[str, Any],
+    *,
+    expected_target_split: str,
+) -> list[str]:
+    """Schema gate for the test candidate manifest (清单 P0-1 2.4).
+
+    The manifest must target the evaluation split, draw all memories from
+    the train split and carry a non-empty candidate list.
+    """
+    errors: list[str] = []
+
+    if manifest.get("target_split") != expected_target_split:
+        errors.append(
+            "candidate manifest target_split mismatch: "
+            f"expected={expected_target_split!r}, "
+            f"actual={manifest.get('target_split')!r}"
+        )
+
+    if manifest.get("memory_source_split") != "train":
+        errors.append(
+            "candidate manifest memory_source_split must be 'train'"
+        )
+
+    candidates = manifest.get("candidates")
+
+    if not isinstance(candidates, list):
+        errors.append("candidate manifest must contain a candidates list")
+        return errors
+
+    if not candidates:
+        errors.append("candidate manifest contains no candidate entries")
+
+    return errors
+
+
 def audit_split_files(
     *,
     train_records_path: Path,
     validation_records_path: Path,
     test_records_path: Path,
     memory_pool_path: Path | None = None,
+    test_candidate_manifest_path: Path | None = None,
+    checkpoint_paths: dict[str, Path] | None = None,
     checkpoint_path: Path | None = None,
+    methods: list[str] | None = None,
     dataset_manifest_path: Path | None = None,
     split_manifest_path: Path | None = None,
+    strict_candidate_support: bool = True,
+    experiment_mode: str = "pilot",
 ) -> dict[str, Any]:
     """Audit persisted split files end to end (清单 P0-15).
 
-    Calibration / epsilon-selection provenance is read from the checkpoint
-    when one is supplied; violations never raise out of this wrapper — the
-    summary reports ``split_integrity_passed=False`` plus the error so the
-    caller decides how to fail.
+    Calibration / epsilon-selection provenance is read from the full-role
+    checkpoint when one is supplied; violations never raise out of this
+    wrapper — the summary reports ``split_integrity_passed=False`` plus the
+    error so the caller decides how to fail.
 
-    The returned summary always carries the v2 artifact metadata (R6 清单
-    P1-5): a schema version plus the SHA-256 digest of every audited file,
-    so a formal end-to-end evaluation can later prove it evaluated exactly
-    the artifacts this audit inspected. Digests use the project's canonical
-    file-digest helper, never Python's built-in ``hash()``.
+    The v3 artifact (清单 P0-1/P0-2/P1-1) binds, in addition to the v2 file
+    digests: the test candidate manifest (digest + edge support against the
+    test paired records), a per-role checkpoint digest map with training
+    provenance verification, and fail-closed provenance schema validation
+    in formal mode. Digests use the project's canonical file-digest helper,
+    never Python's built-in ``hash()``.
     """
-    artifact_metadata = {
+    resolved_checkpoint_paths = dict(checkpoint_paths or {})
+    # Legacy single-checkpoint callers bind the full SMTR checkpoint.
+    if checkpoint_path is not None and "full" not in resolved_checkpoint_paths:
+        resolved_checkpoint_paths["full"] = Path(checkpoint_path)
+
+    candidate_manifest: dict[str, Any] | None = None
+    if test_candidate_manifest_path is not None:
+        candidate_manifest = json.loads(
+            Path(test_candidate_manifest_path).read_text(encoding="utf-8")
+        )
+
+    artifact_metadata: dict[str, Any] = {
         "schema_version": SPLIT_AUDIT_SCHEMA_VERSION,
+        "experiment_mode": experiment_mode,
         "dataset_manifest_digest": _artifact_digest(dataset_manifest_path),
         "split_manifest_digest": _artifact_digest(split_manifest_path),
         "memory_pool_digest": _artifact_digest(memory_pool_path),
@@ -231,23 +295,65 @@ def audit_split_files(
             validation_records_path
         ),
         "test_paired_records_digest": _artifact_digest(test_records_path),
-        "checkpoint_digest": _artifact_digest(checkpoint_path),
+        "test_candidate_manifest_digest": _artifact_digest(
+            test_candidate_manifest_path
+        ),
+        "candidate_manifest_target_split": (
+            candidate_manifest.get("target_split")
+            if candidate_manifest is not None
+            else None
+        ),
     }
+
     splits = {
         "train": load_paired_records_file(train_records_path),
         "validation": load_paired_records_file(validation_records_path),
         "test": load_paired_records_file(test_records_path),
     }
+
+    # 清单 P0-2: bind every formal checkpoint role and verify its feature
+    # block plus training provenance before any leakage check.
+    (
+        checkpoint_digests,
+        checkpoint_metadata,
+        critics,
+        checkpoint_binding_errors,
+    ) = _bind_checkpoints(
+        resolved_checkpoint_paths,
+        methods=methods,
+        experiment_mode=experiment_mode,
+        train_digest=artifact_metadata["train_paired_records_digest"],
+        validation_digest=artifact_metadata["validation_paired_records_digest"],
+        memory_pool_digest=artifact_metadata["memory_pool_digest"],
+    )
+
+    full_critic = critics.get("full")
     calibration_split = "validation"
     epsilon_selection_split = "validation"
-    if checkpoint_path is not None:
-        from smtr.router.transfer_critic import FourOutcomeTransferCritic
-
-        critic = FourOutcomeTransferCritic.load(Path(checkpoint_path))
-        calibration_split = getattr(critic, "calibration_split", None) or "unknown"
+    if full_critic is not None:
+        calibration_split = getattr(full_critic, "calibration_split", None) or "unknown"
         epsilon_selection_split = (
-            getattr(critic, "epsilon_selection_split", None) or "unknown"
+            getattr(full_critic, "epsilon_selection_split", None) or "unknown"
         )
+
+    # 清单 P1-1: formal provenance schema validation runs before any overlap
+    # check and fails closed; pilots may use legacy fields but are flagged.
+    legacy_schema_used = _uses_legacy_provenance_fallback(splits)
+    if experiment_mode == "formal":
+        provenance_errors, missing_provenance = _audit_formal_provenance(splits)
+        if provenance_errors:
+            return {
+                **artifact_metadata,
+                "checkpoint_digests": checkpoint_digests,
+                "checkpoint_metadata": checkpoint_metadata,
+                "checkpoint_binding_errors": checkpoint_binding_errors,
+                "legacy_schema_used": False,
+                "split_integrity_passed": False,
+                "provenance_errors": provenance_errors,
+                "missing_provenance": missing_provenance,
+                "calibration_split": calibration_split,
+                "epsilon_selection_split": epsilon_selection_split,
+            }
 
     try:
         summary = audit_split_leakage(
@@ -258,19 +364,289 @@ def audit_split_files(
     except ValueError as exc:
         return {
             **artifact_metadata,
+            "checkpoint_digests": checkpoint_digests,
+            "checkpoint_metadata": checkpoint_metadata,
+            "checkpoint_binding_errors": checkpoint_binding_errors,
+            "legacy_schema_used": legacy_schema_used,
             "split_integrity_passed": False,
             "error": str(exc),
             "calibration_split": calibration_split,
             "epsilon_selection_split": epsilon_selection_split,
         }
 
+    # 清单 P0-1: candidate manifest support against the test paired records.
+    candidate_manifest_block: dict[str, Any] | None = None
+    candidate_manifest_errors: list[str] = []
+    test_edges_missing_from_manifest: list[Any] = []
+    unsupported_candidate_edges: list[Any] = []
+    if candidate_manifest is not None:
+        candidate_manifest_block = _audit_candidate_manifest_support(
+            candidate_manifest,
+            manifest_path=test_candidate_manifest_path,
+            manifest_digest=artifact_metadata["test_candidate_manifest_digest"],
+            test_records=splits["test"],
+        )
+        candidate_manifest_errors = candidate_manifest_block[
+            "candidate_manifest_errors"
+        ]
+        test_edges_missing_from_manifest = candidate_manifest_block[
+            "test_edges_missing_from_manifest"
+        ]
+        unsupported_candidate_edges = candidate_manifest_block[
+            "unsupported_candidate_edges"
+        ]
+    elif experiment_mode == "formal":
+        candidate_manifest_errors = [
+            "formal split audit requires a test candidate manifest"
+        ]
+
     non_train_pool_sources = sorted(_non_train_memory_pool_sources(memory_pool_path))
+
+    split_integrity_passed = bool(summary["split_integrity_passed"])
     if non_train_pool_sources:
-        summary = dict(summary)
+        split_integrity_passed = False
+    if candidate_manifest_errors or test_edges_missing_from_manifest:
+        split_integrity_passed = False
+    if strict_candidate_support and unsupported_candidate_edges:
+        split_integrity_passed = False
+    if checkpoint_binding_errors:
+        split_integrity_passed = False
+
+    summary = dict(summary)
+    if non_train_pool_sources:
         summary["non_train_memory_pool_sources"] = non_train_pool_sources
-        summary["split_integrity_passed"] = False
     summary.update(artifact_metadata)
+    summary.update(
+        {
+            "checkpoint_digests": checkpoint_digests,
+            "checkpoint_metadata": checkpoint_metadata,
+            "checkpoint_binding_errors": checkpoint_binding_errors,
+            "candidate_manifest": candidate_manifest_block,
+            "candidate_manifest_errors": candidate_manifest_errors,
+            "test_edges_missing_from_manifest": test_edges_missing_from_manifest,
+            "unsupported_candidate_edges": unsupported_candidate_edges,
+            "strict_candidate_support": strict_candidate_support,
+            "legacy_schema_used": legacy_schema_used,
+            "split_integrity_passed": split_integrity_passed,
+        }
+    )
     return summary
+
+
+def _bind_checkpoints(
+    checkpoint_paths: dict[str, Path],
+    *,
+    methods: list[str] | None,
+    experiment_mode: str,
+    train_digest: str | None,
+    validation_digest: str | None,
+    memory_pool_digest: str | None,
+) -> tuple[dict[str, str], dict[str, dict[str, Any]], dict[str, Any], list[str]]:
+    """Per-role checkpoint digests, metadata and binding errors (清单 P0-2).
+
+    Feature-block role validation runs in every mode; the training
+    provenance digest checks only fail closed in formal mode so pilot
+    checkpoints without persisted provenance remain auditable.
+    """
+    from smtr.evaluation.formal_artifacts import validate_checkpoint_role
+
+    errors: list[str] = []
+    if methods is not None:
+        for method in methods:
+            role = _METHOD_CHECKPOINT_ROLES.get(method)
+            if role is not None and role not in checkpoint_paths:
+                errors.append(
+                    f"method {method!r} requires checkpoint role {role!r}"
+                )
+
+    digests: dict[str, str] = {}
+    metadata: dict[str, dict[str, Any]] = {}
+    critics: dict[str, Any] = {}
+    for role in sorted(checkpoint_paths):
+        path = Path(checkpoint_paths[role])
+        digests[role] = file_digest(path)
+        try:
+            critic = validate_checkpoint_role(
+                checkpoint_path=path, expected_role=role
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
+            continue
+        critics[role] = critic
+        metadata[role] = {
+            "feature_block": getattr(critic, "feature_block", None),
+            "training_split": getattr(critic, "training_split", None),
+            "calibration_split": getattr(critic, "calibration_split", None),
+            "epsilon_selection_split": getattr(
+                critic, "epsilon_selection_split", None
+            ),
+            "calibration_unit": getattr(critic, "calibration_unit", None),
+            "epsilon_selection_unit": getattr(
+                critic, "epsilon_selection_unit", None
+            ),
+        }
+        if experiment_mode == "formal":
+            errors.extend(
+                _checkpoint_training_provenance_errors(
+                    critic,
+                    role=role,
+                    train_digest=train_digest,
+                    validation_digest=validation_digest,
+                    memory_pool_digest=memory_pool_digest,
+                )
+            )
+    return digests, metadata, critics, errors
+
+
+def _checkpoint_training_provenance_errors(
+    critic: Any,
+    *,
+    role: str,
+    train_digest: str | None,
+    validation_digest: str | None,
+    memory_pool_digest: str | None,
+) -> list[str]:
+    """Formal-mode check of the provenance persisted in a checkpoint (3.6)."""
+    errors: list[str] = []
+    if getattr(critic, "training_split", None) != "train":
+        errors.append(
+            f"checkpoint role {role!r} training_split must be 'train', "
+            f"got {getattr(critic, 'training_split', None)!r}"
+        )
+    if getattr(critic, "train_record_digest", None) != train_digest:
+        errors.append(f"checkpoint role {role!r} train record digest mismatch")
+    if (
+        validation_digest is not None
+        and getattr(critic, "validation_record_digest", None) != validation_digest
+    ):
+        errors.append(
+            f"checkpoint role {role!r} validation record digest mismatch"
+        )
+    if (
+        memory_pool_digest is not None
+        and getattr(critic, "memory_pool_digest", None) != memory_pool_digest
+    ):
+        errors.append(f"checkpoint role {role!r} memory pool digest mismatch")
+    return errors
+
+
+def _audit_candidate_manifest_support(
+    candidate_manifest: dict[str, Any],
+    *,
+    manifest_path: Path | None,
+    manifest_digest: str | None,
+    test_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Candidate manifest schema + edge support against test records (2.5).
+
+    Candidate entries are extracted from the actual manifest structure;
+    entry memory ids may be stored as ``candidate_memory_id`` or
+    ``memory_id``, but every edge key is unified on
+    ``(task_id, receiver_agent_id, candidate_memory_id)``.
+    """
+    from smtr.marble.core_validity import is_core_valid_pair
+
+    errors = validate_candidate_manifest_for_formal_evaluation(
+        candidate_manifest,
+        expected_target_split="test",
+    )
+
+    candidate_edges: set[tuple[str, str, str]] = set()
+    for receiver_entry in candidate_manifest.get("candidates") or []:
+        task_id = str(receiver_entry.get("task_id"))
+        receiver_agent_id = str(receiver_entry.get("receiver_agent_id"))
+        for candidate in receiver_entry.get("candidate_records", []):
+            memory_id = candidate.get(
+                "candidate_memory_id", candidate.get("memory_id")
+            )
+            if memory_id is None:
+                continue
+            candidate_edges.add((task_id, receiver_agent_id, str(memory_id)))
+
+    test_record_edges = {
+        treatment_edge_key(record)
+        for record in test_records
+        if is_core_valid_pair(record)
+    }
+
+    return {
+        "path": str(manifest_path) if manifest_path is not None else None,
+        "digest": manifest_digest,
+        "target_split": candidate_manifest.get("target_split"),
+        "memory_source_split": candidate_manifest.get("memory_source_split"),
+        "candidate_edge_count": len(candidate_edges),
+        "candidate_manifest_errors": errors,
+        "test_edges_missing_from_manifest": sorted(
+            test_record_edges - candidate_edges
+        ),
+        "unsupported_candidate_edges": sorted(
+            candidate_edges - test_record_edges
+        ),
+    }
+
+
+def _audit_formal_provenance(
+    splits: dict[str, list[dict[str, Any]]],
+) -> tuple[list[str], dict[str, list[dict[str, Any]]]]:
+    """Fail-closed provenance schema validation for formal audits (清单 P1-1).
+
+    Returns the flat error list plus a per-field report so callers never
+    see only a vague total error count.
+    """
+    from smtr.counterfactual.paired_record import (
+        FORMAL_PAIRED_PROVENANCE_FIELDS,
+        validate_formal_paired_provenance,
+    )
+
+    errors: list[str] = []
+    missing: dict[str, list[dict[str, Any]]] = {
+        field: [] for field in sorted(FORMAL_PAIRED_PROVENANCE_FIELDS)
+    }
+    for name in SPLIT_NAMES:
+        for index, record in enumerate(splits[name]):
+            errors.extend(
+                validate_formal_paired_provenance(record, record_index=index)
+            )
+            for field in FORMAL_PAIRED_PROVENANCE_FIELDS:
+                value = record.get(field)
+                if value is None or (
+                    isinstance(value, str) and not value.strip()
+                ):
+                    missing[field].append(
+                        {
+                            "split": name,
+                            "record_index": index,
+                            "task_id": record.get("task_id"),
+                            "receiver_agent_id": record.get(
+                                "receiver_agent_id"
+                            ),
+                            "candidate_memory_id": record.get(
+                                "candidate_memory_id"
+                            ),
+                        }
+                    )
+    return errors, missing
+
+
+def _uses_legacy_provenance_fallback(
+    splits: dict[str, list[dict[str, Any]]],
+) -> bool:
+    """True when any record relies on legacy ``source_*`` fallback fields.
+
+    Pilot audits may consume such records but must flag
+    ``legacy_schema_used``; formal audits reject them upstream.
+    """
+    for name in SPLIT_NAMES:
+        for record in splits[name]:
+            if not record.get("memory_source_trajectory_id") and record.get(
+                "source_trajectory_id"
+            ):
+                return True
+            if not record.get("memory_source_task_id") and record.get(
+                "source_task_id"
+            ):
+                return True
+    return False
 
 
 def _artifact_digest(path: Path | None) -> str | None:

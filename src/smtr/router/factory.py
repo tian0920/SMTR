@@ -55,7 +55,7 @@ def build_router(
     seed: int = 0,
     critic_config: SequentialRouterConfig | None = None,
     expected_feature_block: str | None = None,
-    negative_risk_budget: float = 0.2,
+    negative_risk_budget: float | None = None,
     conditioning_policy: SelectedSetConditioningPolicy | None = None,
     traversal_policy: TraversalPolicy | None = None,
 ) -> MemoryRouter:
@@ -72,6 +72,9 @@ def build_router(
         critic_config: Optional SequentialRouterConfig for "learned" mode.
         expected_feature_block: Optional feature block name to validate. The
             checkpoint is never mutated after loading.
+        negative_risk_budget: Debug-only gate budget override. ``None`` (the
+            formal default) resolves the budget from the checkpoint's
+            validation-selected epsilon_star and fails closed when absent.
 
     Returns:
         A MemoryRouter instance.
@@ -106,6 +109,13 @@ def build_router(
             require_metadata=expected_feature_block is not None,
         )
         _validate_feature_block(critic, expected_feature_block)
+        if negative_risk_budget is None:
+            epsilon_star = getattr(critic, "epsilon_star", None)
+            if epsilon_star is None:
+                raise ValueError(
+                    "Checkpoint does not contain validation-selected epsilon_star."
+                )
+            negative_risk_budget = float(epsilon_star)
         return ProductionSequentialRouter(
             critic=critic,
             gate=SMTRGate(SMTRGateConfig(negative_risk_budget=negative_risk_budget)),
@@ -127,7 +137,7 @@ def load_learned_router(
     expected_feature_block: str,
     config: SequentialRouterConfig,
     seed: int,
-    negative_risk_budget: float = 0.2,
+    negative_risk_budget: float | None = None,
     conditioning_policy: SelectedSetConditioningPolicy | None = None,
     traversal_policy: TraversalPolicy | None = None,
 ) -> ProductionSequentialRouter:

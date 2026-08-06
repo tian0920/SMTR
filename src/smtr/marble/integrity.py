@@ -6,6 +6,93 @@ import json
 from pathlib import Path
 from typing import Any
 
+from smtr.counterfactual.paired_record import SHARED_CONTROL_SCHEMA_VERSION
+
+
+def audit_shared_control_consistency(
+    records: list[dict[str, Any]],
+) -> list[str]:
+    """Shared-control consistency violations (清单 Shared-Control 第17.1节).
+
+    One ``control_group_id`` must correspond to exactly one (task,
+    receiver, seed) control execution: identical control digests,
+    identical withhold outcome, one record per candidate, and
+    ``control_reused=true`` on every v3 record.
+    """
+    violations: list[str] = []
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for rec in records:
+        if rec.get("schema_version") != SHARED_CONTROL_SCHEMA_VERSION:
+            continue
+        group_id = rec.get("control_group_id")
+        if not group_id:
+            violations.append(
+                "v3 paired record missing control_group_id: "
+                f"replicate_id={rec.get('replicate_id')}"
+            )
+            continue
+        if rec.get("control_reused") is not True:
+            violations.append(
+                f"control_group_id={group_id} record has control_reused != true"
+            )
+        groups.setdefault(str(group_id), []).append(rec)
+
+    for group_id, group_records in sorted(groups.items()):
+        task_ids = {rec.get("task_id") for rec in group_records}
+        if len(task_ids) > 1:
+            violations.append(
+                f"control_group_id={group_id} maps to multiple task IDs: "
+                f"{sorted(task_ids)}"
+            )
+        receiver_ids = {rec.get("receiver_agent_id") for rec in group_records}
+        if len(receiver_ids) > 1:
+            violations.append(
+                f"control_group_id={group_id} maps to multiple receiver IDs: "
+                f"{sorted(receiver_ids)}"
+            )
+        seeds = {rec.get("generation_seed") for rec in group_records}
+        if len(seeds) > 1:
+            violations.append(
+                f"control_group_id={group_id} maps to multiple seeds: "
+                f"{sorted(seeds)}"
+            )
+        raw_digests = {rec.get("control_raw_result_digest") for rec in group_records}
+        if len(raw_digests) > 1:
+            violations.append(
+                f"control_group_id={group_id} maps to multiple control "
+                f"raw result digests: {len(raw_digests)} distinct"
+            )
+        initial_digests = {
+            rec.get("digests", {}).get("control_initial_digest")
+            for rec in group_records
+        }
+        if len(initial_digests) > 1:
+            violations.append(
+                f"control_group_id={group_id} maps to multiple control "
+                f"initial digests: {len(initial_digests)} distinct"
+            )
+        withhold_outcomes = {
+            (rec.get("withhold", {}).get("team_success"),)
+            for rec in group_records
+        }
+        if len(withhold_outcomes) > 1:
+            violations.append(
+                f"control_group_id={group_id} maps to multiple withhold "
+                f"outcomes: {sorted(withhold_outcomes)}"
+            )
+        declared_counts = {
+            rec.get("control_group_candidate_count") for rec in group_records
+        }
+        if len(declared_counts) > 1 or (
+            declared_counts and declared_counts != {len(group_records)}
+        ):
+            violations.append(
+                f"control_group_id={group_id} control_group_candidate_count "
+                f"{sorted(str(c) for c in declared_counts)} inconsistent with "
+                f"actual record count {len(group_records)}"
+            )
+    return violations
+
 
 def run_integrity_audit(
     *,
@@ -140,6 +227,11 @@ def run_integrity_audit(
         if withhold.get("cleanup_succeeded") is False:
             errors.append("withhold branch cleanup failed")
 
+    # --- Shared-control consistency (清单 Shared-Control 第17.1节) ---
+    shared_control_violations = audit_shared_control_consistency(paired_records)
+    errors.extend(shared_control_violations)
+    shared_control_consistency_passed = not shared_control_violations
+
     # --- Check router traces ---
     if paired_eval_dir and paired_eval_dir.exists():
         traces_path = paired_eval_dir / "traces.json"
@@ -180,6 +272,7 @@ def run_integrity_audit(
         and branch_isolation_passed
         and writer_receiver_present
         and candidate_level_pairs
+        and shared_control_consistency_passed
         and split_integrity_passed
         and not missing_artifacts
         and not errors
@@ -192,6 +285,8 @@ def run_integrity_audit(
         "branch_isolation_passed": branch_isolation_passed,
         "writer_receiver_fields_present": writer_receiver_present,
         "candidate_level_pairs": candidate_level_pairs,
+        "shared_control_consistency_passed": shared_control_consistency_passed,
+        "shared_control_violations": shared_control_violations,
         "split_integrity_passed": split_integrity_passed,
         "split_audit": split_audit,
         "missing_artifacts": missing_artifacts,

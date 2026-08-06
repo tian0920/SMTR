@@ -50,6 +50,12 @@ For each candidate memory $m$ and receiver state:
 
 Hold constant: task, seed, environment snapshot, receiver state, all other inputs.
 
+### Shared no-memory control
+
+For each target task, receiver, and generation seed, SMTR executes one shared no-memory control. Candidate-specific share executions under the same context are paired with this common control. This removes redundant control executions without changing the four-outcome transfer estimand.
+
+Every paired record carries `control_group_id` and the control provenance digests of its shared control; the control never sees any candidate memory (all candidate IDs of the group are forbidden to every agent), and its metadata never contains candidate identity, writer identity, candidate score or candidate source. An invalid control invalidates every record in the group; an invalid share branch invalidates only the corresponding candidate record.
+
 This produces a four-outcome label:
 - positive_transfer: share succeeds, withhold fails
 - negative_transfer: share fails, withhold succeeds
@@ -79,6 +85,8 @@ Train an ensemble classifier predicting:
 - $q_{11} = P(\text{neutral\_success})$
 
 Feature blocks: task context, receiver marginal, writer marginal, writer-receiver interaction, memory card. There is no prefix block: $S = \varnothing$ in v1.
+
+**Statistical dependence under shared control**: because candidates within the same task–receiver family share control outcomes, critic bootstrap members resample complete task–receiver control families. Loss weighting remains equal across treatment edges.
 
 ## 8. Receiver-Specific Exposure Router
 
@@ -114,3 +122,14 @@ outcome, so the formal claim is:
 No receiver-local evaluator exists in v1; local metrics are reported as
 `null` (never 0) and no local–team divergence claim is made. Local outcomes
 are a future extension only.
+
+## 10. Intervention-Budget Analysis
+
+B is an intervention-budget axis rather than a tuned hyperparameter. We report fixed nested budgets of 25%, 50%, 75%, and 100%, subsampling train treatment edges before observing outcomes while keeping validation and test support fixed.
+
+Budget selection is deterministic and stratified (by candidate source × receiver role, with cross-receiver anchor groups kept atomic); it never reads share/withhold outcomes, critic predictions, or any adaptive signal. Budget checkpoints bind the budgeted train candidate manifest and record the requested/realized fractions. B never enters the router or any validation-time tuning.
+
+## 11. Limitations
+
+- shared control removes redundant no-memory executions but does not eliminate the need for candidate-specific share interventions
+- v1 supervision is team-level only (see §9 outcome scope)

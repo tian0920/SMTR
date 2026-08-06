@@ -51,6 +51,7 @@ class RuntimeVisibilityValidator:
         candidate_memory_ids: Sequence[str] | None = None,
         selected_memory_ids: Sequence[str] | None = None,
         rejected_memory_ids: Sequence[str] | None = None,
+        forbidden_memory_ids: Sequence[str] | None = None,
     ) -> RuntimeVisibilityValidation:
         """Validate records for a single branch/method.
 
@@ -58,7 +59,7 @@ class RuntimeVisibilityValidator:
         ----------
         method:
             One of "b0", "share", "withhold", "all_share", "smtr", "pair_share",
-            "pair_withhold".
+            "pair_withhold", "shared_control".
         branch:
             Branch name (e.g. "b0", "share", "withhold").
         receiver_agent_ids:
@@ -73,6 +74,10 @@ class RuntimeVisibilityValidator:
             For SMTR: the router-selected set.
         rejected_memory_ids:
             For SMTR: the router-rejected set.
+        forbidden_memory_ids:
+            Unified negative set (清单 Shared-Control 第4章): memory IDs
+            that must NOT be visible to any agent. Expected and
+            forbidden are separate semantics and never share a field.
         """
         if not records:
             return RuntimeVisibilityValidation(
@@ -89,7 +94,11 @@ class RuntimeVisibilityValidator:
         if method in ("b0", "b0_no_memory"):
             violations.extend(self._validate_b0(records))
         elif method == "withhold":
-            cands = list(candidate_memory_ids or expected_memory_ids)
+            cands = list(
+                forbidden_memory_ids
+                or candidate_memory_ids
+                or expected_memory_ids
+            )
             violations.extend(self._validate_withhold(records, cands))
         elif method == "share":
             violations.extend(
@@ -119,10 +128,30 @@ class RuntimeVisibilityValidator:
                 )
             )
         elif method == "pair_withhold":
-            cands = list(candidate_memory_ids or expected_memory_ids)
+            cands = list(
+                forbidden_memory_ids
+                or candidate_memory_ids
+                or expected_memory_ids
+            )
             violations.extend(self._validate_withhold(records, cands))
+        elif method == "shared_control":
+            # Shared no-memory control (清单 Shared-Control 第4章): no
+            # memory is expected; every group candidate is forbidden.
+            forbidden = list(
+                forbidden_memory_ids or candidate_memory_ids or []
+            )
+            violations.extend(self._validate_withhold(records, forbidden))
         else:
             violations.append(f"unknown_method:{method}")
+
+        # Unified forbidden-set check applies on top of method dispatch:
+        # a forbidden memory leaking in any method invalidates the branch.
+        if forbidden_memory_ids and method not in (
+            "withhold", "pair_withhold", "shared_control",
+        ):
+            violations.extend(
+                self._validate_withhold(records, list(forbidden_memory_ids))
+            )
 
         verified = len(violations) == 0
         reason = ",".join(violations) if violations else None
@@ -287,6 +316,7 @@ def validate_runtime_visibility_from_path(
     candidate_memory_ids: Sequence[str] | None = None,
     selected_memory_ids: Sequence[str] | None = None,
     rejected_memory_ids: Sequence[str] | None = None,
+    forbidden_memory_ids: Sequence[str] | None = None,
 ) -> RuntimeVisibilityValidation:
     """Load records from a JSONL path and validate."""
     if not audit_path.exists():
@@ -315,6 +345,7 @@ def validate_runtime_visibility_from_path(
         candidate_memory_ids=candidate_memory_ids,
         selected_memory_ids=selected_memory_ids,
         rejected_memory_ids=rejected_memory_ids,
+        forbidden_memory_ids=forbidden_memory_ids,
     )
 
 

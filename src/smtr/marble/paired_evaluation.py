@@ -180,6 +180,26 @@ def run_paired_decision_evaluation(
     formal_mode = experiment_mode == "formal"
     split_audit_summary: dict[str, Any] | None = None
 
+    # 清单 P1-2: unified risk-budget semantics — formal runs must keep the
+    # checkpoint-selected epsilon_star; an explicit budget is a debug-only
+    # override, rejected unless opted in.
+    if formal_mode and negative_risk_budget is not None:
+        raise ValueError(
+            "formal evaluation must use the "
+            "validation-selected epsilon_star "
+            "stored in the checkpoint"
+        )
+    if negative_risk_budget is not None and not allow_risk_budget_override:
+        raise ValueError(
+            "negative_risk_budget override requires "
+            "allow_risk_budget_override=True"
+        )
+    risk_budget_source = (
+        "explicit_override"
+        if negative_risk_budget is not None
+        else "checkpoint_validation_selection"
+    )
+
     # 清单 P0-11/17: formal evaluations must pass the split audit before any
     # evaluation step; all three split files are required inputs.
     if formal_mode:
@@ -199,7 +219,19 @@ def run_paired_decision_evaluation(
             validation_records_path=validation_paired_records_path,
             test_records_path=test_paired_records_path,
             memory_pool_path=memory_pool_path,
-            checkpoint_path=checkpoint_full,
+            test_candidate_manifest_path=candidate_manifest_path,
+            checkpoint_paths=_formal_checkpoint_role_paths(
+                checkpoint_full=checkpoint_full,
+                checkpoint_global_transfer_critic=(
+                    checkpoint_global_transfer_critic
+                ),
+                checkpoint_smtr_no_pair_interaction=(
+                    checkpoint_smtr_no_pair_interaction
+                ),
+            ),
+            methods=methods,
+            strict_candidate_support=True,
+            experiment_mode="formal",
         )
         if not split_audit_summary["split_integrity_passed"]:
             raise ValueError(
@@ -581,6 +613,7 @@ def run_paired_decision_evaluation(
         },
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
+        "risk_budget_source": risk_budget_source,
         "unsupported_candidate_edges": unsupported_candidate_edges,
         "coverage_by_method": coverage_by_method,
         "candidate_trace_counts": {
@@ -595,6 +628,21 @@ def run_paired_decision_evaluation(
         "local_outcome_report": local_report,
         "cluster_bootstrap_ci": ci_by_method,
     }
+
+
+def _formal_checkpoint_role_paths(
+    *,
+    checkpoint_full: Path,
+    checkpoint_global_transfer_critic: Path | None,
+    checkpoint_smtr_no_pair_interaction: Path | None,
+) -> dict[str, Path]:
+    """Role -> checkpoint map for the formal split audit (清单 P0-2 3.2)."""
+    role_paths: dict[str, Path] = {"full": checkpoint_full}
+    if checkpoint_global_transfer_critic is not None:
+        role_paths["global_transfer"] = checkpoint_global_transfer_critic
+    if checkpoint_smtr_no_pair_interaction is not None:
+        role_paths["no_pair_interaction"] = checkpoint_smtr_no_pair_interaction
+    return role_paths
 
 
 def _method_cluster_cis(

@@ -1,4 +1,4 @@
-"""Analyze B0 screening results and classify tasks as ceiling/floor/sweet-spot."""
+ """Analyze B0 screening results and classify tasks as ceiling/floor/sweet-spot."""
 
 from __future__ import annotations
 

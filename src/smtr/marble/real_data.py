@@ -362,6 +362,34 @@ class CandidateEntry(BaseModel):
     candidate_records: list[CandidateRecord] = []
 
 
+class CandidateBudgetMetadata(BaseModel):
+    """Fixed-budget subsampling provenance (清单 Shared-Control 第13章).
+
+    Budget selection is an analysis-time intervention: it never reads
+    share/withhold outcomes, critic predictions, or any adaptive signal.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    policy_version: str
+    requested_fraction: float
+    realized_edge_fraction: float
+    realized_unit_fraction: float
+
+    parent_manifest_digest: str
+    outcome_fields_used: bool = False
+    critic_predictions_used: bool = False
+    adaptive_sampling_used: bool = False
+
+    parent_edge_count: int
+    selected_edge_count: int
+    parent_selection_unit_count: int
+    selected_selection_unit_count: int
+
+    cohort_counts_before: dict[str, int] = {}
+    cohort_counts_after: dict[str, int] = {}
+
+
 class DatabaseCandidateManifest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -372,6 +400,7 @@ class DatabaseCandidateManifest(BaseModel):
     target_split: str = ""
     memory_source_split: str = "train"
     candidates: list[CandidateEntry] = []
+    budget_metadata: CandidateBudgetMetadata | None = None
 
 
 def build_cross_task_candidates(

@@ -1,8 +1,10 @@
 """Candidate-level paired share/withhold intervention on MARBLE tasks.
 
 A treatment *edge* is the triple (target_task_id, receiver_agent_id,
-candidate_memory_id). Each edge is executed once per generation seed
-(replicate), with deterministic branch-order counterbalancing, and
+candidate_memory_id). Under the shared-control protocol (清单
+Shared-Control 第1/5章), each treatment edge receives one
+candidate-specific share execution per generation seed and is paired
+with the shared no-memory control of its task-receiver-seed group;
 aggregate empirical outcome probabilities are computed per edge.
 """
 
@@ -10,6 +12,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import statistics
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -19,7 +23,11 @@ from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 
 TREATMENT_DEFINITION_VERSION = "v1"
 
+SHARED_CONTROL_DEFINITION_VERSION = "shared_no_memory_control_v1"
+
 BranchOrder = Literal["share_then_withhold", "withhold_then_share"]
+
+ControlExecutionPosition = Literal["control_first", "control_last"]
 
 ExperimentMode = Literal["pilot", "formal"]
 
@@ -55,6 +63,46 @@ def compute_replicate_id(edge_id: str, generation_seed: int) -> str:
     return f"rep_{stable_hash(edge_id, generation_seed):016x}"
 
 
+def compute_control_group_id(
+    *,
+    split_name: str,
+    scenario: str,
+    task_id: str,
+    receiver_agent_id: str,
+    generation_seed: int,
+) -> str:
+    """Stable identity for one shared-control group (清单 Shared-Control
+    第2章): exactly one no-memory control per (task, receiver, seed).
+
+    The control identity must never contain candidate-specific
+    information (memory ID, writer, rank, score or candidate source).
+    """
+    group_hash = stable_hash(
+        SHARED_CONTROL_DEFINITION_VERSION,
+        split_name,
+        scenario,
+        task_id,
+        receiver_agent_id,
+        generation_seed,
+    )
+    return f"ctrl_{group_hash:016x}"
+
+
+def compute_control_family_id(task_id: str, receiver_agent_id: str) -> str:
+    """Bootstrap-cluster identity: all seeds of one (task, receiver)."""
+    return f"{task_id}::{receiver_agent_id}"
+
+
+def assign_control_execution_position(
+    control_group_id: str,
+) -> ControlExecutionPosition:
+    """Deterministic, hyperparameter-free group-level counterbalancing
+    (清单 Shared-Control 第5.6节)."""
+    if stable_hash("control_position_v1", control_group_id) % 2 == 0:
+        return "control_first"
+    return "control_last"
+
+
 def compute_target_trajectory_id(
     target_task_id: str,
     receiver_agent_id: str,
@@ -67,9 +115,10 @@ def compute_target_trajectory_id(
     trajectory: the same train-derived memory may serve many target
     trajectories, but each target trajectory belongs to exactly one split.
     """
-    return (
-        f"traj_{stable_hash('target_trajectory', target_task_id, receiver_agent_id, generation_seed):016x}"
+    trajectory_hash = stable_hash(
+        "target_trajectory", target_task_id, receiver_agent_id, generation_seed
     )
+    return f"traj_{trajectory_hash:016x}"
 
 
 def assign_branch_order(edge_id: str, generation_seed: int) -> BranchOrder:
@@ -173,6 +222,33 @@ def aggregate_edge_records(records: list[dict[str, Any]]) -> list[dict[str, Any]
     return aggregates
 
 
+def _edge_exclusion_reason(
+    *,
+    edge: dict[str, Any],
+    split_task_ids: set[str],
+    tasks: dict[str, Any],
+    memory_pool: dict[str, dict[str, Any]],
+) -> str | None:
+    """Legality filter applied before grouping (清单 Shared-Control 第5.3节).
+
+    Candidates are never silently skipped during group execution; every
+    rejected edge is recorded with an explicit reason.
+    """
+    if not edge.get("receiver_agent_id"):
+        return "receiver_agent_id_empty"
+    if not edge.get("candidate_memory_id"):
+        return "candidate_memory_id_empty"
+    if edge["task_id"] not in split_task_ids:
+        return "task_not_in_split"
+    if str(edge["task_id"]) not in tasks:
+        return "task_not_found"
+    if edge["candidate_memory_id"] not in memory_pool:
+        return "memory_not_found"
+    if edge.get("memory_source_split", "train") != "train":
+        return "memory_source_split_not_train"
+    return None
+
+
 def generate_candidate_level_pairs(
     *,
     marble_root: Path,
@@ -188,14 +264,19 @@ def generate_candidate_level_pairs(
     engine_timeout_seconds: int = 1800,
     experiment_mode: str = "pilot",
 ) -> dict[str, Any]:
-    """Generate candidate-level paired records via MarblePairedBranchRunner.run_pair.
+    """Generate candidate-level paired records via shared-control execution.
 
-    Each pair holds constant: MARBLE task, receiver agent, seed, environment snapshot,
-    non-memory input. The only difference is whether the candidate payload is injected.
+    Each (task, receiver, seed) control group executes exactly one shared
+    no-memory control; every candidate edge of the group executes one
+    candidate-specific share against the same frozen initial state, and
+    one paired record is assembled per candidate (清单 Shared-Control
+    第1/5章). Each pair holds constant: MARBLE task, receiver agent, seed,
+    environment snapshot, non-memory input. The only difference between
+    share and control is whether the candidate payload is injected.
 
-    Every candidate defines a treatment edge (task + receiver + memory) which is
-    executed once per generation seed. Branch order is deterministic-counterbalanced
-    per (edge, seed) unless an explicit order is requested.
+    ``branch_execution_order`` is accepted for signature compatibility;
+    group-level order is assigned deterministically by
+    ``assign_control_execution_position``.
     """
     from smtr.marble.branch_runner import MarblePairedBranchRunner
     from smtr.marble.paired_context import build_pair_execution_context
@@ -280,60 +361,188 @@ def generate_candidate_level_pairs(
                 "writer_model_name": rec.get("writer_model_name"),
                 "candidate_rank": rec.get("rank", 0),
                 "candidate_score": rec.get("score", 0.0),
+                # Cohort provenance required by fixed-budget subsets and
+                # receiver-effect analysis (清单 Shared-Control 第5.2节).
+                "candidate_source": rec.get("candidate_source", "semantic_top"),
+                "candidate_sources": list(rec.get("candidate_sources", [])),
+                "anchor_group_id": rec.get("anchor_group_id"),
+                "anchor_receiver_count": rec.get("anchor_receiver_count", 0),
+                "anchor_receiver_role_count": rec.get(
+                    "anchor_receiver_role_count", 0
+                ),
+                "match_type": rec.get("match_type"),
+                "task_relation": rec.get("task_relation"),
             })
 
     if limit_pairs:
         edges = edges[:limit_pairs]
 
+    # Filter legal edges before grouping; exclusions are recorded, never
+    # silently skipped (清单 Shared-Control 第5.3节).
+    excluded_edges: list[dict[str, str]] = []
+    legal_edges: list[dict[str, Any]] = []
+    for edge in edges:
+        reason = _edge_exclusion_reason(
+            edge=edge,
+            split_task_ids=set(split_task_ids),
+            tasks=tasks,
+            memory_pool=memory_pool,
+        )
+        if reason is not None:
+            if experiment_mode == "formal":
+                raise ValueError(
+                    "formal paired generation requires the candidate manifest "
+                    f"to be consistent with the dataset/memory pool; edge "
+                    f"{edge['edge_id']} excluded: {reason}"
+                )
+            excluded_edges.append({"edge_id": edge["edge_id"], "reason": reason})
+            continue
+        legal_edges.append(edge)
+
+    # Group by (task, receiver); share order inside a group is stable and
+    # never depends on manifest file order (清单 Shared-Control 第5.4节).
+    edges_by_task_receiver: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for edge in legal_edges:
+        edges_by_task_receiver[
+            (str(edge["task_id"]), str(edge["receiver_agent_id"]))
+        ].append(edge)
+    for group_edges in edges_by_task_receiver.values():
+        group_edges.sort(
+            key=lambda edge: (
+                stable_hash("shared_control_share_order_v1", edge["edge_id"]),
+                edge["edge_id"],
+            )
+        )
+
     output_dir.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, Any]] = []
     runner = MarblePairedBranchRunner()
+    share_episode_attempt_count = 0
+    control_episode_attempt_count = 0
+    control_episode_valid_count = 0
 
-    for edge in edges:
-        # Validate edge task belongs to requested split
-        if edge["task_id"] not in split_task_ids:
-            continue
+    for (task_id, receiver_agent_id), group_edges in sorted(
+        edges_by_task_receiver.items()
+    ):
+        task_entry = tasks[task_id]
 
-        mem_entry = memory_pool.get(edge["candidate_memory_id"])
-        if mem_entry is None:
-            continue
-        task_entry = tasks.get(str(edge["task_id"]))
-        if task_entry is None:
-            continue
+        for seed in sorted(set(generation_seeds)):
+            group_workspace = (
+                output_dir / "control_groups" / task_id / receiver_agent_id / str(seed)
+            )
 
-        for seed in generation_seeds:
-            if branch_execution_order in ("share_then_withhold", "withhold_then_share"):
-                replicate_branch_order: BranchOrder = branch_execution_order  # type: ignore[assignment]
-            else:
-                replicate_branch_order = assign_branch_order(edge["edge_id"], seed)
-            pair_workspace = output_dir / "pairs" / f"{edge['task_id']}_{edge['receiver_agent_id']}_{edge['candidate_memory_id']}_{seed}"
-
+            # One execution context per group-seed: the shared control and
+            # all shares of the group use the identical InitialStateBundle,
+            # agent config, task and tool config (清单 Shared-Control 第5.5节).
             context = build_pair_execution_context(
                 marble_root=marble_root,
                 task_entry=task_entry,
-                receiver_agent_id=edge["receiver_agent_id"],
-                workspace=pair_workspace,
+                receiver_agent_id=receiver_agent_id,
+                workspace=group_workspace,
             )
 
-            pair_result = runner.run_pair(
-                task=context.task,
-                candidate_memory=mem_entry,
-                initial_state_bundle=context.initial_state_bundle,
-                agent_config=context.agent_config,
-                generation_seed=seed,
-                workspace=pair_workspace,
-                branch_execution_order=replicate_branch_order,
-                engine_timeout_seconds=engine_timeout_seconds,
-            )
-
-            record = paired_result_to_record(
-                pair_result=pair_result,
-                edge=edge,
-                seed=seed,
-                replicate_id=compute_replicate_id(edge["edge_id"], seed),
+            control_group_id = compute_control_group_id(
                 split_name=split,
+                scenario=context.initial_state_bundle.scenario,
+                task_id=task_id,
+                receiver_agent_id=receiver_agent_id,
+                generation_seed=seed,
             )
-            records.append(record)
+
+            # The forbidden set is fixed before any branch executes and is
+            # never changed afterwards, even if some shares fail.
+            forbidden_memory_ids = tuple(sorted({
+                edge["candidate_memory_id"] for edge in group_edges
+            }))
+
+            control_position = assign_control_execution_position(control_group_id)
+            control_workspace = group_workspace / "control"
+
+            control_result = None
+            if control_position == "control_first":
+                control_result = runner.run_no_memory_control(
+                    control_group_id=control_group_id,
+                    task=context.task,
+                    initial_state_bundle=context.initial_state_bundle,
+                    agent_config=context.agent_config,
+                    generation_seed=seed,
+                    workspace=control_workspace,
+                    forbidden_memory_ids=forbidden_memory_ids,
+                    engine_timeout_seconds=engine_timeout_seconds,
+                )
+                control_episode_attempt_count += 1
+                control_episode_valid_count += int(control_result.valid)
+
+            share_audits: dict[str, Any] = {}
+            for edge in group_edges:
+                share_audit = runner.run_candidate_share(
+                    edge_id=edge["edge_id"],
+                    task=context.task,
+                    candidate_memory=memory_pool[edge["candidate_memory_id"]],
+                    initial_state_bundle=context.initial_state_bundle,
+                    agent_config=context.agent_config,
+                    generation_seed=seed,
+                    workspace=group_workspace / "shares" / edge["edge_id"],
+                    engine_timeout_seconds=engine_timeout_seconds,
+                )
+                share_episode_attempt_count += 1
+                share_audits[edge["edge_id"]] = share_audit
+
+            if control_position == "control_last":
+                control_result = runner.run_no_memory_control(
+                    control_group_id=control_group_id,
+                    task=context.task,
+                    initial_state_bundle=context.initial_state_bundle,
+                    agent_config=context.agent_config,
+                    generation_seed=seed,
+                    workspace=control_workspace,
+                    forbidden_memory_ids=forbidden_memory_ids,
+                    engine_timeout_seconds=engine_timeout_seconds,
+                )
+                control_episode_attempt_count += 1
+                control_episode_valid_count += int(control_result.valid)
+
+            assert control_result is not None
+
+            # The control artifact is written exactly once per group; paired
+            # records only reference it (清单 Shared-Control 第8章).
+            control_workspace.mkdir(parents=True, exist_ok=True)
+            control_artifact_path = control_workspace / "control_audit.json"
+            control_artifact_path.write_text(
+                json.dumps(control_result.model_dump(mode="json"), indent=2, sort_keys=True)
+                + "\n",
+                encoding="utf-8",
+            )
+
+            for rank, edge in enumerate(group_edges, start=1):
+                share_audit = share_audits[edge["edge_id"]]
+                pair_result = runner.assemble_shared_control_pair(
+                    control=control_result,
+                    share=share_audit,
+                    candidate_memory_id=edge["candidate_memory_id"],
+                    branch_execution_order=control_position,
+                )
+                share_workspace = group_workspace / "shares" / edge["edge_id"]
+                share_workspace.mkdir(parents=True, exist_ok=True)
+                (share_workspace / "share_audit.json").write_text(
+                    json.dumps(share_audit.model_dump(mode="json"), indent=2, sort_keys=True)
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+                records.append(
+                    paired_result_to_record(
+                        pair_result=pair_result,
+                        edge=edge,
+                        seed=seed,
+                        replicate_id=compute_replicate_id(edge["edge_id"], seed),
+                        split_name=split,
+                        control_group_id=control_group_id,
+                        control_artifact_path=str(control_artifact_path),
+                        control_group_candidate_count=len(group_edges),
+                        share_execution_rank=rank,
+                    )
+                )
 
     out_path = output_dir / "paired_records.jsonl"
     out_path.write_text(
@@ -353,8 +562,78 @@ def generate_candidate_level_pairs(
         "valid": sum(r["valid"] for r in records),
         "invalid": sum(not r["valid"] for r in records),
         "n_edges": len(edge_aggregates),
+        "excluded_edges": excluded_edges,
         "output": str(out_path),
         "edge_aggregates": str(aggregate_path),
+        **episode_costs(
+            records=records,
+            share_episode_attempt_count=share_episode_attempt_count,
+            control_episode_attempt_count=control_episode_attempt_count,
+            control_episode_valid_count=control_episode_valid_count,
+        ),
+    }
+
+
+def episode_costs(
+    *,
+    records: list[dict[str, Any]],
+    share_episode_attempt_count: int,
+    control_episode_attempt_count: int,
+    control_episode_valid_count: int,
+) -> dict[str, Any]:
+    """Actual engine episode costs and savings versus the legacy per-edge
+    withhold protocol (清单 Shared-Control 第11章)."""
+    candidate_seed_attempt_count = len(records)
+    actual_engine_episode_attempt_count = (
+        share_episode_attempt_count + control_episode_attempt_count
+    )
+    legacy_equivalent_episode_count = 2 * candidate_seed_attempt_count
+    saved_episode_count = (
+        legacy_equivalent_episode_count - actual_engine_episode_attempt_count
+    )
+    episode_saving_fraction = (
+        saved_episode_count / legacy_equivalent_episode_count
+        if legacy_equivalent_episode_count
+        else 0.0
+    )
+
+    share_episode_valid_count = sum(
+        1
+        for rec in records
+        if rec.get("share", {}).get("real_engine_executed")
+        and rec.get("share", {}).get("environment_valid")
+        and rec.get("share", {}).get("native_evaluator_executed")
+        and rec.get("share", {}).get("cleanup_succeeded")
+    )
+
+    reuse_counts = Counter(
+        rec["control_group_id"]
+        for rec in records
+        if rec.get("control_group_id")
+    )
+    reuse_values = sorted(reuse_counts.values())
+    mean_candidates_per_control = (
+        sum(reuse_values) / len(reuse_values) if reuse_values else 0.0
+    )
+    median_candidates_per_control = (
+        float(statistics.median(reuse_values)) if reuse_values else 0.0
+    )
+
+    return {
+        "candidate_seed_attempt_count": candidate_seed_attempt_count,
+        "candidate_seed_record_count": candidate_seed_attempt_count,
+        "valid_candidate_seed_record_count": sum(1 for rec in records if rec.get("valid")),
+        "share_episode_attempt_count": share_episode_attempt_count,
+        "share_episode_valid_count": share_episode_valid_count,
+        "control_episode_attempt_count": control_episode_attempt_count,
+        "control_episode_valid_count": control_episode_valid_count,
+        "actual_engine_episode_attempt_count": actual_engine_episode_attempt_count,
+        "legacy_equivalent_episode_count": legacy_equivalent_episode_count,
+        "saved_episode_count": saved_episode_count,
+        "episode_saving_fraction": episode_saving_fraction,
+        "control_group_count": len(reuse_counts),
+        "mean_candidates_per_control": mean_candidates_per_control,
+        "median_candidates_per_control": median_candidates_per_control,
     }
 
 
@@ -366,19 +645,29 @@ def paired_result_to_record(
     replicate_id: str | None = None,
     treatment_definition_version: str = TREATMENT_DEFINITION_VERSION,
     split_name: str = "",
+    control_group_id: str | None = None,
+    control_artifact_path: str | None = None,
+    control_group_candidate_count: int | None = None,
+    share_execution_rank: int | None = None,
 ) -> dict[str, Any]:
     """Convert a PairedBranchResult into a serializable paired record.
 
     All audit fields come from the real PairedBranchResult, not fabricated.
+    When ``control_group_id`` is provided the record is emitted as
+    ``marble_candidate_pair_v3`` (shared-control schema); otherwise the
+    legacy ``v2`` schema is kept for run_pair callers.
     """
     edge_id = edge.get("edge_id") or compute_edge_id(
         pair_result.task_id,
         edge["receiver_agent_id"],
         pair_result.candidate_memory_id,
     )
+    shared_control = control_group_id is not None
     record = {
         "record_type": "marble_candidate_level_pair",
-        "schema_version": "v2",
+        "schema_version": (
+            "marble_candidate_pair_v3" if shared_control else "v2"
+        ),
         "scenario": pair_result.scenario,
 
         "edge_id": edge_id,
@@ -494,7 +783,74 @@ def paired_result_to_record(
                 pair_result.withhold.tool_config_digest,
         },
     }
+
+    if shared_control:
+        # Shared-control provenance (清单 Shared-Control 第7章). The
+        # withhold block above holds the canonical control outcome, so
+        # downstream label / aggregation / calibration interfaces are
+        # unchanged.
+        record.update({
+            "control_group_id": control_group_id,
+            "control_family_id": compute_control_family_id(
+                str(pair_result.task_id), str(edge["receiver_agent_id"])
+            ),
+            "control_reused": True,
+            "control_definition_version": SHARED_CONTROL_DEFINITION_VERSION,
+            "control_group_candidate_count": control_group_candidate_count,
+            "control_execution_position": pair_result.branch_execution_order,
+            "share_execution_rank": share_execution_rank,
+            "control_artifact_path": control_artifact_path,
+            "control_raw_result_digest": pair_result.withhold.raw_result_digest,
+            "candidate_source": edge.get("candidate_source", "semantic_top"),
+            "candidate_sources": edge.get("candidate_sources", []),
+            "anchor_group_id": edge.get("anchor_group_id"),
+            "match_type": edge.get("match_type"),
+        })
+        record["digests"].update({
+            "control_group_context_digest": _compute_control_group_context_digest(
+                scenario=pair_result.scenario,
+                split_name=split_name,
+                audit=pair_result.withhold,
+                receiver_agent_id=str(edge["receiver_agent_id"]),
+                generation_seed=seed,
+            ),
+            "control_raw_result_digest": pair_result.withhold.raw_result_digest,
+            "control_initial_digest": pair_result.withhold.initial_digest,
+            "control_agent_config_digest": pair_result.withhold.agent_config_digest,
+            "control_task_digest": pair_result.withhold.task_digest,
+            "control_tool_config_digest": pair_result.withhold.tool_config_digest,
+        })
+
     # Label is always derived from the canonical nested outcomes, never
     # trusted from the upstream pair runner alone.
     record["label"] = paired_record_label(record)
     return record
+
+
+def _compute_control_group_context_digest(
+    *,
+    scenario: str,
+    split_name: str,
+    audit: Any,
+    receiver_agent_id: str,
+    generation_seed: int,
+) -> str:
+    """Identity digest of the shared-control execution context (清单
+    Shared-Control 第7.5节): scenario, split, task digest, agent config
+    digest, tool config digest, initial logical fingerprint, receiver
+    agent ID and generation seed."""
+    initial_logical_digest = (audit.initial_logical_fingerprint or {}).get(
+        "combined_digest"
+    )
+    context_hash = stable_hash(
+        SHARED_CONTROL_DEFINITION_VERSION,
+        scenario,
+        split_name,
+        audit.task_digest,
+        audit.agent_config_digest,
+        audit.tool_config_digest,
+        initial_logical_digest,
+        receiver_agent_id,
+        generation_seed,
+    )
+    return f"ctx_{context_hash:016x}"

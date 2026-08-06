@@ -1,68 +1,108 @@
-"""Tests for candidate-level pair generation wiring."""
+"""Tests for candidate-level pair generation wiring.
+
+The generator now uses the shared-control protocol (清单 Shared-Control
+第1/5章): one ``run_no_memory_control`` per (task, receiver, seed) group
+and one ``run_candidate_share`` per treatment edge, paired by
+``assemble_shared_control_pair``. The legacy ``run_pair`` path must no
+longer be used.
+"""
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-
-
-def _write_split_manifest(path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
-        "records": [
-            {"task_id": "t1", "split": "validation"},
-            {"task_id": "t2", "split": "train"},
-        ]
-    }), encoding="utf-8")
+from tests.marble._shared_control_harness import (
+    AGENT_CONFIG_DIGEST,
+    CONTROL_RAW_RESULT_DIGEST,
+    INITIAL_DIGEST,
+    TASK_DIGEST,
+    TOOL_CONFIG_DIGEST,
+    run_generate,
+)
 
 
-def _write_dataset_manifest(path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
-        "tasks": [
-            {"task_id": "t1", "scenario": "database", "agents": []},
-            {"task_id": "t2", "scenario": "database", "agents": []},
-        ]
-    }), encoding="utf-8")
-
-
-def _write_candidate_manifest(path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
-        "candidates": [{
+def test_each_candidate_seed_calls_run_candidate_share_once(tmp_path):
+    """Each candidate/seed runs one share; each group/seed runs one control."""
+    out = run_generate(
+        tmp_path,
+        entries=[{
             "task_id": "t1",
             "receiver_agent_id": "r1",
-            "receiver_role": "executor",
-            "receiver_capabilities": ["sql"],
-            "task_instruction": "test task",
-            "environment_signature": [],
-            "candidate_records": [
-                {"memory_id": "m1", "writer_agent_id": "w1", "writer_role": "planner",
-                 "writer_capabilities": ["plan"], "rank": 1, "score": 0.8},
-                {"memory_id": "m2", "writer_agent_id": "w2", "writer_role": "executor",
-                 "writer_capabilities": ["sql"], "rank": 2, "score": 0.5},
-            ],
+            "memory_ids": ["m1", "m2"],
         }],
-    }), encoding="utf-8")
+        seeds=[0, 1, 2],
+    )
+    runner = out["runner"]
+    # 2 candidates x 3 seeds = 6 share executions
+    assert len(runner.share_calls) == 6
+    # 1 control group x 3 seeds = 3 shared controls
+    assert len(runner.control_calls) == 3
+    assert out["result"]["attempted"] == 6
 
 
-def _write_memory_pool(path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    memories = [
-        {"memory_id": "m1", "payload": {"procedure": "Step 1. Do X."},
-         "routing_card": {"writer": {"agent_id": "w1", "role": "planner"}}},
-        {"memory_id": "m2", "payload": {"procedure": "Step 1. Do Y."},
-         "routing_card": {"writer": {"agent_id": "w2", "role": "executor"}}},
-    ]
-    path.write_text("".join(json.dumps(m) + "\n" for m in memories), encoding="utf-8")
+def test_never_calls_legacy_run_pair(tmp_path):
+    """The legacy run_pair / run_single_branch APIs must never be used."""
+    out = run_generate(
+        tmp_path,
+        entries=[{
+            "task_id": "t1",
+            "receiver_agent_id": "r1",
+            "memory_ids": ["m1", "m2"],
+        }],
+        seeds=[0, 1, 2],
+    )
+    runner = out["runner"]
+    # FakeSharedControlRunner.run_pair raises AssertionError when called,
+    # so a successful run already proves it was never used.
+    assert len(runner.control_calls) + len(runner.share_calls) > 0
+    assert not hasattr(runner, "run_single_branch")
 
 
-def _make_mock_pair_result(task_id: str, memory_id: str):
-    """Create a mock PairedBranchResult."""
+def test_record_digests_come_from_paired_branch_result(tmp_path):
+    """Record digests must come from the branch results, not fabricated."""
+    out = run_generate(
+        tmp_path,
+        entries=[{
+            "task_id": "t1",
+            "receiver_agent_id": "r1",
+            "memory_ids": ["m1", "m2"],
+        }],
+        seeds=[0, 1, 2],
+        limit_pairs=1,
+    )
+    records = out["records"]
+    # 1 edge x 3 seeds = 3 replicate records
+    assert len(records) == 3
+    replicate_ids = {rec["replicate_id"] for rec in records}
+    assert len(replicate_ids) == 3
+
+    rec = records[0]
+    assert rec["schema_version"] == "marble_candidate_pair_v3"
+    assert rec["control_group_id"]
+    assert rec["control_reused"] is True
+
+    # Share digests must match the mocked share audit values.
+    assert rec["digests"]["share_initial_digest"] == INITIAL_DIGEST
+    assert rec["digests"]["share_task_digest"] == TASK_DIGEST
+    assert rec["digests"]["share_tool_config_digest"] == TOOL_CONFIG_DIGEST
+    assert rec["digests"]["share_agent_config_digest"] == AGENT_CONFIG_DIGEST
+
+    # Withhold digests come from the shared control audit, and the
+    # control-specific digests reference the same execution.
+    assert rec["digests"]["withhold_initial_digest"] == INITIAL_DIGEST
+    assert rec["digests"]["control_initial_digest"] == INITIAL_DIGEST
+    assert rec["digests"]["control_task_digest"] == TASK_DIGEST
+    assert rec["digests"]["control_tool_config_digest"] == TOOL_CONFIG_DIGEST
+    assert (
+        rec["digests"]["control_raw_result_digest"] == CONTROL_RAW_RESULT_DIGEST
+    )
+    assert rec["control_raw_result_digest"] == CONTROL_RAW_RESULT_DIGEST
+
+
+def test_invalid_pair_not_used_by_training_loader(tmp_path):
+    """Invalid pairs must not be loaded for critic training."""
+    from smtr.marble.real_pairs import paired_result_to_record
+
     mock_outcome_share = MagicMock()
     mock_outcome_share.success = True
     mock_outcome_share.environment_valid = True
@@ -94,172 +134,18 @@ def _make_mock_pair_result(task_id: str, memory_id: str):
     mock_withhold.agent_config_digest = "agent_digest"
     mock_withhold.task_digest = "task_digest"
     mock_withhold.tool_config_digest = "tool_digest"
+    mock_withhold.raw_result_digest = "raw_digest"
 
-    result = MagicMock()
-    result.scenario = "database"
-    result.task_id = task_id
-    result.candidate_memory_id = memory_id
-    result.share = mock_share
-    result.withhold = mock_withhold
-    result.paired_label = "positive_transfer"
-    result.paired_record_valid = True
-    result.invalid_reason = None
-    result.branch_execution_order = "share_then_withhold"
-    return result
-
-
-def test_each_candidate_seed_calls_run_pair_once(tmp_path):
-    """Each candidate/seed combination must call run_pair exactly once."""
-    split_manifest = tmp_path / "splits.json"
-    dataset_manifest = tmp_path / "dataset.json"
-    candidate_manifest = tmp_path / "candidates.json"
-    memory_pool = tmp_path / "memories.jsonl"
-    output_dir = tmp_path / "output"
-
-    _write_split_manifest(split_manifest)
-    _write_dataset_manifest(dataset_manifest)
-    _write_candidate_manifest(candidate_manifest)
-    _write_memory_pool(memory_pool)
-
-    mock_runner = MagicMock()
-    mock_runner.run_pair.side_effect = lambda **kwargs: _make_mock_pair_result(
-        task_id=kwargs["task"]["task_id"],
-        memory_id=kwargs["candidate_memory"]["memory_id"],
-    )
-
-    with patch("smtr.marble.branch_runner.MarblePairedBranchRunner", return_value=mock_runner), \
-         patch("smtr.marble.paired_context.build_pair_execution_context") as mock_ctx:
-        mock_context = MagicMock()
-        mock_context.task = {"task_id": "t1", "scenario": "database"}
-        mock_context.initial_state_bundle = MagicMock()
-        mock_context.agent_config = {}
-        mock_ctx.return_value = mock_context
-
-        from smtr.marble.real_pairs import generate_candidate_level_pairs
-
-        result = generate_candidate_level_pairs(
-            marble_root=tmp_path / "marble",
-            dataset_manifest_path=dataset_manifest,
-            split_manifest_path=split_manifest,
-            split="validation",
-            candidate_manifest_path=candidate_manifest,
-            memory_pool_path=memory_pool,
-            generation_seeds=[0, 1, 2],
-            output_dir=output_dir,
-        )
-
-    # 2 candidates x 3 seeds = 6 calls
-    assert mock_runner.run_pair.call_count == 6
-    assert result["attempted"] == 6
-
-
-def test_never_calls_run_single_branch(tmp_path):
-    """run_single_branch must never be called."""
-    split_manifest = tmp_path / "splits.json"
-    dataset_manifest = tmp_path / "dataset.json"
-    candidate_manifest = tmp_path / "candidates.json"
-    memory_pool = tmp_path / "memories.jsonl"
-    output_dir = tmp_path / "output"
-
-    _write_split_manifest(split_manifest)
-    _write_dataset_manifest(dataset_manifest)
-    _write_candidate_manifest(candidate_manifest)
-    _write_memory_pool(memory_pool)
-
-    mock_runner = MagicMock()
-    mock_runner.run_pair.side_effect = lambda **kwargs: _make_mock_pair_result(
-        task_id=kwargs["task"]["task_id"],
-        memory_id=kwargs["candidate_memory"]["memory_id"],
-    )
-
-    with patch("smtr.marble.branch_runner.MarblePairedBranchRunner", return_value=mock_runner), \
-         patch("smtr.marble.paired_context.build_pair_execution_context") as mock_ctx:
-        mock_context = MagicMock()
-        mock_context.task = {"task_id": "t1", "scenario": "database"}
-        mock_context.initial_state_bundle = MagicMock()
-        mock_context.agent_config = {}
-        mock_ctx.return_value = mock_context
-
-        from smtr.marble.real_pairs import generate_candidate_level_pairs
-
-        generate_candidate_level_pairs(
-            marble_root=tmp_path / "marble",
-            dataset_manifest_path=dataset_manifest,
-            split_manifest_path=split_manifest,
-            split="validation",
-            candidate_manifest_path=candidate_manifest,
-            memory_pool_path=memory_pool,
-            generation_seeds=[0, 1, 2],
-            output_dir=output_dir,
-        )
-
-    assert not mock_runner.run_single_branch.called
-
-
-def test_record_digests_come_from_paired_branch_result(tmp_path):
-    """Record digests must come from PairedBranchResult, not fabricated."""
-    split_manifest = tmp_path / "splits.json"
-    dataset_manifest = tmp_path / "dataset.json"
-    candidate_manifest = tmp_path / "candidates.json"
-    memory_pool = tmp_path / "memories.jsonl"
-    output_dir = tmp_path / "output"
-
-    _write_split_manifest(split_manifest)
-    _write_dataset_manifest(dataset_manifest)
-    _write_candidate_manifest(candidate_manifest)
-    _write_memory_pool(memory_pool)
-
-    mock_runner = MagicMock()
-    mock_runner.run_pair.side_effect = lambda **kwargs: _make_mock_pair_result(
-        task_id=kwargs["task"]["task_id"],
-        memory_id=kwargs["candidate_memory"]["memory_id"],
-    )
-
-    with patch("smtr.marble.branch_runner.MarblePairedBranchRunner", return_value=mock_runner), \
-         patch("smtr.marble.paired_context.build_pair_execution_context") as mock_ctx:
-        mock_context = MagicMock()
-        mock_context.task = {"task_id": "t1", "scenario": "database"}
-        mock_context.initial_state_bundle = MagicMock()
-        mock_context.agent_config = {}
-        mock_ctx.return_value = mock_context
-
-        from smtr.marble.real_pairs import generate_candidate_level_pairs
-
-        generate_candidate_level_pairs(
-            marble_root=tmp_path / "marble",
-            dataset_manifest_path=dataset_manifest,
-            split_manifest_path=split_manifest,
-            split="validation",
-            candidate_manifest_path=candidate_manifest,
-            memory_pool_path=memory_pool,
-            generation_seeds=[0, 1, 2],
-            limit_pairs=1,
-            output_dir=output_dir,
-        )
-
-    # Read output records: 1 edge x 3 seeds = 3 replicate records
-    records_path = output_dir / "paired_records.jsonl"
-    records = [json.loads(l) for l in records_path.read_text().splitlines() if l.strip()]
-    assert len(records) == 3
-    replicate_ids = {rec["replicate_id"] for rec in records}
-    assert len(replicate_ids) == 3
-    rec = records[0]
-    # Digests must match the mock values
-    assert rec["digests"]["share_initial_digest"] == "digest_abc"
-    assert rec["digests"]["withhold_initial_digest"] == "digest_abc"
-    assert rec["digests"]["share_task_digest"] == "task_digest"
-    assert rec["digests"]["share_tool_config_digest"] == "tool_digest"
-
-
-def test_invalid_pair_not_used_by_training_loader(tmp_path):
-    """Invalid pairs must not be loaded for critic training."""
-    from smtr.marble.real_pairs import paired_result_to_record
-
-    # Create an invalid pair result
-    mock_result = _make_mock_pair_result("t1", "m1")
+    mock_result = MagicMock()
+    mock_result.scenario = "database"
+    mock_result.task_id = "t1"
+    mock_result.candidate_memory_id = "m1"
+    mock_result.share = mock_share
+    mock_result.withhold = mock_withhold
+    mock_result.paired_label = "positive_transfer"
     mock_result.paired_record_valid = False
     mock_result.invalid_reason = "engine_timeout"
-    mock_result.paired_label = None
+    mock_result.branch_execution_order = "share_then_withhold"
 
     edge = {
         "receiver_agent_id": "r1", "receiver_role": "executor",

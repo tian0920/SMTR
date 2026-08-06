@@ -195,11 +195,20 @@ class FallbackRouter:
         self,
         config: SequentialRouterConfig,
         *,
-        negative_risk_budget: float = 0.2,
+        negative_risk_budget: float | None = None,
     ):
         """Create a sequential router with the given config."""
         if self.critic is None:
             return NoMemoryRouter()
+        if negative_risk_budget is None:
+            # Formal default: resolve the budget from the checkpoint's
+            # validation-selected epsilon_star (清单 P1-2).
+            epsilon_star = getattr(self.critic, "epsilon_star", None)
+            if epsilon_star is None:
+                raise ValueError(
+                    "Checkpoint does not contain validation-selected epsilon_star."
+                )
+            negative_risk_budget = float(epsilon_star)
         return ProductionSequentialRouter(
             critic=self.critic,
             gate=SMTRGate(SMTRGateConfig(negative_risk_budget=negative_risk_budget)),
