@@ -11,7 +11,6 @@ GATE_METHOD_TO_GATE = {
     "SMTR": "smtr_mean_effect_mean_risk",
     "EffectOnly-SMTR": "effect_only_smtr",
     "Static-SMTR": "smtr_mean_effect_mean_risk",
-    "FactualSuccess-SMTR": "factual_success_smtr",
 }
 
 

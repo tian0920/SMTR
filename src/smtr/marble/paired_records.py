@@ -12,6 +12,7 @@ from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.artifacts import assert_marble_artifact_path
 from smtr.marble.branch_runner import MarblePairedBranchRunner
 from smtr.marble.environment.isolation import bundle_from_manifest_task
+from smtr.marble.real_pairs import compute_control_family_id, compute_edge_id
 from smtr.marble.task_provider import MarbleTaskProvider
 
 
@@ -72,13 +73,33 @@ class MarblePairedRecordGenerator:
                             "candidate_memory_id": candidate_memory["memory_id"],
                         }
                     )[:16]
-                    result = runner.run_pair(
+                    receiver_agent_id = "agent1"
+                    task_id_str = str(task.task_id)
+                    memory_id_str = str(candidate_memory["memory_id"])
+                    edge_id = compute_edge_id(task_id_str, receiver_agent_id, memory_id_str)
+                    control_group_id = compute_control_family_id(task_id_str, receiver_agent_id)
+                    control = runner.run_no_memory_control(
+                        control_group_id=f"{control_group_id}_{generation_seed}",
+                        task=task.raw_task,
+                        initial_state_bundle=bundle,
+                        agent_config={"target_receiver_agent_id": receiver_agent_id},
+                        generation_seed=generation_seed,
+                        workspace=output_dir / "workspaces" / base_episode_id,
+                        forbidden_memory_ids=(memory_id_str,),
+                    )
+                    share = runner.run_candidate_share(
+                        edge_id=edge_id,
                         task=task.raw_task,
                         candidate_memory=candidate_memory,
                         initial_state_bundle=bundle,
-                        agent_config={"target_receiver_agent_id": "agent1"},
+                        agent_config={"target_receiver_agent_id": receiver_agent_id},
                         generation_seed=generation_seed,
                         workspace=output_dir / "workspaces" / base_episode_id,
+                    )
+                    result = runner.assemble_shared_control_pair(
+                        control=control,
+                        share=share,
+                        candidate_memory_id=memory_id_str,
                     )
                     record = {
                         "task_id": task.task_id,

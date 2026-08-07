@@ -58,7 +58,7 @@ def _paired_records() -> list[dict]:
             "candidate_memory_id": f"m{i}",
             "generation_seed": seed,
             "valid": True,
-            "schema_version": "marble_candidate_pair_v3",
+            "schema_version": "marble_candidate_pair_v4",
             "control_group_id": f"ctrl_{seed:016x}",
         }
         for i in range(8)

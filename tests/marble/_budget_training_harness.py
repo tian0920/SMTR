@@ -73,7 +73,7 @@ def paired_record(
         "generation_seed": seed,
         "edge_id": f"t1|r1|{memory_id}",
         "valid": True,
-        "schema_version": "marble_candidate_pair_v3",
+        "schema_version": "marble_candidate_pair_v4",
         "control_group_id": f"ctrl_{seed:016x}",
         "share": {"team_success": bool(y_share)},
         "withhold": {"team_success": bool(y_withhold)},

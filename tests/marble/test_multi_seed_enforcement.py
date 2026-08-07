@@ -1,4 +1,4 @@
-"""Multi-seed enforcement, replicate identity, branch-order counterbalancing
+"""Multi-seed enforcement, replicate identity
 and edge-level empirical probability aggregation (checklist chapter 5)."""
 
 import pytest
@@ -6,7 +6,6 @@ import pytest
 from smtr.marble.real_pairs import (
     MIN_SEEDS,
     EdgeTransferEstimate,
-    assign_branch_order,
     compute_edge_id,
     compute_edge_transfer_estimates,
     compute_replicate_id,
@@ -96,20 +95,6 @@ class TestReplicateIdentity:
         assert compute_replicate_id(edge_id, 0) != compute_replicate_id(edge_id, 1)
 
 
-class TestBranchOrderCounterbalance:
-    def test_branch_order_has_both_orders_across_seed_set(self):
-        # A formal seed set covers both branch orders deterministically.
-        seeds = [0, 1, 2, 3, 4]
-        seen_orders = set()
-        for i in range(5):
-            edge_id = compute_edge_id(f"t{i}", "r1", "m1")
-            orders = {assign_branch_order(edge_id, s) for s in seeds}
-            assert orders <= {"share_then_withhold", "withhold_then_share"}
-            # Deterministic for a fixed (edge, seed).
-            for s in seeds:
-                assert assign_branch_order(edge_id, s) == assign_branch_order(edge_id, s)
-            seen_orders |= orders
-        assert seen_orders == {"share_then_withhold", "withhold_then_share"}
 
 
 class TestEdgeLevelAggregation:

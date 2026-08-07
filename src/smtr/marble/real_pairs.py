@@ -25,7 +25,9 @@ TREATMENT_DEFINITION_VERSION = "v1"
 
 SHARED_CONTROL_DEFINITION_VERSION = "shared_no_memory_control_v1"
 
-BranchOrder = Literal["share_then_withhold", "withhold_then_share"]
+# 清单 P0-2 第三章: single unified schema for all formal paired records.
+# Legacy v2/v3 schemas are removed; all records are emitted as v4.
+PAIRED_SCHEMA_VERSION = "marble_candidate_pair_v4"
 
 ControlExecutionPosition = Literal["control_first", "control_last"]
 
@@ -121,15 +123,61 @@ def compute_target_trajectory_id(
     return f"traj_{trajectory_hash:016x}"
 
 
-def assign_branch_order(edge_id: str, generation_seed: int) -> BranchOrder:
-    """Deterministic counterbalanced branch order for one replicate."""
-    if stable_hash(edge_id, generation_seed) % 2 == 0:
-        return "share_then_withhold"
-    return "withhold_then_share"
+@dataclass(frozen=True)
+class MemorySourceProvenance:
+    """Immutable provenance accessor for memory source identity.
+
+    Source identity is audit-only: it must never enter critic features,
+    candidate scoring, routing decisions or baseline rankings.
+    """
+
+    source_agent_id: str
+    source_task_id: str
+    source_trajectory_id: str
+    source_split: str
 
 
-# Backwards-compatible alias for assign_branch_order.
-branch_order_for_edge = assign_branch_order
+def read_memory_source_provenance(
+    memory_record: dict[str, Any],
+) -> MemorySourceProvenance:
+    """Read provenance from ``payload.provenance``; fail closed on missing fields.
+
+    No fallback to routing_card, no ``or 'train'`` default. Formal
+    provenance must be authoritative, never guessed.
+    """
+    try:
+        payload = memory_record["payload"]
+        provenance = payload["provenance"]
+        source_agent_id = str(provenance["source_agent_id"]).strip()
+        source_task_id = str(provenance["source_task_id"]).strip()
+        source_trajectory_id = str(
+            provenance["source_trajectory_id"]
+        ).strip()
+        source_split = str(provenance["source_split"]).strip()
+    except (KeyError, TypeError) as exc:
+        raise ValueError(
+            "memory record is missing required "
+            "payload.provenance fields"
+        ) from exc
+
+    required = {
+        "source_agent_id": source_agent_id,
+        "source_task_id": source_task_id,
+        "source_trajectory_id": source_trajectory_id,
+        "source_split": source_split,
+    }
+    missing = [name for name, value in required.items() if not value]
+    if missing:
+        raise ValueError(
+            "memory provenance contains empty "
+            f"required fields: {missing}"
+        )
+    return MemorySourceProvenance(
+        source_agent_id=source_agent_id,
+        source_task_id=source_task_id,
+        source_trajectory_id=source_trajectory_id,
+        source_split=source_split,
+    )
 
 
 @dataclass(frozen=True)
@@ -244,7 +292,7 @@ def _edge_exclusion_reason(
         return "task_not_found"
     if edge["candidate_memory_id"] not in memory_pool:
         return "memory_not_found"
-    if edge.get("memory_source_split", "train") != "train":
+    if edge.get("memory_source_split") != "train":
         return "memory_source_split_not_train"
     return None
 
@@ -310,8 +358,10 @@ def generate_candidate_level_pairs(
     edges: list[dict[str, Any]] = []
     for entry in candidates_manifest.get("candidates", []):
         for rec in entry.get("candidate_records", []):
-            mem_meta = memory_pool.get(rec["memory_id"], {})
-            mem_rc = mem_meta.get("routing_card", {})
+            memory_record = memory_pool[rec["memory_id"]]
+            # 清单 P0-1 第一章: provenance is read from payload.provenance
+            # via the single accessor; no routing_card fallback.
+            source = read_memory_source_provenance(memory_record)
             edges.append({
                 "edge_id": compute_edge_id(
                     entry["task_id"],
@@ -319,26 +369,13 @@ def generate_candidate_level_pairs(
                     rec["memory_id"],
                 ),
                 "task_id": entry["task_id"],
-                # Split-integrity metadata (R6 清单 P0-1): memory provenance
-                # (source task / source trajectory / source split) is kept
-                # separate from the target trajectory identity. Memories are
-                # extracted exclusively from train trajectories; the same
-                # train-derived memory may serve validation and test targets.
-                "memory_source_task_id": mem_rc.get(
-                    "source_task_id", mem_rc.get("memory_source_task_id", "")
+                # Memory provenance (audit only; never enters critic or router)
+                "memory_source_agent_id": source.source_agent_id,
+                "memory_source_task_id": source.source_task_id,
+                "memory_source_trajectory_id": (
+                    source.source_trajectory_id
                 ),
-                "memory_source_trajectory_id": str(
-                    mem_meta.get("memory_source_trajectory_id")
-                    or mem_meta.get("source_trajectory_id")
-                    or mem_rc.get("memory_source_trajectory_id")
-                    or mem_rc.get("source_trajectory_id")
-                    or ""
-                ),
-                "memory_source_split": str(
-                    mem_meta.get("memory_source_split")
-                    or mem_meta.get("source_split")
-                    or "train"
-                ),
+                "memory_source_split": source.source_split,
                 "target_task_group": str(
                     entry.get("target_task_group")
                     or entry.get("task_group")
@@ -354,11 +391,6 @@ def generate_candidate_level_pairs(
                 "local_context_summary": entry.get("local_context_summary", ""),
                 "team_context_summary": entry.get("team_context_summary", ""),
                 "candidate_memory_id": rec["memory_id"],
-                "writer_agent_id": rec.get("writer_agent_id", ""),
-                "writer_role": rec.get("writer_role", "unknown"),
-                "writer_capabilities": rec.get("writer_capabilities", []),
-                "writer_tool_names": rec.get("writer_tool_names", []),
-                "writer_model_name": rec.get("writer_model_name"),
                 "candidate_rank": rec.get("rank", 0),
                 "candidate_score": rec.get("score", 0.0),
                 # Cohort provenance required by fixed-budget subsets and
@@ -653,21 +685,18 @@ def paired_result_to_record(
     """Convert a PairedBranchResult into a serializable paired record.
 
     All audit fields come from the real PairedBranchResult, not fabricated.
-    When ``control_group_id`` is provided the record is emitted as
-    ``marble_candidate_pair_v3`` (shared-control schema); otherwise the
-    legacy ``v2`` schema is kept for run_pair callers.
+    Records are always emitted as ``marble_candidate_pair_v4`` (the unified
+    shared-control schema); no legacy v2/v3 path remains.
     """
     edge_id = edge.get("edge_id") or compute_edge_id(
         pair_result.task_id,
         edge["receiver_agent_id"],
         pair_result.candidate_memory_id,
     )
-    shared_control = control_group_id is not None
     record = {
         "record_type": "marble_candidate_level_pair",
-        "schema_version": (
-            "marble_candidate_pair_v3" if shared_control else "v2"
-        ),
+        # 清单 P0-2 第三章: all records use the unified v4 schema.
+        "schema_version": PAIRED_SCHEMA_VERSION,
         "scenario": pair_result.scenario,
 
         "edge_id": edge_id,
@@ -693,9 +722,12 @@ def paired_result_to_record(
             seed,
         ),
         "target_task_group": edge.get("target_task_group", ""),
+        "memory_source_agent_id": edge.get("memory_source_agent_id", ""),
         "memory_source_task_id": edge.get("memory_source_task_id", ""),
-        "memory_source_trajectory_id": edge.get("memory_source_trajectory_id", ""),
-        "memory_source_split": edge.get("memory_source_split", "train"),
+        "memory_source_trajectory_id": edge.get(
+            "memory_source_trajectory_id", ""
+        ),
+        "memory_source_split": edge.get("memory_source_split", ""),
 
         "receiver_agent_id": edge["receiver_agent_id"],
         "receiver_role": edge["receiver_role"],
@@ -704,11 +736,6 @@ def paired_result_to_record(
         "receiver_model_name": edge.get("receiver_model_name"),
 
         "candidate_memory_id": pair_result.candidate_memory_id,
-        "writer_agent_id": edge["writer_agent_id"],
-        "writer_role": edge["writer_role"],
-        "writer_capabilities": edge["writer_capabilities"],
-        "writer_tool_names": edge.get("writer_tool_names", []),
-        "writer_model_name": edge.get("writer_model_name"),
 
         # SMTR-v1 action space is single-memory with S = ∅; the field is
         # persisted for schema compatibility and is always empty.
@@ -784,42 +811,41 @@ def paired_result_to_record(
         },
     }
 
-    if shared_control:
-        # Shared-control provenance (清单 Shared-Control 第7章). The
-        # withhold block above holds the canonical control outcome, so
-        # downstream label / aggregation / calibration interfaces are
-        # unchanged.
-        record.update({
-            "control_group_id": control_group_id,
-            "control_family_id": compute_control_family_id(
-                str(pair_result.task_id), str(edge["receiver_agent_id"])
-            ),
-            "control_reused": True,
-            "control_definition_version": SHARED_CONTROL_DEFINITION_VERSION,
-            "control_group_candidate_count": control_group_candidate_count,
-            "control_execution_position": pair_result.branch_execution_order,
-            "share_execution_rank": share_execution_rank,
-            "control_artifact_path": control_artifact_path,
-            "control_raw_result_digest": pair_result.withhold.raw_result_digest,
-            "candidate_source": edge.get("candidate_source", "semantic_top"),
-            "candidate_sources": edge.get("candidate_sources", []),
-            "anchor_group_id": edge.get("anchor_group_id"),
-            "match_type": edge.get("match_type"),
-        })
-        record["digests"].update({
-            "control_group_context_digest": _compute_control_group_context_digest(
-                scenario=pair_result.scenario,
-                split_name=split_name,
-                audit=pair_result.withhold,
-                receiver_agent_id=str(edge["receiver_agent_id"]),
-                generation_seed=seed,
-            ),
-            "control_raw_result_digest": pair_result.withhold.raw_result_digest,
-            "control_initial_digest": pair_result.withhold.initial_digest,
-            "control_agent_config_digest": pair_result.withhold.agent_config_digest,
-            "control_task_digest": pair_result.withhold.task_digest,
-            "control_tool_config_digest": pair_result.withhold.tool_config_digest,
-        })
+    # Shared-control provenance (清单 Shared-Control 第7章). All v4 records
+    # are shared-control records; the withhold block holds the canonical
+    # control outcome so downstream label / aggregation / calibration
+    # interfaces are unchanged.
+    record.update({
+        "control_group_id": control_group_id,
+        "control_family_id": compute_control_family_id(
+            str(pair_result.task_id), str(edge["receiver_agent_id"])
+        ),
+        "control_reused": True,
+        "control_definition_version": SHARED_CONTROL_DEFINITION_VERSION,
+        "control_group_candidate_count": control_group_candidate_count,
+        "control_execution_position": pair_result.branch_execution_order,
+        "share_execution_rank": share_execution_rank,
+        "control_artifact_path": control_artifact_path,
+        "control_raw_result_digest": pair_result.withhold.raw_result_digest,
+        "candidate_source": edge.get("candidate_source", "semantic_top"),
+        "candidate_sources": edge.get("candidate_sources", []),
+        "anchor_group_id": edge.get("anchor_group_id"),
+        "match_type": edge.get("match_type"),
+    })
+    record["digests"].update({
+        "control_group_context_digest": _compute_control_group_context_digest(
+            scenario=pair_result.scenario,
+            split_name=split_name,
+            audit=pair_result.withhold,
+            receiver_agent_id=str(edge["receiver_agent_id"]),
+            generation_seed=seed,
+        ),
+        "control_raw_result_digest": pair_result.withhold.raw_result_digest,
+        "control_initial_digest": pair_result.withhold.initial_digest,
+        "control_agent_config_digest": pair_result.withhold.agent_config_digest,
+        "control_task_digest": pair_result.withhold.task_digest,
+        "control_tool_config_digest": pair_result.withhold.tool_config_digest,
+    })
 
     # Label is always derived from the canonical nested outcomes, never
     # trusted from the upstream pair runner alone.

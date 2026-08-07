@@ -294,12 +294,12 @@ class TestMainTableMethods:
     def test_removed_methods_fail_fast(self):
         from smtr.marble.paired_evaluation import _build_routers
 
-        with pytest.raises(ValueError, match="removed from the formal main table"):
+        with pytest.raises(ValueError, match="unknown method"):
             _build_routers(
                 methods=["all_share"],
                 full_critic=MagicMock(),
             )
-        with pytest.raises(ValueError, match="removed from the formal main table"):
+        with pytest.raises(ValueError, match="unknown method"):
             _build_routers(
                 methods=["factual_success"],
                 full_critic=MagicMock(),

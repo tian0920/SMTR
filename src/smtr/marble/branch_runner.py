@@ -3,14 +3,13 @@
 Formal paired generation uses shared-control execution (清单
 Shared-Control 第3章): one no-memory control per (task, receiver, seed)
 group is paired with one candidate-specific share per treatment edge.
-``run_pair`` remains as a legacy convenience API.
+The legacy ``run_pair`` convenience API has been removed.
 """
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any, Literal, Sequence
+from typing import Any, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
@@ -100,12 +99,11 @@ class SharedControlResult(BaseModel):
 
 
 class MarblePairedBranchRunner:
-    """Run paired memory interventions, invalidating pairs without real engine execution.
+    """Run paired memory interventions via shared-control execution.
 
-    Formal paired generation uses shared-control execution:
-    ``run_no_memory_control`` + ``run_candidate_share`` +
-    ``assemble_shared_control_pair``. ``run_pair`` is kept as a legacy
-    convenience API.
+    Formal paired generation uses ``run_no_memory_control`` +
+    ``run_candidate_share`` + ``assemble_shared_control_pair``.
+    The legacy ``run_pair`` API has been removed (清单 P0-2 第三章).
     """
 
     # ------------------------------------------------------------------
@@ -319,145 +317,6 @@ class MarblePairedBranchRunner:
                 control.audit.runtime_visibility_verified
             ),
         )
-
-    # ------------------------------------------------------------------
-    # Legacy convenience API
-    # ------------------------------------------------------------------
-
-    def run_pair(
-        self,
-        *,
-        task: dict[str, Any],
-        candidate_memory: dict[str, Any],
-        initial_state_bundle: InitialStateBundle,
-        agent_config: dict[str, Any],
-        generation_seed: int,
-        workspace: Path,
-        branch_execution_order: Literal[
-            "share_then_withhold",
-            "withhold_then_share",
-        ] = "share_then_withhold",
-        engine_timeout_seconds: int = DEFAULT_ENGINE_TIMEOUT_SECONDS,
-    ) -> PairedBranchResult:
-        """Legacy convenience API. Formal paired generation uses
-        shared-control execution (see ``run_no_memory_control`` /
-        ``run_candidate_share`` / ``assemble_shared_control_pair``)."""
-        assert_marble_artifact_path(workspace)
-        injector = MarbleMemoryInjector()
-        base_env = MarbleDatabaseEnvironment(
-            task=task,
-            workspace=workspace / "_base_input",
-            initial_state_bundle=initial_state_bundle,
-            agent_config=agent_config,
-        )
-        base_input = base_env.build_agent_input(memory_payloads=())
-        base_env.close()
-        memory_payload = render_procedure_payload(candidate_memory)
-        memory_id = str(candidate_memory.get("memory_id", "unknown"))
-        receiver_agent_id = str(agent_config.get("target_receiver_agent_id", "agent1"))
-        share_injection: dict[str, Any] | None = None
-        if memory_payload:
-            share_injection = {
-                "receiver_agent_ids": [receiver_agent_id],
-                "memory_payloads": [memory_payload],
-                "memory_ids": [memory_id],
-                "intervention_id": f"pair_{memory_id}_{generation_seed}",
-            }
-        share_input, share_input_audit = injector.build_agent_input(
-            base_agent_input=base_input,
-            memory_payloads=(memory_payload,),
-            memory_ids=(memory_id,),
-        )
-        withhold_input, withhold_input_audit = injector.build_agent_input(
-            base_agent_input=base_input,
-            memory_payloads=(),
-            memory_ids=(),
-        )
-        branch_injections = {
-            "share": share_injection,
-            "withhold": None,
-        }
-        branch_inputs = {
-            "share": (share_input, share_input_audit),
-            "withhold": (withhold_input, withhold_input_audit),
-        }
-        audits: dict[str, MarbleBranchAudit] = {}
-        engine_names: dict[str, str] = {}
-        engine_versions: dict[str, str] = {}
-        order = (
-            ("share", "withhold")
-            if branch_execution_order == "share_then_withhold"
-            else ("withhold", "share")
-        )
-        for branch in order:
-            branch_input, branch_input_audit = branch_inputs[branch]
-            run_metadata = {
-                "run_id": f"pair_{initial_state_bundle.task_id}_{memory_id}_{generation_seed}",
-                "task_id": initial_state_bundle.task_id,
-                "scenario": initial_state_bundle.scenario,
-                "method": "pair",
-                "branch": branch,
-            }
-            audit, engine_name, engine_version = self._run_branch(
-                branch_id=branch,
-                task=task,
-                initial_state_bundle=initial_state_bundle,
-                agent_config=agent_config,
-                generation_seed=generation_seed,
-                workspace=workspace,
-                agent_input=branch_input,
-                input_audit=branch_input_audit,
-                memory_injection=branch_injections[branch],
-                run_metadata=run_metadata,
-                receiver_agent_id=receiver_agent_id,
-                visibility_method=(
-                    "pair_share" if branch == "share" else "pair_withhold"
-                ),
-                expected_memory_ids=(memory_id,),
-                forbidden_memory_ids=(
-                    () if branch == "share" else (memory_id,)
-                ),
-                engine_timeout_seconds=engine_timeout_seconds,
-            )
-            audits[branch] = audit
-            engine_names[branch] = engine_name
-            engine_versions[branch] = engine_version
-
-        share = audits["share"]
-        withhold = audits["withhold"]
-        real_engine_executed = share.real_engine_executed and withhold.real_engine_executed
-        valid, reason = _validate_pair(
-            share=share,
-            withhold=withhold,
-            real_engine_executed=real_engine_executed,
-        )
-        result = PairedBranchResult(
-            scenario=initial_state_bundle.scenario,
-            task_id=initial_state_bundle.task_id,
-            candidate_memory_id=memory_id,
-            engine_name=engine_names["share"],
-            engine_version=engine_versions["share"],
-            real_engine_executed=real_engine_executed,
-            share=share,
-            withhold=withhold,
-            paired_record_valid=valid,
-            invalid_reason=reason,
-            paired_label=(
-                _paired_label(share.outcome.success, withhold.outcome.success)
-                if valid
-                else None
-            ),
-            branch_execution_order=branch_execution_order,
-            share_runtime_visibility_verified=share.runtime_visibility_verified,
-            withhold_runtime_visibility_verified=withhold.runtime_visibility_verified,
-        )
-        workspace.mkdir(parents=True, exist_ok=True)
-        (workspace / "branch_audit.json").write_text(
-            json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True)
-            + "\n",
-            encoding="utf-8",
-        )
-        return result
 
     # ------------------------------------------------------------------
     # Internals

@@ -13,6 +13,7 @@ from typing import Any
 
 from smtr.marble.branch_runner import MarblePairedBranchRunner, PairedBranchResult
 from smtr.marble.environment.isolation import bundle_from_manifest_task
+from smtr.marble.real_pairs import compute_control_family_id, compute_edge_id
 from smtr.marble.pilot_manifest import (
     read_paired_pilot_manifest,
     write_paired_pilot_manifest,
@@ -233,15 +234,38 @@ def run_paired_pilot(
         pair_output.mkdir(parents=True, exist_ok=True)
 
         try:
-            result = runner.run_pair(
+            receiver_agent_id = "agent1"
+            task_id_str = str(task.get("task_id", pair_spec.get("task_id", "")))
+            memory_id = str(candidate_dict.get("memory_id", "unknown"))
+            edge_id = compute_edge_id(task_id_str, receiver_agent_id, memory_id)
+            control_group_id = compute_control_family_id(
+                task_id_str, receiver_agent_id
+            )
+            control = runner.run_no_memory_control(
+                control_group_id=f"{control_group_id}_{order_seed}",
+                task=task,
+                initial_state_bundle=bundle,
+                agent_config={"target_receiver_agent_id": receiver_agent_id},
+                generation_seed=order_seed,
+                workspace=pair_output,
+                forbidden_memory_ids=(memory_id,),
+                engine_timeout_seconds=engine_timeout_seconds,
+            )
+            share = runner.run_candidate_share(
+                edge_id=edge_id,
                 task=task,
                 candidate_memory=candidate_dict,
                 initial_state_bundle=bundle,
-                agent_config={"target_receiver_agent_id": "agent1"},
+                agent_config={"target_receiver_agent_id": receiver_agent_id},
                 generation_seed=order_seed,
                 workspace=pair_output,
-                branch_execution_order=branch_order,
                 engine_timeout_seconds=engine_timeout_seconds,
+            )
+            result = runner.assemble_shared_control_pair(
+                control=control,
+                share=share,
+                candidate_memory_id=memory_id,
+                branch_execution_order=branch_order,
             )
 
             result_dict = _pair_result_to_dict(result)

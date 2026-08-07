@@ -8,6 +8,7 @@ from smtr.marble.environment.isolation import (
     bundle_from_manifest_task,
     workspace_digest,
 )
+from smtr.marble.real_pairs import compute_control_family_id, compute_edge_id
 from smtr.marble.task_provider import _read_jsonl_line
 
 MARBLE_ROOT = Path("/home/ecs-user/MARBLE")
@@ -88,14 +89,36 @@ def test_paired_branch_runner_invalid_without_real_engine(tmp_path: Path) -> Non
         {"raw_task": task, "task_id": task["task_id"], "scenario": "database"}
     )
 
-    result = MarblePairedBranchRunner().run_pair(
+    runner = MarblePairedBranchRunner()
+    receiver_agent_id = "agent1"
+    task_id_str = str(task["task_id"])
+    memory_id = "m1"
+    edge_id = compute_edge_id(task_id_str, receiver_agent_id, memory_id)
+    control_group_id = compute_control_family_id(task_id_str, receiver_agent_id)
+    control = runner.run_no_memory_control(
+        control_group_id=f"{control_group_id}_0",
         task=task,
-        candidate_memory={"memory_id": "m1", "payload": {"procedure": "diagnostic help"}},
         initial_state_bundle=bundle,
-        agent_config={"target_receiver_agent_id": "agent1"},
+        agent_config={"target_receiver_agent_id": receiver_agent_id},
+        generation_seed=0,
+        workspace=workspace,
+        forbidden_memory_ids=(memory_id,),
+        engine_timeout_seconds=30,
+    )
+    share = runner.run_candidate_share(
+        edge_id=edge_id,
+        task=task,
+        candidate_memory={"memory_id": memory_id, "payload": {"procedure": "diagnostic help"}},
+        initial_state_bundle=bundle,
+        agent_config={"target_receiver_agent_id": receiver_agent_id},
         generation_seed=0,
         workspace=workspace,
         engine_timeout_seconds=30,
+    )
+    result = runner.assemble_shared_control_pair(
+        control=control,
+        share=share,
+        candidate_memory_id=memory_id,
     )
 
     # Pair structural invariants (regardless of engine availability)

@@ -15,7 +15,7 @@ CandidateMemoryCategory = Literal[
     "irrelevant",
     "outdated",
     "conflicting",
-    "role_mismatched",
+    "receiver_incompatible",
 ]
 
 
@@ -156,15 +156,15 @@ def build_conflicting_memory(
     )
 
 
-def build_role_mismatched_memory(
+def build_receiver_incompatible_memory(
     task_id: str,
     scenario: str = "database",
     index: int = 0,
 ) -> PilotCandidateMemory:
     """A memory intended for a different agent role."""
     return PilotCandidateMemory(
-        memory_id=f"role_mismatched_{task_id}_{index}",
-        category="role_mismatched",
+        memory_id=f"receiver_incompatible_{task_id}_{index}",
+        category="receiver_incompatible",
         task_id=task_id,
         scenario=scenario,
         payload=(
@@ -194,5 +194,5 @@ def build_candidate_set(
         build_irrelevant_memory(task_id, scenario, index=0),
         build_outdated_memory(task_id, scenario, index=0),
         build_conflicting_memory(task_id, scenario, index=0),
-        build_role_mismatched_memory(task_id, scenario, index=0),
+        build_receiver_incompatible_memory(task_id, scenario, index=0),
     ]

@@ -84,16 +84,12 @@ class TestMethodRegistry:
             ABLATION_METHODS["static_smtr"].conditioning_policy_name
             == "frozen_initial_selected_set"
         )
-        assert ABLATION_METHODS["factual_success_smtr"].target == "share_success"
-        assert (
-            ABLATION_METHODS["factual_success_smtr"].uses_pairwise_counterfactual_labels
-            is False
-        )
         assert get_method_spec(
             "effect_only_smtr",
             include_ablations=True,
         ).display_label == "EffectOnly-SMTR"
         deleted_ids = [
+            "factual_success_smtr",
             "risk_only_smtr",
             "topcountmatched_smtr",
             "randomcountmatched_smtr",

@@ -14,6 +14,7 @@ from typing import Any
 from smtr.marble.branch_runner import MarblePairedBranchRunner, PairedBranchResult
 from smtr.marble.environment.isolation import bundle_from_manifest_task
 from smtr.marble.real_data import RealProceduralMemory
+from smtr.marble.real_pairs import compute_control_family_id, compute_edge_id
 
 
 class PairedCausalEvaluator:
@@ -42,13 +43,35 @@ class PairedCausalEvaluator:
             "expected_role": candidate_memory.expected_role,
         }
         runner = MarblePairedBranchRunner()
-        result = runner.run_pair(
+        receiver_agent_id = str(
+            memory_dict.get("receiver_agent_id", "agent1")
+        )
+        task_id_str = str(task_id)
+        memory_id_str = str(candidate_memory.memory_id)
+        edge_id = compute_edge_id(task_id_str, receiver_agent_id, memory_id_str)
+        control_group_id = compute_control_family_id(task_id_str, receiver_agent_id)
+        control = runner.run_no_memory_control(
+            control_group_id=f"{control_group_id}_{generation_seed}",
+            task=task,
+            initial_state_bundle=bundle,
+            agent_config={"target_receiver_agent_id": receiver_agent_id},
+            generation_seed=generation_seed,
+            workspace=workspace,
+            forbidden_memory_ids=(memory_id_str,),
+        )
+        share = runner.run_candidate_share(
+            edge_id=edge_id,
             task=task,
             candidate_memory=memory_dict,
             initial_state_bundle=bundle,
-            agent_config={"target_receiver_agent_id": "agent1"},
+            agent_config={"target_receiver_agent_id": receiver_agent_id},
             generation_seed=generation_seed,
             workspace=workspace,
+        )
+        result = runner.assemble_shared_control_pair(
+            control=control,
+            share=share,
+            candidate_memory_id=memory_id_str,
             branch_execution_order=branch_execution_order,
         )
         return self._compute_treatment_effect(result)

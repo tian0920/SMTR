@@ -9,14 +9,12 @@ Provides entry points for constructing formal SMTR routers by mode:
 from pathlib import Path
 from typing import Literal
 
-from smtr.evaluation.ablation_gates import FactualSuccessGate
 from smtr.router.baseline_router import NoMemoryRouter
 from smtr.router.baselines import RelevanceTopKRouter, RelevanceTopKRouterConfig
 from smtr.router.conditioning import (
     DynamicSelectedSetConditioning,
     SelectedSetConditioningPolicy,
 )
-from smtr.router.factual_success_critic import FactualSuccessCritic
 from smtr.router.interfaces import MemoryRouter
 from smtr.router.sequential_router import (
     ProductionSequentialRouter,
@@ -178,33 +176,6 @@ def build_smtr_router(
     if not isinstance(router, ProductionSequentialRouter):
         raise TypeError("expected ProductionSequentialRouter")
     return router
-
-
-def build_factual_success_router(
-    *,
-    factual_checkpoint: str | Path,
-    threshold: float | None = None,
-    seed: int,
-    conditioning_policy: SelectedSetConditioningPolicy | None = None,
-    traversal_policy: TraversalPolicy | None = None,
-) -> ProductionSequentialRouter:
-    """Build FactualSuccess-SMTR from its independent binary checkpoint."""
-    critic = FactualSuccessCritic.load(Path(factual_checkpoint), require_metadata=True)
-    metadata_threshold = (
-        critic.checkpoint_metadata.threshold
-        if critic.checkpoint_metadata is not None
-        else 0.5
-    )
-    return ProductionSequentialRouter(
-        critic=critic,
-        gate=FactualSuccessGate(
-            threshold=metadata_threshold if threshold is None else threshold
-        ),
-        conditioning_policy=conditioning_policy or DynamicSelectedSetConditioning(),
-        traversal_policy=traversal_policy,
-        config=SequentialRouterConfig(),
-        seed=seed,
-    )
 
 
 def smtr_router_observability(

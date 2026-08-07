@@ -40,13 +40,13 @@ def _v2_records() -> list[dict]:
     ]
 
 
-def _v3_records() -> list[dict]:
+def _v4_records() -> list[dict]:
     records = []
     for seed, (share, withhold) in enumerate(OUTCOMES):
         rec = _record(seed=seed, share_success=share, withhold_success=withhold)
         rec.update(
             {
-                "schema_version": "marble_candidate_pair_v3",
+                "schema_version": "marble_candidate_pair_v4",
                 "control_group_id": f"ctrl_{seed:016x}",
                 "control_family_id": "t1::r1",
                 "control_reused": True,
@@ -60,11 +60,11 @@ def _v3_records() -> list[dict]:
     return records
 
 
-def test_v3_and_v2_records_aggregate_identically():
+def test_v4_and_v2_records_aggregate_identically():
     v2 = aggregate_edge_records(_v2_records())
-    v3 = aggregate_edge_records(_v3_records())
+    v4 = aggregate_edge_records(_v4_records())
     assert len(v2) == 1
-    assert len(v3) == 1
+    assert len(v4) == 1
     for key in (
         "q00_empirical",
         "q01_empirical",
@@ -75,11 +75,11 @@ def test_v3_and_v2_records_aggregate_identically():
         "n_replicates",
         "n_attempted",
     ):
-        assert v3[0][key] == v2[0][key], key
+        assert v4[0][key] == v2[0][key], key
 
 
 def test_aggregate_values_match_expected_counts():
-    agg = aggregate_edge_records(_v3_records())[0]
+    agg = aggregate_edge_records(_v4_records())[0]
     assert agg["n_replicates"] == 8
     assert agg["n_attempted"] == 8
     assert agg["q00_empirical"] == 2 / 8
@@ -90,12 +90,12 @@ def test_aggregate_values_match_expected_counts():
     assert agg["eta_empirical"] == 1 / 8
 
 
-def test_invalid_v3_records_are_excluded_from_probabilities():
-    records = _v3_records()
+def test_invalid_v4_records_are_excluded_from_probabilities():
+    records = _v4_records()
     records.append(
         {
             **_record(seed=99, share_success=True, withhold_success=True),
-            "schema_version": "marble_candidate_pair_v3",
+            "schema_version": "marble_candidate_pair_v4",
             "control_group_id": "ctrl_deadbeef",
             "valid": False,
             "invalid_reason": "shared_control_invalid:mock_control_failure",

@@ -77,7 +77,7 @@ def test_record_digests_come_from_paired_branch_result(tmp_path):
     assert len(replicate_ids) == 3
 
     rec = records[0]
-    assert rec["schema_version"] == "marble_candidate_pair_v3"
+    assert rec["schema_version"] == "marble_candidate_pair_v4"
     assert rec["control_group_id"]
     assert rec["control_reused"] is True
 
@@ -149,8 +149,7 @@ def test_invalid_pair_not_used_by_training_loader(tmp_path):
 
     edge = {
         "receiver_agent_id": "r1", "receiver_role": "executor",
-        "receiver_capabilities": [], "writer_agent_id": "w1",
-        "writer_role": "planner", "writer_capabilities": [],
+        "receiver_capabilities": [],
         "candidate_rank": 1, "candidate_score": 0.8,
     }
 

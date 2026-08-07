@@ -2,7 +2,7 @@
 
 import pytest
 
-from smtr.evaluation.ablation_gates import EffectOnlyGate, FactualSuccessGate
+from smtr.evaluation.ablation_gates import EffectOnlyGate
 from smtr.robust.config import RobustSMTRGateConfig
 from smtr.robust.estimates import RobustTransferEstimate
 from smtr.robust.robust_gate import RobustSMTRGate
@@ -49,13 +49,6 @@ def test_effect_only_smtr_ignores_risk():
     assert decision.risk_condition_status == "not_applicable"
 
 
-def test_factual_success_gate_uses_threshold_only():
-    estimate = type("Estimate", (), {"p_share_success": 0.7})()
-    decision = FactualSuccessGate(threshold=0.6).decide(estimate)
-    assert decision.share is True
-    assert decision.reason == "shared"
-    assert decision.effect_condition_status == "not_applicable"
-    assert decision.risk_condition_status == "not_applicable"
 
 
 def test_robust_gate_uses_lcb_ucb_and_unified_confidence_config():

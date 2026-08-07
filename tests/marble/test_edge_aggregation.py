@@ -1,11 +1,10 @@
-"""Commit 4: multi-seed treatment edges, counterbalanced branch order,
+"""Commit 4: multi-seed treatment edges
 and edge-level empirical aggregation (q00/q01/q10/q11, tau, eta)."""
 
 import pytest
 
 from smtr.marble.real_pairs import (
     aggregate_edge_records,
-    branch_order_for_edge,
     compute_edge_id,
     stable_hash,
 )
@@ -110,24 +109,3 @@ class TestEdgeAggregation:
         assert by_edge[e2]["tau_empirical"] == pytest.approx(-1.0)
 
 
-class TestBranchOrderCounterbalancing:
-    def test_branch_order_is_counterbalanced(self):
-        # Across many edges x seeds, both orders appear and each
-        # (edge, seed) maps deterministically to exactly one order.
-        orders = []
-        for i in range(40):
-            edge_id = compute_edge_id(f"t{i}", f"r{i}", f"m{i}")
-            for seed in range(3):
-                order = branch_order_for_edge(edge_id, seed)
-                assert order in ("share_then_withhold", "withhold_then_share")
-                assert order == branch_order_for_edge(edge_id, seed)
-                orders.append(order)
-        assert set(orders) == {"share_then_withhold", "withhold_then_share"}
-        share_first = sum(o == "share_then_withhold" for o in orders)
-        assert 0 < share_first < len(orders)
-
-    def test_branch_order_varies_with_seed_within_edge(self):
-        edge_id = compute_edge_id("tX", "rX", "mX")
-        orders = {branch_order_for_edge(edge_id, seed) for seed in range(20)}
-        # Not every seed collapses to the same order for a fixed edge
-        assert len(orders) == 2

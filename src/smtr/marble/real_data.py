@@ -177,17 +177,15 @@ def extract_procedural_memories(
             )
             memory_id = f"dbproc-{trajectory.trajectory_id[:12]}-{agent_slice.agent_id[:8]}"
 
-            # 清单 4.2: required tools come from the observed procedure; the
-            # agent-profile tool set is only a fallback for legacy data.
+            # 清单 15.1: required tools come exclusively from the observed
+            # procedure; no source-agent profile fallback.
             observed_tools = tuple(sorted({
                 name for name in (_canonical_tool_name(a) for a in ordered_actions) if name
             }))
-            if observed_tools:
-                required_tools = observed_tools
-                required_tools_source = "observed_actions"
-            else:
-                required_tools = tuple(sorted(agent_slice.tool_names))
-                required_tools_source = "agent_profile_fallback"
+            required_tools = observed_tools
+            required_tools_source = (
+                "observed_actions" if observed_tools else "no_tools_observed"
+            )
 
             # 清单 4.3: capabilities via the fixed tool mapping only.
             required_capabilities = tuple(sorted({
@@ -1057,8 +1055,9 @@ def compute_proposal_support_metrics(
             total_candidates += 1
             tags = set(rec.candidate_sources)
             if not tags:
-                # Legacy manifests without the multi-source tag list.
-                tags = {_legacy_source_tag(rec.candidate_source)}
+                # Manifests without the multi-source tag list: use the
+                # single candidate_source field directly.
+                tags = {rec.candidate_source or "semantic_top"}
             for tag in tags:
                 source_distribution[tag] = source_distribution.get(tag, 0) + 1
             if "receiver_compatible" in tags:
@@ -1099,17 +1098,6 @@ def compute_proposal_support_metrics(
         ),
         "candidate_source_distribution": source_distribution,
     }
-
-
-def _legacy_source_tag(source: str) -> CandidateSourceTag:
-    """Map legacy single-cohort labels onto the canonical cohort tags."""
-    if source in ("role_mismatched", "receiver_incompatible_hard_negative"):
-        return "receiver_incompatible_hard_negative"
-    if source in ("role_matched", "receiver_compatible"):
-        return "receiver_compatible"
-    if source == "cross_receiver_anchor":
-        return "cross_receiver_anchor"
-    return "semantic_top"
 
 
 def require_receiver_effect_coverage(

@@ -12,6 +12,7 @@ from typing import Any
 from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.artifacts import assert_marble_artifact_path
 from smtr.marble.branch_runner import MarblePairedBranchRunner
+from smtr.marble.real_pairs import compute_control_family_id, compute_edge_id
 from smtr.marble.engine_process import (
     DEFAULT_ENGINE_TIMEOUT_SECONDS,
     run_marble_engine_process,
@@ -262,15 +263,37 @@ def run_database_paired_smoke(
         {"raw_task": task, "task_id": str(task_id), "scenario": "database"},
         generation_seed=generation_seed,
     )
-    result = MarblePairedBranchRunner().run_pair(
+    runner = MarblePairedBranchRunner()
+    receiver_agent_id = "agent1"
+    task_id_str = str(task_id)
+    memory_id_str = str(memory_id)
+    edge_id = compute_edge_id(task_id_str, receiver_agent_id, memory_id_str)
+    control_group_id = compute_control_family_id(task_id_str, receiver_agent_id)
+    control = runner.run_no_memory_control(
+        control_group_id=f"{control_group_id}_{generation_seed}",
+        task=task,
+        initial_state_bundle=bundle,
+        agent_config={"target_receiver_agent_id": receiver_agent_id},
+        generation_seed=generation_seed,
+        workspace=output_dir,
+        forbidden_memory_ids=(memory_id_str,),
+        engine_timeout_seconds=engine_timeout_seconds,
+    )
+    share = runner.run_candidate_share(
+        edge_id=edge_id,
         task=task,
         candidate_memory=memory,
         initial_state_bundle=bundle,
-        agent_config={"target_receiver_agent_id": "agent1"},
+        agent_config={"target_receiver_agent_id": receiver_agent_id},
         generation_seed=generation_seed,
         workspace=output_dir,
-        branch_execution_order=branch_order.replace("-", "_"),
         engine_timeout_seconds=engine_timeout_seconds,
+    )
+    result = runner.assemble_shared_control_pair(
+        control=control,
+        share=share,
+        candidate_memory_id=memory_id_str,
+        branch_execution_order=branch_order.replace("-", "_"),
     )
     summary = {
         "run_id": run_id,

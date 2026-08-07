@@ -237,9 +237,6 @@ def write_fixture_files(
                     "candidate_records": [
                         {
                             "memory_id": memory_id,
-                            "writer_agent_id": f"w_{memory_id}",
-                            "writer_role": "planner",
-                            "writer_capabilities": ["plan"],
                             "rank": rank,
                             "score": round(0.9 - 0.1 * (rank - 1), 4),
                         }
@@ -259,9 +256,22 @@ def write_fixture_files(
         "".join(
             json.dumps({
                 "memory_id": memory_id,
-                "payload": {"procedure": f"Step 1. Use {memory_id}."},
+                "payload": {
+                    "procedure": f"Step 1. Use {memory_id}.",
+                    "provenance": {
+                        "source_agent_id": f"w_{memory_id}",
+                        "source_task_id": "t_source",
+                        "source_trajectory_id": f"traj_{memory_id}",
+                        "source_split": "train",
+                    },
+                },
                 "routing_card": {
-                    "writer": {"agent_id": f"w_{memory_id}", "role": "planner"}
+                    "goal_summary": "goal",
+                    "task_tags": [],
+                    "required_tools": [],
+                    "required_capabilities": [],
+                    "execution_role_tags": [],
+                    "environment_constraints": [],
                 },
             }) + "\n"
             for memory_id in memory_ids

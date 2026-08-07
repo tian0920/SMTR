@@ -19,9 +19,9 @@ SPLIT_NAMES = ("train", "validation", "test")
 
 # Artifact schema carrying per-file digests so formal evaluations can
 # re-verify that the audited files are exactly the ones evaluated (R6 P1-5).
-# v3 additionally binds the test candidate manifest, a per-role checkpoint
-# digest map and fail-closed provenance validation (清单 P0-1/P0-2/P1-1).
-SPLIT_AUDIT_SCHEMA_VERSION = "smtr_split_audit_v3"
+# v4 binds the test candidate manifest, a per-role checkpoint digest map,
+# fail-closed provenance validation, and budget training support binding.
+SPLIT_AUDIT_SCHEMA_VERSION = "smtr_split_audit_v4"
 
 # Method -> checkpoint role required to run that method (清单 3.4).
 _METHOD_CHECKPOINT_ROLES = {
@@ -256,6 +256,7 @@ def audit_split_files(
     methods: list[str] | None = None,
     dataset_manifest_path: Path | None = None,
     split_manifest_path: Path | None = None,
+    train_budget_candidate_manifest_path: Path | None = None,
     strict_candidate_support: bool = True,
     experiment_mode: str = "pilot",
 ) -> dict[str, Any]:
@@ -266,12 +267,10 @@ def audit_split_files(
     wrapper — the summary reports ``split_integrity_passed=False`` plus the
     error so the caller decides how to fail.
 
-    The v3 artifact (清单 P0-1/P0-2/P1-1) binds, in addition to the v2 file
-    digests: the test candidate manifest (digest + edge support against the
-    test paired records), a per-role checkpoint digest map with training
-    provenance verification, and fail-closed provenance schema validation
-    in formal mode. Digests use the project's canonical file-digest helper,
-    never Python's built-in ``hash()``.
+    The v4 artifact binds: the test candidate manifest, a per-role checkpoint
+    digest map with training provenance and budget support verification,
+    cross-checkpoint support equality, and fail-closed provenance schema
+    validation in formal mode.
     """
     resolved_checkpoint_paths = dict(checkpoint_paths or {})
     # Legacy single-checkpoint callers bind the full SMTR checkpoint.
@@ -303,6 +302,9 @@ def audit_split_files(
             if candidate_manifest is not None
             else None
         ),
+        "train_budget_candidate_manifest_digest": _artifact_digest(
+            train_budget_candidate_manifest_path
+        ),
     }
 
     splits = {
@@ -325,6 +327,9 @@ def audit_split_files(
         train_digest=artifact_metadata["train_paired_records_digest"],
         validation_digest=artifact_metadata["validation_paired_records_digest"],
         memory_pool_digest=artifact_metadata["memory_pool_digest"],
+        budget_manifest_digest=artifact_metadata[
+            "train_budget_candidate_manifest_digest"
+        ],
     )
 
     full_critic = critics.get("full")
@@ -334,6 +339,25 @@ def audit_split_files(
         calibration_split = getattr(full_critic, "calibration_split", None) or "unknown"
         epsilon_selection_split = (
             getattr(full_critic, "epsilon_selection_split", None) or "unknown"
+        )
+
+    # 清单 §9: three critic checkpoints must share the same effective
+    # training support (same effective digest, manifest digest, edge count).
+    support_signatures: dict[str, tuple[Any, ...]] = {}
+    for role, meta in checkpoint_metadata.items():
+        ts = meta.get("training_support", {})
+        support_signatures[role] = (
+            ts.get("effective_train_record_digest"),
+            ts.get("budget_candidate_manifest_digest"),
+            ts.get("effective_train_edge_count"),
+        )
+    cross_checkpoint_support_equal = (
+        len(set(support_signatures.values())) <= 1
+    )
+    if not cross_checkpoint_support_equal and experiment_mode == "formal":
+        checkpoint_binding_errors.append(
+            "formal critic checkpoints were trained on different "
+            "treatment-edge supports"
         )
 
     # 清单 P1-1: formal provenance schema validation runs before any overlap
@@ -429,6 +453,7 @@ def audit_split_files(
             "checkpoint_digests": checkpoint_digests,
             "checkpoint_metadata": checkpoint_metadata,
             "checkpoint_binding_errors": checkpoint_binding_errors,
+            "cross_checkpoint_support_equal": cross_checkpoint_support_equal,
             "candidate_manifest": candidate_manifest_block,
             "candidate_manifest_errors": candidate_manifest_errors,
             "test_edges_missing_from_manifest": test_edges_missing_from_manifest,
@@ -485,6 +510,7 @@ def _bind_checkpoints(
     train_digest: str | None,
     validation_digest: str | None,
     memory_pool_digest: str | None,
+    budget_manifest_digest: str | None = None,
 ) -> tuple[dict[str, str], dict[str, dict[str, Any]], dict[str, Any], list[str]]:
     """Per-role checkpoint digests, metadata and binding errors (清单 P0-2).
 
@@ -528,6 +554,27 @@ def _bind_checkpoints(
             "epsilon_selection_unit": getattr(
                 critic, "epsilon_selection_unit", None
             ),
+            # 清单 §7/§9: budget training support binding
+            "training_support": {
+                "parent_train_record_digest": getattr(
+                    critic, "parent_train_candidate_manifest_digest", None
+                ),
+                "effective_train_record_digest": getattr(
+                    critic, "effective_train_record_digest", None
+                ),
+                "budget_candidate_manifest_digest": getattr(
+                    critic, "budget_train_candidate_manifest_digest", None
+                ),
+                "requested_budget_fraction": getattr(
+                    critic, "training_budget_requested", None
+                ),
+                "realized_budget_fraction": getattr(
+                    critic, "training_budget_realized", None
+                ),
+                "effective_train_edge_count": getattr(
+                    critic, "effective_train_edge_count", None
+                ),
+            },
         }
         if experiment_mode == "formal":
             errors.extend(
@@ -537,6 +584,7 @@ def _bind_checkpoints(
                     train_digest=train_digest,
                     validation_digest=validation_digest,
                     memory_pool_digest=memory_pool_digest,
+                    budget_manifest_digest=budget_manifest_digest,
                 )
             )
     return digests, metadata, critics, errors
@@ -549,6 +597,7 @@ def _checkpoint_training_provenance_errors(
     train_digest: str | None,
     validation_digest: str | None,
     memory_pool_digest: str | None,
+    budget_manifest_digest: str | None = None,
 ) -> list[str]:
     """Formal-mode check of the provenance persisted in a checkpoint (3.6)."""
     errors: list[str] = []
@@ -571,6 +620,17 @@ def _checkpoint_training_provenance_errors(
         and getattr(critic, "memory_pool_digest", None) != memory_pool_digest
     ):
         errors.append(f"checkpoint role {role!r} memory pool digest mismatch")
+    # 清单 §8.1: budget manifest digest consistency.
+    if budget_manifest_digest is not None:
+        actual = getattr(
+            critic, "budget_train_candidate_manifest_digest", None
+        )
+        if actual is not None and actual != budget_manifest_digest:
+            errors.append(
+                f"checkpoint role {role!r} budget candidate manifest "
+                "digest mismatch (checkpoint was not trained with the "
+                "audited budget candidate manifest)"
+            )
     return errors
 
 

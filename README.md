@@ -100,7 +100,7 @@ For each target task, receiver, and generation seed, SMTR executes one shared no
 
 - Controls are never shared across receivers or across generation seeds; the control group key is `(task_id, receiver_agent_id, generation_seed)`.
 - Each candidate still runs its own independent share branch.
-- Every paired record (`schema_version: marble_candidate_pair_v3`) carries `control_group_id` plus the control provenance digests of the shared control.
+- Every paired record (`schema_version: marble_candidate_pair_v4`) carries `control_group_id` plus the control provenance digests of the shared control.
 - The control execution never sees any candidate memory of its group, and its metadata contains no candidate/source identity, score or provenance.
 - An invalid control invalidates the whole group (`invalid_reason` starts with `shared_control_invalid:`); an invalid share branch invalidates only that candidate's record.
 - Paired-record generation reports actual share/control/total episode counts, the legacy-equivalent episode count and the saving fraction.
@@ -141,7 +141,7 @@ Tasks are split **by group** (database tasks by normalized schema family; other 
 
 **Target identity never crosses splits**: `task_id` (target task), `target_trajectory_id` (the receiver's execution trajectory under evaluation), treatment edges `(task_id, receiver_agent_id, candidate_memory_id)` and `edge_id` are each disjoint across train/validation/test. **Memory provenance may legitimately recur**: every memory is extracted from a train trajectory (`memory_source_split == "train"`), so the same train-derived memory — and its `memory_source_trajectory_id` — may serve candidates in both validation and test. The split audit (`smtr.evaluation.split_audit.audit_split_leakage`) treats target/edge overlap, non-train memory sources and self-transfer (target task == memory source task) as fatal, and reports legal provenance reuse (`shared_train_memory_provenance_count`, `memory_source_trajectory_reuse`) as statistics. `split_integrity_passed` is computed from those results, never assumed.
 
-The audit artifact (`schema_version: smtr_split_audit_v2`) additionally binds every audited file by SHA-256 digest — dataset manifest, split manifest, memory pool, the three per-split paired-record files and the checkpoint — and records `calibration_split` / `epsilon_selection_split`. A formal end-to-end evaluation must bind such an artifact (`--split-audit`); the evaluation re-verifies that the audit passed, that calibration and ε selection used only the validation split, and that every digest still matches the file actually consumed — otherwise it aborts before any MARBLE episode runs. The risk budget ε is selected **only on the validation split**; the test split is read-only with respect to all hyperparameters. Confidence intervals are cluster bootstraps over `target_task_id` (or `target_task_id + receiver_agent_id`) — never per-record bootstraps — and are at least 95%.
+The audit artifact (`schema_version: smtr_split_audit_v4`) additionally binds every audited file by SHA-256 digest — dataset manifest, split manifest, memory pool, the three per-split paired-record files, the per-role checkpoint digest map with training provenance and budget support verification, and the test candidate manifest — and records `calibration_split` / `epsilon_selection_split`. Cross-checkpoint support equality is enforced in formal mode: all critic checkpoints must share the same effective training support (same digest, manifest digest, edge count). A formal end-to-end evaluation must bind such an artifact (`--split-audit`); the evaluation re-verifies that the audit passed, that calibration and ε selection used only the validation split, and that every digest still matches the file actually consumed — otherwise it aborts before any MARBLE episode runs. The risk budget ε is selected **only on the validation split**; the test split is read-only with respect to all hyperparameters. Confidence intervals are cluster bootstraps over `target_task_id` (or `target_task_id + receiver_agent_id`) — never per-record bootstraps — and are at least 95%.
 
 ## Stage A: Training Data
 
@@ -234,9 +234,14 @@ python -m smtr.marble.cli audit-splits \
   --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
   --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --checkpoint artifacts/marble/checkpoints/smtr_full.joblib \
+  --test-candidate-manifest artifacts/marble/candidates/test_candidates.json \
+  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
+  --checkpoint-global-transfer-critic artifacts/marble/checkpoints/global_transfer.joblib \
+  --checkpoint-smtr-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
+  --methods smtr global_transfer_critic smtr_no_compatibility_interaction \
   --dataset-manifest artifacts/marble/manifests/dataset.json \
   --split-manifest artifacts/marble/manifests/splits.json \
+  --experiment-mode formal \
   --output artifacts/marble/eval/split_audit.json
 ```
 
@@ -315,7 +320,7 @@ python -m smtr.marble.cli integrity-audit \
   --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
   --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
   --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
-  --checkpoint artifacts/marble/checkpoints/smtr_full.joblib \
+  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
   --output artifacts/marble/eval/integrity_summary.json
 ```
 

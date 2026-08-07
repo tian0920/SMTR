@@ -51,7 +51,7 @@ def main() -> None:
     p.add_argument("--top-k", type=int, default=4)
     p.add_argument("--cohort-quotas", default="",
                    help="JSON object of cohort quotas, e.g. "
-                        "'{\"semantic_top\":2,\"role_matched\":2,\"role_mismatched\":2,\"cross_receiver_anchor\":2}'")
+                        "'{\"semantic_top\":2,\"receiver_compatible\":2,\"receiver_incompatible_hard_negative\":2,\"cross_receiver_anchor\":2}'")
     p.add_argument("--min-task-relevance", type=float, default=None)
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
 
@@ -74,9 +74,7 @@ def main() -> None:
     p.add_argument("--validation-paired-records", required=True)
     p.add_argument("--test-paired-records", required=True)
     p.add_argument("--memory-pool", required=True)
-    # 清单 P0-2: per-role checkpoint binding; --checkpoint remains a legacy
-    # alias that binds the full SMTR checkpoint only.
-    p.add_argument("--checkpoint", required=False, default=None)
+    # 清单 P0-2: per-role checkpoint binding; legacy --checkpoint removed.
     p.add_argument("--checkpoint-full", required=False, default=None)
     p.add_argument("--checkpoint-global-transfer", required=False, default=None)
     p.add_argument("--checkpoint-no-compatibility-interaction", required=False, default=None)
@@ -87,6 +85,8 @@ def main() -> None:
     # 清单 R6 P1-5: bind the manifests into the audit artifact by digest.
     p.add_argument("--dataset-manifest", required=False, default=None)
     p.add_argument("--split-manifest", required=False, default=None)
+    # 清单 §8: budget manifest binding for split audit v4.
+    p.add_argument("--train-budget-candidate-manifest", required=False, default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("train-critic", help="Train four-outcome transfer critic")
@@ -172,7 +172,7 @@ def main() -> None:
     p.add_argument("--train-paired-records", default=None)
     p.add_argument("--validation-paired-records", default=None)
     p.add_argument("--test-paired-records", default=None)
-    p.add_argument("--checkpoint", default=None)
+    p.add_argument("--checkpoint-full", default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser(
@@ -206,9 +206,6 @@ def main() -> None:
     )
     p.add_argument("--output-records", required=True)
     p.add_argument("--output-summary", required=True)
-
-    # --- Deprecated ---
-    p = subparsers.add_parser("run-evaluation", help="[deprecated] Use run-paired-decision-evaluation or run-marble-evaluation")
 
     # --- Dev-only commands (prefixed with dev-) ---
     p = subparsers.add_parser("dev-runtime-preflight", help="[dev] Runtime preflight check")
@@ -381,8 +378,6 @@ def _dispatch(args: argparse.Namespace) -> None:
             checkpoint_paths["no_compatibility_interaction"] = (
                 args.checkpoint_no_compatibility_interaction
             )
-        if args.checkpoint and "full" not in checkpoint_paths:
-            checkpoint_paths["full"] = args.checkpoint
         if args.experiment_mode == "formal" and "full" not in checkpoint_paths:
             raise SystemExit(
                 "audit-splits --checkpoint-full is required in formal mode"
@@ -404,6 +399,11 @@ def _dispatch(args: argparse.Namespace) -> None:
             methods=args.methods,
             dataset_manifest_path=Path(args.dataset_manifest) if args.dataset_manifest else None,
             split_manifest_path=Path(args.split_manifest) if args.split_manifest else None,
+            train_budget_candidate_manifest_path=(
+                Path(args.train_budget_candidate_manifest)
+                if args.train_budget_candidate_manifest
+                else None
+            ),
             strict_candidate_support=True,
             experiment_mode=args.experiment_mode,
         )
@@ -499,7 +499,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             train_paired_records_path=Path(args.train_paired_records) if args.train_paired_records else None,
             validation_paired_records_path=Path(args.validation_paired_records) if args.validation_paired_records else None,
             test_paired_records_path=Path(args.test_paired_records) if args.test_paired_records else None,
-            checkpoint_path=Path(args.checkpoint) if args.checkpoint else None,
+            checkpoint_path=Path(args.checkpoint_full) if args.checkpoint_full else None,
         )
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -549,9 +549,6 @@ def _dispatch(args: argparse.Namespace) -> None:
             experiment_mode=args.experiment_mode,
         )
         print(json.dumps(summary, indent=2))
-
-    elif cmd == "run-evaluation":
-        print("Deprecated: use run-paired-decision-evaluation or run-marble-evaluation.")
 
     elif cmd == "dev-runtime-preflight":
         print("dev-runtime-preflight: not implemented in mainline")

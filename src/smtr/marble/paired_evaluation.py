@@ -896,17 +896,6 @@ def _build_routers(
             routers[method] = SemanticTop1Router()
         elif method == "receiver_compatible_top1":
             routers[method] = ReceiverCompatibleTop1Router()
-        elif method in (
-            "all_share",
-            "factual_success",
-            "role_aware_top1",
-            "smtr_no_writer_receiver",
-        ):
-            raise ValueError(
-                f"method '{method}' was removed from the formal main table "
-                "(清单 Writer-Agnostic 第九章): writer-conditioned methods "
-                "are replaced by receiver-conditioned memory exposure."
-            )
         elif method == "global_transfer_critic":
             if global_critic is None:
                 raise ValueError(

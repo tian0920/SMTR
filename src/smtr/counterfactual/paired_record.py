@@ -26,7 +26,7 @@ class BranchOutcome(BaseModel):
     native_evaluator_executed: bool = True
 
 
-SHARED_CONTROL_SCHEMA_VERSION = "marble_candidate_pair_v3"
+SHARED_CONTROL_SCHEMA_VERSION = "marble_candidate_pair_v4"
 
 SHARED_CONTROL_DEFINITION_VERSION = "shared_no_memory_control_v1"
 
@@ -91,7 +91,7 @@ class CandidateLevelPairedRecord(BaseModel):
     invalid_reason: str | None = None
 
     # Shared-control provenance (清单 Shared-Control 第7章). Present on
-    # marble_candidate_pair_v3 records; the withhold block holds the
+    # marble_candidate_pair_v4 records; the withhold block holds the
     # canonical outcome of the group's one shared no-memory control.
     control_group_id: str | None = None
     control_family_id: str | None = None
@@ -176,10 +176,14 @@ FORMAL_PAIRED_PROVENANCE_FIELDS = {
     "target_trajectory_id",
     "receiver_agent_id",
     "candidate_memory_id",
-    "memory_source_trajectory_id",
-    "memory_source_task_id",
-    "memory_source_split",
     "generation_seed",
+
+    "memory_source_agent_id",
+    "memory_source_task_id",
+    "memory_source_trajectory_id",
+    "memory_source_split",
+
+    "control_group_id",
 }
 
 # 清单 Shared-Control 第7章: v3 records must additionally persist complete

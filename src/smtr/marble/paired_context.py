@@ -26,7 +26,8 @@ def build_pair_execution_context(
     workspace: Path,
 ) -> PairExecutionContext:
     """Build the task, initial database state and agent configuration
-    needed by MarblePairedBranchRunner.run_pair.
+    needed by the shared-control branch runner protocol (清单
+    Shared-Control 第3章).
 
     Requirements:
     - target_receiver_agent_id must equal receiver_agent_id
