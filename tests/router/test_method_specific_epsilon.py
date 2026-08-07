@@ -1,8 +1,8 @@
 """Each method consumes its own checkpoint epsilon_star (清单 P1-2 5.4).
 
-The full / global_transfer / no_pair_interaction critics carry distinct
-validation-selected epsilons; every router resolves its effective risk
-budget from its own checkpoint, and a checkpoint without epsilon_star
+The full / global_transfer / no_compatibility_interaction critics carry
+distinct validation-selected epsilons; every router resolves its effective
+risk budget from its own checkpoint, and a checkpoint without epsilon_star
 fails instead of falling back to a hard-coded default.
 """
 
@@ -12,7 +12,7 @@ import pytest
 
 from smtr.router.baselines import (
     GlobalTransferCriticRouter,
-    SMTRNoPairInteractionRouter,
+    SMTRNoCompatibilityInteractionRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
@@ -27,17 +27,17 @@ def _critic(feature_block: str, epsilon_star: float | None):
 def test_each_router_uses_its_own_checkpoint_epsilon():
     full = _critic("full", 0.10)
     global_transfer = _critic("global_transfer", 0.25)
-    no_pair = _critic("no_pair_interaction", 0.18)
+    no_compat = _critic("no_compatibility_interaction", 0.18)
 
     smtr_router = SMTRExposureRouter(critic=full)
     global_router = GlobalTransferCriticRouter(critic=global_transfer)
-    no_pair_router = SMTRNoPairInteractionRouter(critic=no_pair)
+    no_compat_router = SMTRNoCompatibilityInteractionRouter(critic=no_compat)
 
     assert smtr_router._effective_risk_budget() == pytest.approx(0.10)
     assert global_router._router._effective_risk_budget() == pytest.approx(
         0.25
     )
-    assert no_pair_router._router._effective_risk_budget() == pytest.approx(
+    assert no_compat_router._router._effective_risk_budget() == pytest.approx(
         0.18
     )
 

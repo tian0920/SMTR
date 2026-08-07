@@ -79,7 +79,7 @@ def main() -> None:
     p.add_argument("--checkpoint", required=False, default=None)
     p.add_argument("--checkpoint-full", required=False, default=None)
     p.add_argument("--checkpoint-global-transfer", required=False, default=None)
-    p.add_argument("--checkpoint-no-pair-interaction", required=False, default=None)
+    p.add_argument("--checkpoint-no-compatibility-interaction", required=False, default=None)
     # 清单 P0-1: bind the test candidate manifest into the audit artifact.
     p.add_argument("--test-candidate-manifest", required=False, default=None)
     p.add_argument("--methods", nargs="+", default=None)
@@ -98,14 +98,17 @@ def main() -> None:
     p.add_argument("--n-bootstrap", type=int, default=31)
     p.add_argument("--n-features", type=int, default=512)
     p.add_argument("--feature-block", default="full", choices=[
-        "full", "global_transfer", "no_pair_interaction",
-        "no_receiver", "memory_task_only", "no_writer_receiver",
+        "full", "global_transfer", "no_compatibility_interaction",
     ])
     p.add_argument("--coverage-mode", default="formal", choices=["formal", "pilot"])
     p.add_argument("--risk-delta", type=float, default=0.10)
     # 清单 Shared-Control 第16章: budget checkpoints bind the budgeted train
     # candidate manifest so provenance records requested/realized fractions.
     p.add_argument("--budget-candidate-manifest", default=None)
+    # 清单 Fixed-Budget 第12章: mode B trains on pre-filtered records; the
+    # edge set is still validated against the budget manifest.
+    p.add_argument("--train-records-already-budgeted", action="store_true")
+    p.add_argument("--experiment-mode", choices=["pilot", "formal"], default=None)
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("run-paired-decision-evaluation", help="Paired decision evaluation on test pairs")
@@ -118,12 +121,12 @@ def main() -> None:
     p.add_argument("--test-paired-records", default=None)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint-full", required=True)
-    p.add_argument("--checkpoint-no-writer-receiver", default=None)
     p.add_argument("--checkpoint-global-transfer-critic", default=None)
-    p.add_argument("--checkpoint-smtr-no-pair-interaction", default=None)
+    p.add_argument("--checkpoint-smtr-no-compatibility-interaction", default=None)
     p.add_argument("--methods", nargs="+", default=[
-        "b0_no_memory", "semantic_top1", "role_aware_top1",
-        "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
+        "b0_no_memory", "semantic_top1", "receiver_compatible_top1",
+        "global_transfer_critic", "smtr_no_compatibility_interaction",
+        "smtr_no_risk", "smtr",
     ])
     # Formal evaluations must read epsilon_star from the checkpoint; an
     # explicit budget is a debug-only override, never a silent 0.2 default.
@@ -140,12 +143,12 @@ def main() -> None:
     p.add_argument("--candidate-manifest", required=True)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint-full", required=True)
-    p.add_argument("--checkpoint-no-writer-receiver", default=None)
     p.add_argument("--checkpoint-global-transfer-critic", default=None)
-    p.add_argument("--checkpoint-smtr-no-pair-interaction", default=None)
+    p.add_argument("--checkpoint-smtr-no-compatibility-interaction", default=None)
     p.add_argument("--methods", nargs="+", default=[
-        "b0_no_memory", "semantic_top1", "role_aware_top1",
-        "global_transfer_critic", "smtr_no_pair_interaction", "smtr_no_risk", "smtr",
+        "b0_no_memory", "semantic_top1", "receiver_compatible_top1",
+        "global_transfer_critic", "smtr_no_compatibility_interaction",
+        "smtr_no_risk", "smtr",
     ])
     # 清单 R6 P1-3: no default seeds; users must supply them explicitly so
     # nobody mistakes a default for the formal seed protocol.
@@ -187,6 +190,22 @@ def main() -> None:
         choices=[0.25, 0.50, 0.75, 1.00],
     )
     p.add_argument("--output", required=True)
+
+    # 清单 Fixed-Budget 第11章: materialize the whole-edge filtered training
+    # records plus a provenance summary for independent inspection.
+    p = subparsers.add_parser(
+        "materialize-budgeted-records",
+        help="Write budget-filtered train paired records and a provenance summary",
+    )
+    p.add_argument("--source-train-records", required=True)
+    p.add_argument("--budget-candidate-manifest", required=True)
+    p.add_argument(
+        "--experiment-mode",
+        choices=["pilot", "formal"],
+        required=True,
+    )
+    p.add_argument("--output-records", required=True)
+    p.add_argument("--output-summary", required=True)
 
     # --- Deprecated ---
     p = subparsers.add_parser("run-evaluation", help="[deprecated] Use run-paired-decision-evaluation or run-marble-evaluation")
@@ -325,6 +344,13 @@ def _dispatch(args: argparse.Namespace) -> None:
             raise ValueError(
                 "formal paired generation requires at least five distinct seeds"
             )
+        # 清单 Fixed-Budget 第12章: --limit-pairs truncates the treatment-edge
+        # population, so formal budget experiments must never use it.
+        if args.experiment_mode == "formal" and args.limit_pairs:
+            raise ValueError(
+                "--limit-pairs is debug-only and cannot be used for "
+                "formal budget experiments"
+            )
         from smtr.marble.real_pairs import generate_candidate_level_pairs
         result = generate_candidate_level_pairs(
             marble_root=Path(args.marble_root),
@@ -351,8 +377,10 @@ def _dispatch(args: argparse.Namespace) -> None:
             checkpoint_paths["full"] = args.checkpoint_full
         if args.checkpoint_global_transfer:
             checkpoint_paths["global_transfer"] = args.checkpoint_global_transfer
-        if args.checkpoint_no_pair_interaction:
-            checkpoint_paths["no_pair_interaction"] = args.checkpoint_no_pair_interaction
+        if args.checkpoint_no_compatibility_interaction:
+            checkpoint_paths["no_compatibility_interaction"] = (
+                args.checkpoint_no_compatibility_interaction
+            )
         if args.checkpoint and "full" not in checkpoint_paths:
             checkpoint_paths["full"] = args.checkpoint
         if args.experiment_mode == "formal" and "full" not in checkpoint_paths:
@@ -404,6 +432,10 @@ def _dispatch(args: argparse.Namespace) -> None:
                 if getattr(args, "budget_candidate_manifest", None)
                 else None
             ),
+            train_records_already_budgeted=getattr(
+                args, "train_records_already_budgeted", False
+            ),
+            experiment_mode=getattr(args, "experiment_mode", None),
         )
         print(json.dumps(result, indent=2))
 
@@ -417,9 +449,11 @@ def _dispatch(args: argparse.Namespace) -> None:
             test_paired_records_path=Path(args.test_paired_records) if args.test_paired_records else None,
             memory_pool_path=Path(args.memory_pool),
             checkpoint_full=Path(args.checkpoint_full),
-            checkpoint_no_writer_receiver=Path(args.checkpoint_no_writer_receiver) if args.checkpoint_no_writer_receiver else None,
             checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer_critic) if args.checkpoint_global_transfer_critic else None,
-            checkpoint_smtr_no_pair_interaction=Path(args.checkpoint_smtr_no_pair_interaction) if args.checkpoint_smtr_no_pair_interaction else None,
+            checkpoint_smtr_no_compatibility_interaction=(
+                Path(args.checkpoint_smtr_no_compatibility_interaction)
+                if args.checkpoint_smtr_no_compatibility_interaction else None
+            ),
             methods=args.methods,
             negative_risk_budget=args.negative_risk_budget,
             allow_risk_budget_override=args.allow_risk_budget_override,
@@ -438,9 +472,11 @@ def _dispatch(args: argparse.Namespace) -> None:
             candidate_manifest_path=Path(args.candidate_manifest),
             memory_pool_path=Path(args.memory_pool),
             checkpoint_full=Path(args.checkpoint_full),
-            checkpoint_no_writer_receiver=Path(args.checkpoint_no_writer_receiver) if args.checkpoint_no_writer_receiver else None,
             checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer_critic) if args.checkpoint_global_transfer_critic else None,
-            checkpoint_smtr_no_pair_interaction=Path(args.checkpoint_smtr_no_pair_interaction) if args.checkpoint_smtr_no_pair_interaction else None,
+            checkpoint_smtr_no_compatibility_interaction=(
+                Path(args.checkpoint_smtr_no_compatibility_interaction)
+                if args.checkpoint_smtr_no_compatibility_interaction else None
+            ),
             methods=args.methods,
             generation_seeds=args.generation_seeds,
             negative_risk_budget=args.negative_risk_budget,
@@ -500,6 +536,19 @@ def _dispatch(args: argparse.Namespace) -> None:
                 manifest.budget_metadata.selected_edge_count
             )
         print(json.dumps(result, indent=2))
+
+    elif cmd == "materialize-budgeted-records":
+        from smtr.marble.budget_sampling import (
+            write_budgeted_paired_records,
+        )
+        summary = write_budgeted_paired_records(
+            source_records_path=Path(args.source_train_records),
+            budget_manifest_path=Path(args.budget_candidate_manifest),
+            output_records_path=Path(args.output_records),
+            output_summary_path=Path(args.output_summary),
+            experiment_mode=args.experiment_mode,
+        )
+        print(json.dumps(summary, indent=2))
 
     elif cmd == "run-evaluation":
         print("Deprecated: use run-paired-decision-evaluation or run-marble-evaluation.")

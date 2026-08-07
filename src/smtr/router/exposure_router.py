@@ -151,7 +151,11 @@ class SMTRExposureRouter:
                 "receiver_agent_id": receiver_state.receiver.agent_id,
                 "receiver_role": receiver_state.receiver.role,
                 "candidate_memory_id": dec.memory_id,
-                "writer_role": card.writer.role,
+                # 清单 Writer-Agnostic 11.3: explicit memory requirements
+                # replace writer identity in traces.
+                "memory_required_tools": list(card.required_tools),
+                "memory_required_capabilities": list(card.required_capabilities),
+                "memory_execution_role_tags": list(card.execution_role_tags),
                 "tau_hat": round(dec.tau_hat, 4),
                 "eta_raw": round(dec.eta_raw, 4),
                 "eta_calibrated": (
@@ -160,11 +164,6 @@ class SMTRExposureRouter:
                     else None
                 ),
                 "risk_budget": dec.risk_budget,
-                # Deprecated (R6 P0-7): equals eta_calibrated; kept for legacy
-                # traces only.
-                "eta_hat": (
-                    round(dec.eta_hat, 4) if dec.eta_hat is not None else None
-                ),
                 "action": dec.action,
                 "reason": dec.reason,
             })

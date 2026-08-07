@@ -22,7 +22,7 @@ def test_split_kwargs_are_accepted():
         "test_paired_records_path",
         "experiment_mode",
         "checkpoint_global_transfer_critic",
-        "checkpoint_smtr_no_pair_interaction",
+        "checkpoint_smtr_no_compatibility_interaction",
     ):
         assert name in params, f"missing parameter: {name}"
 
@@ -37,7 +37,7 @@ def test_split_kwargs_are_accepted():
         memory_pool_path=Path("pool.jsonl"),
         checkpoint_full=Path("full.joblib"),
         checkpoint_global_transfer_critic=Path("global.joblib"),
-        checkpoint_smtr_no_pair_interaction=Path("no_pair.joblib"),
+        checkpoint_smtr_no_compatibility_interaction=Path("no_pair.joblib"),
         methods=["smtr"],
         experiment_mode="formal",
         output=Path("out"),

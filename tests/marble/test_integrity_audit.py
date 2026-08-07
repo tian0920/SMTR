@@ -16,8 +16,6 @@ def _write_candidate_manifest(path):
             "receiver_role": "executor",
             "candidate_records": [{
                 "memory_id": "m1",
-                "writer_agent_id": "w1",
-                "writer_role": "planner",
                 "rank": 1,
                 "score": 0.5,
             }],
@@ -34,8 +32,6 @@ def _write_paired_records(path):
         "candidate_memory_id": "m1",
         "receiver_agent_id": "r1",
         "receiver_role": "executor",
-        "writer_agent_id": "w1",
-        "writer_role": "planner",
         "label": "positive_transfer",
         "valid": True,
         "invalid_reason": None,
@@ -87,7 +83,6 @@ def test_payload_leakage_fails(tmp_path):
     # Write a record with payload leakage
     rec = {"record_type": "marble_candidate_level_pair", "task_id": "t1",
            "candidate_memory_id": "m1", "receiver_agent_id": "r1", "receiver_role": "executor",
-           "writer_agent_id": "w1", "writer_role": "planner",
            "label": "positive_transfer", "valid": True, "invalid_reason": None,
            "procedure": "LEAKED PROCEDURE",
            "share": {"team_success": True, "runtime_visibility_verified": True,
@@ -113,7 +108,6 @@ def test_digest_mismatch_fails(tmp_path):
     _write_memory_pool(mp)
     rec = {"record_type": "marble_candidate_level_pair", "task_id": "t1",
            "candidate_memory_id": "m1", "receiver_agent_id": "r1", "receiver_role": "executor",
-           "writer_agent_id": "w1", "writer_role": "planner",
            "label": "positive_transfer", "valid": True, "invalid_reason": None,
            "share": {"team_success": True, "runtime_visibility_verified": True,
                      "native_evaluator_executed": True, "cleanup_succeeded": True},

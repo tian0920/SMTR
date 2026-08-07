@@ -1,9 +1,9 @@
-"""Routing-card refactor tests (清单第九章 / Commit 7).
+"""Routing-card refactor tests (清单 Writer-Agnostic 第三/六章).
 
 The routing card must only carry outcome-independent, trajectory-observable
-attributes: human-authored transfer hints, fixed compatible-receiver-role
-lists and paired outcomes must never enter the card, the feature encoder or
-the label-free baselines.
+attributes: writer/source-agent identity, fixed compatible-receiver-role
+lists, transfer hints and paired outcomes must never enter the card, the
+feature encoder or the label-free baselines.
 """
 
 from __future__ import annotations
@@ -11,16 +11,32 @@ from __future__ import annotations
 import inspect
 import json
 
+import pytest
+
 from smtr.core.types import AgentProfile, CandidateExposureInput, MemoryRoutingCard, ReceiverState
 from smtr.marble.real_data import (
     AgentTrajectorySlice,
     RealDatabaseTrajectory,
     extract_procedural_memories,
 )
-from smtr.router.baselines import role_aware_top1_score
+from smtr.router.baselines import receiver_compatible_top1_score
 from smtr.router.transfer_features import (
     HashingTransferFeatureEncoder,
     build_routing_card_from_pool_entry,
+)
+
+_LEGACY_CARD_FIELDS = (
+    "writer",
+    "source_agent",
+    "source_agent_id",
+    "source_agent_role",
+    "source_task_id",
+    "source_scenario",
+    "source_trajectory_id",
+    "positive_transfer_hints",
+    "negative_transfer_hints",
+    "compatible_receiver_roles",
+    "incompatible_receiver_roles",
 )
 
 
@@ -64,18 +80,16 @@ def _receiver(role: str = "executor") -> ReceiverState:
     )
 
 
-def test_routing_card_excludes_transfer_hints():
-    """Extracted cards must never populate deprecated human hint fields."""
+def test_routing_card_excludes_writer_and_hint_fields():
+    """Extracted cards must not carry writer identity or legacy hint fields."""
     traj = _make_trajectory(actions=[
         {"name": "inspect_health", "tool": "monitor"},
         {"name": "run_query", "tool": "sql_tool", "arguments": {"sql": "SELECT 1"}},
     ])
     memories = extract_procedural_memories([traj], min_actions=2)
     card = memories[0].routing_card
-    assert card.positive_transfer_hints == ()
-    assert card.negative_transfer_hints == ()
-    assert card.compatible_receiver_roles == ()
-    assert card.incompatible_receiver_roles == ()
+    for field in _LEGACY_CARD_FIELDS:
+        assert field not in card.model_dump(), f"legacy field {field} in routing card"
 
 
 def test_routing_card_excludes_procedure_payload():
@@ -85,13 +99,15 @@ def test_routing_card_excludes_procedure_payload():
     ])
     memories = extract_procedural_memories([traj], min_actions=2)
     memory = memories[0]
-    card_json = json.dumps(memory.routing_card.model_dump(mode="json")).lower()
+    card = memory.routing_card
+    card_json = json.dumps(card.model_dump(mode="json")).lower()
     # The numbered procedure text and its ordered steps must never leak
     # into the card (action names as observable tags are allowed).
     assert memory.payload.procedure.lower() not in card_json
-    assert "1. " not in memory.routing_card.goal_summary
+    assert "1. " not in card.goal_summary
+    card_keys = set(card.model_dump())
     for forbidden in ("procedure", "ordered_steps", "raw_action_sequence"):
-        assert forbidden not in card_json
+        assert forbidden not in card_keys
 
 
 def test_routing_card_excludes_paired_outcomes():
@@ -137,78 +153,89 @@ def test_card_extraction_depends_only_on_source_trajectory():
     assert params == {"trajectories", "min_actions"}
 
 
-def test_pool_builder_never_restores_deprecated_hint_fields():
-    """Even when an old pool entry stores hints, they must be dropped."""
+def test_pool_builder_rejects_legacy_routing_cards():
+    """Pool entries carrying writer identity or missing v3 requirements
+    must fail closed instead of silently falling back."""
+    legacy_writer = {
+        "memory_id": "m1",
+        "routing_card": {
+            "goal_summary": "diagnose latency",
+            "task_tags": ["database"],
+            "writer": {"agent_id": "w1", "role": "executor"},
+        },
+    }
+    with pytest.raises(ValueError, match="legacy routing-card schema"):
+        build_routing_card_from_pool_entry(legacy_writer)
+
+    missing_requirements = {
+        "memory_id": "m2",
+        "routing_card": {
+            "goal_summary": "diagnose latency",
+            "task_tags": ["database"],
+        },
+    }
+    with pytest.raises(ValueError, match="legacy routing-card schema"):
+        build_routing_card_from_pool_entry(missing_requirements)
+
+
+def test_pool_builder_restores_explicit_requirements():
     pool_entry = {
         "memory_id": "m1",
         "routing_card": {
             "goal_summary": "diagnose latency",
             "task_tags": ["database"],
-            "positive_transfer_hints": ["helpful for executors"],
-            "negative_transfer_hints": ["expensive query"],
-            "compatible_receiver_roles": ["executor"],
-            "incompatible_receiver_roles": ["planner"],
-            "writer": {"agent_id": "w1", "role": "executor"},
+            "required_tools": ["sql_tool"],
+            "required_capabilities": ["sql"],
+            "execution_role_tags": ["executor"],
+            "environment_constraints": ["read-only SQL"],
         },
     }
     card = build_routing_card_from_pool_entry(pool_entry)
-    assert card.positive_transfer_hints == ()
-    assert card.negative_transfer_hints == ()
-    assert card.compatible_receiver_roles == ()
-    assert card.incompatible_receiver_roles == ()
+    assert card.required_tools == ("sql_tool",)
+    assert card.required_capabilities == ("sql",)
+    assert card.execution_role_tags == ("executor",)
+    assert card.environment_constraints == ("read-only SQL",)
 
 
-def test_encoder_features_unaffected_by_deprecated_hints():
-    """Feature tokens must be identical with or without legacy hint fields."""
-    base_card = MemoryRoutingCard(
+def test_encoder_tokens_exclude_legacy_writer_prefixes():
+    """Feature tokens must never carry writer/provenance legacy prefixes."""
+    card = MemoryRoutingCard(
         memory_id="m1",
         goal_summary="diagnose database latency via select-based method",
         task_tags=("database", "latency"),
+        required_tools=("sql_tool",),
+        required_capabilities=("sql",),
         environment_constraints=("read-only SQL",),
-        writer=AgentProfile(agent_id="w1", role="executor", capabilities=("sql",),
-                            tool_names=("sql_tool",)),
-        source_task_id="src1",
-        source_scenario="database",
     )
-    hinted_card = base_card.model_copy(update={
-        "positive_transfer_hints": ("great hint",),
-        "negative_transfer_hints": ("bad hint",),
-        "compatible_receiver_roles": ("executor",),
-        "incompatible_receiver_roles": ("planner",),
-    })
     encoder = HashingTransferFeatureEncoder(feature_block="full")
-
-    def _tokens(card: MemoryRoutingCard) -> list[str]:
-        return encoder.tokens(CandidateExposureInput(
-            receiver_state=_receiver(), candidate_card=card, selected_prefix_cards=(),
-        ))
-
-    assert _tokens(base_card) == _tokens(hinted_card)
+    tokens = encoder.tokens(CandidateExposureInput(
+        receiver_state=_receiver(), candidate_card=card, selected_prefix_cards=(),
+    ))
     forbidden_prefixes = (
+        "writer_role:", "writer_capability", "writer_tool",
         "compatible_receiver_role:", "incompatible_receiver_role:",
         "positive_hint_token:", "negative_hint_token:",
+        "source_agent", "source_task", "source_trajectory",
     )
-    for token in _tokens(hinted_card):
-        assert not token.startswith(forbidden_prefixes)
+    for token in tokens:
+        assert not token.startswith(forbidden_prefixes), token
 
 
-def test_role_aware_top1_ignores_hint_fields():
-    """Baseline score must depend on observable writer/receiver roles, not on
-    deprecated compatible-role hint fields."""
-    card = MemoryRoutingCard(
+def test_receiver_compatible_top1_uses_explicit_requirements():
+    """Baseline score must depend on explicit memory requirements, not on
+    writer identity or legacy hint fields."""
+    satisfied = MemoryRoutingCard(
         memory_id="m1",
         goal_summary="diagnose database latency",
         task_tags=("database", "latency"),
-        writer=AgentProfile(agent_id="w1", role="executor", capabilities=("sql",),
-                            tool_names=("sql_tool",)),
-        source_task_id="src1",
-        source_scenario="database",
+        required_tools=("sql_tool",),
+        required_capabilities=("sql",),
     )
-    hinted = card.model_copy(update={"compatible_receiver_roles": ("planner",)})
-    rs = _receiver(role="executor")
-    assert role_aware_top1_score(rs, card) == role_aware_top1_score(rs, hinted)
-    # Same-role writer/receiver must score higher than mismatched role.
-    mismatched = card.model_copy(update={
-        "writer": card.writer.model_copy(update={"role": "critic"}),
+    unsatisfied = satisfied.model_copy(update={
+        "required_tools": ("admin_console",),
+        "required_capabilities": ("cluster_admin",),
     })
-    assert role_aware_top1_score(rs, card) > role_aware_top1_score(rs, mismatched)
+    rs = _receiver(role="executor")
+    assert receiver_compatible_top1_score(rs, satisfied) > receiver_compatible_top1_score(
+        rs, unsatisfied
+    )

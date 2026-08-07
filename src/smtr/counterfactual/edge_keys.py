@@ -30,12 +30,33 @@ ControlGroupKey = tuple[str, str, int]
 ControlFamilyKey = tuple[str, str]
 
 
+def candidate_record_edge_key(
+    *,
+    task_id: str,
+    receiver_agent_id: str,
+    candidate_memory_id: str,
+) -> TreatmentEdgeKey:
+    """Edge identity built from candidate-manifest fields (清单第4.1节).
+
+    Candidate manifests persist the memory identity as ``memory_id``
+    while paired records persist it as ``candidate_memory_id``; both
+    sides must construct the exact same key through this one function
+    so no module ever assembles an edge key with a different field
+    order or meaning.
+    """
+    return (
+        str(task_id),
+        str(receiver_agent_id),
+        str(candidate_memory_id),
+    )
+
+
 def treatment_edge_key(record: dict[str, Any]) -> TreatmentEdgeKey:
     """Edge identity of one paired record: (task, receiver, memory)."""
-    return (
-        str(record["task_id"]),
-        str(record["receiver_agent_id"]),
-        str(record["candidate_memory_id"]),
+    return candidate_record_edge_key(
+        task_id=record["task_id"],
+        receiver_agent_id=record["receiver_agent_id"],
+        candidate_memory_id=record["candidate_memory_id"],
     )
 
 

@@ -1,21 +1,18 @@
 """Feature-mode ablation framework for the transfer critic.
 
-Four precisely defined feature modes isolate the writer-receiver mechanism:
+Three precisely defined feature modes isolate the memory-receiver
+mechanism (清单 Writer-Agnostic 第六章):
 
-- ``full``: task + environment + memory card + writer marginals + receiver
-  marginals + writer-receiver pair interactions.
-- ``no_pair_interaction``: keep writer and receiver marginals, drop all
-  writer-receiver interaction tokens. Answers whether gains come from the
-  two sides individually or from their interaction.
-- ``no_receiver``: drop receiver identity/profile and interactions, keep
-  task/environment/memory/writer. Answers whether routing is possible
-  without knowing the receiver identity.
-- ``memory_task_only``: keep only task context, environment and memory card;
-  this is the global transfer critic baseline.
+- ``full``: task + environment + memory card + receiver marginals +
+  memory-receiver compatibility interactions.
+- ``no_compatibility_interaction``: keep task/environment/memory/receiver
+  marginals, drop all memory-receiver interaction tokens. Answers whether
+  gains come from the two sides individually or from their interaction.
+- ``global_transfer``: keep only task context, environment and memory card;
+  this is the global transfer critic baseline q(Y | task, m).
 
-The legacy ``no_writer_receiver`` block (writer+interaction removed while
-receiver kept) is intentionally NOT part of this framework because its mixed
-definition cannot be cleanly interpreted.
+Writer-conditioned blocks are rejected outright: the feature encoder
+fails closed on any legacy schema.
 """
 
 from __future__ import annotations
@@ -30,9 +27,8 @@ from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
 FEATURE_MODES = [
     "full",
-    "no_pair_interaction",
-    "no_receiver",
-    "memory_task_only",
+    "no_compatibility_interaction",
+    "global_transfer",
 ]
 
 _LABELS = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
@@ -136,10 +132,10 @@ def audit_feature_modes(
         key=lambda m: report["modes"][m].get("macro_f1") or 0.0,
     )
     report["best_ablation_mode"] = best_ablation
-    report["full_gain_over_no_pair_interaction"] = full_f1 - (
-        report["modes"]["no_pair_interaction"].get("macro_f1") or 0.0
+    report["full_gain_over_no_compatibility_interaction"] = full_f1 - (
+        report["modes"]["no_compatibility_interaction"].get("macro_f1") or 0.0
     )
-    report["full_gain_over_memory_task_only"] = full_f1 - (
-        report["modes"]["memory_task_only"].get("macro_f1") or 0.0
+    report["full_gain_over_global_transfer"] = full_f1 - (
+        report["modes"]["global_transfer"].get("macro_f1") or 0.0
     )
     return report

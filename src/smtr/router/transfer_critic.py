@@ -89,9 +89,18 @@ class FourOutcomeTransferCritic:
         self.budget_train_candidate_manifest_digest: str | None = None
         self.shared_control_definition_version: str | None = None
         self.loss_weighting_unit: str | None = None
+        # 清单 Writer-Agnostic 第十章: method-schema metadata bound into
+        # every formal checkpoint (writer-agnostic conditioning contract).
+        self.method_schema_metadata: dict[str, Any] | None = None
         self.bootstrap_cluster_unit: str | None = None
         self.adaptive_sampling_used: bool = False
         self.adaptive_stopping_used: bool = False
+        # 清单 Fixed-Budget 第9/10章: effective training-subset digest and
+        # structured budget metadata blocks for every checkpoint.
+        self.effective_train_record_digest: str | None = None
+        self.budget_policy_metadata: dict[str, Any] | None = None
+        self.training_support_metadata: dict[str, Any] | None = None
+        self.training_artifact_digests: dict[str, Any] | None = None
         self._edge_calibration_examples: list | None = None
 
     def fit(
@@ -478,6 +487,16 @@ class FourOutcomeTransferCritic:
                 "bootstrap_cluster_unit": self.bootstrap_cluster_unit,
                 "adaptive_sampling_used": self.adaptive_sampling_used,
                 "adaptive_stopping_used": self.adaptive_stopping_used,
+                # 清单 Fixed-Budget 第9/10章: effective-subset digest and
+                # structured budget provenance blocks.
+                "effective_train_record_digest": (
+                    self.effective_train_record_digest
+                ),
+                "budget_policy": self.budget_policy_metadata,
+                "training_support": self.training_support_metadata,
+                "artifact_digests": self.training_artifact_digests,
+                # 清单 Writer-Agnostic 第十章: method-schema metadata.
+                "method_schema_metadata": self.method_schema_metadata,
             },
             path,
         )
@@ -527,6 +546,13 @@ class FourOutcomeTransferCritic:
         critic.adaptive_stopping_used = bool(
             data.get("adaptive_stopping_used", False)
         )
+        critic.effective_train_record_digest = data.get(
+            "effective_train_record_digest"
+        )
+        critic.budget_policy_metadata = data.get("budget_policy")
+        critic.training_support_metadata = data.get("training_support")
+        critic.training_artifact_digests = data.get("artifact_digests")
+        critic.method_schema_metadata = data.get("method_schema_metadata")
         critic._fitted = True
         return critic
 

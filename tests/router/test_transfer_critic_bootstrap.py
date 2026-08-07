@@ -62,9 +62,9 @@ def test_predict_sums_to_one():
 def test_checkpoint_feature_block_restored(tmp_path):
     """Checkpoint must correctly restore feature_block."""
     inputs, labels = _make_inputs_and_labels(20)
-    critic = FourOutcomeTransferCritic(n_bootstrap=3, n_features=64, feature_block="no_writer_receiver", seed=0)
+    critic = FourOutcomeTransferCritic(n_bootstrap=3, n_features=64, feature_block="no_compatibility_interaction", seed=0)
     critic.fit(inputs, labels)
     path = tmp_path / "test.joblib"
     critic.save(path)
     loaded = FourOutcomeTransferCritic.load(path)
-    assert loaded.feature_block == "no_writer_receiver"
+    assert loaded.feature_block == "no_compatibility_interaction"

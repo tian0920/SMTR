@@ -147,9 +147,9 @@ def test_invalid_pair_is_excluded_from_training(tmp_path: Path):
     pool.write_text(json.dumps({
         "memory_id": "m1",
         "routing_card": {
-            "writer": {"agent_id": "w1", "role": "executor"},
             "goal_summary": "diagnose",
             "task_tags": ["database"],
+            "required_tools": [],
         },
     }) + "\n", encoding="utf-8")
 
@@ -172,9 +172,9 @@ def test_valid_pair_reaches_training_and_evaluation(tmp_path: Path):
     pool.write_text(json.dumps({
         "memory_id": "m1",
         "routing_card": {
-            "writer": {"agent_id": "w1", "role": "executor"},
             "goal_summary": "diagnose",
             "task_tags": ["database"],
+            "required_tools": [],
         },
     }) + "\n", encoding="utf-8")
     records = tmp_path / "records.jsonl"

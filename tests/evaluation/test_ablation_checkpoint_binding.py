@@ -1,6 +1,6 @@
 """Ablation checkpoint digest binding (清单 P0-2 3.8).
 
-The global_transfer and no_pair_interaction roles must each be bound by
+The global_transfer and no_compatibility_interaction roles must each be bound by
 digest in the split audit; swapping a role's checkpoint file must abort
 the evaluation before any episode runs.
 """
@@ -18,7 +18,7 @@ from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
 _ROLE_METHODS = {
     "global_transfer": "global_transfer_critic",
-    "no_pair_interaction": "smtr_no_pair_interaction",
+    "no_compatibility_interaction": "smtr_no_compatibility_interaction",
 }
 
 
@@ -56,6 +56,14 @@ def _save_checkpoint(path, *, feature_block, train_path, val_path, pool_path):
     critic.validation_record_digest = file_digest(val_path)
     critic.memory_pool_digest = file_digest(pool_path)
     critic.epsilon_star = 0.2
+    critic.method_schema_metadata = {
+        "method_schema": "memory_receiver_v1",
+        "routing_conditioning": "memory_receiver",
+        "writer_features_used": False,
+        "provenance_features_used": False,
+        "outcome_level": "team_success",
+        "treatment_edge_unit": "task_receiver_memory",
+    }
     critic.save(path)
     return path
 

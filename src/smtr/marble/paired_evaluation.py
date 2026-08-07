@@ -15,11 +15,10 @@ from smtr.evaluation.cluster_bootstrap import (
 )
 from smtr.evaluation.local_outcome import local_outcome_report
 from smtr.evaluation.metrics import (
+    check_receiver_withhold_consistency,
     compute_candidate_decision_coverage,
     compute_method_metrics,
     compute_receiver_episode_coverage,
-    compute_writer_receiver_breakdown,
-    check_receiver_withhold_consistency,
 )
 from smtr.evaluation.receiver_effect_analysis import (
     analyze_receiver_effect,
@@ -30,7 +29,7 @@ from smtr.evaluation.receiver_effect_analysis import (
     record_label,
 )
 from smtr.evaluation.split_audit import audit_split_files
-from smtr.evaluation.tables import write_result_table, format_markdown_table
+from smtr.evaluation.tables import format_markdown_table, write_result_table
 from smtr.marble.core_validity import (
     filter_core_paired_records,
     is_core_valid_pair,
@@ -41,25 +40,24 @@ from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 from smtr.router.baselines import (
     GlobalTransferCriticRouter,
     NoMemoryRouter,
-    RoleAwareTop1Router,
+    ReceiverCompatibleTop1Router,
     SemanticTop1Router,
-    SMTRNoPairInteractionRouter,
+    SMTRNoCompatibilityInteractionRouter,
     SMTRNoRiskRouter,
-    SMTRNoWriterReceiverRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter, SMTRUCBRouter
 from smtr.router.transfer_calibration import DEFAULT_EPSILONS, risk_utility_curve
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import build_routing_card_from_pool_entry
 
-# Formal main table (清单 P0-2 / 十一): AllShare and FactualSuccess were
-# removed, SemanticTop1 is the semantic-similarity-only baseline.
+# Formal main table (清单 Writer-Agnostic 第九章): writer-conditioned
+# methods are removed; B2 conditions on memory-receiver compatibility only.
 MAIN_TABLE_METHODS = [
     "b0_no_memory",
     "semantic_top1",
-    "role_aware_top1",
+    "receiver_compatible_top1",
     "global_transfer_critic",
-    "smtr_no_pair_interaction",
+    "smtr_no_compatibility_interaction",
     "smtr_no_risk",
     "smtr",
 ]
@@ -155,9 +153,8 @@ def run_paired_decision_evaluation(
     test_paired_records_path: Path | None = None,
     memory_pool_path: Path,
     checkpoint_full: Path,
-    checkpoint_no_writer_receiver: Path | None = None,
     checkpoint_global_transfer_critic: Path | None = None,
-    checkpoint_smtr_no_pair_interaction: Path | None = None,
+    checkpoint_smtr_no_compatibility_interaction: Path | None = None,
     methods: list[str] | None = None,
     negative_risk_budget: float | None = None,
     allow_risk_budget_override: bool = False,
@@ -225,8 +222,8 @@ def run_paired_decision_evaluation(
                 checkpoint_global_transfer_critic=(
                     checkpoint_global_transfer_critic
                 ),
-                checkpoint_smtr_no_pair_interaction=(
-                    checkpoint_smtr_no_pair_interaction
+                checkpoint_smtr_no_compatibility_interaction=(
+                    checkpoint_smtr_no_compatibility_interaction
                 ),
             ),
             methods=methods,
@@ -241,25 +238,25 @@ def run_paired_decision_evaluation(
     # Load critics and verify feature blocks
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
 
-    no_wr_critic = None
-    if checkpoint_no_writer_receiver is not None:
-        no_wr_critic = FourOutcomeTransferCritic.load(checkpoint_no_writer_receiver)
-        assert no_wr_critic.feature_block == "no_writer_receiver", (
-            "no_writer_receiver checkpoint must have feature_block='no_writer_receiver'"
-        )
     global_critic = None
     if checkpoint_global_transfer_critic is not None:
         global_critic = FourOutcomeTransferCritic.load(checkpoint_global_transfer_critic)
-    no_pair_critic = None
-    if checkpoint_smtr_no_pair_interaction is not None:
-        no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
+    no_compatibility_critic = None
+    if checkpoint_smtr_no_compatibility_interaction is not None:
+        no_compatibility_critic = FourOutcomeTransferCritic.load(
+            checkpoint_smtr_no_compatibility_interaction
+        )
+        assert no_compatibility_critic.feature_block == "no_compatibility_interaction", (
+            "smtr_no_compatibility_interaction checkpoint must have "
+            "feature_block='no_compatibility_interaction'"
+        )
     # 清单 P0-10/19: checkpoint/feature-block separation and (in formal
     # mode) validation-edge calibration are enforced for every critic-based
     # method, via the shared formal protocol.
     verify_formal_checkpoint_blocks(
         full_critic=full_critic,
         global_critic=global_critic,
-        no_pair_critic=no_pair_critic,
+        no_compatibility_critic=no_compatibility_critic,
         methods=methods,
         require_calibration=formal_mode,
     )
@@ -269,9 +266,11 @@ def run_paired_decision_evaluation(
     if experiment_mode == "formal":
         for name, critic in (
             ("full", full_critic),
-            ("no_writer_receiver", no_wr_critic),
             ("global_transfer_critic", global_critic),
-            ("smtr_no_pair_interaction", no_pair_critic),
+            (
+                "smtr_no_compatibility_interaction",
+                no_compatibility_critic,
+            ),
         ):
             if critic is not None:
                 _require_formal_calibration_metadata(critic, name)
@@ -305,9 +304,8 @@ def run_paired_decision_evaluation(
     routers: dict[str, Any] = _build_routers(
         methods=methods,
         full_critic=full_critic,
-        no_wr_critic=no_wr_critic,
         global_critic=global_critic,
-        no_pair_critic=no_pair_critic,
+        no_compatibility_critic=no_compatibility_critic,
         negative_risk_budget=negative_risk_budget,
         allow_risk_budget_override=allow_risk_budget_override,
     )
@@ -396,6 +394,9 @@ def run_paired_decision_evaluation(
                     (task_id, receiver_agent_id, dec.memory_id), []
                 )
                 for seed in observed_seeds:
+                    # 清单 Writer-Agnostic 11.3: writer identity never
+                    # appears in traces; explicit memory requirements
+                    # replace implicit writer provenance.
                     trace = {
                         "trace_type": "candidate_decision",
                         "task_id": task_id,
@@ -403,16 +404,20 @@ def run_paired_decision_evaluation(
                         "candidate_memory_id": dec.memory_id,
                         "receiver_agent_id": receiver_agent_id,
                         "receiver_role": receiver_role,
-                        "writer_role": card.writer.role if card else "unknown",
-                        "action": dec.action,
-                        "candidate_action": dec.action,
+                        "memory_required_tools": (
+                            list(card.required_tools) if card else []
+                        ),
+                        "memory_required_capabilities": (
+                            list(card.required_capabilities) if card else []
+                        ),
+                        "memory_execution_role_tags": (
+                            list(card.execution_role_tags) if card else []
+                        ),
                         "tau_hat": dec.tau_hat,
                         "eta_raw": dec.eta_raw,
                         "eta_calibrated": dec.eta_calibrated,
                         "risk_budget": dec.risk_budget,
-                        # Deprecated (R6 P0-7): equals eta_calibrated; kept
-                        # for legacy traces only.
-                        "eta_hat": dec.eta_hat,
+                        "action": dec.action,
                     }
                     all_traces[method].append(trace)
 
@@ -516,16 +521,6 @@ def run_paired_decision_evaluation(
 
     # Write outputs
     paths = write_result_table(all_method_metrics, output)
-    # Per-method writer-receiver breakdown (not mixed across methods)
-    per_method_breakdown: dict[str, list[dict]] = {}
-    for method in methods:
-        per_method_breakdown[method] = compute_writer_receiver_breakdown(
-            decisions=all_traces[method],
-            paired_outcomes=paired_outcomes,
-        )
-    (output / "writer_receiver_breakdown.json").write_text(
-        json.dumps(per_method_breakdown, indent=2), encoding="utf-8"
-    )
     (output / "traces.json").write_text(
         json.dumps(all_traces, indent=2), encoding="utf-8"
     )
@@ -574,9 +569,15 @@ def run_paired_decision_evaluation(
         (output / "receiver_effect_anchor_analysis.json").write_text(
             json.dumps(receiver_effect_anchors, indent=2), encoding="utf-8"
         )
+        # 清单 Writer-Agnostic 11.4: compare receiver-conditioned methods
+        # only; writer-receiver ablations are removed.
         comparison_methods = [
             m
-            for m in ("global_transfer_critic", "smtr_no_pair_interaction", "smtr")
+            for m in (
+                "global_transfer_critic",
+                "smtr_no_compatibility_interaction",
+                "smtr",
+            )
             if m in methods
         ]
         if comparison_methods:
@@ -634,14 +635,16 @@ def _formal_checkpoint_role_paths(
     *,
     checkpoint_full: Path,
     checkpoint_global_transfer_critic: Path | None,
-    checkpoint_smtr_no_pair_interaction: Path | None,
+    checkpoint_smtr_no_compatibility_interaction: Path | None,
 ) -> dict[str, Path]:
     """Role -> checkpoint map for the formal split audit (清单 P0-2 3.2)."""
     role_paths: dict[str, Path] = {"full": checkpoint_full}
     if checkpoint_global_transfer_critic is not None:
         role_paths["global_transfer"] = checkpoint_global_transfer_critic
-    if checkpoint_smtr_no_pair_interaction is not None:
-        role_paths["no_pair_interaction"] = checkpoint_smtr_no_pair_interaction
+    if checkpoint_smtr_no_compatibility_interaction is not None:
+        role_paths["no_compatibility_interaction"] = (
+            checkpoint_smtr_no_compatibility_interaction
+        )
     return role_paths
 
 
@@ -879,9 +882,8 @@ def _build_routers(
     *,
     methods: list[str],
     full_critic: FourOutcomeTransferCritic,
-    no_wr_critic: FourOutcomeTransferCritic | None = None,
     global_critic: FourOutcomeTransferCritic | None = None,
-    no_pair_critic: FourOutcomeTransferCritic | None = None,
+    no_compatibility_critic: FourOutcomeTransferCritic | None = None,
     negative_risk_budget: float | None = None,
     allow_risk_budget_override: bool = False,
 ) -> dict[str, Any]:
@@ -892,14 +894,18 @@ def _build_routers(
             routers[method] = NoMemoryRouter()
         elif method == "semantic_top1":
             routers[method] = SemanticTop1Router()
-        elif method in ("top1_relevance", "role_aware_top1"):
-            routers[method] = RoleAwareTop1Router()
-        elif method in ("all_share", "factual_success"):
+        elif method == "receiver_compatible_top1":
+            routers[method] = ReceiverCompatibleTop1Router()
+        elif method in (
+            "all_share",
+            "factual_success",
+            "role_aware_top1",
+            "smtr_no_writer_receiver",
+        ):
             raise ValueError(
                 f"method '{method}' was removed from the formal main table "
-                "(清单 P0-2): AllShare duplicates a top-1 heuristic baseline "
-                "in the v1 single-memory action space and FactualSuccess has "
-                "no reliable historical aggregates."
+                "(清单 Writer-Agnostic 第九章): writer-conditioned methods "
+                "are replaced by receiver-conditioned memory exposure."
             )
         elif method == "global_transfer_critic":
             if global_critic is None:
@@ -920,26 +926,19 @@ def _build_routers(
             routers[method] = SMTRUCBRouter(
                 critic=full_critic, negative_risk_budget=negative_risk_budget,
                 allow_risk_budget_override=allow_risk_budget_override)
-        elif method == "smtr_no_pair_interaction":
-            if no_pair_critic is None:
+        elif method == "smtr_no_compatibility_interaction":
+            if no_compatibility_critic is None:
                 raise ValueError(
-                    "method smtr_no_pair_interaction requires "
-                    "checkpoint_smtr_no_pair_interaction (feature_block='no_pair_interaction')"
+                    "method smtr_no_compatibility_interaction requires "
+                    "checkpoint_smtr_no_compatibility_interaction "
+                    "(feature_block='no_compatibility_interaction')"
                 )
-            routers[method] = SMTRNoPairInteractionRouter(
-                critic=no_pair_critic, negative_risk_budget=negative_risk_budget,
+            routers[method] = SMTRNoCompatibilityInteractionRouter(
+                critic=no_compatibility_critic,
+                negative_risk_budget=negative_risk_budget,
                 allow_risk_budget_override=allow_risk_budget_override)
         elif method == "smtr_no_risk":
             routers[method] = SMTRNoRiskRouter(critic=full_critic)
-        elif method == "smtr_no_writer_receiver":
-            if no_wr_critic is None:
-                raise ValueError(
-                    "method smtr_no_writer_receiver requires "
-                    "checkpoint_no_writer_receiver (legacy feature_block)"
-                )
-            routers[method] = SMTRNoWriterReceiverRouter(
-                critic=no_wr_critic, negative_risk_budget=negative_risk_budget,
-                allow_risk_budget_override=allow_risk_budget_override)
         else:
             raise ValueError(f"unknown method: {method}")
     return routers

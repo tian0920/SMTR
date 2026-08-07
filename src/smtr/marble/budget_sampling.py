@@ -14,9 +14,14 @@ import hashlib
 import json
 import math
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
-from smtr.counterfactual.edge_keys import TreatmentEdgeKey, treatment_edge_key
+from smtr.counterfactual.edge_keys import (
+    TreatmentEdgeKey,
+    candidate_record_edge_key,
+    treatment_edge_key,
+)
 from smtr.marble.real_data import (
     CandidateBudgetMetadata,
     CandidateEntry,
@@ -50,7 +55,55 @@ def manifest_canonical_digest(manifest: DatabaseCandidateManifest) -> str:
 
 
 def _edge_key(entry: CandidateEntry, record: CandidateRecord) -> TreatmentEdgeKey:
-    return (str(entry.task_id), str(entry.receiver_agent_id), str(record.memory_id))
+    return candidate_record_edge_key(
+        task_id=entry.task_id,
+        receiver_agent_id=entry.receiver_agent_id,
+        candidate_memory_id=record.memory_id,
+    )
+
+
+def selected_treatment_edges_from_manifest(
+    manifest: DatabaseCandidateManifest,
+) -> set[TreatmentEdgeKey]:
+    """Selected treatment-edge set of a budget candidate manifest (清单第4.2节).
+
+    Keys are built through the shared :func:`candidate_record_edge_key`
+    so manifest edges and paired-record edges are always comparable. A
+    duplicate edge means the manifest is corrupt and must be rejected
+    before any training data is derived from it.
+    """
+    selected: set[TreatmentEdgeKey] = set()
+    for candidate_entry in manifest.candidates:
+        for candidate in candidate_entry.candidate_records:
+            key = candidate_record_edge_key(
+                task_id=candidate_entry.task_id,
+                receiver_agent_id=candidate_entry.receiver_agent_id,
+                candidate_memory_id=candidate.memory_id,
+            )
+            if key in selected:
+                raise ValueError(
+                    "duplicate treatment edge in budget candidate "
+                    f"manifest: {key}"
+                )
+            selected.add(key)
+    return selected
+
+
+def filter_paired_records_by_edge_keys(
+    *,
+    records: list[dict[str, Any]],
+    selected_edge_keys: set[TreatmentEdgeKey],
+) -> list[dict[str, Any]]:
+    """Keep every seed record of the selected edges, drop the rest.
+
+    Budget filtering removes whole treatment edges; individual seeds of
+    a selected edge are never dropped (清单第2.2节).
+    """
+    return [
+        record
+        for record in records
+        if treatment_edge_key(record) in selected_edge_keys
+    ]
 
 
 def _unit_priority(unit_id: _SelectionUnitId) -> int:
@@ -211,12 +264,61 @@ def filter_paired_records_by_manifest(
     selected edge is retained and no seed rows are dropped individually.
     Control artifacts are referenced, never copied.
     """
-    selected_edges = _manifest_edge_set(budget_manifest)
-    return [
-        record
-        for record in paired_records
-        if treatment_edge_key(record) in selected_edges
-    ]
+    selected_edges = selected_treatment_edges_from_manifest(budget_manifest)
+    return filter_paired_records_by_edge_keys(
+        records=paired_records, selected_edge_keys=selected_edges
+    )
+
+
+def write_budgeted_paired_records(
+    *,
+    source_records_path: Path,
+    budget_manifest_path: Path,
+    output_records_path: Path,
+    output_summary_path: Path,
+    experiment_mode: str,
+) -> dict[str, Any]:
+    """Materialize an auditable budget-filtered paired-record artifact.
+
+    清单 Fixed-Budget 第11章: writes the whole-edge filtered records and a
+    summary with provenance digests so the budgeted training input can be
+    inspected independently of the in-memory filtering inside
+    ``train_critic``. All edge-set and full-seed-support validation is
+    delegated to :func:`prepare_effective_training_records`.
+    """
+    from smtr.marble.training import prepare_effective_training_records
+
+    prepared = prepare_effective_training_records(
+        train_records_path=source_records_path,
+        budget_candidate_manifest_path=budget_manifest_path,
+        experiment_mode=experiment_mode,
+    )
+    output_records_path = Path(output_records_path)
+    output_records_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_records_path.open("w", encoding="utf-8") as handle:
+        for record in prepared.records:
+            handle.write(json.dumps(record, ensure_ascii=False))
+            handle.write("\n")
+    summary: dict[str, Any] = {
+        "source_record_count": prepared.parent_record_count,
+        "effective_record_count": prepared.effective_record_count,
+        "source_edge_count": prepared.parent_edge_count,
+        "effective_edge_count": prepared.effective_edge_count,
+        "requested_budget_fraction": prepared.requested_budget_fraction,
+        "realized_budget_fraction": prepared.realized_budget_fraction,
+        "full_seed_support_passed": (
+            prepared.all_selected_edges_have_full_seed_support
+        ),
+        "source_digest": prepared.parent_train_record_digest,
+        "effective_digest": prepared.effective_train_record_digest,
+        "budget_manifest_digest": prepared.budget_manifest_digest,
+    }
+    output_summary_path = Path(output_summary_path)
+    output_summary_path.parent.mkdir(parents=True, exist_ok=True)
+    output_summary_path.write_text(
+        json.dumps(summary, indent=2), encoding="utf-8"
+    )
+    return summary
 
 
 def audit_budget_manifests(

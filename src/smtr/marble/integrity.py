@@ -131,7 +131,7 @@ def run_integrity_audit(
             "payload_leakage": False,
             "feature_leakage": False,
             "branch_isolation_passed": False,
-            "writer_receiver_fields_present": False,
+            "writer_free_fields_passed": False,
             "candidate_level_pairs": False,
             "split_integrity_passed": False,
             "missing_artifacts": missing_artifacts,
@@ -140,7 +140,11 @@ def run_integrity_audit(
 
     # --- Check candidate manifest ---
     payload_leakage = False
-    writer_receiver_present = True
+    # 清单 Writer-Agnostic 第二章: writer identity may survive only as
+    # provenance in the memory pool; it must never appear on the routing
+    # surface (candidate records / traces), while receiver fields remain
+    # mandatory conditioning inputs.
+    writer_free_fields_passed = True
 
     candidates = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
     for entry in candidates.get("candidates", []):
@@ -150,11 +154,11 @@ def run_integrity_audit(
                 payload_leakage = True
                 errors.append("candidate manifest contains payload/procedure")
                 break
-            if not rec.get("writer_agent_id") or not rec.get("writer_role"):
-                writer_receiver_present = False
-                errors.append("candidate missing writer fields")
+            if rec.get("writer_agent_id") or rec.get("writer_role"):
+                writer_free_fields_passed = False
+                errors.append("candidate record leaks writer identity")
         if not entry.get("receiver_agent_id") or not entry.get("receiver_role"):
-            writer_receiver_present = False
+            writer_free_fields_passed = False
             errors.append("candidate entry missing receiver fields")
 
     # --- Check paired records ---
@@ -206,10 +210,11 @@ def run_integrity_audit(
             branch_isolation_passed = False
             errors.append("paired branch agent config digest mismatch")
 
-        # Writer/receiver fields
-        if not rec.get("writer_role") or not rec.get("receiver_role"):
-            writer_receiver_present = False
-            errors.append("paired record missing writer/receiver fields")
+        # Receiver field (writer identity is provenance-only, 清单
+        # Writer-Agnostic 第二章, and is not required on paired records).
+        if not rec.get("receiver_role"):
+            writer_free_fields_passed = False
+            errors.append("paired record missing receiver fields")
 
         # Visibility and evaluator
         share = rec.get("share", {})
@@ -243,18 +248,30 @@ def run_integrity_audit(
                     if "payload" in trace_str or "procedure" in trace_str:
                         payload_leakage = True
                         errors.append(f"router trace contains forbidden field in {method}")
-                    if "writer_role" not in trace or "receiver_role" not in trace:
-                        writer_receiver_present = False
+                    if "writer" in trace_str:
+                        writer_free_fields_passed = False
+                        errors.append(
+                            f"router trace leaks writer identity in {method}"
+                        )
+                    if "receiver_role" not in trace:
+                        writer_free_fields_passed = False
+                        errors.append(f"router trace missing receiver_role in {method}")
 
-    # --- Check feature audit ---
+    # --- Check feature audit (清单 Writer-Agnostic 7.2) ---
     feature_leakage = False
     if feature_audit_path and feature_audit_path.exists():
         audit = json.loads(feature_audit_path.read_text(encoding="utf-8"))
         if audit.get("forbidden_feature_leakage"):
             feature_leakage = True
             errors.append("feature audit reports forbidden leakage")
-        if audit.get("feature_block") == "full" and not audit.get("writer_receiver_features_present"):
-            errors.append("full critic missing writer-receiver features")
+        if audit.get("writer_features_present") or audit.get("provenance_features_present"):
+            feature_leakage = True
+            errors.append("feature audit reports writer/provenance features")
+        if audit.get("feature_block") == "full":
+            if not audit.get("receiver_features_present"):
+                errors.append("full critic missing receiver features")
+            if not audit.get("memory_receiver_interactions_present"):
+                errors.append("full critic missing memory-receiver interaction features")
 
     # --- Split audit (清单 P0-18): replaces the hardcoded True ---
     split_integrity_passed, split_audit = _run_split_audit_section(
@@ -270,7 +287,7 @@ def run_integrity_audit(
         not payload_leakage
         and not feature_leakage
         and branch_isolation_passed
-        and writer_receiver_present
+        and writer_free_fields_passed
         and candidate_level_pairs
         and shared_control_consistency_passed
         and split_integrity_passed
@@ -283,7 +300,7 @@ def run_integrity_audit(
         "payload_leakage": payload_leakage,
         "feature_leakage": feature_leakage,
         "branch_isolation_passed": branch_isolation_passed,
-        "writer_receiver_fields_present": writer_receiver_present,
+        "writer_free_fields_passed": writer_free_fields_passed,
         "candidate_level_pairs": candidate_level_pairs,
         "shared_control_consistency_passed": shared_control_consistency_passed,
         "shared_control_violations": shared_control_violations,

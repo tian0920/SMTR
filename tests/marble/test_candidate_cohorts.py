@@ -1,16 +1,21 @@
-"""Stratified candidate cohort tests (Commit 3).
+"""Stratified candidate cohort tests (Commit 3, Writer-Agnostic rewrite).
 
-Candidates must come from four cohorts (semantic_top / role_matched /
-role_mismatched / cross_receiver_anchor), quotas must be configurable,
-mismatched hard negatives must keep minimum task relevance, anchor memories
-must reach >=2 receivers, and selection must never read outcome labels.
+Candidates must come from four cohorts (semantic_top / receiver_compatible /
+receiver_incompatible_hard_negative / cross_receiver_anchor), quotas must be
+configurable, incompatible hard negatives must keep minimum task relevance,
+anchor memories must reach >=2 receivers, and selection must never read
+outcome labels or writer provenance (清单 Writer-Agnostic 第五章).
 """
 
 from __future__ import annotations
 
 import pytest
 
-from smtr.core.types import AgentProfile, MemoryRoutingCard, ProcedurePayload
+from smtr.core.types import (
+    MemoryProvenance,
+    MemoryRoutingCard,
+    ProcedurePayload,
+)
 from smtr.marble.real_data import (
     CandidateRecord,
     CandidateCohortQuotas,
@@ -26,49 +31,53 @@ from smtr.marble.real_data import (
 def _make_memory(
     memory_id: str,
     *,
-    writer_role: str,
-    capabilities: tuple[str, ...] = (),
-    tool_names: tuple[str, ...] = (),
+    required_tools: tuple[str, ...] = (),
+    required_capabilities: tuple[str, ...] = (),
+    execution_role_tags: tuple[str, ...] = (),
     goal: str = "diagnose database issue",
     tags: tuple[str, ...] = ("database",),
 ) -> ExtractedMemory:
-    writer = AgentProfile(
-        agent_id=f"w-{memory_id}",
-        role=writer_role,
-        capabilities=capabilities,
-        tool_names=tool_names,
+    provenance = MemoryProvenance(
+        source_agent_id=f"w-{memory_id}",
+        source_agent_role="unknown",
+        source_task_id=f"src_{memory_id}",
+        source_trajectory_id=f"traj_{memory_id}",
+        source_split="train",
+        source_scenario="database",
     )
     return ExtractedMemory(
         memory_id=memory_id,
         payload=ProcedurePayload(
             memory_id=memory_id,
             procedure="1. Do something",
-            writer=writer,
-            source_task_id=f"src_{memory_id}",
-            source_scenario="database",
+            provenance=provenance,
         ),
         routing_card=MemoryRoutingCard(
             memory_id=memory_id,
             goal_summary=goal,
             task_tags=tags,
+            required_tools=required_tools,
+            required_capabilities=required_capabilities,
+            execution_role_tags=execution_role_tags,
             environment_constraints=("read-only SQL",),
-            writer=writer,
-            source_task_id=f"src_{memory_id}",
-            source_scenario="database",
-            evidence_count=1,
         ),
     )
 
 
 def _memories() -> list[ExtractedMemory]:
     return [
-        _make_memory("mA", writer_role="executor", capabilities=("sql",), tool_names=("sql_tool",),
+        # Compatible with r1 (sql / sql_tool / read-only SQL env)
+        _make_memory("mA", required_tools=("sql_tool",), required_capabilities=("sql",),
                      goal="diagnose database latency", tags=("database", "latency")),
-        _make_memory("mB", writer_role="critic", capabilities=("review",), tool_names=("review_tool",),
+        # Compatible with r2 (review / review_tool / read-only SQL env)
+        _make_memory("mB", required_tools=("review_tool",), required_capabilities=("review",),
                      goal="review database diagnosis", tags=("database", "review")),
-        _make_memory("mC", writer_role="planner", capabilities=("planning",), tool_names=("plan_tool",),
+        # Task-relevant but incompatible with both receivers
+        _make_memory("mC", required_tools=("plan_tool",), required_capabilities=("planning",),
+                     execution_role_tags=("planner",),
                      goal="plan database diagnosis", tags=("database", "plan")),
-        _make_memory("mD", writer_role="executor", capabilities=("accounting",), tool_names=("invoice_tool",),
+        # Completely irrelevant (no shared terms with either instruction)
+        _make_memory("mD", required_tools=("invoice_tool",), required_capabilities=("accounting",),
                      goal="process accounting invoices", tags=("accounting", "invoices")),
     ]
 
@@ -92,7 +101,12 @@ def _receivers() -> list[dict]:
 
 def test_quotas_from_top_k_balanced():
     q8 = quotas_from_top_k(8)
-    assert (q8.semantic_top, q8.role_matched, q8.role_mismatched, q8.cross_receiver_anchor) == (2, 2, 2, 2)
+    assert (
+        q8.semantic_top,
+        q8.receiver_compatible,
+        q8.receiver_incompatible,
+        q8.cross_receiver_anchor,
+    ) == (2, 2, 2, 2)
     q4 = quotas_from_top_k(4)
     assert q4.total == 4
 
@@ -101,10 +115,14 @@ def test_all_four_cohort_sources_present_and_valid():
     manifest = build_cross_task_candidates(
         memories=_memories(), recipients=_receivers(), top_k=4,
         cohort_quotas=CandidateCohortQuotas(
-            semantic_top=1, role_matched=1, role_mismatched=1, cross_receiver_anchor=1,
+            semantic_top=1, receiver_compatible=1,
+            receiver_incompatible=1, cross_receiver_anchor=1,
         ),
     )
-    allowed = {"semantic_top", "role_matched", "role_mismatched", "cross_receiver_anchor"}
+    allowed = {
+        "semantic_top", "receiver_compatible",
+        "receiver_incompatible_hard_negative", "cross_receiver_anchor",
+    }
     sources = set()
     for entry in manifest.candidates:
         for rec in entry.candidate_records:
@@ -115,8 +133,8 @@ def test_all_four_cohort_sources_present_and_valid():
                 assert rec.anchor_group_id == rec.memory_id
             else:
                 assert rec.anchor_group_id is None
-    # With this pool both matched and mismatched cohorts must be reachable
-    assert "role_mismatched" in sources
+    # With this pool both incompatible and anchor cohorts must be reachable
+    assert "receiver_incompatible_hard_negative" in sources
     assert "cross_receiver_anchor" in sources
 
 
@@ -124,7 +142,8 @@ def test_anchor_memory_reaches_two_receivers():
     manifest = build_cross_task_candidates(
         memories=_memories(), recipients=_receivers(), top_k=4,
         cohort_quotas=CandidateCohortQuotas(
-            semantic_top=1, role_matched=1, role_mismatched=1, cross_receiver_anchor=1,
+            semantic_top=1, receiver_compatible=1,
+            receiver_incompatible=1, cross_receiver_anchor=1,
         ),
     )
     memory_receivers: dict[str, set[str]] = {}
@@ -135,13 +154,14 @@ def test_anchor_memory_reaches_two_receivers():
     assert shared, "at least one memory must be evaluated by >=2 receivers"
 
 
-def test_role_mismatched_hard_negatives_keep_min_relevance():
-    """Mismatched hard negatives below min task relevance must be excluded,
+def test_incompatible_hard_negatives_keep_min_relevance():
+    """Incompatible hard negatives below min task relevance must be excluded,
     and completely irrelevant memories (mD) must never appear."""
     manifest = build_cross_task_candidates(
         memories=_memories(), recipients=_receivers(), top_k=4,
         cohort_quotas=CandidateCohortQuotas(
-            semantic_top=1, role_matched=1, role_mismatched=1, cross_receiver_anchor=1,
+            semantic_top=1, receiver_compatible=1,
+            receiver_incompatible=1, cross_receiver_anchor=1,
             min_task_relevance=0.1,
         ),
     )
@@ -149,13 +169,14 @@ def test_role_mismatched_hard_negatives_keep_min_relevance():
         for rec in entry.candidate_records:
             # mD shares no terms with the task instruction -> sim 0 < 0.1
             assert rec.memory_id != "mD"
-            if rec.candidate_source == "role_mismatched":
-                assert rec.score_components["task_similarity_raw"] >= 0.1
+            if rec.candidate_source == "receiver_incompatible_hard_negative":
+                assert rec.score_components["task_similarity"] >= 0.1
 
 
 def test_quotas_are_configurable_not_hardcoded():
     quotas = CandidateCohortQuotas(
-        semantic_top=3, role_matched=1, role_mismatched=1, cross_receiver_anchor=1,
+        semantic_top=3, receiver_compatible=1,
+        receiver_incompatible=1, cross_receiver_anchor=1,
     )
     manifest = build_cross_task_candidates(
         memories=_memories(), recipients=_receivers(), top_k=6, cohort_quotas=quotas,
@@ -171,11 +192,22 @@ def test_candidate_selection_ignores_outcomes():
     assert not (set(CandidateRecord.model_fields) & forbidden)
 
 
+def test_candidate_selection_ignores_writer_provenance():
+    """Candidate record schema must carry no writer/provenance fields
+    (清单 Writer-Agnostic 5.5)."""
+    forbidden = {
+        "writer", "source_agent_id", "source_agent_role",
+        "source_task_id", "source_trajectory_id", "writer_role",
+    }
+    assert not (set(CandidateRecord.model_fields) & forbidden)
+
+
 def test_validate_receiver_effect_coverage_statistics():
     manifest = build_cross_task_candidates(
         memories=_memories(), recipients=_receivers(), top_k=4,
         cohort_quotas=CandidateCohortQuotas(
-            semantic_top=1, role_matched=1, role_mismatched=1, cross_receiver_anchor=1,
+            semantic_top=1, receiver_compatible=1,
+            receiver_incompatible=1, cross_receiver_anchor=1,
         ),
     )
     report = validate_receiver_effect_coverage(manifest)
@@ -185,8 +217,8 @@ def test_validate_receiver_effect_coverage_statistics():
         "memories_seen_by_2plus_receivers",
         "memories_seen_by_2plus_receiver_roles",
         "receiver_effect_coverage",
-        "matched_candidate_rate",
-        "mismatched_candidate_rate",
+        "compatible_candidate_rate",
+        "incompatible_candidate_rate",
         "cross_receiver_anchor_rate",
     ):
         assert key in stats
@@ -204,7 +236,8 @@ def test_validate_receiver_effect_coverage_statistics():
 
 def _basic_quotas() -> CandidateCohortQuotas:
     return CandidateCohortQuotas(
-        semantic_top=1, role_matched=1, role_mismatched=1, cross_receiver_anchor=1,
+        semantic_top=1, receiver_compatible=1,
+        receiver_incompatible=1, cross_receiver_anchor=1,
     )
 
 
@@ -303,7 +336,7 @@ def test_formal_candidate_build_fails_without_anchors():
     manifest = build_cross_task_candidates(
         memories=_memories(), recipients=_receivers(), top_k=4,
         cohort_quotas=CandidateCohortQuotas(
-            semantic_top=2, role_matched=1, role_mismatched=1,
+            semantic_top=2, receiver_compatible=1, receiver_incompatible=1,
             cross_receiver_anchor=0,
         ),
     )

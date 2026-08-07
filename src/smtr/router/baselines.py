@@ -1,27 +1,30 @@
 """Paper-required baselines and ablation methods (清单 P0-2).
 
-Main-table methods (SMTR-v1 single-memory setting):
+Main-table methods (清单 Writer-Agnostic 第九章; SMTR-v1
+single-memory setting):
 
-* NoMemory            — never share any memory;
-* SemanticTop1        — top-1 by task-memory semantic similarity only;
-                        ignores writer, receiver, role, capability,
-                        environment and the transfer critic;
-* RoleAwareTop1       — top-1 by task relevance + role compatibility +
-                        capability/tool overlap, no paired transfer labels;
-* GlobalTransferCritic— critic with task/env/memory-card features only
-                        (no writer, receiver or interaction features);
-* SMTRNoPairInteraction — SMTR without writer-receiver interaction features;
-* SMTRNoRisk          — SMTR decision with tau_hat > 0 only (no risk gate);
-* SMTR                — full method.
+* B0-NoMemory            — never expose any memory;
+* B1-SemanticTop1        — top-1 by task-memory semantic similarity only;
+                           ignores receiver, requirements and the critic;
+* B2-ReceiverCompatibleTop1 — semantic relevance plus explicit memory
+                           requirement satisfaction, no paired labels;
+* B3-GlobalTransferCritic— critic on q(Y | task, m): no receiver marginal
+                           and no compatibility interaction;
+* B4-SMTR-no-compatibility-interaction — task/memory/receiver marginals,
+                           no explicit compatibility interactions;
+* B5-SMTR-no-risk        — full memory-receiver critic with tau_hat > 0
+                           only (no risk gate);
+* SMTR                   — full memory-receiver critic with
+                           tau_hat > 0 and eta_cal <= epsilon_star.
 
-AllShare and FactualSuccess were removed: in the v1 single-memory action
-space AllShare is behaviorally identical to a top-1 heuristic baseline,
-and FactualSuccess has no reliable memory-level historical aggregates.
+Writer identity is never a conditioning variable in any baseline (清单
+Writer-Agnostic 第二章). AllShare and FactualSuccess were removed: in the
+v1 single-memory action space AllShare is behaviorally identical to a
+top-1 heuristic baseline, and FactualSuccess has no reliable memory-level
+historical aggregates.
 """
 
 from __future__ import annotations
-
-from typing import Any
 
 from smtr.core.types import (
     CandidateExposureInput,
@@ -29,9 +32,9 @@ from smtr.core.types import (
     ReceiverState,
     RouterDecision,
 )
-from smtr.router.transfer_features import _overlap_bucket, _text_tokens
-from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.exposure_router import SMTRUCBRouter
+from smtr.router.transfer_critic import FourOutcomeTransferCritic
+from smtr.router.transfer_features import _text_tokens
 
 
 def _heuristic_relevance_score(receiver_state: ReceiverState, card: MemoryRoutingCard) -> float:
@@ -41,47 +44,81 @@ def _heuristic_relevance_score(receiver_state: ReceiverState, card: MemoryRoutin
     never paired transfer labels.
     """
     rs = receiver_state
-    task_tokens = set(_text_tokens(rs.task_instruction)) | {tok.lower() for tok in rs.task_id.split("_")}
+    task_tokens = set(_text_tokens(rs.task_instruction)) | {
+        tok.lower() for tok in rs.task_id.split("_")
+    }
     card_tokens = set(_text_tokens(card.goal_summary)) | {tok.lower() for tok in card.task_tags}
     if not task_tokens or not card_tokens:
         return 0.0
     return len(task_tokens & card_tokens) / len(task_tokens | card_tokens)
 
 
-def _role_compatibility_score(receiver_state: ReceiverState, card: MemoryRoutingCard) -> float:
-    """Role compatibility from observable writer/receiver roles only.
-
-    Deprecated human-authored ``compatible_receiver_roles`` /
-    ``incompatible_receiver_roles`` card fields are deliberately ignored so
-    the baseline never benefits from manually pre-annotated transfer hints.
-    """
-    writer_role = card.writer.role
-    receiver_role = receiver_state.receiver.role
-    if writer_role == receiver_role:
+def _requirement_satisfaction(required: set[str], available: set[str]) -> float:
+    """Fraction of explicit memory requirements satisfied by the receiver."""
+    if not required:
         return 1.0
-    if writer_role in ("unknown", "") or receiver_role in ("unknown", ""):
-        return 0.5
-    return 0.25
+    return len(required & available) / len(required)
 
 
-def role_aware_top1_score(receiver_state: ReceiverState, card: MemoryRoutingCard) -> float:
-    """Combined heuristic score for the label-free baselines."""
-    receiver = receiver_state.receiver
-    cap_overlap = _overlap_bucket(set(card.writer.capabilities), set(receiver.capabilities))
-    tool_overlap = _overlap_bucket(set(card.writer.tool_names), set(receiver.tool_names))
-    overlap_bonus = {"high": 0.2, "medium": 0.1}.get(cap_overlap, 0.0)
-    overlap_bonus += {"high": 0.2, "medium": 0.1}.get(tool_overlap, 0.0)
-    return (
-        _heuristic_relevance_score(receiver_state, card)
-        + _role_compatibility_score(receiver_state, card)
-        + overlap_bonus
-    )
+def memory_receiver_compatibility(
+    card: MemoryRoutingCard,
+    receiver_state: ReceiverState,
+) -> dict[str, float]:
+    """Memory-requirement vs receiver-state satisfaction (清单 8.3).
+
+    Derived from the routing card and pre-execution receiver state only;
+    writer identity never participates.
+    """
+    rs = receiver_state
+    r_caps = set(rs.receiver.capabilities)
+    r_tools = set(rs.receiver.tool_names)
+    r_env = set(rs.environment_signature)
+
+    if card.execution_role_tags:
+        role_satisfaction = (
+            1.0 if rs.receiver.role in card.execution_role_tags else 0.0
+        )
+    else:
+        # Unspecified execution role: no evidence of a role constraint.
+        role_satisfaction = 0.5
+
+    return {
+        "tool_satisfaction": _requirement_satisfaction(
+            set(card.required_tools), r_tools
+        ),
+        "capability_satisfaction": _requirement_satisfaction(
+            set(card.required_capabilities), r_caps
+        ),
+        "environment_satisfaction": _requirement_satisfaction(
+            set(card.environment_constraints), r_env
+        ),
+        "role_satisfaction": role_satisfaction,
+    }
+
+
+def receiver_compatible_top1_score(
+    receiver_state: ReceiverState,
+    card: MemoryRoutingCard,
+) -> float:
+    """Combined heuristic score for the label-free B2 baseline (清单 8.3).
+
+    Mean of task relevance and the four explicit requirement satisfactions;
+    never paired transfer labels and never writer identity.
+    """
+    compatibility = memory_receiver_compatibility(card, receiver_state)
+    return sum([
+        _heuristic_relevance_score(receiver_state, card),
+        compatibility["tool_satisfaction"],
+        compatibility["capability_satisfaction"],
+        compatibility["environment_satisfaction"],
+        compatibility["role_satisfaction"],
+    ]) / 5.0
 
 
 def _select_top1(receiver_state: ReceiverState, candidate_cards: list[MemoryRoutingCard]) -> str:
     scored = sorted(
         candidate_cards,
-        key=lambda c: (-role_aware_top1_score(receiver_state, c), c.memory_id),
+        key=lambda c: (-receiver_compatible_top1_score(receiver_state, c), c.memory_id),
     )
     return scored[0].memory_id
 
@@ -96,7 +133,10 @@ class NoMemoryRouter:
         selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         return [
-            RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_raw=0.0, reason="no_memory_baseline")
+            RouterDecision(
+                memory_id=c.memory_id, action="withhold",
+                tau_hat=0.0, eta_raw=0.0, reason="no_memory_baseline",
+            )
             for c in candidate_cards
         ]
 
@@ -105,9 +145,9 @@ class SemanticTop1Router:
     """B1-SemanticTop1: share the top-1 candidate by task-memory semantic
     similarity only.
 
-    Deliberately ignores writer identity, receiver role, capability/tool
-    compatibility, paired transfer labels and the transfer critic; the
-    top-1 candidate is always exposed.
+    Deliberately ignores receiver profile, memory requirements, paired
+    transfer labels and the transfer critic; the top-1 candidate is always
+    exposed.
     """
 
     def decide(
@@ -126,15 +166,24 @@ class SemanticTop1Router:
         decisions = []
         for c in candidate_cards:
             if c.memory_id == top_id:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_raw=0.0, reason="semantic_top1"))
+                decisions.append(RouterDecision(
+                    memory_id=c.memory_id, action="share",
+                    tau_hat=0.0, eta_raw=0.0, reason="semantic_top1",
+                ))
             else:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_raw=0.0, reason="not_semantic_top1"))
+                decisions.append(RouterDecision(
+                    memory_id=c.memory_id, action="withhold",
+                    tau_hat=0.0, eta_raw=0.0, reason="not_semantic_top1",
+                ))
         return decisions
 
 
-class RoleAwareTop1Router:
-    """RoleAwareTop1: share the top-1 candidate by task relevance, role
-    compatibility and capability/tool overlap. No paired transfer labels."""
+class ReceiverCompatibleTop1Router:
+    """B2-ReceiverCompatibleTop1: share the top-1 candidate by semantic
+    relevance plus explicit memory requirement satisfaction.
+
+    No paired transfer labels; writer identity is never used (清单
+    Writer-Agnostic 8.3)."""
 
     def decide(
         self,
@@ -148,9 +197,17 @@ class RoleAwareTop1Router:
         decisions = []
         for c in candidate_cards:
             if c.memory_id == top_id:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="share", tau_hat=0.0, eta_raw=0.0, reason="role_aware_top1"))
+                decisions.append(RouterDecision(
+                    memory_id=c.memory_id, action="share",
+                    tau_hat=0.0, eta_raw=0.0,
+                    reason="receiver_compatible_top1",
+                ))
             else:
-                decisions.append(RouterDecision(memory_id=c.memory_id, action="withhold", tau_hat=0.0, eta_raw=0.0, reason="not_top1"))
+                decisions.append(RouterDecision(
+                    memory_id=c.memory_id, action="withhold",
+                    tau_hat=0.0, eta_raw=0.0,
+                    reason="not_receiver_compatible_top1",
+                ))
         return decisions
 
 
@@ -184,10 +241,10 @@ def _critic_router(
 
 
 class GlobalTransferCriticRouter:
-    """GlobalTransferCritic.
+    """B3-GlobalTransferCritic: q(Y^share, Y^withhold | task, m).
 
-    Uses task, environment and memory-card features, but removes writer,
-    receiver and pair-interaction features. Requires
+    Removes the receiver marginal and the compatibility interaction, used
+    to show receiver conditioning is necessary. Requires
     feature_block='global_transfer'.
     """
 
@@ -212,8 +269,9 @@ class GlobalTransferCriticRouter:
         return self._router.decide(receiver_state, candidate_cards, selected_prefix_cards)
 
 
-class SMTRNoPairInteractionRouter:
-    """SMTRNoPairInteraction: writer+receiver marginals, no pair interaction."""
+class SMTRNoCompatibilityInteractionRouter:
+    """B4-SMTR-no-compatibility-interaction: task/memory/receiver marginals
+    without the explicit compatibility interaction block (清单 8.4)."""
 
     def __init__(
         self,
@@ -223,7 +281,7 @@ class SMTRNoPairInteractionRouter:
         allow_risk_budget_override: bool = False,
     ) -> None:
         self._router = _critic_router(
-            critic, "no_pair_interaction", negative_risk_budget,
+            critic, "no_compatibility_interaction", negative_risk_budget,
             max_shared_memories_per_receiver, allow_risk_budget_override,
         )
 
@@ -237,7 +295,8 @@ class SMTRNoPairInteractionRouter:
 
 
 class SMTRNoRiskRouter:
-    """SMTR-no-risk: use tau_hat only, ignore eta_hat (no risk constraint)."""
+    """B5-SMTR-no-risk: reuse the full memory-receiver critic, keeping only
+    tau_hat > 0 and dropping the eta_cal <= epsilon_star risk gate (清单 8.6)."""
 
     def __init__(
         self,
@@ -269,61 +328,38 @@ class SMTRNoRiskRouter:
         # Share top tau>0 without risk constraint
         positive = [(tau, eta, c) for tau, eta, c in scored if tau > 0]
         positive_sorted = sorted(positive, key=lambda x: -x[0])
-        share_set = {c.memory_id for _, _, c in positive_sorted[:self.max_shared_memories_per_receiver]}
+        share_set = {
+            c.memory_id for _, _, c in positive_sorted[: self.max_shared_memories_per_receiver]
+        }
 
         decisions = []
         for tau, eta, card in scored:
             if card.memory_id in share_set:
-                decisions.append(RouterDecision(memory_id=card.memory_id, action="share", tau_hat=tau, eta_raw=eta, reason="tau>0_no_risk_constraint"))
+                decisions.append(RouterDecision(
+                    memory_id=card.memory_id, action="share",
+                    tau_hat=tau, eta_raw=eta,
+                    reason="tau>0_no_risk_constraint",
+                ))
             else:
-                decisions.append(RouterDecision(memory_id=card.memory_id, action="withhold", tau_hat=tau, eta_raw=eta, reason="tau<=0_or_not_top"))
+                decisions.append(RouterDecision(
+                    memory_id=card.memory_id, action="withhold",
+                    tau_hat=tau, eta_raw=eta, reason="tau<=0_or_not_top",
+                ))
         return decisions
 
 
-class SMTRNoWriterReceiverRouter:
-    """Legacy SMTR-no-writer-receiver (kept for old checkpoint compatibility)."""
-
-    def __init__(
-        self,
-        critic: FourOutcomeTransferCritic,
-        negative_risk_budget: float | None = None,
-        max_shared_memories_per_receiver: int = 1,
-        allow_risk_budget_override: bool = False,
-    ) -> None:
-        self.critic = critic
-        self.negative_risk_budget = negative_risk_budget
-        self.allow_risk_budget_override = allow_risk_budget_override
-        self.max_shared_memories_per_receiver = max_shared_memories_per_receiver
-
-    def decide(
-        self,
-        receiver_state: ReceiverState,
-        candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
-    ) -> list[RouterDecision]:
-        from smtr.router.exposure_router import SMTRExposureRouter
-
-        # Same logic as SMTR but critic was trained with no_writer_receiver features
-        router = SMTRExposureRouter(
-            critic=self.critic,
-            negative_risk_budget=self.negative_risk_budget,
-            max_shared_memories_per_receiver=self.max_shared_memories_per_receiver,
-            allow_risk_budget_override=self.allow_risk_budget_override,
-        )
-        return router.decide(receiver_state, candidate_cards, selected_prefix_cards)
-
-
-# Formal method registry (清单 P0-2). AllShare and FactualSuccess are
-# deliberately absent: AllShare duplicates a top-1 heuristic baseline under
-# the v1 single-memory action space, and FactualSuccess lacks reliable
-# memory-level historical aggregates.
+# Formal method registry (清单 Writer-Agnostic 第九章). AllShare and
+# FactualSuccess are deliberately absent: AllShare duplicates a top-1
+# heuristic baseline under the v1 single-memory action space, and
+# FactualSuccess lacks reliable memory-level historical aggregates.
+# smtr_no_writer_receiver was removed because the new full SMTR never
+# conditions on writer identity (清单 8.7).
 METHOD_REGISTRY: dict[str, type] = {
     "b0_no_memory": NoMemoryRouter,
     "semantic_top1": SemanticTop1Router,
-    "role_aware_top1": RoleAwareTop1Router,
+    "receiver_compatible_top1": ReceiverCompatibleTop1Router,
     "global_transfer_critic": GlobalTransferCriticRouter,
-    "smtr_no_pair_interaction": SMTRNoPairInteractionRouter,
+    "smtr_no_compatibility_interaction": SMTRNoCompatibilityInteractionRouter,
     "smtr_no_risk": SMTRNoRiskRouter,
-    "smtr_no_writer_receiver": SMTRNoWriterReceiverRouter,
     "smtr_ucb": SMTRUCBRouter,
 }

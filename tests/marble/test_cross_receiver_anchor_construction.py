@@ -9,7 +9,11 @@ from __future__ import annotations
 
 import json
 
-from smtr.core.types import AgentProfile, MemoryRoutingCard, ProcedurePayload
+from smtr.core.types import (
+    MemoryProvenance,
+    MemoryRoutingCard,
+    ProcedurePayload,
+)
 from smtr.marble.real_data import (
     ExtractedMemory,
     build_cross_task_candidates,
@@ -21,29 +25,32 @@ from smtr.marble.real_data import (
 def _make_memory(
     memory_id: str,
     *,
-    writer_role: str,
-    caps: tuple[str, ...],
+    required_tools: tuple[str, ...] = (),
+    required_capabilities: tuple[str, ...] = (),
     goal: str = "diagnose database latency",
 ) -> ExtractedMemory:
-    writer = AgentProfile(agent_id=f"w-{memory_id}", role=writer_role, capabilities=caps)
+    provenance = MemoryProvenance(
+        source_agent_id=f"w-{memory_id}",
+        source_agent_role="unknown",
+        source_task_id=f"src_{memory_id}",
+        source_trajectory_id=f"traj_{memory_id}",
+        source_split="train",
+        source_scenario="database",
+    )
     return ExtractedMemory(
         memory_id=memory_id,
         payload=ProcedurePayload(
             memory_id=memory_id,
             procedure="1. Do something",
-            writer=writer,
-            source_task_id=f"src_{memory_id}",
-            source_scenario="database",
+            provenance=provenance,
         ),
         routing_card=MemoryRoutingCard(
             memory_id=memory_id,
             goal_summary=goal,
             task_tags=("database", "latency"),
+            required_tools=required_tools,
+            required_capabilities=required_capabilities,
             environment_constraints=("read-only SQL",),
-            writer=writer,
-            source_task_id=f"src_{memory_id}",
-            source_scenario="database",
-            evidence_count=1,
         ),
     )
 
@@ -68,10 +75,10 @@ def _receivers() -> list[dict]:
 def _manifest():
     memories = [
         # Task-relevant for both receivers -> anchor-eligible.
-        _make_memory("mA", writer_role="executor", caps=("sql",)),
-        _make_memory("mB", writer_role="critic", caps=("review",)),
-        _make_memory("mC", writer_role="planner", caps=("planning",)),
-        _make_memory("mD", writer_role="verifier", caps=("stats",)),
+        _make_memory("mA", required_tools=("sql_tool",), required_capabilities=("sql",)),
+        _make_memory("mB", required_tools=("review_tool",), required_capabilities=("review",)),
+        _make_memory("mC", required_tools=("plan_tool",), required_capabilities=("planning",)),
+        _make_memory("mD", required_tools=("stat_tool",), required_capabilities=("stats",)),
     ]
     return build_cross_task_candidates(
         memories=memories, recipients=_receivers(), top_k=8
@@ -112,7 +119,7 @@ class TestCrossReceiverAnchorConstruction:
         """
         manifest = _manifest()
         quotas = manifest.cohort_quotas
-        n_memories = 4  # one memory per writer in the fixture pool
+        n_memories = 4  # fixture pool size
         for entry in manifest.candidates:
             assert len(entry.candidate_records) == min(quotas.total, n_memories), (
                 f"receiver {entry.receiver_agent_id} got fewer candidates "
@@ -128,9 +135,9 @@ class TestCrossReceiverAnchorConstruction:
                 tags_seen.update(rec.candidate_sources)
         assert "cross_receiver_anchor" in tags_seen
         assert tags_seen <= {
-            "semantic_topk",
-            "role_matched",
-            "role_mismatched_hard_negative",
+            "semantic_top",
+            "receiver_compatible",
+            "receiver_incompatible_hard_negative",
             "cross_receiver_anchor",
         }
 
@@ -140,8 +147,8 @@ class TestProposalSupportMetrics:
         metrics = compute_proposal_support_metrics(_manifest())
         for key in (
             "candidate_count_per_receiver",
-            "role_matched_candidate_rate",
-            "role_mismatched_candidate_rate",
+            "receiver_compatible_candidate_rate",
+            "receiver_incompatible_candidate_rate",
             "cross_receiver_anchor_count",
             "memories_with_multiple_receivers",
             "receivers_per_anchor_memory",

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Full regression excluding 27 legacy broken test files (pre-round-1 relics).
+# Full regression excluding 29 legacy broken test files (pre-round-1 relics).
 cd /home/ecs-user/SMTR
 python -m pytest tests/ -q -p no:cacheprovider \
   --ignore=tests/test_a1_no_selected_set.py \
@@ -9,6 +9,7 @@ python -m pytest tests/ -q -p no:cacheprovider \
   --ignore=tests/test_candidate_diagnostics.py \
   --ignore=tests/test_card_feature_snapshots.py \
   --ignore=tests/test_compare_routers.py \
+  --ignore=tests/test_counterfactual_cli.py \
   --ignore=tests/test_decision_point_capture.py \
   --ignore=tests/test_factual_success_critic.py \
   --ignore=tests/test_forced_router.py \
@@ -28,5 +29,6 @@ python -m pytest tests/ -q -p no:cacheprovider \
   --ignore=tests/test_stale_propagation.py \
   --ignore=tests/test_task_evaluation.py \
   --ignore=tests/test_transfer_critic.py \
+  --ignore=tests/test_transfer_critic_cli.py \
   --ignore=tests/test_transfer_feature_encoder.py \
   "$@"

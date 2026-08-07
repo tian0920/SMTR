@@ -20,7 +20,7 @@ from smtr.core.types import (
 )
 from smtr.router.baselines import (
     METHOD_REGISTRY,
-    RoleAwareTop1Router,
+    ReceiverCompatibleTop1Router,
     SMTRNoRiskRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter
@@ -32,9 +32,6 @@ def _card(memory_id: str) -> MemoryRoutingCard:
         memory_id=memory_id,
         goal_summary=f"diagnose database issue {memory_id}",
         task_tags=("database", memory_id),
-        writer=AgentProfile(agent_id=f"w_{memory_id}", role="planner"),
-        source_task_id="src",
-        source_scenario="database",
     )
 
 
@@ -83,7 +80,7 @@ class TestSingleMemoryActionSpace:
 
     def test_label_free_baselines_share_at_most_one_memory(self):
         cards = [_card(f"m{i}") for i in range(4)]
-        decisions = RoleAwareTop1Router().decide(_receiver_state(), cards)
+        decisions = ReceiverCompatibleTop1Router().decide(_receiver_state(), cards)
         shared = [d for d in decisions if d.action == "share"]
         assert len(shared) <= 1
 
@@ -110,7 +107,7 @@ class TestPrefixIndependence:
         assert "prefix_size:0" in tokens_empty
 
     def test_all_feature_blocks_ignore_prefix(self):
-        for block in ("full", "no_pair_interaction", "no_receiver", "memory_task_only"):
+        for block in ("full", "no_compatibility_interaction", "global_transfer"):
             encoder = HashingTransferFeatureEncoder(feature_block=block)
             assert (
                 encoder.tokens(self._input(()))

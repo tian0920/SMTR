@@ -24,16 +24,16 @@ class TestLoadPairedRecordsContext:
             "memory_id": "mem1",
             "payload": {"procedure": "step 1"},
             "routing_card": {
-                "writer": {"agent_id": "w1", "role": "executor", "capabilities": ["sql"]},
                 "goal_summary": "diagnose",
                 "task_tags": ["database"],
+                "required_tools": [],
+                "required_capabilities": [],
+                "execution_role_tags": [],
                 "environment_constraints": [],
-                "positive_transfer_hints": [],
-                "negative_transfer_hints": [],
-                "source_task_id": "t_src",
-                "source_scenario": "database",
-                "compatible_receiver_roles": [],
-                "incompatible_receiver_roles": [],
+                "precondition_tags": [],
+                "procedure_type": "unknown",
+                "procedure_length_bucket": "short",
+                "read_write_scope": "read",
                 "evidence_count": 2,
             },
         }) + "\n", encoding="utf-8")
@@ -145,16 +145,16 @@ class TestPairedEvaluationSeeds:
             "memory_id": "mem1",
             "payload": {"procedure": "step"},
             "routing_card": {
-                "writer": {"agent_id": "w1", "role": "executor", "capabilities": []},
                 "goal_summary": "goal",
                 "task_tags": [],
+                "required_tools": [],
+                "required_capabilities": [],
+                "execution_role_tags": [],
                 "environment_constraints": [],
-                "positive_transfer_hints": [],
-                "negative_transfer_hints": [],
-                "source_task_id": "t_src",
-                "source_scenario": "database",
-                "compatible_receiver_roles": [],
-                "incompatible_receiver_roles": [],
+                "precondition_tags": [],
+                "procedure_type": "unknown",
+                "procedure_length_bucket": "short",
+                "read_write_scope": "read",
                 "evidence_count": 1,
             },
         }) + "\n", encoding="utf-8")
@@ -193,21 +193,15 @@ class TestPairedEvaluationSeeds:
         mock_critic.feature_block = "full"
         mock_critic.predict_batch.return_value = []
 
-        mock_no_wr = MagicMock()
-        mock_no_wr.feature_block = "no_writer_receiver"
-
         output = tmp_path / "eval_out"
 
         with patch("smtr.marble.paired_evaluation.FourOutcomeTransferCritic") as MockCritic:
-            MockCritic.load.side_effect = lambda p: (
-                mock_critic if "full" in str(p) else mock_no_wr
-            )
+            MockCritic.load.side_effect = lambda p: mock_critic
             result = run_paired_decision_evaluation(
                 candidate_manifest_path=candidates,
                 paired_records_path=paired_records,
                 memory_pool_path=memory_pool,
                 checkpoint_full=tmp_path / "full.joblib",
-                checkpoint_no_writer_receiver=tmp_path / "no_wr.joblib",
                 methods=["semantic_top1"],
                 output=output,
             )
@@ -357,24 +351,31 @@ class TestRuntimeVisibilityNonTarget:
 class TestEnvCompatInScore:
     def test_score_includes_env_compat(self):
         from smtr.marble.real_data import build_cross_task_candidates, ExtractedMemory
-        from smtr.core.types import AgentProfile, MemoryRoutingCard, ProcedurePayload
+        from smtr.core.types import (
+            AgentProfile,
+            MemoryProvenance,
+            MemoryRoutingCard,
+            ProcedurePayload,
+        )
 
-        writer = AgentProfile(agent_id="w1", role="executor", capabilities=("sql",))
+        provenance = MemoryProvenance(
+            source_agent_id="w1",
+            source_agent_role="executor",
+            source_task_id="t_src",
+            source_trajectory_id="traj_src",
+            source_split="train",
+            source_scenario="database",
+        )
         payload = ProcedurePayload(
             memory_id="mem1",
             procedure="1. Do thing",
-            writer=writer,
-            source_task_id="t_src",
-            source_scenario="database",
+            provenance=provenance,
         )
         card = MemoryRoutingCard(
             memory_id="mem1",
             goal_summary="diagnose database",
             task_tags=("database",),
             environment_constraints=("postgresql", "read-only"),
-            writer=writer,
-            source_task_id="t_src",
-            source_scenario="database",
             evidence_count=1,
         )
         mem = ExtractedMemory(memory_id="mem1", payload=payload, routing_card=card)
@@ -384,6 +385,7 @@ class TestEnvCompatInScore:
             "agent_id": "r1",
             "agent_role": "executor",
             "agent_capabilities": ["sql"],
+            "tool_names": ["sql_tool"],
             "instruction": "diagnose database issue",
             "environment_signature": ["postgresql", "read-only"],
         }]
@@ -396,14 +398,12 @@ class TestEnvCompatInScore:
         )
         entry = manifest.candidates[0]
         rec = entry.candidate_records[0]
-        # env_compat must be in score_components
-        assert "environment_compatibility_raw" in rec.score_components
-        assert "environment_compatibility_weighted" in rec.score_components
-        # Score must equal sum of weighted components
-        weighted_sum = sum(
-            v for k, v in rec.score_components.items() if k.endswith("_weighted")
-        )
-        assert abs(rec.score - weighted_sum) < 1e-3
+        # environment satisfaction must be in score_components
+        assert "environment_satisfaction" in rec.score_components
+        assert rec.score_components["environment_satisfaction"] == 1.0
+        # Score must equal the mean of the components (rounded to 4 dp)
+        mean = sum(rec.score_components.values()) / len(rec.score_components)
+        assert abs(rec.score - mean) < 1e-3
 
 
 # ---------------------------------------------------------------------------
@@ -438,7 +438,7 @@ class TestInterleavedOrder:
 
 
 # ---------------------------------------------------------------------------
-# Fix 11: writer-receiver breakdown is per-method
+# Fix 11: decision traces are reported per-method
 # ---------------------------------------------------------------------------
 
 
@@ -451,16 +451,16 @@ class TestBreakdownPerMethod:
             "memory_id": "mem1",
             "payload": {"procedure": "step"},
             "routing_card": {
-                "writer": {"agent_id": "w1", "role": "executor", "capabilities": []},
                 "goal_summary": "goal",
                 "task_tags": [],
+                "required_tools": [],
+                "required_capabilities": [],
+                "execution_role_tags": [],
                 "environment_constraints": [],
-                "positive_transfer_hints": [],
-                "negative_transfer_hints": [],
-                "source_task_id": "t_src",
-                "source_scenario": "database",
-                "compatible_receiver_roles": [],
-                "incompatible_receiver_roles": [],
+                "precondition_tags": [],
+                "procedure_type": "diagnostic",
+                "procedure_length_bucket": "short",
+                "read_write_scope": "read",
                 "evidence_count": 1,
             },
         }) + "\n", encoding="utf-8")
@@ -492,27 +492,22 @@ class TestBreakdownPerMethod:
 
         mock_critic = MagicMock()
         mock_critic.feature_block = "full"
-        mock_no_wr = MagicMock()
-        mock_no_wr.feature_block = "no_writer_receiver"
 
         output = tmp_path / "eval_out"
 
         with patch("smtr.marble.paired_evaluation.FourOutcomeTransferCritic") as MockCritic:
-            MockCritic.load.side_effect = lambda p: (
-                mock_critic if "full" in str(p) else mock_no_wr
-            )
+            MockCritic.load.side_effect = lambda p: mock_critic
             run_paired_decision_evaluation(
                 candidate_manifest_path=candidates,
                 paired_records_path=paired_records,
                 memory_pool_path=memory_pool,
                 checkpoint_full=tmp_path / "full.joblib",
-                checkpoint_no_writer_receiver=tmp_path / "no_wr.joblib",
                 methods=["semantic_top1", "b0_no_memory"],
                 output=output,
             )
 
-        breakdown = json.loads((output / "writer_receiver_breakdown.json").read_text())
+        traces = json.loads((output / "traces.json").read_text())
         # Must be a dict keyed by method, not a flat list
-        assert isinstance(breakdown, dict)
-        assert "semantic_top1" in breakdown
-        assert "b0_no_memory" in breakdown
+        assert isinstance(traces, dict)
+        assert "semantic_top1" in traces
+        assert "b0_no_memory" in traces

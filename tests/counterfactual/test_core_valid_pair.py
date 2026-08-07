@@ -167,7 +167,23 @@ class TestCoreValidPair:
         )
         pool_path = tmp_path / "memory_pool.json"
         pool_path.write_text(
-            json.dumps({"memory_id": "m1", "routing_card": {"source_task_id": "t0"}})
+            json.dumps({
+                "memory_id": "m1",
+                "payload": {"procedure": "step"},
+                "routing_card": {
+                    "goal_summary": "goal",
+                    "task_tags": [],
+                    "required_tools": [],
+                    "required_capabilities": [],
+                    "execution_role_tags": [],
+                    "environment_constraints": [],
+                    "precondition_tags": [],
+                    "procedure_type": "diagnostic",
+                    "procedure_length_bucket": "short",
+                    "read_write_scope": "read",
+                    "evidence_count": 1,
+                },
+            })
             + "\n",
             encoding="utf-8",
         )

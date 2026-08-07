@@ -17,45 +17,35 @@ from smtr.router.transfer_features import (
 
 def _memory_pool_entry() -> dict:
     return {
-        "memory_id": "dbproc-traj00000001-writer01",
+        "memory_id": "dbproc-traj00000001",
         "payload": {
-            "memory_id": "dbproc-traj00000001-writer01",
+            "memory_id": "dbproc-traj00000001",
             "procedure": "1. Execute a SELECT query via sql_tool",
             "preconditions": ["Requires tools: sql_tool"],
             "postconditions": ["A supported database diagnosis is identified."],
-            "writer": {
-                "agent_id": "writer01",
-                "role": "executor",
-                "capabilities": ["sql"],
-                "model_name": "qwen-max",
-                "tool_names": ["sql_tool", "monitor_tool"],
+            "provenance": {
+                "source_agent_id": "writer01",
+                "source_agent_role": "executor",
+                "source_task_id": "101",
+                "source_trajectory_id": "traj00000001",
+                "source_split": "train",
+                "source_scenario": "database",
             },
-            "source_task_id": "101",
-            "source_scenario": "database",
-            "version": "v1",
+            "version": "v3",
         },
         "routing_card": {
-            "memory_id": "dbproc-traj00000001-writer01",
+            "memory_id": "dbproc-traj00000001",
             "goal_summary": "Diagnose database issue using 3-step evidence method.",
             "task_tags": ["database", "select"],
+            "required_tools": ["sql_tool"],
+            "required_capabilities": ["sql"],
+            "execution_role_tags": ["executor"],
             "environment_constraints": ["read-only SQL"],
-            "positive_transfer_hints": ["evidence-grounded diagnosis"],
-            "negative_transfer_hints": ["expensive diagnostic query"],
-            "writer": {
-                "agent_id": "writer01",
-                "role": "executor",
-                "capabilities": ["sql"],
-                "model_name": "qwen-max",
-                "tool_names": ["sql_tool", "monitor_tool"],
-            },
-            "source_task_id": "101",
-            "source_scenario": "database",
-            "compatible_receiver_roles": ["executor"],
-            "incompatible_receiver_roles": [],
+            "precondition_tags": ["sql_tool available"],
+            "procedure_type": "diagnostic",
+            "procedure_length_bucket": "short",
+            "read_write_scope": "read",
             "evidence_count": 1,
-            "historical_success_count": 0,
-            "historical_failure_count": 0,
-            "historical_success_rate": 0.0,
         },
     }
 
@@ -86,7 +76,7 @@ def _paired_record(entry: dict) -> dict:
         "receiver_capabilities": entry["receiver_capabilities"],
         "receiver_tool_names": entry["receiver_tool_names"],
         "receiver_model_name": entry["receiver_model_name"],
-        "candidate_memory_id": "dbproc-traj00000001-writer01",
+        "candidate_memory_id": "dbproc-traj00000001",
         "writer_agent_id": "writer01",
         "writer_role": "executor",
         "writer_capabilities": ["sql"],
@@ -141,11 +131,15 @@ def test_training_loader_preserves_receiver_context(tmp_path: Path) -> None:
     assert rs.receiver.model_name == "qwen-plus"
 
     card = training_item.candidate_card
-    assert card.writer.agent_id == "writer01"
-    assert card.writer.role == "executor"
-    assert card.writer.capabilities == ("sql",)
-    assert card.writer.tool_names == ("sql_tool", "monitor_tool")
-    assert card.writer.model_name == "qwen-max"
+    assert card.goal_summary == (
+        "Diagnose database issue using 3-step evidence method."
+    )
+    assert card.task_tags == ("database", "select")
+    assert card.required_tools == ("sql_tool",)
+    assert card.required_capabilities == ("sql",)
+    assert card.environment_constraints == ("read-only SQL",)
+    # Writer-agnostic: the card carries no writer profile at all.
+    assert not hasattr(card, "writer")
 
     # SMTR-v1: S = empty, never reconstructed from records.
     assert training_item.selected_prefix_cards == ()
@@ -168,6 +162,9 @@ def test_train_and_inference_feature_tokens_match(tmp_path: Path) -> None:
     encoder = HashingTransferFeatureEncoder(feature_block="full")
     assert encoder.tokens(training_input) == encoder.tokens(evaluation_input)
 
-    # Also for the ablation block that removes writer-receiver interaction.
-    encoder_no_wr = HashingTransferFeatureEncoder(feature_block="no_writer_receiver")
-    assert encoder_no_wr.tokens(training_input) == encoder_no_wr.tokens(evaluation_input)
+    # Also for the ablation block that removes receiver-compatibility
+    # interaction features.
+    encoder_no_ci = HashingTransferFeatureEncoder(
+        feature_block="no_compatibility_interaction"
+    )
+    assert encoder_no_ci.tokens(training_input) == encoder_no_ci.tokens(evaluation_input)

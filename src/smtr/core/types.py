@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, model_validator
 
+from pydantic import BaseModel, ConfigDict, model_validator
 
 AgentRole = Literal[
     "planner",
@@ -48,7 +48,33 @@ class ReceiverState(BaseModel):
     selected_memory_ids: tuple[str, ...] = ()
 
 
+class MemoryProvenance(BaseModel):
+    """Provenance of a memory (清单 Writer-Agnostic 第二章).
+
+    Source-agent identity is provenance only: it may be used for auditing,
+    debugging and reproducibility, but MUST NOT enter critic features,
+    candidate scoring, cohorts, baseline ranking, router inputs,
+    calibration, epsilon selection or result stratification.
+    This object must never be placed inside ``CandidateExposureInput``.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    source_agent_id: str
+    source_agent_role: AgentRole = "unknown"
+    source_task_id: str
+    source_trajectory_id: str
+    source_split: str
+    source_scenario: str
+
+
 class ProcedurePayload(BaseModel):
+    """Memory payload (schema v2, 清单 Writer-Agnostic 第三章).
+
+    ``provenance`` lives in the memory-pool artifact only; the rendered
+    injection text never includes provenance fields.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     memory_id: str
@@ -56,38 +82,42 @@ class ProcedurePayload(BaseModel):
     preconditions: tuple[str, ...] = ()
     postconditions: tuple[str, ...] = ()
 
-    writer: AgentProfile
-    source_task_id: str
-    source_scenario: str
-    version: str = "v1"
+    provenance: MemoryProvenance
+    version: str = "v2"
 
 
 class MemoryRoutingCard(BaseModel):
+    """Routing-card schema v3 (清单 Writer-Agnostic 第三章).
+
+    Writer/source-agent identity is removed from the routing surface;
+    implicit writer capabilities are replaced by explicit memory
+    requirements (required tools / capabilities / execution roles /
+    environment constraints / preconditions).
+    """
+
     model_config = ConfigDict(frozen=True)
 
     memory_id: str
     goal_summary: str
     task_tags: tuple[str, ...] = ()
+    required_tools: tuple[str, ...] = ()
+    required_capabilities: tuple[str, ...] = ()
+    execution_role_tags: tuple[AgentRole, ...] = ()
     environment_constraints: tuple[str, ...] = ()
-
-    positive_transfer_hints: tuple[str, ...] = ()
-    negative_transfer_hints: tuple[str, ...] = ()
-
-    writer: AgentProfile
-    source_task_id: str
-    source_scenario: str
-
-    compatible_receiver_roles: tuple[AgentRole, ...] = ()
-    incompatible_receiver_roles: tuple[AgentRole, ...] = ()
+    precondition_tags: tuple[str, ...] = ()
+    procedure_type: str = "unknown"
+    procedure_length_bucket: str = "unknown"
+    read_write_scope: str = "unknown"
 
     evidence_count: int = 0
-    historical_success_count: int = 0
-    historical_failure_count: int = 0
-    historical_success_rate: float = 0.0
 
 
 class CandidateExposureInput(BaseModel):
-    """One pre-execution routing input: (x_r^pre, m, w, r).
+    """One pre-execution routing input: (t, x_r^pre, m, r).
+
+    Writer-agnostic (清单 Writer-Agnostic 第一章): conditioning is on the
+    task, the receiver's pre-execution state, the candidate memory and the
+    receiver identity. No provenance enters the routing input.
 
     SMTR-v1: single receiver, single candidate memory exposure, S = ∅.
     ``selected_prefix_cards`` is always empty in v1.
@@ -103,9 +133,9 @@ class CandidateExposureInput(BaseModel):
 class PairedTransferOutcome(BaseModel):
     """Paired potential outcomes on the team-level success indicator.
 
-    Y_1 = team outcome when receiver r is exposed writer w's memory m;
-    Y_0 = team outcome when m is withheld. Labels follow the four-outcome
-    taxonomy derived from (Y_1, Y_0).
+    Y_1 = team outcome when receiver r is exposed to memory m;
+    Y_0 = team outcome when memory m is withheld from receiver r.
+    Labels follow the four-outcome taxonomy derived from (Y_1, Y_0).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -127,12 +157,15 @@ class PairedTransferOutcome(BaseModel):
 
 
 class TransferPrediction(BaseModel):
-    """Predicted four-outcome distribution q(x_r^pre, m, w, r).
+    """Predicted four-outcome distribution q(t, x_r^pre, m, r).
+
+    Writer-agnostic conditioning (清单 Writer-Agnostic 第一章):
+    q(Y^share, Y^withhold | t, o_r, m, r).
 
     Estimands:
-      tau = P(Y_1=1 | x_r^pre, m, w, r) - P(Y_0=1 | x_r^pre, m, w, r)
+      tau = P(Y_1=1 | t, x_r^pre, m, r) - P(Y_0=1 | t, x_r^pre, m, r)
           = q10 - q01   (tau_hat)
-      eta = P(Y_1=0, Y_0=1 | x_r^pre, m, w, r)
+      eta = P(Y_1=0, Y_0=1 | t, x_r^pre, m, r)
           = q01         (eta_hat, negative-transfer risk)
     """
 

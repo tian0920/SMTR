@@ -27,10 +27,8 @@ def _manifest(target_split: str) -> DatabaseCandidateManifest:
                 candidate_records=[
                     CandidateRecord(
                         memory_id="m1",
-                        writer_agent_id="w_m1",
-                        writer_role="planner",
                         receiver_role="executor",
-                        match_type="matched_writer_receiver",
+                        memory_receiver_match_type="compatible",
                         rank=1,
                         score=0.9,
                     )

@@ -1,16 +1,22 @@
 """清单 Test 7: candidate proposal must never read transfer outcomes (P0-9).
 
 The proposer may only use pre-exposure information (task instruction,
-routing card, writer/receiver roles and capabilities, environment
-compatibility, source task metadata). Paired labels, share/withhold
-outcomes, q values and test transfer statistics are forbidden inputs.
+routing-card requirements, receiver capabilities/tools, environment
+compatibility, provenance source-task metadata). Paired labels,
+share/withhold outcomes, q values and test transfer statistics are
+forbidden inputs. Writer identity is provenance only and never enters
+proposal scoring (清单 Writer-Agnostic 第二章).
 """
 
 from __future__ import annotations
 
 import inspect
 
-from smtr.core.types import AgentProfile, MemoryRoutingCard, ProcedurePayload
+from smtr.core.types import (
+    MemoryProvenance,
+    MemoryRoutingCard,
+    ProcedurePayload,
+)
 from smtr.marble.real_data import (
     CandidateEntry,
     CandidateRecord,
@@ -32,28 +38,34 @@ FORBIDDEN_INPUT_TOKENS = (
 )
 
 
-def _make_memory(memory_id: str, *, writer_role: str, caps: tuple[str, ...]) -> ExtractedMemory:
-    writer = AgentProfile(
-        agent_id=f"w-{memory_id}", role=writer_role, capabilities=caps
+def _make_memory(
+    memory_id: str,
+    *,
+    required_tools: tuple[str, ...] = (),
+    required_capabilities: tuple[str, ...] = (),
+) -> ExtractedMemory:
+    provenance = MemoryProvenance(
+        source_agent_id=f"w-{memory_id}",
+        source_agent_role="unknown",
+        source_task_id=f"src_{memory_id}",
+        source_trajectory_id=f"traj_{memory_id}",
+        source_split="train",
+        source_scenario="database",
     )
     return ExtractedMemory(
         memory_id=memory_id,
         payload=ProcedurePayload(
             memory_id=memory_id,
             procedure="1. Do something",
-            writer=writer,
-            source_task_id=f"src_{memory_id}",
-            source_scenario="database",
+            provenance=provenance,
         ),
         routing_card=MemoryRoutingCard(
             memory_id=memory_id,
             goal_summary="diagnose database latency",
             task_tags=("database", "latency"),
+            required_tools=required_tools,
+            required_capabilities=required_capabilities,
             environment_constraints=("read-only SQL",),
-            writer=writer,
-            source_task_id=f"src_{memory_id}",
-            source_scenario="database",
-            evidence_count=1,
         ),
     )
 
@@ -129,8 +141,8 @@ class TestProposerOnlyUsesPreExposureInformation:
 
     def test_injected_outcome_fields_do_not_change_selection(self):
         memories = [
-            _make_memory("mA", writer_role="executor", caps=("sql",)),
-            _make_memory("mB", writer_role="critic", caps=("review",)),
+            _make_memory("mA", required_tools=("sql_tool",), required_capabilities=("sql",)),
+            _make_memory("mB", required_tools=("review_tool",), required_capabilities=("review",)),
         ]
         clean = build_cross_task_candidates(
             memories=memories, recipients=_receivers(with_outcomes=False), top_k=4

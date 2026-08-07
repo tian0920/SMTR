@@ -6,10 +6,12 @@ Core analyses beyond the same-memory flip count:
 * predicted decision flip rate across receivers;
 * empirical effect-sign flip rate (tau_emp signs differ across receivers);
 * receiver ranking quality (pairwise accuracy / Spearman / top-receiver);
-* risk heterogeneity stratified by receiver role, writer-receiver role
-  pair, capability overlap bucket and tool overlap bucket, with a
+* risk heterogeneity stratified by receiver role and by memory-requirement
+  satisfaction against the receiver (tools / capabilities / environment /
+  execution role), plus procedure type and length bucket, with a
   task-relevance-stratified negative-transfer rate so "task irrelevant"
-  is never conflated with receiver mismatch.
+  is never conflated with receiver mismatch. Writer identity never enters
+  any stratification (清单 Writer-Agnostic 第十三章).
 
 Empirical tau per (memory, receiver) is the mean of y_share - y_withhold
 over the paired records; predicted tau/action comes from the router
@@ -24,7 +26,6 @@ from typing import Any
 import numpy as np
 
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
-from smtr.router.transfer_features import _overlap_bucket
 
 # 清单 P0-12: anchor group key is (target_task_id, candidate_memory_id).
 ReceiverEffectGroupKey = tuple[str, str]
@@ -59,7 +60,9 @@ def _receiver_decision_table(
     table: dict[tuple[str, str], dict[str, Any]] = {}
     for d in decisions:
         key = (str(d.get("candidate_memory_id", "")), str(d.get("receiver_agent_id", "")))
-        entry = table.setdefault(key, {"action": "withhold", "tau_hat": float(d.get("tau_hat", 0.0))})
+        entry = table.setdefault(
+            key, {"action": "withhold", "tau_hat": float(d.get("tau_hat", 0.0))}
+        )
         if d.get("action") == "share":
             entry["action"] = "share"
         entry["tau_hat"] = float(d.get("tau_hat", entry["tau_hat"]))
@@ -421,7 +424,8 @@ def _decision_cell_table(
     """Aggregate decision traces to (task, memory, receiver) cells.
 
     The cell action is ``share`` when at least half of the seed-level
-    decisions share; tau_hat/eta_hat are the seed means.
+    decisions share; tau_hat/eta_hat are the seed means (eta read from the
+    trace's calibrated field).
     """
     grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
     for d in decisions:
@@ -437,7 +441,9 @@ def _decision_cell_table(
         cells[cell] = {
             "action": "share" if share_rate >= 0.5 else "withhold",
             "tau_hat": float(np.mean([float(d.get("tau_hat", 0.0)) for d in entries])),
-            "eta_hat": float(np.mean([float(d.get("eta_hat", 0.0)) for d in entries])),
+            "eta_hat": float(np.mean([
+                float(d.get("eta_calibrated", d.get("eta_hat", 0.0))) for d in entries
+            ])),
         }
     return cells
 
@@ -467,11 +473,26 @@ def _task_relevance_bucket(rec: dict[str, Any], cards_by_id: dict[str, Any]) -> 
     return "relevant" if task_tags & card_tags else "irrelevant"
 
 
+def _satisfaction_bucket(required: tuple[str, ...], available: set[str]) -> str:
+    """Bucket a memory requirement set against receiver availability."""
+    if not required:
+        return "no_requirements"
+    required_set = set(required)
+    if required_set <= available:
+        return "satisfied"
+    return "partial" if required_set & available else "unsatisfied"
+
+
 def _risk_heterogeneity(
     paired_records: list[dict[str, Any]],
     cards_by_id: dict[str, Any],
 ) -> dict[str, Any]:
-    """Negative-transfer rates stratified by receiver/writer structure."""
+    """Negative-transfer rates stratified by memory-requirement satisfaction.
+
+    Strata are derived from the routing card's explicit requirements and
+    the receiver's pre-execution state only; writer identity is never used
+    (清单 Writer-Agnostic 第十三章).
+    """
 
     def _rate_table(key_fn) -> dict[str, dict[str, float]]:
         buckets: dict[str, list[int]] = defaultdict(list)
@@ -488,29 +509,53 @@ def _risk_heterogeneity(
             for key, vals in sorted(buckets.items())
         }
 
+    def _card_of(rec: dict[str, Any]):
+        return cards_by_id.get(str(rec.get("candidate_memory_id", "")))
+
     def _receiver_role(rec):
         return str(rec.get("receiver_role", "unknown"))
 
-    def _writer_receiver_pair(rec):
-        card = cards_by_id.get(str(rec.get("candidate_memory_id", "")))
-        writer_role = card.writer.role if card is not None else "unknown"
-        return f"{writer_role}->{rec.get('receiver_role', 'unknown')}"
-
-    def _cap_bucket(rec):
-        card = cards_by_id.get(str(rec.get("candidate_memory_id", "")))
+    def _tool_satisfaction(rec):
+        card = _card_of(rec)
         if card is None:
             return None
-        ctx = rec.get("decision_context", {}) or {}
-        r_caps = set(ctx.get("receiver_capabilities", ()) or ())
-        return _overlap_bucket(set(card.writer.capabilities), r_caps)
+        r_tools = set(rec.get("receiver_tool_names", []) or [])
+        return _satisfaction_bucket(card.required_tools, r_tools)
 
-    def _tool_bucket(rec):
-        card = cards_by_id.get(str(rec.get("candidate_memory_id", "")))
+    def _capability_satisfaction(rec):
+        card = _card_of(rec)
         if card is None:
             return None
-        ctx = rec.get("decision_context", {}) or {}
-        r_tools = set(ctx.get("receiver_tool_names", ()) or ())
-        return _overlap_bucket(set(card.writer.tool_names), r_tools)
+        r_caps = set(rec.get("receiver_capabilities", []) or [])
+        return _satisfaction_bucket(card.required_capabilities, r_caps)
+
+    def _environment_satisfaction(rec):
+        card = _card_of(rec)
+        if card is None:
+            return None
+        r_env = set(rec.get("environment_signature", []) or [])
+        return _satisfaction_bucket(card.environment_constraints, r_env)
+
+    def _execution_role_satisfaction(rec):
+        card = _card_of(rec)
+        if card is None:
+            return None
+        if not card.execution_role_tags:
+            return "no_requirements"
+        receiver_role = str(rec.get("receiver_role", "unknown"))
+        return (
+            "satisfied"
+            if receiver_role in {str(r) for r in card.execution_role_tags}
+            else "unsatisfied"
+        )
+
+    def _procedure_type(rec):
+        card = _card_of(rec)
+        return str(card.procedure_type) if card is not None else None
+
+    def _procedure_length_bucket(rec):
+        card = _card_of(rec)
+        return str(card.procedure_length_bucket) if card is not None else None
 
     # Negative-transfer rate stratified by task relevance so "task
     # irrelevant" is never conflated with receiver mismatch.
@@ -518,8 +563,11 @@ def _risk_heterogeneity(
 
     return {
         "by_receiver_role": _rate_table(_receiver_role),
-        "by_writer_receiver_role_pair": _rate_table(_writer_receiver_pair),
-        "by_capability_overlap_bucket": _rate_table(_cap_bucket),
-        "by_tool_overlap_bucket": _rate_table(_tool_bucket),
+        "risk_by_tool_satisfaction": _rate_table(_tool_satisfaction),
+        "risk_by_capability_satisfaction": _rate_table(_capability_satisfaction),
+        "risk_by_environment_satisfaction": _rate_table(_environment_satisfaction),
+        "risk_by_execution_role_satisfaction": _rate_table(_execution_role_satisfaction),
+        "risk_by_procedure_type": _rate_table(_procedure_type),
+        "risk_by_procedure_length_bucket": _rate_table(_procedure_length_bucket),
         "negative_transfer_rate_by_task_relevance": by_relevance,
     }

@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -16,9 +17,15 @@ import numpy as np
 
 from smtr.core.types import CandidateExposureInput
 from smtr.counterfactual.edge_keys import (
+    TreatmentEdgeKey,
     edge_equal_sample_weights,
     group_records_by_control_family,
     group_records_by_edge,
+    treatment_edge_key,
+)
+from smtr.counterfactual.paired_record import (
+    canonical_paired_record_digest,
+    edge_to_seed_set,
 )
 from smtr.marble.runtime_visibility_audit import file_digest
 from smtr.router.transfer_calibration import (
@@ -27,12 +34,224 @@ from smtr.router.transfer_calibration import (
     predicted_label,
 )
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
-from smtr.router.transfer_features import load_paired_records_with_metadata
+from smtr.router.transfer_features import (
+    build_training_data_from_records,
+    load_paired_records_with_metadata,
+)
 
 _DEFAULT_SEED = 7
 _DEFAULT_N_BOOTSTRAP = 31
 _DEFAULT_N_FEATURES = 512
 _DEFAULT_FEATURE_BLOCK = "full"
+
+
+@dataclass(frozen=True)
+class EffectiveTrainingRecords:
+    """Budget-filtered training records with provenance (清单 Fixed-Budget 3.3).
+
+    ``records`` is the exact record list that may reach feature
+    construction and critic.fit: complete treatment edges only, never
+    individual generation seeds.
+    """
+
+    records: list[dict[str, Any]]
+    parent_record_count: int
+    effective_record_count: int
+    parent_edge_count: int
+    effective_edge_count: int
+    requested_budget_fraction: float
+    realized_budget_fraction: float
+    parent_train_record_digest: str
+    effective_train_record_digest: str
+    budget_manifest_digest: str | None
+    selected_edge_keys: tuple[TreatmentEdgeKey, ...]
+    all_selected_edges_have_full_seed_support: bool
+    all_selected_edges_found: bool
+    unexpected_training_edge_count: int
+    incomplete_seed_support_edge_count: int
+
+
+def prepare_effective_training_records(
+    *,
+    train_records_path: Path,
+    budget_candidate_manifest_path: Path | None,
+    experiment_mode: str,
+    train_records_already_budgeted: bool = False,
+) -> EffectiveTrainingRecords:
+    """Load train records and apply the budget manifest before features.
+
+    清单 Fixed-Budget 第3-6章: budgeting removes complete treatment
+    edges and never individual generation seeds. The returned records are
+    the only records allowed to reach feature construction and
+    ``critic.fit``; validation and test splits are never touched here.
+    """
+    from smtr.evaluation.split_audit import load_paired_records_file
+
+    raw_train_records = load_paired_records_file(Path(train_records_path))
+    if not raw_train_records:
+        raise ValueError(
+            f"no paired training records in {train_records_path}"
+        )
+
+    parent_edge_keys = {
+        treatment_edge_key(rec) for rec in raw_train_records
+    }
+    parent_edge_seeds = edge_to_seed_set(raw_train_records)
+
+    budget_meta = None
+    if budget_candidate_manifest_path is None:
+        selected_edge_keys = set(parent_edge_keys)
+        requested_fraction = 1.0
+        realized_fraction = 1.0
+        budget_manifest_digest: str | None = None
+    else:
+        from smtr.marble.budget_sampling import (
+            filter_paired_records_by_edge_keys,
+            manifest_canonical_digest,
+            selected_treatment_edges_from_manifest,
+        )
+        from smtr.marble.real_data import DatabaseCandidateManifest
+
+        manifest = DatabaseCandidateManifest.model_validate_json(
+            Path(budget_candidate_manifest_path).read_text(encoding="utf-8")
+        )
+        if manifest.target_split != "train":
+            raise ValueError(
+                "budget candidate manifest must target the train split: "
+                f"{budget_candidate_manifest_path}"
+            )
+        budget_meta = manifest.budget_metadata
+        if budget_meta is None:
+            raise ValueError(
+                "budget candidate manifest lacks budget_metadata: "
+                f"{budget_candidate_manifest_path}"
+            )
+        selected_edge_keys = selected_treatment_edges_from_manifest(manifest)
+        requested_fraction = budget_meta.requested_fraction
+        realized_fraction = budget_meta.realized_edge_fraction
+        budget_manifest_digest = manifest_canonical_digest(manifest)
+
+    if train_records_already_budgeted:
+        # 清单 Fixed-Budget 第12章 mode B: the records file was already
+        # materialized by materialize-budgeted-records; its edge set is
+        # validated against the manifest instead of re-filtered.
+        effective_records = list(raw_train_records)
+    elif budget_candidate_manifest_path is None:
+        effective_records = list(raw_train_records)
+    else:
+        effective_records = filter_paired_records_by_edge_keys(
+            records=raw_train_records,
+            selected_edge_keys=selected_edge_keys,
+        )
+
+    if not effective_records:
+        raise ValueError(
+            "budget filtering produced an empty training record set"
+        )
+
+    observed_effective_edge_keys = {
+        treatment_edge_key(rec) for rec in effective_records
+    }
+    if not observed_effective_edge_keys:
+        raise ValueError(
+            "budget filtering produced no treatment edges"
+        )
+
+    missing_selected_edges = sorted(
+        selected_edge_keys - observed_effective_edge_keys
+    )
+    unexpected_training_edges = sorted(
+        observed_effective_edge_keys - selected_edge_keys
+    )
+    if experiment_mode == "formal":
+        if missing_selected_edges:
+            raise ValueError(
+                "budget manifest contains treatment edges without "
+                "paired training records"
+            )
+        if unexpected_training_edges:
+            raise ValueError(
+                "effective training records contain edges outside the "
+                "budget manifest"
+            )
+
+    if (
+        budget_meta is not None
+        and requested_fraction == 1.0
+        and not train_records_already_budgeted
+    ):
+        if selected_edge_keys != parent_edge_keys:
+            raise ValueError(
+                "B=1.0 budget manifest must preserve the complete "
+                "parent treatment-edge set"
+            )
+        if len(effective_records) != len(raw_train_records):
+            raise ValueError(
+                "B=1.0 filtering changed the number of paired records"
+            )
+
+    # 清单 Fixed-Budget 第6章: selected edges keep their full seed set.
+    effective_edge_seeds = edge_to_seed_set(effective_records)
+    incomplete_seed_support_edge_count = 0
+    for edge_key in selected_edge_keys:
+        expected = parent_edge_seeds.get(edge_key, set())
+        observed = effective_edge_seeds.get(edge_key, set())
+        if observed != expected:
+            incomplete_seed_support_edge_count += 1
+    if (
+        experiment_mode == "formal"
+        and incomplete_seed_support_edge_count > 0
+    ):
+        raise ValueError(
+            "budget filtering must remove whole edges, not individual "
+            "generation seeds"
+        )
+
+    required_seed_count = 5 if experiment_mode == "formal" else 3
+    wrong_seed_count_edges = [
+        edge_key
+        for edge_key, seeds in effective_edge_seeds.items()
+        if len(seeds) < required_seed_count
+    ]
+    if experiment_mode == "formal" and wrong_seed_count_edges:
+        raise ValueError(
+            "budget training records have incomplete seed support"
+        )
+
+    # 清单 Fixed-Budget 第10.1节: strong assertion before any fitting.
+    if budget_meta is not None and len(
+        observed_effective_edge_keys
+    ) != budget_meta.selected_edge_count:
+        raise ValueError(
+            "effective training edge count does not match budget "
+            "manifest metadata"
+        )
+
+    return EffectiveTrainingRecords(
+        records=effective_records,
+        parent_record_count=len(raw_train_records),
+        effective_record_count=len(effective_records),
+        parent_edge_count=len(parent_edge_keys),
+        effective_edge_count=len(observed_effective_edge_keys),
+        requested_budget_fraction=requested_fraction,
+        realized_budget_fraction=realized_fraction,
+        parent_train_record_digest=canonical_paired_record_digest(
+            raw_train_records
+        ),
+        effective_train_record_digest=canonical_paired_record_digest(
+            effective_records
+        ),
+        budget_manifest_digest=budget_manifest_digest,
+        selected_edge_keys=tuple(sorted(selected_edge_keys)),
+        all_selected_edges_have_full_seed_support=(
+            incomplete_seed_support_edge_count == 0
+        ),
+        all_selected_edges_found=not missing_selected_edges,
+        unexpected_training_edge_count=len(unexpected_training_edges),
+        incomplete_seed_support_edge_count=(
+            incomplete_seed_support_edge_count
+        ),
+    )
 
 
 def train_critic(
@@ -49,14 +268,35 @@ def train_critic(
     coverage_mode: str = "formal",
     risk_delta: float = 0.10,
     budget_candidate_manifest_path: Path | None = None,
+    train_records_already_budgeted: bool = False,
+    experiment_mode: str | None = None,
 ) -> dict[str, Any]:
     """Train four-outcome transfer critic from paired records."""
-    # Load training data with the underlying records so multi-seed treatment
-    # edges can be grouped (清单 P0-3): edge-equal sample weights keep loss
-    # balanced per treatment edge, while bootstrap clusters are
-    # task-receiver control families (清单 Shared-Control 第10章) so rows
-    # sharing one no-memory control resample together.
-    train_data = load_paired_records_with_metadata(train_records_path, memory_pool_path)
+    # 清单 Fixed-Budget 第3章: the budget manifest is applied before any
+    # feature construction or critic fitting. Budgeting removes complete
+    # treatment edges and never individual generation seeds; validation
+    # and test records are never filtered here.
+    mode = experiment_mode if experiment_mode is not None else coverage_mode
+    prepared = prepare_effective_training_records(
+        train_records_path=train_records_path,
+        budget_candidate_manifest_path=budget_candidate_manifest_path,
+        experiment_mode=mode,
+        train_records_already_budgeted=train_records_already_budgeted,
+    )
+    if not prepared.all_selected_edges_have_full_seed_support:
+        raise ValueError(
+            "budget training records have incomplete seed support"
+        )
+
+    # Build features/labels from the budget-filtered records only, keeping
+    # the raw record beside each example so multi-seed treatment edges can
+    # be grouped (清单 P0-3): edge-equal sample weights keep loss balanced
+    # per treatment edge, while bootstrap clusters are task-receiver
+    # control families (清单 Shared-Control 第10章) so rows sharing one
+    # no-memory control resample together.
+    train_data = build_training_data_from_records(
+        prepared.records, memory_pool_path
+    )
     if not train_data:
         raise ValueError(f"no valid training records in {train_records_path}")
 
@@ -75,6 +315,8 @@ def train_critic(
     if coverage_mode == "formal":
         split_audit_summary = _run_training_split_audit(
             train_records=train_records,
+            train_records_path=train_records_path,
+            prepared=prepared,
             validation_records_path=validation_records_path,
             test_records_path=test_records_path,
         )
@@ -193,6 +435,11 @@ def train_critic(
         else None
     )
     critic.memory_pool_digest = file_digest(Path(memory_pool_path))
+    # 清单 Fixed-Budget 第9章: the effective (budget-filtered) subset, not
+    # just the parent file, is the ground truth for what this critic saw.
+    critic.effective_train_record_digest = (
+        prepared.effective_train_record_digest
+    )
 
     # 清单 Shared-Control 第16.1节: shared-control and budget provenance are
     # bound into every checkpoint; budget fields come from the budgeted
@@ -206,8 +453,8 @@ def train_critic(
     critic.bootstrap_cluster_unit = "task_receiver_control_family"
     critic.adaptive_sampling_used = False
     critic.adaptive_stopping_used = False
+    budget_meta = None
     if budget_candidate_manifest_path is not None:
-        from smtr.marble.budget_sampling import manifest_canonical_digest
         from smtr.marble.real_data import DatabaseCandidateManifest
 
         budget_manifest = DatabaseCandidateManifest.model_validate_json(
@@ -226,11 +473,74 @@ def train_critic(
             budget_meta.parent_manifest_digest
         )
         critic.budget_train_candidate_manifest_digest = (
-            manifest_canonical_digest(budget_manifest)
+            prepared.budget_manifest_digest
         )
         metrics["training_budget_policy"] = budget_meta.policy_version
         metrics["training_budget_requested"] = budget_meta.requested_fraction
         metrics["training_budget_realized"] = budget_meta.realized_edge_fraction
+
+    # 清单 Fixed-Budget 第10章: structured budget provenance blocks. 第14章:
+    # budgeting scopes train treatment edges only; validation/test stay full.
+    budget_policy_block: dict[str, Any] = {
+        "name": budget_meta.policy_version if budget_meta else None,
+        "requested_fraction": prepared.requested_budget_fraction,
+        "realized_fraction": prepared.realized_budget_fraction,
+        "adaptive_sampling": (
+            budget_meta.adaptive_sampling_used if budget_meta else False
+        ),
+        "outcome_fields_used": (
+            budget_meta.outcome_fields_used if budget_meta else False
+        ),
+        "critic_predictions_used": (
+            budget_meta.critic_predictions_used if budget_meta else False
+        ),
+        "budget_scope": "train_treatment_edges_only",
+        "validation_support": "full",
+        "test_support": "full",
+    }
+    training_support_block: dict[str, Any] = {
+        "parent_train_record_count": prepared.parent_record_count,
+        "effective_train_record_count": prepared.effective_record_count,
+        "parent_train_edge_count": prepared.parent_edge_count,
+        "effective_train_edge_count": prepared.effective_edge_count,
+        "selected_edge_count_from_manifest": (
+            budget_meta.selected_edge_count
+            if budget_meta is not None
+            else prepared.effective_edge_count
+        ),
+        "all_selected_edges_found": prepared.all_selected_edges_found,
+        "unexpected_training_edge_count": (
+            prepared.unexpected_training_edge_count
+        ),
+        "incomplete_seed_support_edge_count": (
+            prepared.incomplete_seed_support_edge_count
+        ),
+        "all_selected_edges_have_full_seed_support": (
+            prepared.all_selected_edges_have_full_seed_support
+        ),
+    }
+    artifact_digests_block: dict[str, Any] = {
+        "parent_train_records": prepared.parent_train_record_digest,
+        "effective_train_records": prepared.effective_train_record_digest,
+        "budget_candidate_manifest": prepared.budget_manifest_digest,
+    }
+    critic.budget_policy_metadata = budget_policy_block
+    critic.training_support_metadata = training_support_block
+    critic.training_artifact_digests = artifact_digests_block
+    metrics["budget_policy"] = budget_policy_block
+    metrics["training_support"] = training_support_block
+    metrics["artifact_digests"] = artifact_digests_block
+
+    # 清单 Writer-Agnostic 第十章: bind the writer-agnostic method-schema
+    # metadata into the checkpoint so formal evaluation can reject legacy
+    # writer-conditioned checkpoints.
+    from smtr.marble.formal_protocol import (
+        REQUIRED_FORMAL_CHECKPOINT_METADATA,
+    )
+
+    critic.method_schema_metadata = dict(
+        REQUIRED_FORMAL_CHECKPOINT_METADATA
+    )
 
     # Save checkpoint after calibration so epsilon_star is persisted.
     critic.save(output_path)
@@ -245,6 +555,8 @@ def train_critic(
 def _run_training_split_audit(
     *,
     train_records: list[dict[str, Any]],
+    train_records_path: Path,
+    prepared: EffectiveTrainingRecords,
     validation_records_path: Path | None,
     test_records_path: Path | None,
 ) -> dict[str, Any]:
@@ -252,9 +564,18 @@ def _run_training_split_audit(
 
     Without a test file the audit still checks train/validation task and
     treatment-edge isolation plus memory-source provenance; test isolation
-    is re-checked before the formal evaluation.
+    is re-checked before the formal evaluation. 清单 Fixed-Budget 第13章:
+    the audit also verifies the effective training-record digest and
+    persists train-record provenance in its summary.
     """
     from smtr.evaluation.split_audit import audit_split_leakage, load_paired_records_file
+
+    if canonical_paired_record_digest(
+        train_records
+    ) != prepared.effective_train_record_digest:
+        raise ValueError(
+            "checkpoint effective training-record digest mismatch"
+        )
 
     splits: dict[str, list[dict[str, Any]]] = {"train": list(train_records)}
     for name, path in (
@@ -278,6 +599,13 @@ def _run_training_split_audit(
         ) from exc
     if not summary["split_integrity_passed"]:
         raise ValueError("formal critic training aborted: split audit failed")
+    summary["train_records_provenance"] = {
+        "parent_file_digest": file_digest(Path(train_records_path)),
+        "effective_record_digest": prepared.effective_train_record_digest,
+        "budget_manifest_digest": prepared.budget_manifest_digest,
+        "requested_budget_fraction": prepared.requested_budget_fraction,
+        "effective_edge_count": prepared.effective_edge_count,
+    }
     return summary
 
 
@@ -303,8 +631,18 @@ def _build_feature_audit(
     inputs: list[CandidateExposureInput],
     feature_block: str,
 ) -> dict[str, Any]:
-    """Build feature audit JSON for checkpoint."""
-    from smtr.router.transfer_features import FORBIDDEN_FEATURE_TOKENS
+    """Build feature audit JSON for checkpoint (清单 Writer-Agnostic 7.2).
+
+    Reports whether writer/provenance, receiver and memory-receiver
+    interaction features are present. Formal full checkpoints must have
+    writer_features_present=False, provenance_features_present=False,
+    receiver_features_present=True and
+    memory_receiver_interactions_present=True.
+    """
+    from smtr.router.transfer_features import (
+        FORBIDDEN_FEATURE_TOKENS,
+        FORBIDDEN_PROVENANCE_FEATURE_PREFIXES,
+    )
 
     # Check a sample of tokens
     sample = inputs[:min(100, len(inputs))]
@@ -312,8 +650,12 @@ def _build_feature_audit(
     for item in sample:
         all_tokens.extend(critic.encoder.tokens(item))
 
-    # Check writer-receiver features present
-    wr_present = any(t.startswith("wr_pair:") for t in all_tokens)
+    # Writer/provenance presence check (清单 7.1): any token whose prefix
+    # matches a forbidden provenance name fails the audit immediately.
+    provenance_found = False
+    writer_found = False
+    receiver_found = False
+    interaction_found = False
 
     # Check forbidden leakage
     forbidden_found = False
@@ -323,12 +665,24 @@ def _build_feature_audit(
         observed_prefixes.add(prefix)
         if prefix in FORBIDDEN_FEATURE_TOKENS:
             forbidden_found = True
+        if any(prefix.startswith(banned) for banned in FORBIDDEN_PROVENANCE_FEATURE_PREFIXES):
+            provenance_found = True
+            if prefix.startswith("writer") or prefix.startswith("wr_"):
+                writer_found = True
+        if prefix in {"receiver_role", "receiver_cap", "receiver_tool"}:
+            receiver_found = True
+        if prefix.startswith("mr_"):
+            interaction_found = True
 
     return {
-        "schema_version": "2.0",
+        "schema_version": "3.0",
         "feature_block": feature_block,
         "sample_count": len(sample),
-        "writer_receiver_features_present": wr_present,
-        "forbidden_feature_leakage": forbidden_found,
+        "routing_conditioning": "memory_receiver",
+        "writer_features_present": writer_found,
+        "provenance_features_present": provenance_found,
+        "receiver_features_present": receiver_found,
+        "memory_receiver_interactions_present": interaction_found,
+        "forbidden_feature_leakage": forbidden_found or provenance_found,
         "observed_prefixes": sorted(observed_prefixes),
     }

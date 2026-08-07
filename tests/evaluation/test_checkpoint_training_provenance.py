@@ -79,6 +79,14 @@ def _audit(tmp_path, *, mutate) -> dict:
     critic.validation_record_digest = file_digest(val)
     critic.memory_pool_digest = file_digest(pool)
     critic.epsilon_star = 0.2
+    critic.method_schema_metadata = {
+        "method_schema": "memory_receiver_v1",
+        "routing_conditioning": "memory_receiver",
+        "writer_features_used": False,
+        "provenance_features_used": False,
+        "outcome_level": "team_success",
+        "treatment_edge_unit": "task_receiver_memory",
+    }
     mutate(critic)
     ckpt = tmp_path / "full.joblib"
     critic.save(ckpt)

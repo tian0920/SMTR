@@ -50,6 +50,14 @@ def _save_checkpoint(path, *, feature_block, train_path, val_path, pool_path):
     critic.validation_record_digest = file_digest(val_path)
     critic.memory_pool_digest = file_digest(pool_path)
     critic.epsilon_star = 0.2
+    critic.method_schema_metadata = {
+        "method_schema": "memory_receiver_v1",
+        "routing_conditioning": "memory_receiver",
+        "writer_features_used": False,
+        "provenance_features_used": False,
+        "outcome_level": "team_success",
+        "treatment_edge_unit": "task_receiver_memory",
+    }
     critic.save(path)
     return path
 

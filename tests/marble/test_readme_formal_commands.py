@@ -27,7 +27,7 @@ def test_stage_d_passes_all_critic_checkpoints():
     for flag in (
         "--checkpoint-full",
         "--checkpoint-global-transfer-critic",
-        "--checkpoint-smtr-no-pair-interaction",
+        "--checkpoint-smtr-no-compatibility-interaction",
     ):
         assert flag in command, f"Stage D command missing {flag}"
 

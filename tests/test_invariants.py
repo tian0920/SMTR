@@ -1,4 +1,4 @@
-"""Core invariant tests: payload isolation, branch isolation, feature leakage, writer-receiver."""
+"""Core invariant tests: payload isolation, branch isolation, feature leakage, memory-receiver compatibility."""
 
 import json
 
@@ -13,28 +13,19 @@ from smtr.core.types import (
 from smtr.router.transfer_features import HashingTransferFeatureEncoder, FORBIDDEN_FEATURE_TOKENS
 
 
-def _make_writer(role: str = "planner") -> AgentProfile:
-    return AgentProfile(agent_id="w1", role=role, capabilities=("sql", "analysis"))
-
-
 def _make_receiver(role: str = "executor") -> AgentProfile:
     return AgentProfile(agent_id="r1", role=role, capabilities=("execution",))
 
 
-def _make_card(writer: AgentProfile | None = None) -> MemoryRoutingCard:
-    w = writer or _make_writer()
+def _make_card() -> MemoryRoutingCard:
     return MemoryRoutingCard(
         memory_id="mem-001",
         goal_summary="Diagnose database performance",
         task_tags=("database", "performance"),
+        required_tools=("db_query",),
+        required_capabilities=("sql",),
+        execution_role_tags=("executor",),
         environment_constraints=("read-only SQL",),
-        positive_transfer_hints=("evidence-grounded",),
-        negative_transfer_hints=("expensive query",),
-        writer=w,
-        source_task_id="task-10",
-        source_scenario="database",
-        compatible_receiver_roles=("executor",),
-        incompatible_receiver_roles=(),
         evidence_count=3,
     )
 
@@ -73,32 +64,36 @@ class TestPayloadIsolation:
 
 
 # ---------------------------------------------------------------------------
-# 15.3 Writer-receiver feature presence
+# 15.3 Memory-receiver compatibility feature presence
 # ---------------------------------------------------------------------------
 
 
-class TestWriterReceiverFeatures:
-    def test_writer_receiver_pair_features_present(self):
+class TestMemoryReceiverCompatibilityFeatures:
+    def test_memory_receiver_compatibility_features_present(self):
         encoder = HashingTransferFeatureEncoder(n_features=256, feature_block="full")
-        writer = _make_writer("planner")
         receiver = _make_receiver("executor")
-        card = _make_card(writer)
+        card = _make_card()
         state = _make_receiver_state(receiver)
         item = CandidateExposureInput(receiver_state=state, candidate_card=card)
         tokens = encoder.tokens(item)
-        assert "wr_pair:planner->executor" in tokens
-        assert "writer_role:planner" in tokens
         assert "receiver_role:executor" in tokens
-        assert "wr_same_role:False" in tokens
+        assert "memory_required_tool:db_query" in tokens
+        assert any(t.startswith("mr_tool_satisfaction:") for t in tokens)
+        assert any(t.startswith("mr_role_satisfaction:") for t in tokens)
+        # Writer/provenance identity is never encoded.
+        assert not any(t.startswith("writer") for t in tokens)
+        assert not any(t.startswith("source_agent") for t in tokens)
 
-    def test_no_writer_receiver_block_removes_features(self):
-        encoder = HashingTransferFeatureEncoder(n_features=256, feature_block="no_writer_receiver")
+    def test_no_compatibility_interaction_block_removes_features(self):
+        encoder = HashingTransferFeatureEncoder(
+            n_features=256, feature_block="no_compatibility_interaction"
+        )
         card = _make_card()
         state = _make_receiver_state()
         item = CandidateExposureInput(receiver_state=state, candidate_card=card)
         tokens = encoder.tokens(item)
-        assert not any(t.startswith("wr_") for t in tokens)
-        assert not any(t.startswith("writer_") for t in tokens)
+        assert not any(t.startswith("mr_") for t in tokens)
+        assert not any(t.startswith("writer") for t in tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -113,9 +108,9 @@ class TestFeatureLeakagePrevention:
         state = _make_receiver_state()
         item = CandidateExposureInput(receiver_state=state, candidate_card=card)
         tokens = encoder.tokens(item)
-        token_str = " ".join(tokens).lower()
-        for forbidden in FORBIDDEN_FEATURE_TOKENS:
-            assert forbidden not in token_str, f"forbidden token '{forbidden}' found in features"
+        for token in tokens:
+            prefix = token.lower().split(":", 1)[0]
+            assert prefix not in FORBIDDEN_FEATURE_TOKENS, f"forbidden token '{token}' found in features"
 
     def test_encoder_produces_valid_tokens(self):
         encoder = HashingTransferFeatureEncoder(n_features=256)
@@ -139,8 +134,7 @@ class TestSameMemoryDifferentReceiver:
 
         # Create a minimal fitted critic
         critic = FourOutcomeTransferCritic(n_features=128, n_bootstrap=3, seed=42)
-        writer = _make_writer("executor")
-        card = _make_card(writer)
+        card = _make_card()
 
         # Generate synthetic training data
         inputs = []
@@ -156,12 +150,12 @@ class TestSameMemoryDifferentReceiver:
         critic.epsilon_star = 0.5
         router = SMTRExposureRouter(critic=critic)
 
-        # Receiver A = executor (same as writer)
+        # Receiver A = executor (compatible with the card's execution role)
         recv_a = AgentProfile(agent_id="ra", role="executor", capabilities=("execution",))
         state_a = ReceiverState(task_id="t-a", scenario="database", task_instruction="test", receiver=recv_a)
         decisions_a = router.decide(state_a, [card])
 
-        # Receiver B = planner (different from writer)
+        # Receiver B = planner (incompatible role)
         recv_b = AgentProfile(agent_id="rb", role="planner", capabilities=("planning",))
         state_b = ReceiverState(task_id="t-b", scenario="database", task_instruction="test", receiver=recv_b)
         decisions_b = router.decide(state_b, [card])

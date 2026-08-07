@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from smtr.core.types import AgentProfile, MemoryRoutingCard, ProcedurePayload
+from smtr.core.types import MemoryProvenance, MemoryRoutingCard, ProcedurePayload
 
 SplitName = Literal["train", "validation", "test"]
 
@@ -84,19 +84,40 @@ class RealDatabaseTrajectory(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# Fixed tool -> capability mapping (清单 Writer-Agnostic 4.3): capabilities
+# are derived from observed procedure behaviour, never from writer profiles.
+TOOL_CAPABILITY_MAP: dict[str, str] = {
+    "sql_query": "database_read",
+    "inspect_schema": "schema_inspection",
+    "read_log": "log_analysis",
+    "monitor_metric": "metric_monitoring",
+}
+
+_WRITE_SQL_OPERATIONS = frozenset(
+    {"insert", "update", "delete", "create", "drop", "alter"}
+)
+
+
 class ExtractedMemory(BaseModel):
-    """A writer-agent procedural memory with payload + routing card."""
+    """A procedural memory entry: payload (with provenance) + routing card.
+
+    Writer-agnostic (清单 Writer-Agnostic 第二章): source-agent identity
+    lives only in ``payload.provenance`` (audit/debug/reproducibility) and
+    never enters the routing card or any candidate-facing field.
+    """
 
     model_config = ConfigDict(frozen=True)
 
+    schema_version: str = "memory_v2"
     memory_id: str
     payload: ProcedurePayload
     routing_card: MemoryRoutingCard
+    required_tools_source: str = "observed_actions"
 
     @model_validator(mode="after")
     def reject_answer_leakage(self) -> ExtractedMemory:
         card_json = json.dumps(self.routing_card.model_dump(mode="json"), sort_keys=True).lower()
-        forbidden = ("procedure", "ordered_steps", "payload", "raw_action_sequence",
+        forbidden = ("ordered_steps", "payload", "raw_action_sequence",
                      "ground_truth_label", "team_success", "y_share", "y_withhold")
         if any(token in card_json for token in forbidden):
             raise ValueError("routing card contains forbidden payload/label leakage")
@@ -108,10 +129,13 @@ def extract_procedural_memories(
     *,
     min_actions: int = 2,
 ) -> list[ExtractedMemory]:
-    """Extract writer-agent procedural memories from successful train trajectories.
+    """Extract procedural memories from successful train trajectories.
 
     Each agent slice with sufficient actions produces one memory.
     Procedure is derived from the agent's actual action/tool order.
+    Source-agent identity is recorded only as ``MemoryProvenance``
+    (清单 Writer-Agnostic 4.1); the routing card carries explicit memory
+    requirements derived from the observed procedure instead.
     """
     memories: list[ExtractedMemory] = []
     for trajectory in sorted(trajectories, key=lambda t: t.trajectory_id):
@@ -143,21 +167,52 @@ def extract_procedural_memories(
                 if sql.strip()
             })
 
-            writer = AgentProfile(
-                agent_id=agent_slice.agent_id,
-                role=agent_slice.agent_role,  # type: ignore[arg-type]
-                capabilities=agent_slice.agent_capabilities,
-                model_name=trajectory.model_id,
-                tool_names=agent_slice.tool_names,
+            provenance = MemoryProvenance(
+                source_agent_id=agent_slice.agent_id,
+                source_agent_role=agent_slice.agent_role,  # type: ignore[arg-type]
+                source_task_id=trajectory.task_id,
+                source_trajectory_id=trajectory.trajectory_id,
+                source_split=trajectory.split,
+                source_scenario=trajectory.scenario,
             )
             memory_id = f"dbproc-{trajectory.trajectory_id[:12]}-{agent_slice.agent_id[:8]}"
 
+            # 清单 4.2: required tools come from the observed procedure; the
+            # agent-profile tool set is only a fallback for legacy data.
+            observed_tools = tuple(sorted({
+                name for name in (_canonical_tool_name(a) for a in ordered_actions) if name
+            }))
+            if observed_tools:
+                required_tools = observed_tools
+                required_tools_source = "observed_actions"
+            else:
+                required_tools = tuple(sorted(agent_slice.tool_names))
+                required_tools_source = "agent_profile_fallback"
+
+            # 清单 4.3: capabilities via the fixed tool mapping only.
+            required_capabilities = tuple(sorted({
+                TOOL_CAPABILITY_MAP[tool]
+                for tool in required_tools
+                if tool in TOOL_CAPABILITY_MAP
+            }))
+
+            # 清单 4.4/4.5: behaviour-derived role tags and procedure metadata.
+            execution_role_tags = _execution_role_tags(ordered_actions)
+            read_write_scope = (
+                "write" if any(_is_write_action(a) for a in ordered_actions)
+                else "read_only"
+            )
+            procedure_type = _procedure_type(ordered_actions, sql_ops)
+            length_bucket = _procedure_length_bucket(len(steps))
+
             # Preconditions from tools/environment
             preconditions: list[str] = []
-            if agent_slice.tool_names:
-                preconditions.append(f"Requires tools: {', '.join(sorted(agent_slice.tool_names))}")
+            if required_tools:
+                preconditions.append(f"Requires tools: {', '.join(sorted(required_tools))}")
             if trajectory.environment_signature:
-                preconditions.append(f"Environment: {', '.join(sorted(trajectory.environment_signature))}")
+                preconditions.append(
+                    f"Environment: {', '.join(sorted(trajectory.environment_signature))}"
+                )
             if not preconditions:
                 preconditions.append("Database scenario with monitoring access.")
 
@@ -174,37 +229,45 @@ def extract_procedural_memories(
                 if a.get("name") or a.get("tool") or a.get("type")
             })
 
+            environment_constraints = tuple(trajectory.environment_signature)
+            precondition_tags = (
+                ("write_scope",) if read_write_scope == "write" else ("read_only_scope",)
+            )
+
             payload = ProcedurePayload(
                 memory_id=memory_id,
                 procedure=procedure_text,
                 preconditions=tuple(preconditions),
                 postconditions=tuple(postconditions),
-                writer=writer,
-                source_task_id=trajectory.task_id,
-                source_scenario=trajectory.scenario,
+                provenance=provenance,
             )
             routing_card = MemoryRoutingCard(
                 memory_id=memory_id,
                 # Goal summary is derived from observable trajectory
-                # structure (operation mix), not human transfer hints, so
-                # cards differ across trajectories beyond step count.
+                # structure (operation mix), so cards differ across
+                # trajectories beyond step count.
                 goal_summary=(
                     f"Diagnose database issue via "
                     f"{'/'.join(sql_ops) if sql_ops else 'action'}-based "
                     f"{len(steps)}-step evidence method."
                 ),
                 task_tags=("database", *action_names[:4], *sql_ops[:2]),
-                environment_constraints=tuple(trajectory.environment_signature) or ("read-only SQL",),
-                # Deprecated human-authored transfer hints / fixed compatible
-                # receiver roles are intentionally never populated: cards may
-                # only carry outcome-independent, trajectory-observable
-                # attributes.
-                writer=writer,
-                source_task_id=trajectory.task_id,
-                source_scenario=trajectory.scenario,
+                required_tools=required_tools,
+                required_capabilities=required_capabilities,
+                execution_role_tags=execution_role_tags,
+                environment_constraints=environment_constraints,
+                precondition_tags=precondition_tags,
+                procedure_type=procedure_type,
+                procedure_length_bucket=length_bucket,
+                read_write_scope=read_write_scope,
                 evidence_count=1,
             )
-            memories.append(ExtractedMemory(memory_id=memory_id, payload=payload, routing_card=routing_card))
+            memories.append(ExtractedMemory(
+                memory_id=memory_id,
+                payload=payload,
+                routing_card=routing_card,
+                required_tools_source=required_tools_source,
+            ))
     return memories
 
 
@@ -251,14 +314,85 @@ def _sql_operation_type(sql: str) -> str:
     return "query"
 
 
+def _canonical_tool_name(action: dict[str, Any]) -> str:
+    """Canonical (lowercased) tool name of one action record."""
+    return str(action.get("tool") or action.get("name") or action.get("type") or "").strip().lower()
+
+
+def _is_write_action(action: dict[str, Any]) -> bool:
+    """Deterministic write-scope detection for one action (清单 4.5)."""
+    sql = str(action.get("sql") or (action.get("arguments") or {}).get("sql") or "").strip()
+    if sql and _sql_operation_type(sql) in _WRITE_SQL_OPERATIONS:
+        return True
+    name = _canonical_tool_name(action)
+    return "write" in name or "update" in name or "insert" in name or "delete" in name
+
+
+def _execution_role_tags(ordered_actions: list[dict[str, Any]]) -> tuple[str, ...]:
+    """Behaviour-derived execution role tags (清单 Writer-Agnostic 4.4).
+
+    Roles come from what the procedure does, never from the source agent's
+    declared role. No matching behaviour yields an empty tuple.
+    """
+    tags: set[str] = set()
+    for action in ordered_actions:
+        name = _canonical_tool_name(action)
+        if not name:
+            continue
+        if any(marker in name for marker in ("plan", "decompose", "design")):
+            tags.add("planner")
+        if any(marker in name for marker in ("valid", "verify", "check", "assert")):
+            tags.add("verifier")
+        if any(marker in name for marker in ("compare", "diagnos", "analyz", "critic", "review")):
+            tags.add("critic")
+        if any(marker in name for marker in ("monitor", "metric", "read_log")):
+            tags.add("executor")
+        if action.get("tool") or action.get("sql"):
+            tags.add("executor")
+    return tuple(sorted(tags))
+
+
+def _procedure_type(ordered_actions: list[dict[str, Any]], sql_ops: list[str]) -> str:
+    """Deterministic procedure-type classification (清单 4.5, no LLM)."""
+    names = {_canonical_tool_name(a) for a in ordered_actions}
+    joined = " ".join(names)
+    has_write = any(_is_write_action(a) for a in ordered_actions)
+    has_planning = any(m in joined for m in ("plan", "decompose", "design"))
+    has_verification = any(m in joined for m in ("valid", "verify", "check", "assert"))
+    has_monitoring = any(m in joined for m in ("monitor", "metric", "read_log"))
+    has_diagnosis = (
+        any(m in joined for m in ("compare", "diagnos", "analyz", "inspect"))
+        or "select" in sql_ops
+        or "query" in sql_ops
+    )
+    kinds = sum((has_write, has_planning, has_verification, has_monitoring, has_diagnosis))
+    if kinds >= 2:
+        return "mixed"
+    if has_planning:
+        return "planning"
+    if has_verification:
+        return "verification"
+    if has_monitoring:
+        return "monitoring"
+    if has_write:
+        return "execution"
+    if has_diagnosis:
+        return "diagnosis"
+    return "execution"
+
+
+def _procedure_length_bucket(step_count: int) -> str:
+    """Fixed length bucket (清单 4.5): <=3 short, <=7 medium, else long."""
+    if step_count <= 3:
+        return "short"
+    if step_count <= 7:
+        return "medium"
+    return "long"
+
+
 # ---------------------------------------------------------------------------
 # Candidate building
 # ---------------------------------------------------------------------------
-
-MatchType = Literal[
-    "matched_writer_receiver",
-    "mismatched_writer_receiver",
-]
 
 TaskRelation = Literal[
     "cross_task_same_group",
@@ -266,27 +400,35 @@ TaskRelation = Literal[
     "cross_task_unknown_group",
 ]
 
+MemoryReceiverMatchType = Literal[
+    "compatible",
+    "partially_compatible",
+    "incompatible",
+]
+
+# 清单 Writer-Agnostic 5.4: writer-agnostic cohorts. Compatibility is
+# memory-requirement vs receiver-state satisfaction, never writer identity.
 CandidateSource = Literal[
     "semantic_top",
-    "role_matched",
-    "role_mismatched",
+    "receiver_compatible",
+    "receiver_incompatible_hard_negative",
     "cross_receiver_anchor",
 ]
 
-# 清单 P0-10: canonical cohort tags for the formal manifest. One candidate
-# can belong to several cohorts at once (e.g. an anchor that is also
-# role-matched), so records carry the full tag list.
+# Canonical cohort tags for the formal manifest. One candidate can belong
+# to several cohorts at once (e.g. an anchor that is also compatible), so
+# records carry the full tag list.
 CandidateSourceTag = Literal[
-    "semantic_topk",
-    "role_matched",
-    "role_mismatched_hard_negative",
+    "semantic_top",
+    "receiver_compatible",
+    "receiver_incompatible_hard_negative",
     "cross_receiver_anchor",
 ]
 
 _SOURCE_TAG_ORDER: tuple[CandidateSourceTag, ...] = (
-    "semantic_topk",
-    "role_matched",
-    "role_mismatched_hard_negative",
+    "semantic_top",
+    "receiver_compatible",
+    "receiver_incompatible_hard_negative",
     "cross_receiver_anchor",
 )
 
@@ -301,16 +443,16 @@ class CandidateCohortQuotas(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     semantic_top: int = 2
-    role_matched: int = 2
-    role_mismatched: int = 2
+    receiver_compatible: int = 2
+    receiver_incompatible: int = 2
     cross_receiver_anchor: int = 2
     min_task_relevance: float = 0.0
 
     @property
     def total(self) -> int:
         return (
-            self.semantic_top + self.role_matched
-            + self.role_mismatched + self.cross_receiver_anchor
+            self.semantic_top + self.receiver_compatible
+            + self.receiver_incompatible + self.cross_receiver_anchor
         )
 
 
@@ -319,24 +461,31 @@ def quotas_from_top_k(top_k: int) -> CandidateCohortQuotas:
     base, rem = divmod(max(0, top_k), 4)
     counts = {
         "semantic_top": base + (1 if rem > 0 else 0),
-        "role_matched": base + (1 if rem > 1 else 0),
-        "role_mismatched": base + (1 if rem > 2 else 0),
+        "receiver_compatible": base + (1 if rem > 1 else 0),
+        "receiver_incompatible": base + (1 if rem > 2 else 0),
         "cross_receiver_anchor": base,
     }
     return CandidateCohortQuotas(**counts)
 
 
 class CandidateRecord(BaseModel):
+    """Writer-agnostic candidate record (清单 Writer-Agnostic 5.5).
+
+    Source provenance is never copied into candidate fields; the split
+    audit resolves provenance from the memory pool by ``memory_id``.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     memory_id: str
-    writer_agent_id: str
-    writer_role: str
-    writer_capabilities: tuple[str, ...] = ()
-    writer_tool_names: tuple[str, ...] = ()
-    writer_model_name: str | None = None
     receiver_role: str
-    match_type: MatchType
+    memory_receiver_match_type: MemoryReceiverMatchType = "incompatible"
+    required_tools: tuple[str, ...] = ()
+    required_capabilities: tuple[str, ...] = ()
+    execution_role_tags: tuple[str, ...] = ()
+    missing_tools: tuple[str, ...] = ()
+    missing_capabilities: tuple[str, ...] = ()
+    unsatisfied_environment_constraints: tuple[str, ...] = ()
     task_relation: TaskRelation = "cross_task_unknown_group"
     candidate_source: CandidateSource = "semantic_top"
     candidate_sources: tuple[CandidateSourceTag, ...] = ()
@@ -393,7 +542,7 @@ class CandidateBudgetMetadata(BaseModel):
 class DatabaseCandidateManifest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    schema_version: str = "marble_candidates_v2"
+    schema_version: str = "marble_candidates_v3"
     scenario: str = "database"
     top_k: int = 4
     cohort_quotas: CandidateCohortQuotas = CandidateCohortQuotas()
@@ -416,11 +565,12 @@ def build_cross_task_candidates(
     """Build receiver-conditioned candidate sets as stratified cohorts.
 
     Each receiver's candidates come from four cohorts: semantic_top,
-    role_matched, role_mismatched hard negatives and cross_receiver_anchor.
-    Construction order is anchors first, then mismatched hard negatives,
-    then role-matched, then semantic, so semantic candidates never consume
-    anchor memories. Cohort selection only reads routing-card / receiver
-    metadata and never reads share/withhold outcomes.
+    receiver_compatible, receiver_incompatible hard negatives and
+    cross_receiver_anchor. Construction order is anchors first, then
+    incompatible hard negatives, then receiver-compatible, then semantic,
+    so semantic candidates never consume anchor memories. Cohort selection
+    only reads routing-card / receiver metadata and never reads
+    share/withhold outcomes.
     """
     quotas = cohort_quotas if cohort_quotas is not None else quotas_from_top_k(top_k)
     if min_task_relevance is not None:
@@ -428,7 +578,7 @@ def build_cross_task_candidates(
     if experiment_mode == "formal" and quotas.min_task_relevance <= 0:
         raise ValueError(
             "experiment_mode='formal' requires min_task_relevance > 0 so that "
-            "mismatched hard negatives remain task-relevant."
+            "incompatible hard negatives remain task-relevant."
         )
 
     sorted_recipients = sorted(recipients, key=lambda r: (r["task_id"], r.get("agent_id", "")))
@@ -439,7 +589,7 @@ def build_cross_task_candidates(
         pool = [
             item
             for mem in memories
-            if mem.routing_card.source_task_id != recipient["task_id"]
+            if mem.payload.provenance.source_task_id != recipient["task_id"]
             for item in (_score_memory_for_recipient(mem, recipient),)
         ]
         receiver_pools.append((recipient, pool))
@@ -456,13 +606,13 @@ def build_cross_task_candidates(
         relevant_pool = [
             it for it in by_score if it["task_sim"] >= quotas.min_task_relevance
         ]
-        matched_pool = [
+        compatible_pool = [
             it for it in relevant_pool
-            if it["matched"]
+            if it["compat"]["compatible"]
         ]
-        mismatched_pool = [
+        incompatible_pool = [
             it for it in relevant_pool
-            if it["mismatched"]
+            if it["compat"]["incompatible"]
         ]
         anchor_pool = [
             it for mid in assigned_anchor_ids
@@ -473,7 +623,13 @@ def build_cross_task_candidates(
         selected: list[tuple[dict[str, Any], CandidateSource]] = []
         chosen_ids: set[str] = set()
 
-        def _fill(source_pool: list[dict[str, Any]], quota: int, source: CandidateSource) -> None:
+        def _fill(
+            source_pool: list[dict[str, Any]],
+            quota: int,
+            source: CandidateSource,
+            selected: list[tuple[dict[str, Any], CandidateSource]],
+            chosen_ids: set[str],
+        ) -> None:
             for it in source_pool:
                 if len([s for s in selected if s[1] == source]) >= quota:
                     break
@@ -484,23 +640,36 @@ def build_cross_task_candidates(
                 selected.append((it, source))
 
         # Construction order: anchors first (so semantic candidates cannot
-        # consume anchor memories), then mismatched hard negatives, then
-        # role-matched, then semantic top, finally semantic backfill.
-        _fill(anchor_pool, quotas.cross_receiver_anchor, "cross_receiver_anchor")
-        _fill(mismatched_pool, quotas.role_mismatched, "role_mismatched")
-        _fill(matched_pool, quotas.role_matched, "role_matched")
-        _fill(relevant_pool, quotas.semantic_top, "semantic_top")
+        # consume anchor memories), then incompatible hard negatives, then
+        # receiver-compatible, then semantic top, finally semantic backfill.
+        _fill(anchor_pool, quotas.cross_receiver_anchor, "cross_receiver_anchor",
+              selected, chosen_ids)
+        _fill(
+            incompatible_pool, quotas.receiver_incompatible,
+            "receiver_incompatible_hard_negative", selected, chosen_ids,
+        )
+        _fill(compatible_pool, quotas.receiver_compatible, "receiver_compatible",
+              selected, chosen_ids)
+        _fill(relevant_pool, quotas.semantic_top, "semantic_top", selected, chosen_ids)
         # Backfill leftover budget by overall relevance (labelled semantic_top)
-        _fill(relevant_pool, quotas.total, "semantic_top")
+        _fill(relevant_pool, quotas.total, "semantic_top", selected, chosen_ids)
 
         records: list[CandidateRecord] = []
         for rank, (item, source) in enumerate(selected, 1):
             mem = item["mem"]
             card = mem.routing_card
-            w_role = card.writer.role
-            match_type: MatchType = (
-                "matched_writer_receiver" if w_role == receiver_role
-                else "mismatched_writer_receiver"
+            compat = item["compat"]
+            match_type: MemoryReceiverMatchType = (
+                "compatible" if compat["compatible"]
+                else "partially_compatible" if any(
+                    value > 0.0 for value in (
+                        compat["tool_satisfaction"],
+                        compat["capability_satisfaction"],
+                        compat["environment_satisfaction"],
+                        compat["role_satisfaction"],
+                    )
+                )
+                else "incompatible"
             )
             is_anchor = mem.memory_id in assigned_anchor_ids
             if source == "cross_receiver_anchor" or is_anchor:
@@ -513,22 +682,23 @@ def build_cross_task_candidates(
             # 清单 P0-10: mark every cohort the candidate belongs to.
             tags: set[str] = set()
             if source == "semantic_top":
-                tags.add("semantic_topk")
-            if item["matched"]:
-                tags.add("role_matched")
-            if item["mismatched"]:
-                tags.add("role_mismatched_hard_negative")
+                tags.add("semantic_top")
+            if compat["compatible"]:
+                tags.add("receiver_compatible")
+            if compat["incompatible"]:
+                tags.add("receiver_incompatible_hard_negative")
             if is_anchor:
                 tags.add("cross_receiver_anchor")
             records.append(CandidateRecord(
                 memory_id=mem.memory_id,
-                writer_agent_id=card.writer.agent_id,
-                writer_role=w_role,
-                writer_capabilities=card.writer.capabilities,
-                writer_tool_names=card.writer.tool_names,
-                writer_model_name=card.writer.model_name,
                 receiver_role=receiver_role,
-                match_type=match_type,
+                memory_receiver_match_type=match_type,
+                required_tools=card.required_tools,
+                required_capabilities=card.required_capabilities,
+                execution_role_tags=card.execution_role_tags,
+                missing_tools=item["missing_tools"],
+                missing_capabilities=item["missing_capabilities"],
+                unsatisfied_environment_constraints=item["unsatisfied_environment_constraints"],
                 task_relation="cross_task_unknown_group",
                 candidate_source=source,
                 candidate_sources=tuple(
@@ -565,66 +735,123 @@ def _score_memory_for_recipient(
     mem: ExtractedMemory,
     recipient: dict[str, Any],
 ) -> dict[str, Any]:
-    """Score one memory for one receiver using metadata only (no outcomes)."""
+    """Score one memory for one receiver using metadata only (no outcomes).
+
+    清单 Writer-Agnostic 5.3: the candidate score is the plain mean of
+    task similarity and the four requirement-satisfaction components;
+    component weights are never tuned on validation outcomes.
+    """
     card = mem.routing_card
     receiver_role = recipient.get("agent_role", "unknown")
     receiver_caps = set(recipient.get("agent_capabilities", []))
     receiver_tools = set(recipient.get("tool_names", []))
+    receiver_env = set(recipient.get("environment_signature", []))
     recipient_terms = _terms(recipient.get("instruction", ""))
     card_terms = _terms(" ".join([card.goal_summary, *card.task_tags]))
     task_sim = len(recipient_terms & card_terms) / max(1, len(recipient_terms | card_terms))
-    writer_caps = set(card.writer.capabilities)
-    cap_overlap = len(receiver_caps & writer_caps) / max(1, len(receiver_caps | writer_caps))
-    role_match = 1.0 if card.writer.role == receiver_role else 0.0
-    wr_compat = 0.5 if card.writer.role == receiver_role else -0.1
-    # Environment compatibility: constraints satisfied / total constraints
-    env_constraints = set(card.environment_constraints)
-    receiver_env = set(recipient.get("environment_signature", []))
-    env_compat = (
-        len(env_constraints & receiver_env) / len(env_constraints)
-        if env_constraints else 1.0
+    compat = _memory_receiver_compatibility(
+        card,
+        receiver_role=receiver_role,
+        receiver_capabilities=receiver_caps,
+        receiver_tools=receiver_tools,
+        receiver_environment=receiver_env,
     )
-    score = 0.35 * task_sim + 0.2 * cap_overlap + 0.15 * wr_compat + 0.15 * role_match + 0.15 * env_compat
+    score = (
+        task_sim
+        + compat["tool_satisfaction"]
+        + compat["capability_satisfaction"]
+        + compat["environment_satisfaction"]
+        + compat["role_satisfaction"]
+    ) / 5.0
     components = {
-        "task_similarity_raw": round(task_sim, 4),
-        "task_similarity_weighted": round(0.35 * task_sim, 4),
-        "capability_overlap_raw": round(cap_overlap, 4),
-        "capability_overlap_weighted": round(0.2 * cap_overlap, 4),
-        "writer_receiver_compatibility_raw": round(wr_compat, 4),
-        "writer_receiver_compatibility_weighted": round(0.15 * wr_compat, 4),
-        "role_match_raw": round(role_match, 4),
-        "role_match_weighted": round(0.15 * role_match, 4),
-        "environment_compatibility_raw": round(env_compat, 4),
-        "environment_compatibility_weighted": round(0.15 * env_compat, 4),
+        "task_similarity": round(task_sim, 4),
+        "tool_satisfaction": round(float(compat["tool_satisfaction"]), 4),
+        "capability_satisfaction": round(float(compat["capability_satisfaction"]), 4),
+        "environment_satisfaction": round(float(compat["environment_satisfaction"]), 4),
+        "role_satisfaction": round(float(compat["role_satisfaction"]), 4),
     }
-    matched, mismatched = _writer_receiver_alignment(card, receiver_role, receiver_caps, receiver_tools)
     return {
         "mem": mem,
         "score": score,
         "components": components,
         "task_sim": task_sim,
-        "matched": matched,
-        "mismatched": mismatched,
+        "compat": compat,
+        "missing_tools": tuple(sorted(set(card.required_tools) - receiver_tools)),
+        "missing_capabilities": tuple(
+            sorted(set(card.required_capabilities) - receiver_caps)
+        ),
+        "unsatisfied_environment_constraints": tuple(
+            sorted(set(card.environment_constraints) - receiver_env)
+        ),
     }
 
 
-def _writer_receiver_alignment(
-    card: MemoryRoutingCard,
-    receiver_role: str,
-    receiver_caps: set[str],
-    receiver_tools: set[str],
-) -> tuple[bool, bool]:
-    """Return (matched, mismatched) writer-receiver alignment flags.
+def _requirement_satisfaction(
+    required: set[str],
+    available: set[str],
+) -> float:
+    """Fraction of required items satisfied; empty requirements satisfy (清单 5.1)."""
+    if not required:
+        return 1.0
 
-    matched: same role OR overlapping capabilities OR overlapping tools.
-    mismatched (hard negative): different role AND no capability/tool overlap.
+    return len(required & available) / len(required)
+
+
+def _memory_receiver_compatibility(
+    card: MemoryRoutingCard,
+    *,
+    receiver_role: str,
+    receiver_capabilities: set[str],
+    receiver_tools: set[str],
+    receiver_environment: set[str],
+) -> dict[str, float | bool]:
+    """Memory-requirement vs receiver-state satisfaction (清单 5.2).
+
+    Compatibility is defined by explicit memory requirements only; writer
+    identity never participates.
     """
-    role_same = card.writer.role == receiver_role
-    cap_overlaps = bool(receiver_caps & set(card.writer.capabilities))
-    tool_overlaps = bool(receiver_tools & set(card.writer.tool_names))
-    matched = role_same or cap_overlaps or tool_overlaps
-    mismatched = (not role_same) and (not cap_overlaps) and (not tool_overlaps)
-    return matched, mismatched
+    tool_satisfaction = _requirement_satisfaction(
+        set(card.required_tools),
+        receiver_tools,
+    )
+
+    capability_satisfaction = _requirement_satisfaction(
+        set(card.required_capabilities),
+        receiver_capabilities,
+    )
+
+    environment_satisfaction = _requirement_satisfaction(
+        set(card.environment_constraints),
+        receiver_environment,
+    )
+
+    role_satisfaction = (
+        1.0
+        if not card.execution_role_tags
+        or receiver_role in card.execution_role_tags
+        else 0.0
+    )
+
+    compatible = (
+        tool_satisfaction == 1.0
+        and capability_satisfaction == 1.0
+        and environment_satisfaction == 1.0
+    )
+
+    incompatible = (
+        tool_satisfaction < 1.0
+        or capability_satisfaction < 1.0
+        or environment_satisfaction < 1.0
+    )
+
+    return {
+        "tool_satisfaction": tool_satisfaction,
+        "capability_satisfaction": capability_satisfaction,
+        "environment_satisfaction": environment_satisfaction,
+        "role_satisfaction": role_satisfaction,
+        "compatible": compatible,
+        "incompatible": incompatible,
+    }
 
 
 def _select_anchor_assignments(
@@ -679,10 +906,10 @@ def validate_receiver_effect_coverage(
 ) -> dict[str, Any]:
     """Audit candidate coverage required for receiver-effect identification.
 
-    Checks every receiver carries matched and mismatched candidates, that at
-    least one memory is evaluated by multiple receivers (and multiple
-    receiver roles), that anchor candidates meet min task relevance, and that
-    the candidate schema never carries outcome labels.
+    Checks every receiver carries compatible and incompatible candidates,
+    that at least one memory is evaluated by multiple receivers (and
+    multiple receiver roles), that anchor candidates meet min task
+    relevance, and that the candidate schema never carries outcome labels.
     """
     if isinstance(candidate_manifest, dict):
         manifest = DatabaseCandidateManifest.model_validate(candidate_manifest)
@@ -691,11 +918,11 @@ def validate_receiver_effect_coverage(
 
     min_relevance = manifest.cohort_quotas.min_task_relevance
     total_records = 0
-    matched_records = 0
-    mismatched_records = 0
+    compatible_records = 0
+    incompatible_records = 0
     anchor_records = 0
-    receivers_without_matched: list[str] = []
-    receivers_without_mismatched: list[str] = []
+    receivers_without_compatible: list[str] = []
+    receivers_without_incompatible: list[str] = []
     memory_receivers: dict[str, set[tuple[str, str]]] = {}
     memory_roles: dict[str, set[str]] = {}
     anchor_memory_receivers: dict[str, set[tuple[str, str]]] = {}
@@ -707,33 +934,33 @@ def validate_receiver_effect_coverage(
         key = (entry.task_id, entry.receiver_agent_id)
         recs = entry.candidate_records
         total_records += len(recs)
-        has_matched = False
-        has_mismatched = False
+        has_compatible = False
+        has_incompatible = False
         for rec in recs:
             memory_receivers.setdefault(rec.memory_id, set()).add(key)
             memory_roles.setdefault(rec.memory_id, set()).add(entry.receiver_role)
             cohort_relevances.setdefault(rec.candidate_source, []).append(
-                rec.score_components.get("task_similarity_raw", 0.0)
+                rec.score_components.get("task_similarity", 0.0)
             )
-            if rec.candidate_source == "role_matched":
-                matched_records += 1
-            elif rec.candidate_source == "role_mismatched":
-                mismatched_records += 1
+            if rec.candidate_source == "receiver_compatible":
+                compatible_records += 1
+            elif rec.candidate_source == "receiver_incompatible_hard_negative":
+                incompatible_records += 1
             elif rec.candidate_source == "cross_receiver_anchor":
                 anchor_records += 1
                 anchor_memory_receivers.setdefault(rec.memory_id, set()).add(key)
                 anchor_memory_roles.setdefault(rec.memory_id, set()).add(entry.receiver_role)
-                task_sim = rec.score_components.get("task_similarity_raw", 0.0)
+                task_sim = rec.score_components.get("task_similarity", 0.0)
                 if task_sim < min_relevance:
                     anchor_relevance_ok = False
-            if rec.match_type == "matched_writer_receiver":
-                has_matched = True
-            else:
-                has_mismatched = True
-        if not has_matched:
-            receivers_without_matched.append(f"{key[0]}:{key[1]}")
-        if not has_mismatched:
-            receivers_without_mismatched.append(f"{key[0]}:{key[1]}")
+            if rec.memory_receiver_match_type == "compatible":
+                has_compatible = True
+            elif rec.memory_receiver_match_type == "incompatible":
+                has_incompatible = True
+        if not has_compatible:
+            receivers_without_compatible.append(f"{key[0]}:{key[1]}")
+        if not has_incompatible:
+            receivers_without_incompatible.append(f"{key[0]}:{key[1]}")
 
     total_unique_memories = len(memory_receivers)
     seen_by_2plus_receivers = sum(1 for r in memory_receivers.values() if len(r) >= 2)
@@ -769,11 +996,11 @@ def validate_receiver_effect_coverage(
         "receiver_effect_coverage": round(
             seen_by_2plus_receivers / total_unique_memories, 4
         ) if total_unique_memories else 0.0,
-        "matched_candidate_rate": round(
-            matched_records / total_records, 4
+        "compatible_candidate_rate": round(
+            compatible_records / total_records, 4
         ) if total_records else 0.0,
-        "mismatched_candidate_rate": round(
-            mismatched_records / total_records, 4
+        "incompatible_candidate_rate": round(
+            incompatible_records / total_records, 4
         ) if total_records else 0.0,
         "cross_receiver_anchor_rate": round(
             anchor_records / total_records, 4
@@ -781,8 +1008,8 @@ def validate_receiver_effect_coverage(
         "cohort_relevance_summary": cohort_relevance_summary,
     }
     checks = {
-        "all_receivers_have_matched_candidate": not receivers_without_matched,
-        "all_receivers_have_mismatched_candidate": not receivers_without_mismatched,
+        "all_receivers_have_compatible_candidate": not receivers_without_compatible,
+        "all_receivers_have_incompatible_candidate": not receivers_without_incompatible,
         "has_memory_seen_by_2plus_receivers": seen_by_2plus_receivers > 0,
         "has_memory_seen_by_2plus_receiver_roles": seen_by_2plus_roles > 0,
         "has_cross_receiver_anchor": anchor_cross_receiver > 0,
@@ -793,8 +1020,8 @@ def validate_receiver_effect_coverage(
     return {
         "statistics": stats,
         "checks": checks,
-        "receivers_without_matched_candidate": receivers_without_matched,
-        "receivers_without_mismatched_candidate": receivers_without_mismatched,
+        "receivers_without_compatible_candidate": receivers_without_compatible,
+        "receivers_without_incompatible_candidate": receivers_without_incompatible,
         "ok": all(checks.values()),
     }
 
@@ -809,8 +1036,8 @@ def compute_proposal_support_metrics(
     """Proposal support statistics required by 清单 P0-11.
 
     These are not extra benchmarks; they verify that the proposal actually
-    exposes cross-agent heterogeneity (role-matched vs hard negatives,
-    cross-receiver anchors) for the receiver-effect analysis.
+    exposes cross-agent heterogeneity (receiver-compatible vs hard
+    negatives, cross-receiver anchors) for the receiver-effect analysis.
     """
     if isinstance(manifest, dict):
         manifest = DatabaseCandidateManifest.model_validate(manifest)
@@ -818,8 +1045,8 @@ def compute_proposal_support_metrics(
     per_receiver_counts: dict[str, int] = {}
     source_distribution: dict[str, int] = {tag: 0 for tag in _SOURCE_TAG_ORDER}
     total_candidates = 0
-    matched_candidates = 0
-    mismatched_candidates = 0
+    compatible_candidates = 0
+    incompatible_candidates = 0
     anchor_memories: dict[str, set[tuple[str, str]]] = {}
     all_memory_receivers: dict[str, set[tuple[str, str]]] = {}
 
@@ -834,10 +1061,10 @@ def compute_proposal_support_metrics(
                 tags = {_legacy_source_tag(rec.candidate_source)}
             for tag in tags:
                 source_distribution[tag] = source_distribution.get(tag, 0) + 1
-            if "role_matched" in tags:
-                matched_candidates += 1
-            if "role_mismatched_hard_negative" in tags:
-                mismatched_candidates += 1
+            if "receiver_compatible" in tags:
+                compatible_candidates += 1
+            if "receiver_incompatible_hard_negative" in tags:
+                incompatible_candidates += 1
             if "cross_receiver_anchor" in tags:
                 anchor_memories.setdefault(rec.memory_id, set()).add(
                     (entry.task_id, entry.receiver_agent_id)
@@ -850,11 +1077,11 @@ def compute_proposal_support_metrics(
     return {
         "candidate_count_per_receiver": per_receiver_counts,
         "total_candidate_count": total_candidates,
-        "role_matched_candidate_rate": (
-            round(matched_candidates / total_candidates, 4) if total_candidates else 0.0
+        "receiver_compatible_candidate_rate": (
+            round(compatible_candidates / total_candidates, 4) if total_candidates else 0.0
         ),
-        "role_mismatched_candidate_rate": (
-            round(mismatched_candidates / total_candidates, 4)
+        "receiver_incompatible_candidate_rate": (
+            round(incompatible_candidates / total_candidates, 4)
             if total_candidates
             else 0.0
         ),
@@ -874,13 +1101,15 @@ def compute_proposal_support_metrics(
     }
 
 
-def _legacy_source_tag(source: CandidateSource) -> CandidateSourceTag:
-    """Map the legacy single-cohort label onto the canonical tag."""
-    if source == "role_mismatched":
-        return "role_mismatched_hard_negative"
-    if source == "semantic_top":
-        return "semantic_topk"
-    return source  # role_matched / cross_receiver_anchor keep their names
+def _legacy_source_tag(source: str) -> CandidateSourceTag:
+    """Map legacy single-cohort labels onto the canonical cohort tags."""
+    if source in ("role_mismatched", "receiver_incompatible_hard_negative"):
+        return "receiver_incompatible_hard_negative"
+    if source in ("role_matched", "receiver_compatible"):
+        return "receiver_compatible"
+    if source == "cross_receiver_anchor":
+        return "cross_receiver_anchor"
+    return "semantic_top"
 
 
 def require_receiver_effect_coverage(
@@ -889,7 +1118,7 @@ def require_receiver_effect_coverage(
     """Fail fast when coverage checks do not pass (formal data generation).
 
     Formal experiments must fail, not warn, when any receiver lacks
-    matched/mismatched candidates or when no cross-receiver (and
+    compatible/incompatible candidates or when no cross-receiver (and
     cross-receiver-role) anchor exists.
     """
     if coverage.get("ok"):
@@ -970,7 +1199,7 @@ def load_receiver_entries(
     split: str,
 ) -> list[dict[str, Any]]:
     """Load receiver entries for a given split from dataset + split manifests."""
-    from smtr.marble.io import load_split_task_ids, load_dataset_tasks
+    from smtr.marble.io import load_dataset_tasks, load_split_task_ids
 
     task_ids = load_split_task_ids(split_manifest_path, split)
     tasks = load_dataset_tasks(dataset_manifest_path)

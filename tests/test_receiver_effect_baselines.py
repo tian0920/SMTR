@@ -15,9 +15,9 @@ from smtr.evaluation.receiver_effect_analysis import analyze_receiver_effect
 from smtr.marble.paired_evaluation import MAIN_TABLE_METHODS, run_paired_decision_evaluation
 from smtr.router.baselines import (
     GlobalTransferCriticRouter,
-    RoleAwareTop1Router,
+    ReceiverCompatibleTop1Router,
     SemanticTop1Router,
-    SMTRNoPairInteractionRouter,
+    SMTRNoCompatibilityInteractionRouter,
 )
 
 
@@ -31,26 +31,19 @@ def _card(
     *,
     goal_summary: str = "goal",
     task_tags: tuple[str, ...] = (),
-    writer_role: str = "executor",
-    writer_caps: tuple[str, ...] = (),
-    writer_tools: tuple[str, ...] = (),
-    compatible: tuple[str, ...] = (),
-    incompatible: tuple[str, ...] = (),
+    required_tools: tuple[str, ...] = (),
+    required_capabilities: tuple[str, ...] = (),
+    execution_role_tags: tuple[str, ...] = (),
+    environment_constraints: tuple[str, ...] = (),
 ) -> MemoryRoutingCard:
     return MemoryRoutingCard(
         memory_id=memory_id,
         goal_summary=goal_summary,
         task_tags=task_tags,
-        writer=AgentProfile(
-            agent_id=f"w_{memory_id}",
-            role=writer_role,
-            capabilities=writer_caps,
-            tool_names=writer_tools,
-        ),
-        source_task_id="t_src",
-        source_scenario="database",
-        compatible_receiver_roles=compatible,
-        incompatible_receiver_roles=incompatible,
+        required_tools=required_tools,
+        required_capabilities=required_capabilities,
+        execution_role_tags=execution_role_tags,
+        environment_constraints=environment_constraints,
     )
 
 
@@ -77,33 +70,31 @@ def _receiver_state(
 # ---------------------------------------------------------------------------
 
 
-class TestRoleAwareTop1:
-    def test_prefers_compatible_receiver_features(self):
+class TestReceiverCompatibleTop1:
+    def test_prefers_satisfied_requirements(self):
         card_db = _card(
             "mem_db",
             goal_summary="optimize database query",
             task_tags=("database",),
-            writer_caps=("sql",),
-            writer_tools=("psql",),
-            incompatible=("critic",),
+            required_capabilities=("sql",),
+            required_tools=("psql",),
         )
         card_review = _card(
             "mem_review",
             goal_summary="review code changes",
             task_tags=("review",),
-            writer_caps=("review",),
-            writer_tools=("git",),
-            compatible=("executor",),
+            required_capabilities=("review",),
+            required_tools=("git",),
         )
         rs = _receiver_state(
             role="executor", caps=("review",), tools=("git",),
             instruction="review code changes",
         )
 
-        router = RoleAwareTop1Router()
+        router = ReceiverCompatibleTop1Router()
         decisions = router.decide(rs, [card_db, card_review])
         shared = [d.memory_id for d in decisions if d.action == "share"]
-        assert shared == ["mem_review"], "role/cap/tool compatible card must win"
+        assert shared == ["mem_review"], "requirement-satisfied card must win"
 
         # Deterministic across repeated calls
         again = router.decide(rs, [card_review, card_db])
@@ -113,14 +104,15 @@ class TestRoleAwareTop1:
 
 
 class TestSemanticTop1:
-    def test_selects_by_semantic_similarity_ignoring_roles(self):
-        # mem_b is role-matched (writer role == receiver role) but semantically
-        # unrelated; mem_a shares task tokens with the instruction. SemanticTop1
-        # must pick mem_a because only semantic similarity may drive the choice.
+    def test_selects_by_semantic_similarity_ignoring_requirements(self):
+        # mem_b's explicit requirements are fully satisfied by the receiver
+        # but it is semantically unrelated; mem_a shares task tokens with
+        # the instruction. SemanticTop1 must pick mem_a because only
+        # semantic similarity may drive the choice.
         card_a = _card("mem_a", goal_summary="review code changes", task_tags=("review",),
-                       writer_role="critic")
+                       required_tools=("admin_console",))
         card_b = _card("mem_b", goal_summary="unrelated topic", task_tags=("other",),
-                       writer_role="executor", writer_caps=("sql",), writer_tools=("git",))
+                       required_capabilities=("sql",), required_tools=("git",))
         rs = _receiver_state(role="executor", caps=("sql",), tools=("git",),
                              instruction="review code changes")
 
@@ -130,8 +122,8 @@ class TestSemanticTop1:
         assert shared[0].memory_id == "mem_a"
         assert shared[0].reason == "semantic_top1"
 
-        # RoleAwareTop1 adds role/capability compatibility and can differ.
-        top1 = RoleAwareTop1Router().decide(rs, [card_a, card_b])
+        # ReceiverCompatibleTop1 adds requirement satisfaction and differs.
+        top1 = ReceiverCompatibleTop1Router().decide(rs, [card_a, card_b])
         assert [d.memory_id for d in top1 if d.action == "share"] == ["mem_b"]
 
 
@@ -155,7 +147,7 @@ class TestAblationRoutersFeatureBlock:
         with pytest.raises(ValueError):
             GlobalTransferCriticRouter(critic=critic)
         with pytest.raises(ValueError):
-            SMTRNoPairInteractionRouter(critic=critic)
+            SMTRNoCompatibilityInteractionRouter(critic=critic)
 
     def test_accept_matching_feature_block_and_decide(self):
         critic = MagicMock()
@@ -169,12 +161,12 @@ class TestAblationRoutersFeatureBlock:
         assert [d.action for d in decisions] == ["share"]
 
         critic_np = MagicMock()
-        critic_np.feature_block = "no_pair_interaction"
+        critic_np.feature_block = "no_compatibility_interaction"
         critic_np.epsilon_star = 0.2
         critic_np.predict.return_value = SimpleNamespace(tau_hat=-0.1, eta_hat=0.05)
         critic_np.predict_calibrated.return_value = SimpleNamespace(
             tau_hat=-0.1, eta_hat=0.05, eta_hat_calibrated=0.05)
-        router_np = SMTRNoPairInteractionRouter(critic=critic_np)
+        router_np = SMTRNoCompatibilityInteractionRouter(critic=critic_np)
         decisions_np = router_np.decide(_receiver_state(), [_card("mem1")])
         assert [d.action for d in decisions_np] == ["withhold"]
 
@@ -201,6 +193,9 @@ def _paired(memory_id, receiver, y_share, y_withhold, *, receiver_role="executor
         "candidate_memory_id": memory_id,
         "receiver_agent_id": receiver,
         "receiver_role": receiver_role,
+        "receiver_capabilities": list(ctx_caps),
+        "receiver_tool_names": [],
+        "environment_signature": [],
         "share": {"team_success": bool(y_share)},
         "withhold": {"team_success": bool(y_withhold)},
         "task_id": "t1",
@@ -254,7 +249,7 @@ class TestReceiverRanking:
 class TestRiskHeterogeneity:
     def test_stratified_negative_transfer_rates(self):
         card = _card(
-            "m1", writer_role="executor", writer_caps=("sql",),
+            "m1", required_capabilities=("sql",),
             task_tags=("database",),
         )
         paired = [
@@ -269,10 +264,9 @@ class TestRiskHeterogeneity:
 
         assert risk["by_receiver_role"]["critic"]["negative_transfer_rate"] == 1.0
         assert risk["by_receiver_role"]["executor"]["negative_transfer_rate"] == 0.0
-        assert risk["by_writer_receiver_role_pair"]["executor->critic"]["n"] == 1
-        # writer caps {sql}: r1 has no caps -> "none" bucket, r2 matches -> "high"
-        assert risk["by_capability_overlap_bucket"]["none"]["negative_transfer_rate"] == 1.0
-        assert risk["by_capability_overlap_bucket"]["high"]["negative_transfer_rate"] == 0.0
+        # r1 lacks the sql capability -> unsatisfied; r2 matches -> satisfied.
+        assert risk["risk_by_capability_satisfaction"]["unsatisfied"]["negative_transfer_rate"] == 1.0
+        assert risk["risk_by_capability_satisfaction"]["satisfied"]["negative_transfer_rate"] == 0.0
         by_rel = risk["negative_transfer_rate_by_task_relevance"]
         assert by_rel["relevant"]["negative_transfer_rate"] == 1.0
         assert by_rel["irrelevant"]["negative_transfer_rate"] == 0.0
@@ -288,9 +282,9 @@ class TestMainTableMethods:
         assert MAIN_TABLE_METHODS == [
             "b0_no_memory",
             "semantic_top1",
-            "role_aware_top1",
+            "receiver_compatible_top1",
             "global_transfer_critic",
-            "smtr_no_pair_interaction",
+            "smtr_no_compatibility_interaction",
             "smtr_no_risk",
             "smtr",
         ]
@@ -322,16 +316,16 @@ def _pool_line(memory_id: str) -> str:
         "memory_id": memory_id,
         "payload": {"procedure": "step"},
         "routing_card": {
-            "writer": {"agent_id": "w1", "role": "executor", "capabilities": []},
             "goal_summary": "goal",
             "task_tags": [],
+            "required_tools": [],
+            "required_capabilities": [],
+            "execution_role_tags": [],
             "environment_constraints": [],
-            "positive_transfer_hints": [],
-            "negative_transfer_hints": [],
-            "source_task_id": "t_src",
-            "source_scenario": "database",
-            "compatible_receiver_roles": [],
-            "incompatible_receiver_roles": [],
+            "precondition_tags": [],
+            "procedure_type": "diagnostic",
+            "procedure_length_bucket": "short",
+            "read_write_scope": "read_only",
             "evidence_count": 1,
         },
     })
@@ -410,7 +404,7 @@ class TestPairedEvaluationArtifacts:
                 paired_records_path=paired_records,
                 memory_pool_path=memory_pool,
                 checkpoint_full=tmp_path / "full.joblib",
-                methods=["b0_no_memory", "semantic_top1", "role_aware_top1", "smtr"],
+                methods=["b0_no_memory", "semantic_top1", "receiver_compatible_top1", "smtr"],
                 output=output,
             )
 

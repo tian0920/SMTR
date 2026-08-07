@@ -1,9 +1,9 @@
 """Formal checkpoint role registry for the split-audit protocol (清单 P0-2).
 
 Formal evaluations consume several critic checkpoints (full / global
-transfer / no-pair interaction). The role -> feature-block / method
-mapping is defined here exactly once so the split audit, the end-to-end
-validation and the CLI never hard-code divergent copies.
+transfer / no-compatibility interaction). The role -> feature-block /
+method mapping is defined here exactly once so the split audit, the
+end-to-end validation and the CLI never hard-code divergent copies.
 """
 
 from __future__ import annotations
@@ -27,10 +27,10 @@ FORMAL_CHECKPOINT_ROLES: dict[str, dict[str, Any]] = {
             "global_transfer_critic",
         },
     },
-    "no_pair_interaction": {
-        "feature_block": "no_pair_interaction",
+    "no_compatibility_interaction": {
+        "feature_block": "no_compatibility_interaction",
         "methods": {
-            "smtr_no_pair_interaction",
+            "smtr_no_compatibility_interaction",
         },
     },
 }
@@ -40,7 +40,7 @@ def required_checkpoint_roles_for_methods(methods: list[str]) -> set[str]:
     """Checkpoint roles that a method list must have bound (清单 3.4).
 
     Methods without a critic checkpoint (b0_no_memory, semantic_top1,
-    role_aware_top1, ...) require none.
+    receiver_compatible_top1, ...) require none.
     """
     required: set[str] = set()
 
@@ -49,8 +49,8 @@ def required_checkpoint_roles_for_methods(methods: list[str]) -> set[str]:
             required.add("full")
         elif method == "global_transfer_critic":
             required.add("global_transfer")
-        elif method == "smtr_no_pair_interaction":
-            required.add("no_pair_interaction")
+        elif method == "smtr_no_compatibility_interaction":
+            required.add("no_compatibility_interaction")
 
     return required
 

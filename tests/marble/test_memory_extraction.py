@@ -90,14 +90,16 @@ def test_different_trajectories_different_procedures():
 
 
 def test_routing_card_no_procedure():
-    """Routing card must not contain procedure text."""
+    """Routing card must not contain procedure text (清单 Writer-Agnostic
+    第三章: procedure lives in the payload, the card carries only
+    requirement metadata plus coarse procedure type/length buckets)."""
     traj = _make_trajectory(actions=[
         {"name": "step_a", "tool": "tool_a"},
         {"name": "step_b", "tool": "tool_b"},
     ])
     memories = extract_procedural_memories([traj], min_actions=2)
     card_json = json.dumps(memories[0].routing_card.model_dump(mode="json")).lower()
-    assert "procedure" not in card_json
+    assert memories[0].payload.procedure.lower() not in card_json
     assert "ordered_steps" not in card_json
 
 
@@ -136,16 +138,26 @@ def test_failed_trajectory_no_memory():
     assert len(memories) == 0
 
 
-def test_writer_is_real_agent():
-    """Writer must equal the real agent from the trajectory."""
+def test_provenance_is_real_agent():
+    """Provenance must equal the real agent from the trajectory, and the
+    routing card must carry no source-agent fields (清单 Writer-Agnostic
+    第二、三章)."""
     traj = _make_trajectory(
         actions=[{"name": "a", "tool": "t1"}, {"name": "b", "tool": "t2"}],
         agent_id="real_writer_42",
         agent_role="planner",
     )
     memories = extract_procedural_memories([traj], min_actions=2)
-    assert memories[0].payload.writer.agent_id == "real_writer_42"
-    assert memories[0].payload.writer.role == "planner"
+    provenance = memories[0].payload.provenance
+    assert provenance.source_agent_id == "real_writer_42"
+    assert provenance.source_agent_role == "planner"
+    assert provenance.source_task_id == "task1"
+    assert provenance.source_trajectory_id == "traj001"
+    card_keys = set(memories[0].routing_card.model_dump())
+    assert not card_keys & {
+        "writer", "source_agent_id", "source_agent_role",
+        "source_task_id", "source_trajectory_id",
+    }
 
 
 def test_normalize_sql():

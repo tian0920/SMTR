@@ -15,13 +15,13 @@ from smtr.evaluation.experiment_protocol import (
 )
 from smtr.evaluation.split_audit import _METHOD_CHECKPOINT_ROLES
 from smtr.evaluation.split_audit_validation import validate_split_audit_artifact
-from smtr.marble.io import load_split_task_ids, load_dataset_tasks
 from smtr.marble.formal_protocol import verify_formal_checkpoint_blocks
-from smtr.marble.runtime_visibility_audit import file_digest
+from smtr.marble.io import load_dataset_tasks, load_split_task_ids
 from smtr.marble.paired_evaluation import (
     _build_routers,
     build_receiver_state_from_entry,
 )
+from smtr.marble.runtime_visibility_audit import file_digest
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import build_routing_card_from_pool_entry
 
@@ -105,9 +105,8 @@ def run_end_to_end_evaluation(
     candidate_manifest_path: Path,
     memory_pool_path: Path,
     checkpoint_full: Path,
-    checkpoint_no_writer_receiver: Path | None = None,
     checkpoint_global_transfer_critic: Path | None = None,
-    checkpoint_smtr_no_pair_interaction: Path | None = None,
+    checkpoint_smtr_no_compatibility_interaction: Path | None = None,
     methods: list[str],
     generation_seeds: list[int],
     negative_risk_budget: float | None = None,
@@ -161,9 +160,9 @@ def run_end_to_end_evaluation(
         checkpoint_role_paths["global_transfer"] = (
             checkpoint_global_transfer_critic
         )
-    if checkpoint_smtr_no_pair_interaction is not None:
-        checkpoint_role_paths["no_pair_interaction"] = (
-            checkpoint_smtr_no_pair_interaction
+    if checkpoint_smtr_no_compatibility_interaction is not None:
+        checkpoint_role_paths["no_compatibility_interaction"] = (
+            checkpoint_smtr_no_compatibility_interaction
         )
 
     split_audit: dict[str, Any] | None = None
@@ -185,21 +184,20 @@ def run_end_to_end_evaluation(
     # Load critics
     full_critic = FourOutcomeTransferCritic.load(checkpoint_full)
     assert full_critic.feature_block == "full"
-    no_wr_critic = None
-    if checkpoint_no_writer_receiver is not None:
-        no_wr_critic = FourOutcomeTransferCritic.load(checkpoint_no_writer_receiver)
-        assert no_wr_critic.feature_block == "no_writer_receiver"
     global_critic = None
     if checkpoint_global_transfer_critic is not None:
         global_critic = FourOutcomeTransferCritic.load(checkpoint_global_transfer_critic)
-    no_pair_critic = None
-    if checkpoint_smtr_no_pair_interaction is not None:
-        no_pair_critic = FourOutcomeTransferCritic.load(checkpoint_smtr_no_pair_interaction)
+    no_compatibility_critic = None
+    if checkpoint_smtr_no_compatibility_interaction is not None:
+        no_compatibility_critic = FourOutcomeTransferCritic.load(
+            checkpoint_smtr_no_compatibility_interaction
+        )
+        assert no_compatibility_critic.feature_block == "no_compatibility_interaction"
     # 清单 P1-2: each method may only consume its own feature-block checkpoint.
     verify_formal_checkpoint_blocks(
         full_critic=full_critic,
         global_critic=global_critic,
-        no_pair_critic=no_pair_critic,
+        no_compatibility_critic=no_compatibility_critic,
         methods=methods,
         require_calibration=(experiment_mode == "formal"),
     )
@@ -222,9 +220,8 @@ def run_end_to_end_evaluation(
     routers = _build_routers(
         methods=methods,
         full_critic=full_critic,
-        no_wr_critic=no_wr_critic,
         global_critic=global_critic,
-        no_pair_critic=no_pair_critic,
+        no_compatibility_critic=no_compatibility_critic,
         negative_risk_budget=negative_risk_budget,
         allow_risk_budget_override=allow_risk_budget_override,
     )
@@ -299,7 +296,7 @@ def run_end_to_end_evaluation(
     critic_by_role = {
         "full": full_critic,
         "global_transfer": global_critic,
-        "no_pair_interaction": no_pair_critic,
+        "no_compatibility_interaction": no_compatibility_critic,
     }
     method_risk_budget_provenance: list[dict[str, Any]] = []
     for method in methods:
@@ -327,6 +324,11 @@ def run_end_to_end_evaluation(
         "split": split,
         "metrics": e2e_metrics,
         "output": str(output),
+        # 清单 Writer-Agnostic 第十二章: result metadata states the
+        # receiver-conditioned, writer-free, team-outcome-only estimand.
+        "routing_conditioning": "memory_receiver",
+        "writer_features_used": False,
+        "team_outcome_only": True,
         # 清单 R6 P1-4: record the seed protocol that this run satisfied.
         "experiment_mode": experiment_mode,
         "generation_seeds": generation_seeds,

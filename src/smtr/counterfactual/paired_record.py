@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from collections import defaultdict
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -232,3 +235,87 @@ def validate_formal_paired_provenance(
             )
 
     return errors
+
+
+# ---------------------------------------------------------------------------
+# Canonical digests (清单 固定预算训练链路 第9章)
+# ---------------------------------------------------------------------------
+
+# Outcome fields persisted per branch. Only data-semantic fields enter the
+# canonical form: artifact paths vary across machines without changing the
+# outcome semantics and must never influence the digest.
+_CANONICAL_BRANCH_FIELDS = (
+    "team_success",
+    "local_success",
+    "environment_valid",
+    "native_evaluator_executed",
+)
+
+
+def canonicalize_branch_outcome(branch: dict[str, Any]) -> dict[str, Any]:
+    """Data-semantic projection of one branch outcome block."""
+    return {field: branch.get(field) for field in _CANONICAL_BRANCH_FIELDS}
+
+
+def canonicalize_paired_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Canonical semantic projection of one paired record (清单第9.1节).
+
+    Keeps identity, outcomes, core-validity and shared-control group
+    fields only. Absolute paths and machine-local artifact references
+    are excluded so the digest is stable across storage locations.
+    """
+    return {
+        "schema_version": record.get("schema_version"),
+        "task_id": str(record["task_id"]),
+        "receiver_agent_id": str(record["receiver_agent_id"]),
+        "candidate_memory_id": str(record["candidate_memory_id"]),
+        "generation_seed": int(record["generation_seed"]),
+        "share": canonicalize_branch_outcome(record.get("share", {})),
+        "withhold": canonicalize_branch_outcome(record.get("withhold", {})),
+        "label": record.get("label"),
+        "valid": record.get("valid"),
+        "invalid_reason": record.get("invalid_reason"),
+        "control_group_id": record.get("control_group_id"),
+    }
+
+
+def stable_json_digest(payload: Any) -> str:
+    """SHA-256 over a canonical JSON dump (sorted keys, fixed separators)."""
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def canonical_paired_record_digest(records: list[dict[str, Any]]) -> str:
+    """Order-insensitive digest of a paired-record set (清单第9.1节).
+
+    Records are sorted by their seed-pair identity before hashing, so
+    the same record set always digests identically regardless of input
+    order; the effective training subset is identified by this digest,
+    never by the parent JSONL file digest alone.
+    """
+    ordered = sorted(
+        records,
+        key=lambda record: (
+            str(record["task_id"]),
+            str(record["receiver_agent_id"]),
+            str(record["candidate_memory_id"]),
+            int(record["generation_seed"]),
+        ),
+    )
+    canonical_payload = [canonicalize_paired_record(r) for r in ordered]
+    return stable_json_digest(canonical_payload)
+
+
+def edge_to_seed_set(
+    records: list[dict[str, Any]],
+) -> dict[tuple[str, str, str], set[int]]:
+    """Map each treatment edge to the generation seeds it covers (清单第6.1节)."""
+    result: dict[tuple[str, str, str], set[int]] = defaultdict(set)
+    for record in records:
+        key = (
+            str(record["task_id"]),
+            str(record["receiver_agent_id"]),
+            str(record["candidate_memory_id"]),
+        )
+        result[key].add(int(record["generation_seed"]))
+    return dict(result)

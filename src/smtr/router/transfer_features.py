@@ -1,4 +1,4 @@
-"""Cross-agent transfer feature encoder with writer-receiver blocks."""
+"""Memory-receiver transfer feature encoder (writer-agnostic blocks)."""
 
 from __future__ import annotations
 
@@ -27,18 +27,36 @@ FORBIDDEN_FEATURE_TOKENS = frozenset({
     "positive_hint_token", "negative_hint_token",
 })
 
+# 清单 Writer-Agnostic 7.1: any feature token whose prefix matches one of
+# these provenance/writer names fails the feature audit immediately.
+FORBIDDEN_PROVENANCE_FEATURE_PREFIXES = frozenset({
+    "writer",
+    "writer_role",
+    "writer_cap",
+    "writer_tool",
+    "wr_pair",
+    "wr_same_role",
+    "source_agent",
+    "source_agent_role",
+    "memory_source_agent",
+    "source_trajectory",
+})
+
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
 class HashingTransferFeatureEncoder:
-    """Deterministic feature encoder for cross-agent transfer prediction.
+    """Deterministic feature encoder for memory-receiver transfer prediction.
 
-    Feature blocks:
+    Feature blocks (清单 Writer-Agnostic 第六章):
       - task context block (scenario, task tokens, environment)
       - receiver marginal block (role, capabilities, tools)
-      - writer marginal block (role, capabilities, tools, source scenario)
-      - writer-receiver interaction block
-      - memory card block
+      - memory marginal block (goal, tags, explicit requirements,
+        procedure metadata)
+      - memory-receiver compatibility interaction block
+
+    Writer/source-agent identity is never encoded: provenance stays in the
+    memory payload and never enters features.
 
     SMTR-v1 action space is A(o_r) in {∅, m_1, ..., m_K}: one receiver
     receives at most one memory, so the selected-memory prefix S is fixed
@@ -47,23 +65,23 @@ class HashingTransferFeatureEncoder:
     predictions.
 
     Feature modes (``feature_block``):
-      - ``full``: all blocks.
-      - ``no_pair_interaction``: keep writer and receiver marginals, drop all
-        writer-receiver interaction tokens.
-      - ``no_receiver``: drop receiver identity/profile and interaction, keep
-        task/environment/memory/writer.
-      - ``global_transfer``: keep only task context, environment and memory
-        card semantics (global transfer critic, 清单 P1-1); drops writer,
-        receiver and interaction.
-      - ``memory_task_only``: legacy alias of ``global_transfer``.
-      - ``no_writer_receiver`` (legacy): historical block kept only for old
-        checkpoints; it removes writer and interaction while keeping receiver,
-        a mixed definition superseded by the precise modes above.
+      - ``full``: task/environment + receiver marginal + memory marginal
+        + memory-receiver compatibility interaction.
+      - ``no_compatibility_interaction``: drop the explicit memory-receiver
+        interaction block.
+      - ``global_transfer``: task/environment + memory marginal only;
+        receiver identity is dropped entirely.
 
-    Forbidden: payload, procedure, labels, outcomes never enter features.
+    Legacy blocks (``no_pair_interaction``, ``no_receiver``,
+    ``no_writer_receiver``, ``memory_task_only``) are not accepted here;
+    they exist only for legacy compatibility and never enter the formal
+    method registry.
+
+    Forbidden: payload, procedure bodies, labels, outcomes and any
+    writer/provenance token never enter features.
     """
 
-    schema_version = "2.0"
+    schema_version = "3.0"
 
     def __init__(self, *, n_features: int = 512, feature_block: str = "full") -> None:
         self.n_features = n_features
@@ -74,24 +92,28 @@ class HashingTransferFeatureEncoder:
             input_type="string",
         )
 
-    def _mode_flags(self) -> tuple[bool, bool, bool]:
-        """Return (include_writer, include_receiver, include_interaction)."""
+    def _mode_flags(self) -> tuple[bool, bool]:
+        """Return (include_receiver, include_compatibility).
+
+        There is no writer flag: writer identity is never a feature
+        (清单 Writer-Agnostic 6.2).
+        """
         mode = self.feature_block
         if mode == "full":
-            return True, True, True
-        if mode == "no_pair_interaction":
-            return True, True, False
-        if mode == "no_receiver":
-            return True, False, False
-        if mode in ("global_transfer", "memory_task_only"):
-            return False, False, False
-        if mode == "no_writer_receiver":  # legacy mixed block
-            return False, True, False
+            return True, True
+        if mode == "no_compatibility_interaction":
+            return True, False
+        if mode == "global_transfer":
+            return False, False
         raise ValueError(f"unknown feature_block: {mode}")
 
     def tokens(self, item: CandidateExposureInput) -> list[str]:
-        """Extract feature tokens from a CandidateExposureInput."""
-        include_writer, include_receiver, include_interaction = self._mode_flags()
+        """Extract feature tokens from a CandidateExposureInput.
+
+        Conditioning is (t, x_r^pre, m, r) only (清单 Writer-Agnostic
+        第六章): no writer/provenance token is ever emitted.
+        """
+        include_receiver, include_compatibility = self._mode_flags()
         tokens: list[str] = []
         rs = item.receiver_state
         card = item.candidate_card
@@ -111,39 +133,61 @@ class HashingTransferFeatureEncoder:
             for tool in sorted(rs.receiver.tool_names):
                 tokens.append(f"receiver_tool:{tool}")
 
-        # --- writer marginal block ---
-        if include_writer:
-            tokens.append(f"writer_role:{card.writer.role}")
-            for cap in sorted(card.writer.capabilities):
-                tokens.append(f"writer_cap:{cap}")
-            for tool in sorted(card.writer.tool_names):
-                tokens.append(f"writer_tool:{tool}")
-            tokens.append(f"source_scenario:{card.source_scenario}")
-
-        # --- writer-receiver interaction block ---
-        if include_interaction:
-            w_role = card.writer.role
-            r_role = rs.receiver.role
-            tokens.append(f"wr_pair:{w_role}->{r_role}")
-            tokens.append(f"wr_same_role:{w_role == r_role}")
-            w_caps = set(card.writer.capabilities)
-            r_caps = set(rs.receiver.capabilities)
-            tokens.append(f"wr_cap_overlap_bucket:{_overlap_bucket(w_caps, r_caps)}")
-            w_tools = set(card.writer.tool_names)
-            r_tools = set(rs.receiver.tool_names)
-            tokens.append(f"wr_tool_overlap_bucket:{_overlap_bucket(w_tools, r_tools)}")
-            tokens.append(f"writer_receiver_mismatch:{w_role != r_role}")
-
-        # --- memory card block ---
-        # Only outcome-independent, trajectory-observable attributes enter
-        # features. Human-authored transfer hints and fixed compatible-role
-        # lists are deliberately excluded (deprecated card fields).
+        # --- memory marginal block (explicit requirements, no writer) ---
         for tok in _text_tokens(card.goal_summary)[:6]:
             tokens.append(f"memory_goal_token:{tok}")
         for tag in sorted(card.task_tags):
-            tokens.append(f"task_tag:{tag}")
+            tokens.append(f"memory_task_tag:{tag}")
+        for tool in sorted(card.required_tools):
+            tokens.append(f"memory_required_tool:{tool}")
+        for cap in sorted(card.required_capabilities):
+            tokens.append(f"memory_required_capability:{cap}")
+        for role in sorted(card.execution_role_tags):
+            tokens.append(f"memory_execution_role:{role}")
         for constraint in sorted(card.environment_constraints):
-            tokens.append(f"env_constraint:{constraint}")
+            tokens.append(f"memory_environment_constraint:{constraint}")
+        for tag in sorted(card.precondition_tags):
+            tokens.append(f"memory_precondition_tag:{tag}")
+        tokens.append(f"memory_procedure_type:{card.procedure_type}")
+        tokens.append(f"memory_length_bucket:{card.procedure_length_bucket}")
+        tokens.append(f"memory_read_write_scope:{card.read_write_scope}")
+
+        # --- memory-receiver compatibility interaction block (full only) ---
+        # Derived from routing card + receiver state only; never payload,
+        # procedure, outcomes or provenance (清单 6.5).
+        if include_compatibility:
+            r_caps = set(rs.receiver.capabilities)
+            r_tools = set(rs.receiver.tool_names)
+            r_env = set(rs.environment_signature)
+            tokens.append(
+                "mr_tool_satisfaction:"
+                f"{_satisfaction_bucket(set(card.required_tools), r_tools)}"
+            )
+            tokens.append(
+                "mr_capability_satisfaction:"
+                f"{_satisfaction_bucket(set(card.required_capabilities), r_caps)}"
+            )
+            tokens.append(
+                "mr_environment_satisfaction:"
+                f"{_satisfaction_bucket(set(card.environment_constraints), r_env)}"
+            )
+            if card.execution_role_tags:
+                role_ok = rs.receiver.role in card.execution_role_tags
+                tokens.append(f"mr_role_satisfaction:{str(role_ok).lower()}")
+            else:
+                tokens.append("mr_role_satisfaction:unspecified")
+            tokens.append(
+                "mr_missing_tool_count:"
+                f"{_missing_count_bucket(len(set(card.required_tools) - r_tools))}"
+            )
+            tokens.append(
+                "mr_missing_capability_count:"
+                f"{_missing_count_bucket(len(set(card.required_capabilities) - r_caps))}"
+            )
+            tokens.append(
+                "mr_read_write_compatible:"
+                f"{str(_read_write_compatible(card, rs.receiver)).lower()}"
+            )
 
         # --- v1 action space marker ---
         # The selected-memory prefix S is fixed to ∅ in SMTR-v1; prefix
@@ -156,13 +200,17 @@ class HashingTransferFeatureEncoder:
         return tokens
 
     def _reject_forbidden_tokens(self, tokens: list[str]) -> None:
-        """Raise if forbidden leakage fields appear in output tokens."""
+        """Raise if forbidden leakage or provenance fields appear in tokens."""
         for token in tokens:
             token_lower = token.lower()
             prefix = token_lower.split(":", 1)[0]
             if prefix in FORBIDDEN_FEATURE_TOKENS:
                 raise ValueError(
                     f"forbidden transfer feature token detected: {token}"
+                )
+            if any(prefix.startswith(banned) for banned in FORBIDDEN_PROVENANCE_FEATURE_PREFIXES):
+                raise ValueError(
+                    f"forbidden provenance/writer feature token detected: {token}"
                 )
 
     def encode_one(self, item: CandidateExposureInput) -> Any:
@@ -179,38 +227,32 @@ def build_routing_card_from_pool_entry(mem_entry: dict[str, Any]) -> MemoryRouti
 
     This is the single card-construction path shared by the training loader
     and all evaluation builders, so train/inference features stay identical.
-    Only routing-card metadata is used; the payload is never read.
+    Only routing-card metadata is used; the payload (including provenance)
+    is never read.
 
-    Deprecated human-authored fields (positive/negative transfer hints,
-    compatible/incompatible receiver roles) are never restored, even when
-    present in old pool entries, so they cannot re-enter features or
-    baseline scores.
+    Writer-agnostic (清单 Writer-Agnostic 6.6): no ``writer`` profile is
+    constructed and no legacy record writer fields are restored. Legacy
+    routing-card schemas fail closed instead of silently falling back.
     """
     routing_card_data = mem_entry.get("routing_card", {})
-    writer_data = routing_card_data.get("writer", {})
-    writer = AgentProfile(
-        agent_id=writer_data.get("agent_id", ""),
-        role=writer_data.get("role", "unknown"),
-        capabilities=tuple(writer_data.get("capabilities", [])),
-        model_name=writer_data.get("model_name"),
-        tool_names=tuple(writer_data.get("tool_names", [])),
-    )
+    if "writer" in routing_card_data or "required_tools" not in routing_card_data:
+        raise ValueError(
+            "legacy routing-card schema detected; rebuild the memory pool "
+            "with routing-card schema v3 (writer-agnostic)"
+        )
     return MemoryRoutingCard(
         memory_id=mem_entry["memory_id"],
         goal_summary=routing_card_data.get("goal_summary", ""),
         task_tags=tuple(routing_card_data.get("task_tags", [])),
+        required_tools=tuple(routing_card_data.get("required_tools", [])),
+        required_capabilities=tuple(routing_card_data.get("required_capabilities", [])),
+        execution_role_tags=tuple(routing_card_data.get("execution_role_tags", [])),
         environment_constraints=tuple(routing_card_data.get("environment_constraints", [])),
-        positive_transfer_hints=(),
-        negative_transfer_hints=(),
-        writer=writer,
-        source_task_id=routing_card_data.get("source_task_id", ""),
-        source_scenario=routing_card_data.get("source_scenario", "database"),
-        compatible_receiver_roles=(),
-        incompatible_receiver_roles=(),
+        precondition_tags=tuple(routing_card_data.get("precondition_tags", [])),
+        procedure_type=routing_card_data.get("procedure_type", "unknown"),
+        procedure_length_bucket=routing_card_data.get("procedure_length_bucket", "unknown"),
+        read_write_scope=routing_card_data.get("read_write_scope", "unknown"),
         evidence_count=routing_card_data.get("evidence_count", 0),
-        historical_success_count=routing_card_data.get("historical_success_count", 0),
-        historical_failure_count=routing_card_data.get("historical_failure_count", 0),
-        historical_success_rate=routing_card_data.get("historical_success_rate", 0.0),
     )
 
 
@@ -244,12 +286,30 @@ def load_paired_records_with_metadata(
 
     Only routing card metadata is used; payload is never read. All receiver
     context fields stored in the paired record (task instruction, environment
-    signature, subtask, context summaries, writer/receiver tool_names and
+    signature, subtask, context summaries, receiver tool_names and
     model_name) are restored so training features match inference features.
 
     Records failing the core-validity filter (incomplete branches, missing
     identity fields, cross-branch config mismatches, upstream invalid flag)
     never enter critic training, risk calibration or epsilon selection.
+    """
+    raw_records: list[dict] = []
+    for line in records_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            raw_records.append(json.loads(line))
+    return build_training_data_from_records(raw_records, memory_pool_path)
+
+
+def build_training_data_from_records(
+    records: list[dict],
+    memory_pool_path: Path,
+) -> list[tuple[CandidateExposureInput, str, dict]]:
+    """Build (input, label, record) triples from an explicit record list.
+
+    清单 Fixed-Budget 第7章: budget filtering happens before feature
+    construction, so the caller passes the already-filtered effective
+    training records and features/labels are never built from the full
+    parent record file.
     """
     pool: dict[str, dict] = {}
     for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
@@ -258,29 +318,17 @@ def load_paired_records_with_metadata(
             pool[mem["memory_id"]] = mem
 
     results: list[tuple[CandidateExposureInput, str, dict]] = []
-    for line in records_path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        rec = json.loads(line)
+    for rec in records:
         if not is_core_valid_pair(rec):
             continue
         mem_entry = pool.get(rec["candidate_memory_id"])
         if mem_entry is None:
             continue
         card = build_routing_card_from_pool_entry(mem_entry)
-        # Fall back to record-persisted writer fields only when the pool
-        # entry lacks them (older pools).
-        routing_card_data = mem_entry.get("routing_card", {})
-        writer_data = routing_card_data.get("writer", {})
-        if not writer_data.get("tool_names"):
-            card = card.model_copy(update={
-                "writer": card.writer.model_copy(update={
-                    "agent_id": card.writer.agent_id or rec.get("writer_agent_id", ""),
-                    "capabilities": card.writer.capabilities or tuple(rec.get("writer_capabilities", [])),
-                    "tool_names": tuple(rec.get("writer_tool_names", [])),
-                    "model_name": card.writer.model_name or rec.get("writer_model_name"),
-                }),
-            })
+        # 清单 Writer-Agnostic 6.7: training inputs are built from the
+        # receiver record fields, the memory routing card and the
+        # task/environment context only; record-level writer/provenance
+        # fields (memory_source_*) never enter CandidateExposureInput.
         receiver = AgentProfile(
             agent_id=rec.get("receiver_agent_id", ""),
             role=rec.get("receiver_role", "unknown"),
@@ -314,6 +362,40 @@ def load_paired_records_with_metadata(
 
 def _text_tokens(text: str) -> list[str]:
     return TOKEN_RE.findall(text.lower())
+
+
+def _satisfaction_bucket(required: set, available: set) -> str:
+    """full/partial/none bucket for requirement satisfaction (清单 6.5)."""
+    if not required:
+        return "full"
+    ratio = len(required & available) / len(required)
+    if ratio >= 1.0:
+        return "full"
+    if ratio > 0.0:
+        return "partial"
+    return "none"
+
+
+def _missing_count_bucket(count: int) -> str:
+    if count == 0:
+        return "0"
+    if count == 1:
+        return "1"
+    return "2plus"
+
+
+def _read_write_compatible(card: MemoryRoutingCard, receiver: AgentProfile) -> bool:
+    """Deterministic read/write scope compatibility (清单 6.5).
+
+    Read-only procedures are compatible with every receiver; a write-scope
+    procedure requires an explicit write capability or write tool on the
+    receiver side.
+    """
+    if card.read_write_scope != "write":
+        return True
+    return any("write" in cap.lower() for cap in receiver.capabilities) or any(
+        "write" in tool.lower() for tool in receiver.tool_names
+    )
 
 
 def _overlap_bucket(set_a: set, set_b: set) -> str:
