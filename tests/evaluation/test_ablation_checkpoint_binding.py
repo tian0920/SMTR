@@ -49,7 +49,7 @@ def _write_jsonl(path, records) -> None:
     )
 
 
-def _save_checkpoint(path, *, feature_block, train_path, val_path, pool_path):
+def _save_checkpoint(path, *, feature_block, train_path, val_path, pool_path, budget_manifest_path=None):
     critic = FourOutcomeTransferCritic(feature_block=feature_block)
     critic.calibration_split = "validation"
     critic.epsilon_selection_split = "validation"
@@ -57,6 +57,11 @@ def _save_checkpoint(path, *, feature_block, train_path, val_path, pool_path):
     critic.train_record_digest = file_digest(train_path)
     critic.validation_record_digest = file_digest(val_path)
     critic.memory_pool_digest = file_digest(pool_path)
+    if budget_manifest_path is not None:
+        critic.budget_train_candidate_manifest_digest = file_digest(budget_manifest_path)
+        from smtr.evaluation.training_support import canonical_effective_record_digest
+        critic.effective_train_record_digest = canonical_effective_record_digest([])
+        critic.effective_train_edge_count = 0
     critic.epsilon_star = 0.2
     critic.method_schema_metadata = {
         "method_schema": "memory_receiver_v1",
@@ -79,7 +84,18 @@ def _setup(tmp_path, role: str):
     _write_jsonl(test, [_rec("t_test", "m_test")])
 
     pool = tmp_path / "memories.jsonl"
-    _write_jsonl(pool, [{"memory_id": "m_test", "payload": {"procedure": "x"}}])
+    _write_jsonl(pool, [{
+        "memory_id": "m_test",
+        "payload": {
+            "procedure": "x",
+            "provenance": {
+                "source_agent_id": "w1",
+                "source_task_id": "train_source",
+                "source_trajectory_id": "traj_train",
+                "source_split": "train",
+            },
+        },
+    }])
 
     manifest = tmp_path / "candidates.json"
     manifest.write_text(
@@ -101,6 +117,18 @@ def _setup(tmp_path, role: str):
         encoding="utf-8",
     )
 
+    budget_manifest = tmp_path / "budget_candidates.json"
+    budget_manifest.write_text(
+        json.dumps(
+            {
+                "target_split": "train",
+                "memory_source_split": "train",
+                "candidates": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
     dataset = tmp_path / "dataset.json"
     dataset.write_text('{"tasks": []}', encoding="utf-8")
     splits = tmp_path / "splits.json"
@@ -112,6 +140,7 @@ def _setup(tmp_path, role: str):
         train_path=train,
         val_path=val,
         pool_path=pool,
+        budget_manifest_path=budget_manifest,
     )
     # Different bytes: same role block but no persisted training provenance.
     critic_b = FourOutcomeTransferCritic(feature_block=role)
@@ -128,6 +157,7 @@ def _setup(tmp_path, role: str):
         test_records_path=test,
         memory_pool_path=pool,
         test_candidate_manifest_path=manifest,
+        train_budget_candidate_manifest_path=budget_manifest,
         dataset_manifest_path=dataset,
         split_manifest_path=splits,
         checkpoint_paths={role: ckpt_a},
@@ -146,6 +176,7 @@ def _setup(tmp_path, role: str):
         "splits": splits,
         "pool": pool,
         "manifest": manifest,
+        "budget_manifest": budget_manifest,
         "ckpt_a": ckpt_a,
         "ckpt_b": ckpt_b,
     }
@@ -158,6 +189,7 @@ def _validate(files, *, checkpoint):
         split_manifest_path=files["splits"],
         memory_pool_path=files["pool"],
         candidate_manifest_path=files["manifest"],
+        train_budget_candidate_manifest_path=files["budget_manifest"],
         checkpoint_paths={files["role"]: checkpoint},
         enabled_methods=[_ROLE_METHODS[files["role"]]],
     )

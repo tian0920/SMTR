@@ -308,7 +308,6 @@ def generate_candidate_level_pairs(
     generation_seeds: list[int],
     limit_pairs: int | None = None,
     output_dir: Path,
-    branch_execution_order: str = "counterbalanced",
     engine_timeout_seconds: int = 1800,
     experiment_mode: str = "pilot",
 ) -> dict[str, Any]:
@@ -322,8 +321,7 @@ def generate_candidate_level_pairs(
     environment snapshot, non-memory input. The only difference between
     share and control is whether the candidate payload is injected.
 
-    ``branch_execution_order`` is accepted for signature compatibility;
-    group-level order is assigned deterministically by
+    Group-level control position is assigned deterministically by
     ``assign_control_execution_position``.
     """
     from smtr.marble.branch_runner import MarblePairedBranchRunner
@@ -552,7 +550,6 @@ def generate_candidate_level_pairs(
                     control=control_result,
                     share=share_audit,
                     candidate_memory_id=edge["candidate_memory_id"],
-                    branch_execution_order=control_position,
                 )
                 share_workspace = group_workspace / "shares" / edge["edge_id"]
                 share_workspace.mkdir(parents=True, exist_ok=True)
@@ -573,6 +570,7 @@ def generate_candidate_level_pairs(
                         control_artifact_path=str(control_artifact_path),
                         control_group_candidate_count=len(group_edges),
                         share_execution_rank=rank,
+                        control_execution_position=control_position,
                     )
                 )
 
@@ -681,6 +679,7 @@ def paired_result_to_record(
     control_artifact_path: str | None = None,
     control_group_candidate_count: int | None = None,
     share_execution_rank: int | None = None,
+    control_execution_position: str | None = None,
 ) -> dict[str, Any]:
     """Convert a PairedBranchResult into a serializable paired record.
 
@@ -737,9 +736,6 @@ def paired_result_to_record(
 
         "candidate_memory_id": pair_result.candidate_memory_id,
 
-        # SMTR-v1 action space is single-memory with S = ∅; the field is
-        # persisted for schema compatibility and is always empty.
-        "selected_prefix_memory_ids": [],
         "candidate_rank": edge["candidate_rank"],
         "candidate_score": edge["candidate_score"],
 
@@ -780,8 +776,6 @@ def paired_result_to_record(
         "label": pair_result.paired_label,
         "valid": pair_result.paired_record_valid,
         "invalid_reason": pair_result.invalid_reason,
-        "branch_execution_order": pair_result.branch_execution_order,
-        "branch_order_assignment": pair_result.branch_execution_order,
 
         "digests": {
             "share_initial_digest":
@@ -823,7 +817,7 @@ def paired_result_to_record(
         "control_reused": True,
         "control_definition_version": SHARED_CONTROL_DEFINITION_VERSION,
         "control_group_candidate_count": control_group_candidate_count,
-        "control_execution_position": pair_result.branch_execution_order,
+        "control_execution_position": control_execution_position,
         "share_execution_rank": share_execution_rank,
         "control_artifact_path": control_artifact_path,
         "control_raw_result_digest": pair_result.withhold.raw_result_digest,

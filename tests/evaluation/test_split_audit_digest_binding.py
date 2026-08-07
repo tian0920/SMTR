@@ -34,6 +34,11 @@ def _build_artifacts(tmp_path):
             '{"candidates": "a"}',
             '{"candidates": "b"}',
         ),
+        (
+            "train_budget_candidate_manifest",
+            '{"budget_candidates": "a"}',
+            '{"budget_candidates": "b"}',
+        ),
         ("checkpoint_full", "checkpoint-bytes-a", "checkpoint-bytes-b"),
     ):
         a = _write(tmp_path / f"{name}_a.json", content_a)
@@ -46,7 +51,6 @@ def _write_audit(tmp_path, files) -> "object":
     audit = {
         "schema_version": SPLIT_AUDIT_SCHEMA_VERSION,
         "split_integrity_passed": True,
-        "legacy_schema_used": False,
         "calibration_split": "validation",
         "epsilon_selection_split": "validation",
         "dataset_manifest_digest": file_digest(files["dataset_manifest"][0]),
@@ -54,6 +58,9 @@ def _write_audit(tmp_path, files) -> "object":
         "memory_pool_digest": file_digest(files["memory_pool"][0]),
         "test_candidate_manifest_digest": file_digest(
             files["candidate_manifest"][0]
+        ),
+        "train_budget_candidate_manifest_digest": file_digest(
+            files["train_budget_candidate_manifest"][0]
         ),
         "train_paired_records_digest": None,
         "validation_paired_records_digest": None,
@@ -77,6 +84,9 @@ def _validate(audit_path, files, *, swapped: str | None = None):
         split_manifest_path=pick("split_manifest"),
         memory_pool_path=pick("memory_pool"),
         candidate_manifest_path=pick("candidate_manifest"),
+        train_budget_candidate_manifest_path=pick(
+            "train_budget_candidate_manifest"
+        ),
         checkpoint_paths={"full": pick("checkpoint_full")},
         enabled_methods=["smtr"],
     )
@@ -144,6 +154,9 @@ class TestSplitAuditDigestBinding:
                 split_manifest_path=files["split_manifest"][0],
                 memory_pool_path=files["memory_pool"][0],
                 candidate_manifest_path=files["candidate_manifest"][0],
+                train_budget_candidate_manifest_path=files[
+                    "train_budget_candidate_manifest"
+                ][0],
                 checkpoint_paths={
                     "full": files["checkpoint_full"][0],
                     "global_transfer": files["checkpoint_full"][0],

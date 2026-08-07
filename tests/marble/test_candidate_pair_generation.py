@@ -145,7 +145,6 @@ def test_invalid_pair_not_used_by_training_loader(tmp_path):
     mock_result.paired_label = "positive_transfer"
     mock_result.paired_record_valid = False
     mock_result.invalid_reason = "engine_timeout"
-    mock_result.branch_execution_order = "share_then_withhold"
 
     edge = {
         "receiver_agent_id": "r1", "receiver_role": "executor",

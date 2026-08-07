@@ -79,7 +79,6 @@ class CandidateLevelPairedRecord(BaseModel):
     writer_role: str
     writer_capabilities: tuple[str, ...] = ()
 
-    selected_prefix_memory_ids: tuple[str, ...] = ()
     candidate_rank: int = 0
     candidate_score: float = 0.0
 

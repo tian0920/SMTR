@@ -38,7 +38,6 @@ def test_generate_paired_records_has_marble_root():
     assert result.returncode == 0
     assert "--marble-root" in result.stdout
     assert "--split" in result.stdout
-    assert "--branch-order" in result.stdout
 
 
 def test_no_placeholder_commands():

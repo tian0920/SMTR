@@ -98,6 +98,7 @@ class FourOutcomeTransferCritic:
         # 清单 Fixed-Budget 第9/10章: effective training-subset digest and
         # structured budget metadata blocks for every checkpoint.
         self.effective_train_record_digest: str | None = None
+        self.effective_train_edge_count: int | None = None
         self.budget_policy_metadata: dict[str, Any] | None = None
         self.training_support_metadata: dict[str, Any] | None = None
         self.training_artifact_digests: dict[str, Any] | None = None
@@ -492,6 +493,9 @@ class FourOutcomeTransferCritic:
                 "effective_train_record_digest": (
                     self.effective_train_record_digest
                 ),
+                "effective_train_edge_count": (
+                    self.effective_train_edge_count
+                ),
                 "budget_policy": self.budget_policy_metadata,
                 "training_support": self.training_support_metadata,
                 "artifact_digests": self.training_artifact_digests,
@@ -548,6 +552,9 @@ class FourOutcomeTransferCritic:
         )
         critic.effective_train_record_digest = data.get(
             "effective_train_record_digest"
+        )
+        critic.effective_train_edge_count = data.get(
+            "effective_train_edge_count"
         )
         critic.budget_policy_metadata = data.get("budget_policy")
         critic.training_support_metadata = data.get("training_support")

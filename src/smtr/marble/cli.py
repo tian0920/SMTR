@@ -64,7 +64,6 @@ def main() -> None:
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--generation-seeds", type=int, nargs="+", default=[0])
     p.add_argument("--limit-pairs", type=int, default=None)
-    p.add_argument("--branch-order", choices=["counterbalanced", "share_then_withhold", "withhold_then_share"], default="counterbalanced")
     p.add_argument("--engine-timeout-seconds", type=int, default=1800)
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
     p.add_argument("--output", required=True)
@@ -359,7 +358,6 @@ def _dispatch(args: argparse.Namespace) -> None:
             generation_seeds=args.generation_seeds,
             limit_pairs=args.limit_pairs,
             output_dir=Path(args.output),
-            branch_execution_order=args.branch_order,
             engine_timeout_seconds=args.engine_timeout_seconds,
             experiment_mode=args.experiment_mode,
         )

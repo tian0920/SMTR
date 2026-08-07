@@ -96,7 +96,6 @@ class TestPrefixIndependence:
         return CandidateExposureInput(
             receiver_state=_receiver_state(),
             candidate_card=_card("m0"),
-            selected_prefix_cards=prefix,
         )
 
     def test_encoder_tokens_ignore_nonempty_prefix(self):

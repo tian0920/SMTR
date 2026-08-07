@@ -48,6 +48,12 @@ class TestFailedSplitAuditGate:
             end_to_end_evaluation, "FourOutcomeTransferCritic", _ExplodingCritic)
 
         dummy = Path("/nonexistent/smtr_failed_audit_probe")
+        # A dummy budget manifest file is required for formal mode.
+        budget_manifest = tmp_path / "budget_candidates.json"
+        budget_manifest.write_text(
+            '{"target_split": "train", "memory_source_split": "train", "candidates": []}',
+            encoding="utf-8",
+        )
         with pytest.raises(
             ValueError, match="formal evaluation aborted: split audit failed"
         ):
@@ -63,6 +69,7 @@ class TestFailedSplitAuditGate:
                 generation_seeds=[0, 1, 2, 3, 4],
                 experiment_mode="formal",
                 split_audit_path=_write_failed_audit(tmp_path),
+                train_budget_candidate_manifest_path=budget_manifest,
                 output=tmp_path / "output",
             )
         # No run workspace may have been created: zero MARBLE episodes ran.

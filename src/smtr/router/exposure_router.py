@@ -79,7 +79,6 @@ class SMTRExposureRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         """Make share/withhold decisions for all candidates."""
         budget = self._effective_risk_budget()
@@ -88,7 +87,6 @@ class SMTRExposureRouter:
             exposure_input = CandidateExposureInput(
                 receiver_state=receiver_state,
                 candidate_card=card,
-                selected_prefix_cards=selected_prefix_cards,
             )
             pred = self.critic.predict_calibrated(exposure_input)
             tau = pred.tau_hat
@@ -140,10 +138,9 @@ class SMTRExposureRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[dict[str, Any]]:
         """Produce router trace (no payload/procedure included)."""
-        decisions = self.decide(receiver_state, candidate_cards, selected_prefix_cards)
+        decisions = self.decide(receiver_state, candidate_cards)
         traces = []
         for dec in decisions:
             card = next(c for c in candidate_cards if c.memory_id == dec.memory_id)
@@ -213,7 +210,6 @@ class SMTRUCBRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         budget = self._effective_risk_budget()
         scored: list[tuple[float, float, float, float, MemoryRoutingCard]] = []
@@ -221,7 +217,6 @@ class SMTRUCBRouter:
             exposure_input = CandidateExposureInput(
                 receiver_state=receiver_state,
                 candidate_card=card,
-                selected_prefix_cards=selected_prefix_cards,
             )
             dist = self.critic.predict_distribution(exposure_input)
             scored.append((

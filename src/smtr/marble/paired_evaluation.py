@@ -156,6 +156,7 @@ def run_paired_decision_evaluation(
     checkpoint_global_transfer_critic: Path | None = None,
     checkpoint_smtr_no_compatibility_interaction: Path | None = None,
     methods: list[str] | None = None,
+    train_budget_candidate_manifest_path: Path | None = None,
     negative_risk_budget: float | None = None,
     allow_risk_budget_override: bool = False,
     ci_bootstrap: int = 1000,
@@ -200,6 +201,11 @@ def run_paired_decision_evaluation(
     # 清单 P0-11/17: formal evaluations must pass the split audit before any
     # evaluation step; all three split files are required inputs.
     if formal_mode:
+        if train_budget_candidate_manifest_path is None:
+            raise ValueError(
+                "formal paired evaluation requires "
+                "train_budget_candidate_manifest_path"
+            )
         split_paths = {
             "train": train_paired_records_path,
             "validation": validation_paired_records_path,
@@ -217,6 +223,9 @@ def run_paired_decision_evaluation(
             test_records_path=test_paired_records_path,
             memory_pool_path=memory_pool_path,
             test_candidate_manifest_path=candidate_manifest_path,
+            train_budget_candidate_manifest_path=(
+                train_budget_candidate_manifest_path
+            ),
             checkpoint_paths=_formal_checkpoint_role_paths(
                 checkpoint_full=checkpoint_full,
                 checkpoint_global_transfer_critic=(

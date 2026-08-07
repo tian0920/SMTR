@@ -13,6 +13,14 @@ from pathlib import Path
 from typing import Any
 
 from smtr.counterfactual.edge_keys import TreatmentEdgeKey, treatment_edge_key
+from smtr.evaluation.training_support import (
+    canonical_effective_record_digest,
+    checkpoint_support_signature,
+    edge_seed_sets,
+    filter_records_to_selected_edges,
+    selected_edge_keys_from_candidate_manifest,
+    validate_checkpoint_support_against_audit,
+)
 from smtr.marble.runtime_visibility_audit import file_digest
 
 SPLIT_NAMES = ("train", "validation", "test")
@@ -252,7 +260,6 @@ def audit_split_files(
     memory_pool_path: Path | None = None,
     test_candidate_manifest_path: Path | None = None,
     checkpoint_paths: dict[str, Path] | None = None,
-    checkpoint_path: Path | None = None,
     methods: list[str] | None = None,
     dataset_manifest_path: Path | None = None,
     split_manifest_path: Path | None = None,
@@ -273,14 +280,18 @@ def audit_split_files(
     validation in formal mode.
     """
     resolved_checkpoint_paths = dict(checkpoint_paths or {})
-    # Legacy single-checkpoint callers bind the full SMTR checkpoint.
-    if checkpoint_path is not None and "full" not in resolved_checkpoint_paths:
-        resolved_checkpoint_paths["full"] = Path(checkpoint_path)
 
     candidate_manifest: dict[str, Any] | None = None
     if test_candidate_manifest_path is not None:
         candidate_manifest = json.loads(
             Path(test_candidate_manifest_path).read_text(encoding="utf-8")
+        )
+
+    # Load train budget candidate manifest for independent support verification.
+    budget_manifest: dict[str, Any] | None = None
+    if train_budget_candidate_manifest_path is not None:
+        budget_manifest = json.loads(
+            Path(train_budget_candidate_manifest_path).read_text(encoding="utf-8")
         )
 
     artifact_metadata: dict[str, Any] = {
@@ -341,15 +352,79 @@ def audit_split_files(
             getattr(full_critic, "epsilon_selection_split", None) or "unknown"
         )
 
-    # 清单 §9: three critic checkpoints must share the same effective
-    # training support (same effective digest, manifest digest, edge count).
+    # 清单 P0-1: independently compute effective training support from
+    # full train records + frozen budget manifest; never trust checkpoint
+    # self-reported metadata.
+    audit_training_support: dict[str, Any] = {}
+    audit_effective_digest: str | None = None
+    audit_effective_edge_count: int | None = None
+    audit_budget_manifest_digest: str | None = artifact_metadata[
+        "train_budget_candidate_manifest_digest"
+    ]
+    if budget_manifest is not None:
+        selected_edges = selected_edge_keys_from_candidate_manifest(
+            budget_manifest
+        )
+        effective_records = filter_records_to_selected_edges(
+            splits["train"], selected_edges
+        )
+        budget_meta = budget_manifest.get("budget_metadata", {})
+        audit_training_support = {
+            "parent_train_record_digest": artifact_metadata[
+                "train_paired_records_digest"
+            ],
+            "budget_candidate_manifest_digest": audit_budget_manifest_digest,
+            "requested_budget_fraction": budget_meta.get(
+                "requested_fraction"
+            ),
+            "realized_budget_fraction": budget_meta.get(
+                "realized_edge_fraction"
+            ),
+            "selected_edge_count": len(selected_edges),
+            "effective_train_edge_count": len(
+                {treatment_edge_key(r) for r in effective_records}
+            ),
+            "effective_train_record_digest": (
+                canonical_effective_record_digest(effective_records)
+            ),
+        }
+        audit_effective_digest = audit_training_support[
+            "effective_train_record_digest"
+        ]
+        audit_effective_edge_count = audit_training_support[
+            "effective_train_edge_count"
+        ]
+        # Independent seed support verification (清单 §3).
+        parent_seeds = edge_seed_sets(splits["train"])
+        effective_seeds = edge_seed_sets(effective_records)
+        incomplete_seed_edges = []
+        for edge in selected_edges:
+            expected = parent_seeds.get(edge, set())
+            observed = effective_seeds.get(edge, set())
+            if expected != observed:
+                incomplete_seed_edges.append({
+                    "edge": edge,
+                    "expected_seeds": sorted(expected),
+                    "observed_seeds": sorted(observed),
+                })
+        audit_training_support["full_seed_support_passed"] = (
+            not incomplete_seed_edges
+        )
+        if (
+            experiment_mode == "formal"
+            and incomplete_seed_edges
+        ):
+            checkpoint_binding_errors.append(
+                "budget support removed individual seeds "
+                "instead of complete treatment edges"
+            )
+
+    # 清单 §5/§9: cross-checkpoint support equality using independently
+    # computed audit truth.
     support_signatures: dict[str, tuple[Any, ...]] = {}
     for role, meta in checkpoint_metadata.items():
-        ts = meta.get("training_support", {})
-        support_signatures[role] = (
-            ts.get("effective_train_record_digest"),
-            ts.get("budget_candidate_manifest_digest"),
-            ts.get("effective_train_edge_count"),
+        support_signatures[role] = checkpoint_support_signature(
+            critics[role]
         )
     cross_checkpoint_support_equal = (
         len(set(support_signatures.values())) <= 1
@@ -357,12 +432,36 @@ def audit_split_files(
     if not cross_checkpoint_support_equal and experiment_mode == "formal":
         checkpoint_binding_errors.append(
             "formal critic checkpoints were trained on different "
-            "treatment-edge supports"
+            "budget supports"
         )
+    # Each checkpoint's declared support vs audit independent truth.
+    checkpoint_training_support: dict[str, dict[str, Any]] = {}
+    if experiment_mode == "formal" and audit_effective_digest is not None:
+        for role, critic_obj in critics.items():
+            validation_errors = validate_checkpoint_support_against_audit(
+                critic=critic_obj,
+                role=role,
+                audit_effective_digest=audit_effective_digest,
+                audit_effective_edge_count=audit_effective_edge_count or 0,
+                audit_budget_manifest_digest=audit_budget_manifest_digest,
+            )
+            checkpoint_training_support[role] = {
+                "declared": dict(zip(
+                    (
+                        "budget_manifest_digest",
+                        "effective_digest",
+                        "edge_count",
+                        "budget_requested",
+                        "budget_realized",
+                    ),
+                    support_signatures.get(role, (None,) * 5),
+                )),
+                "validation_errors": validation_errors,
+            }
+            checkpoint_binding_errors.extend(validation_errors)
 
-    # 清单 P1-1: formal provenance schema validation runs before any overlap
-    # check and fails closed; pilots may use legacy fields but are flagged.
-    legacy_schema_used = _uses_legacy_provenance_fallback(splits)
+    # 清单 P1-1/P1-4: formal provenance schema validation runs before any
+    # overlap check and fails closed.
     if experiment_mode == "formal":
         provenance_errors, missing_provenance = _audit_formal_provenance(splits)
         if provenance_errors:
@@ -371,7 +470,6 @@ def audit_split_files(
                 "checkpoint_digests": checkpoint_digests,
                 "checkpoint_metadata": checkpoint_metadata,
                 "checkpoint_binding_errors": checkpoint_binding_errors,
-                "legacy_schema_used": False,
                 "split_integrity_passed": False,
                 "provenance_errors": provenance_errors,
                 "missing_provenance": missing_provenance,
@@ -391,7 +489,6 @@ def audit_split_files(
             "checkpoint_digests": checkpoint_digests,
             "checkpoint_metadata": checkpoint_metadata,
             "checkpoint_binding_errors": checkpoint_binding_errors,
-            "legacy_schema_used": legacy_schema_used,
             "split_integrity_passed": False,
             "error": str(exc),
             "calibration_split": calibration_split,
@@ -454,12 +551,13 @@ def audit_split_files(
             "checkpoint_metadata": checkpoint_metadata,
             "checkpoint_binding_errors": checkpoint_binding_errors,
             "cross_checkpoint_support_equal": cross_checkpoint_support_equal,
+            "training_support": audit_training_support,
+            "checkpoint_training_support": checkpoint_training_support,
             "candidate_manifest": candidate_manifest_block,
             "candidate_manifest_errors": candidate_manifest_errors,
             "test_edges_missing_from_manifest": test_edges_missing_from_manifest,
             "unsupported_candidate_edges": unsupported_candidate_edges,
             "strict_candidate_support": strict_candidate_support,
-            "legacy_schema_used": legacy_schema_used,
             **writer_free_declarations,
             "split_integrity_passed": split_integrity_passed,
         }
@@ -620,12 +718,18 @@ def _checkpoint_training_provenance_errors(
         and getattr(critic, "memory_pool_digest", None) != memory_pool_digest
     ):
         errors.append(f"checkpoint role {role!r} memory pool digest mismatch")
-    # 清单 §8.1: budget manifest digest consistency.
+    # 清单 §8.1: budget manifest digest — fail closed on missing.
     if budget_manifest_digest is not None:
         actual = getattr(
             critic, "budget_train_candidate_manifest_digest", None
         )
-        if actual is not None and actual != budget_manifest_digest:
+        if actual is None:
+            errors.append(
+                f"checkpoint role {role!r} missing required "
+                "budget provenance field: "
+                "budget_train_candidate_manifest_digest"
+            )
+        elif actual != budget_manifest_digest:
             errors.append(
                 f"checkpoint role {role!r} budget candidate manifest "
                 "digest mismatch (checkpoint was not trained with the "
@@ -732,27 +836,6 @@ def _audit_formal_provenance(
     return errors, missing
 
 
-def _uses_legacy_provenance_fallback(
-    splits: dict[str, list[dict[str, Any]]],
-) -> bool:
-    """True when any record relies on legacy ``source_*`` fallback fields.
-
-    Pilot audits may consume such records but must flag
-    ``legacy_schema_used``; formal audits reject them upstream.
-    """
-    for name in SPLIT_NAMES:
-        for record in splits[name]:
-            if not record.get("memory_source_trajectory_id") and record.get(
-                "source_trajectory_id"
-            ):
-                return True
-            if not record.get("memory_source_task_id") and record.get(
-                "source_task_id"
-            ):
-                return True
-    return False
-
-
 def _artifact_digest(path: Path | None) -> str | None:
     """SHA-256 digest of an audited file, or None when not supplied."""
     if path is None:
@@ -760,21 +843,72 @@ def _artifact_digest(path: Path | None) -> str | None:
     return file_digest(Path(path))
 
 
-def _non_train_memory_pool_sources(memory_pool_path: Path | None) -> set[str]:
-    """Pool entries whose recorded source split is not train."""
+def _read_pool_provenance(entry: dict[str, Any]) -> dict[str, str]:
+    """Read memory provenance from payload.provenance (清单 P0-4 §9).
+
+    Raises ValueError on missing provenance (fail closed).
+    """
+    payload = entry.get("payload")
+    if not isinstance(payload, dict):
+        raise ValueError(
+            f"memory pool entry {entry.get('memory_id')!r} "
+            "missing payload"
+        )
+    provenance = payload.get("provenance")
+    if not isinstance(provenance, dict):
+        raise ValueError(
+            f"memory pool entry {entry.get('memory_id')!r} "
+            "missing payload.provenance"
+        )
+    required = (
+        "source_agent_id",
+        "source_task_id",
+        "source_trajectory_id",
+        "source_split",
+    )
+    result: dict[str, str] = {}
+    for field in required:
+        value = provenance.get(field)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            raise ValueError(
+                f"memory pool entry {entry.get('memory_id')!r} "
+                f"missing payload.provenance.{field}"
+            )
+        result[field] = str(value)
+    return result
+
+
+def _non_train_memory_pool_sources(
+    memory_pool_path: Path | None,
+) -> list[dict[str, Any]]:
+    """Pool entries whose source split is not train (清单 P0-4 §9.3).
+
+    Reads provenance exclusively from ``payload.provenance``; missing
+    provenance fails closed.
+    """
     if memory_pool_path is None:
-        return set()
-    offenders: set[str] = set()
+        return []
+    violations: list[dict[str, Any]] = []
     for line in Path(memory_pool_path).read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         entry = json.loads(line)
-        source_split = entry.get("memory_source_split", entry.get("source_split"))
-        if source_split is not None and source_split != "train":
-            memory_id = entry.get("memory_id")
-            if memory_id is not None:
-                offenders.add(str(memory_id))
-    return offenders
+        try:
+            prov = _read_pool_provenance(entry)
+        except ValueError as exc:
+            violations.append({
+                "memory_id": entry.get("memory_id"),
+                "error": str(exc),
+            })
+            continue
+        if prov["source_split"] != "train":
+            violations.append({
+                "memory_id": entry.get("memory_id"),
+                "source_split": prov["source_split"],
+                "source_task_id": prov["source_task_id"],
+                "source_trajectory_id": prov["source_trajectory_id"],
+            })
+    return violations
 
 
 def _treatment_edge_overlap(
@@ -818,15 +952,12 @@ def _memory_source_trajectory_reuse(
     """Train source trajectories observed in more than one split (R6 P0-3).
 
     Reuse of a train-derived memory across validation/test is legal; this
-    is a statistic, never a fatal condition. Legacy records that only
-    persist ``source_trajectory_id`` are included via fallback.
+    is a statistic, never a fatal condition.
     """
     observed: dict[str, set[str]] = {}
     for name in SPLIT_NAMES:
         for rec in paired_records_by_split[name]:
-            trajectory = rec.get(
-                "memory_source_trajectory_id", rec.get("source_trajectory_id")
-            )
+            trajectory = rec.get("memory_source_trajectory_id")
             if trajectory in (None, ""):
                 continue
             observed.setdefault(str(trajectory), set()).add(name)
@@ -867,17 +998,11 @@ def _non_train_memory_sources(
 def _self_transfer_edges(
     paired_records_by_split: dict[str, list[dict[str, Any]]],
 ) -> set[TreatmentEdgeKey]:
-    """Edges whose target task equals the memory's source task.
-
-    Reads ``memory_source_task_id`` with a ``source_task_id`` fallback for
-    legacy artifacts (R6 清单 P0-1).
-    """
+    """Edges whose target task equals the memory's source task (清单 P0-1)."""
     offenders: set[TreatmentEdgeKey] = set()
     for name in SPLIT_NAMES:
         for rec in paired_records_by_split[name]:
-            source_task = rec.get(
-                "memory_source_task_id", rec.get("source_task_id")
-            )
+            source_task = rec.get("memory_source_task_id")
             if source_task in (None, ""):
                 continue
             target_task = rec.get("task_id")

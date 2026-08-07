@@ -57,7 +57,18 @@ def _audit(tmp_path, *, dropped_field: str | None) -> dict:
     _write_jsonl(val, [records["validation"]])
     _write_jsonl(test, [records["test"]])
     pool = tmp_path / "memories.jsonl"
-    _write_jsonl(pool, [{"memory_id": "m_test", "payload": {"procedure": "x"}}])
+    _write_jsonl(pool, [{
+        "memory_id": "m_test",
+        "payload": {
+            "procedure": "x",
+            "provenance": {
+                "source_agent_id": "w1",
+                "source_task_id": "train_source",
+                "source_trajectory_id": "traj_train",
+                "source_split": "train",
+            },
+        },
+    }])
 
     manifest = tmp_path / "candidates.json"
     manifest.write_text(
@@ -107,7 +118,6 @@ def test_complete_provenance_passes(tmp_path):
 def test_missing_provenance_field_fails_formal_audit(tmp_path, dropped_field):
     summary = _audit(tmp_path, dropped_field=dropped_field)
     assert summary["split_integrity_passed"] is False
-    assert summary["legacy_schema_used"] is False
     assert any(
         f"missing required provenance field '{dropped_field}'" in err
         for err in summary["provenance_errors"]

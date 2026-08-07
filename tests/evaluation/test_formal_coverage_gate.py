@@ -90,10 +90,18 @@ def _write_inputs(tmp_path: Path) -> dict[str, Path]:
         split_paths[name] = tmp_path / f"{name}.jsonl"
         split_paths[name].write_text("", encoding="utf-8")
 
+    budget_manifest = tmp_path / "budget_candidates.json"
+    budget_manifest.write_text(json.dumps({
+        "target_split": "train",
+        "memory_source_split": "train",
+        "candidates": [],
+    }), encoding="utf-8")
+
     return {
         "memory_pool": memory_pool,
         "manifest": manifest,
         "paired_records": paired_records,
+        "budget_manifest": budget_manifest,
         **split_paths,
     }
 
@@ -133,6 +141,7 @@ def _run(tmp_path: Path, paths: dict[str, Path]) -> dict:
         methods=["b0_no_memory"],
         ci_bootstrap=50,
         experiment_mode="formal",
+        train_budget_candidate_manifest_path=paths["budget_manifest"],
         output=tmp_path / "eval_out",
     )
 

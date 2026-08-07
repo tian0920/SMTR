@@ -105,7 +105,7 @@ def run_integrity_audit(
     train_paired_records_path: Path | None = None,
     validation_paired_records_path: Path | None = None,
     test_paired_records_path: Path | None = None,
-    checkpoint_path: Path | None = None,
+    checkpoint_paths: dict[str, Path] | None = None,
 ) -> dict[str, Any]:
     """Run full integrity audit on all pipeline artifacts.
 
@@ -279,7 +279,7 @@ def run_integrity_audit(
         validation_paired_records_path=validation_paired_records_path,
         test_paired_records_path=test_paired_records_path,
         memory_pool_path=memory_pool_path,
-        checkpoint_path=checkpoint_path,
+        checkpoint_paths=checkpoint_paths,
         errors=errors,
     )
 
@@ -317,7 +317,7 @@ def _run_split_audit_section(
     validation_paired_records_path: Path | None,
     test_paired_records_path: Path | None,
     memory_pool_path: Path,
-    checkpoint_path: Path | None,
+    checkpoint_paths: dict[str, Path] | None,
     errors: list[str],
 ) -> tuple[bool, dict[str, Any] | None]:
     """Real split audit for the integrity report (清单 P0-18).
@@ -346,7 +346,7 @@ def _run_split_audit_section(
         validation_records_path=Path(validation_paired_records_path),
         test_records_path=Path(test_paired_records_path),
         memory_pool_path=memory_pool_path,
-        checkpoint_path=checkpoint_path,
+        checkpoint_paths=checkpoint_paths,
     )
     split_integrity_passed = bool(summary.get("split_integrity_passed"))
     split_audit = {

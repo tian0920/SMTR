@@ -33,7 +33,19 @@ def _write_split_records(path, *, task_id, memory_id, seeds=(0,)):
 def _write_memory_pool(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps({"memory_id": "m1", "payload": {"procedure": "x"}, "routing_card": {}}) + "\n",
+        json.dumps({
+            "memory_id": "m1",
+            "payload": {
+                "procedure": "x",
+                "provenance": {
+                    "source_agent_id": "w1",
+                    "source_task_id": "train_source",
+                    "source_trajectory_id": "traj_train",
+                    "source_split": "train",
+                },
+            },
+            "routing_card": {},
+        }) + "\n",
         encoding="utf-8",
     )
 
@@ -109,7 +121,7 @@ def test_test_calibrated_checkpoint_fails(tmp_path):
         validation_records_path=val,
         test_records_path=test,
         memory_pool_path=pool,
-        checkpoint_path=checkpoint,
+        checkpoint_paths={"full": checkpoint},
     )
     assert summary["split_integrity_passed"] is False
     assert "test records" in summary["error"]
@@ -132,7 +144,7 @@ def test_fully_isolated_splits_pass(tmp_path):
         validation_records_path=val,
         test_records_path=test,
         memory_pool_path=pool,
-        checkpoint_path=checkpoint,
+        checkpoint_paths={"full": checkpoint},
     )
     assert summary["split_integrity_passed"] is True
     assert summary["target_task_overlap"] == []

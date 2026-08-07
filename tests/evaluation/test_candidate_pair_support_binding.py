@@ -47,7 +47,18 @@ def _audit(tmp_path, candidate_entries, *, strict: bool, mode: str):
     _write_jsonl(val, [_rec("t_val", "m_val")])
     _write_jsonl(test, [_rec("t_test", "m_test")])
     pool = tmp_path / "memories.jsonl"
-    _write_jsonl(pool, [{"memory_id": "m_test", "payload": {"procedure": "x"}}])
+    _write_jsonl(pool, [{
+        "memory_id": "m_test",
+        "payload": {
+            "procedure": "x",
+            "provenance": {
+                "source_agent_id": "w1",
+                "source_task_id": "train_source",
+                "source_trajectory_id": "traj_train",
+                "source_split": "train",
+            },
+        },
+    }])
 
     manifest = {
         "target_split": "test",

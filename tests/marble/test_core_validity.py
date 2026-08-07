@@ -236,7 +236,6 @@ def test_record_persists_split_integrity_metadata():
     pair_result.paired_label = "positive_transfer"
     pair_result.paired_record_valid = True
     pair_result.invalid_reason = None
-    pair_result.branch_execution_order = "share_then_withhold"
     for branch in (pair_result.share, pair_result.withhold):
         branch.outcome.success = True
         branch.outcome.environment_valid = True

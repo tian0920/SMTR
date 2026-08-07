@@ -51,7 +51,18 @@ def _setup(tmp_path):
     _write_jsonl(test, [_rec("t_test", "m_test")])
 
     pool = tmp_path / "memories.jsonl"
-    _write_jsonl(pool, [{"memory_id": "m_test", "payload": {"procedure": "x"}}])
+    _write_jsonl(pool, [{
+        "memory_id": "m_test",
+        "payload": {
+            "procedure": "x",
+            "provenance": {
+                "source_agent_id": "w1",
+                "source_task_id": "train_source",
+                "source_trajectory_id": "traj_train",
+                "source_split": "train",
+            },
+        },
+    }])
 
     manifest = tmp_path / "candidates.json"
     manifest.write_text(
@@ -73,6 +84,18 @@ def _setup(tmp_path):
         encoding="utf-8",
     )
 
+    budget_manifest = tmp_path / "budget_candidates.json"
+    budget_manifest.write_text(
+        json.dumps(
+            {
+                "target_split": "train",
+                "memory_source_split": "train",
+                "candidates": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
     dataset = tmp_path / "dataset.json"
     dataset.write_text('{"tasks": []}', encoding="utf-8")
     splits = tmp_path / "splits.json"
@@ -84,6 +107,7 @@ def _setup(tmp_path):
         test_records_path=test,
         memory_pool_path=pool,
         test_candidate_manifest_path=manifest,
+        train_budget_candidate_manifest_path=budget_manifest,
         dataset_manifest_path=dataset,
         split_manifest_path=splits,
         checkpoint_paths={},
@@ -100,6 +124,7 @@ def _setup(tmp_path):
         "splits": splits,
         "pool": pool,
         "manifest": manifest,
+        "budget_manifest": budget_manifest,
     }
 
 
@@ -119,6 +144,7 @@ def test_baseline_validation_without_checkpoints(tmp_path):
         split_manifest_path=files["splits"],
         memory_pool_path=files["pool"],
         candidate_manifest_path=files["manifest"],
+        train_budget_candidate_manifest_path=files["budget_manifest"],
         checkpoint_paths={},
         enabled_methods=_BASELINE_METHODS,
     )

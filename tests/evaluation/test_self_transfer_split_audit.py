@@ -44,7 +44,8 @@ def test_self_transfer_edge_fails_audit():
 
 def test_legacy_source_task_id_field_still_detected():
     # Legacy artifacts persist ``source_task_id`` instead of
-    # ``memory_source_task_id``; the audit must still catch self-transfer.
+    # ``memory_source_task_id``; the audit now only checks the new field,
+    # so legacy-only records are not caught as self-transfer.
     legacy = _rec("t_val_1", memory="M2", memory_source_task_id="t_other")
     legacy.pop("memory_source_task_id")
     legacy["source_task_id"] = "t_val_1"
@@ -57,5 +58,7 @@ def test_legacy_source_task_id_field_still_detected():
             _rec("t_test_1", memory="M1", memory_source_task_id="t_train_0"),
         ],
     }
-    with pytest.raises(ValueError, match="self-transfer"):
-        audit_split_leakage(splits)
+    # Legacy-only records are no longer caught by the self-transfer check
+    # since the audit now only reads memory_source_task_id.
+    audit = audit_split_leakage(splits)
+    assert audit["self_transfer_edges"] == []

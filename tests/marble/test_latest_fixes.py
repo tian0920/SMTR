@@ -84,7 +84,6 @@ class TestPairedRecordReceiverState:
         mock_pair_result.paired_label = "positive_transfer"
         mock_pair_result.paired_record_valid = True
         mock_pair_result.invalid_reason = None
-        mock_pair_result.branch_execution_order = "share_then_withhold"
         mock_pair_result.share.outcome.success = True
         mock_pair_result.share.outcome.environment_valid = True
         mock_pair_result.share.outcome.native_evaluator_executed = True

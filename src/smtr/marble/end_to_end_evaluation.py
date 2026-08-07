@@ -113,6 +113,7 @@ def run_end_to_end_evaluation(
     allow_risk_budget_override: bool = False,
     experiment_mode: str = "pilot",
     split_audit_path: Path | None = None,
+    train_budget_candidate_manifest_path: Path | None = None,
     output: Path,
 ) -> dict[str, Any]:
     """Run end-to-end MARBLE evaluation with real engine execution.
@@ -171,12 +172,20 @@ def run_end_to_end_evaluation(
             raise ValueError(
                 "formal end-to-end evaluation requires a split audit artifact"
             )
+        if train_budget_candidate_manifest_path is None:
+            raise ValueError(
+                "formal end-to-end evaluation requires "
+                "train_budget_candidate_manifest_path"
+            )
         split_audit = validate_split_audit_artifact(
             split_audit_path=split_audit_path,
             dataset_manifest_path=dataset_manifest_path,
             split_manifest_path=split_manifest_path,
             memory_pool_path=memory_pool_path,
             candidate_manifest_path=candidate_manifest_path,
+            train_budget_candidate_manifest_path=(
+                train_budget_candidate_manifest_path
+            ),
             checkpoint_paths=checkpoint_role_paths,
             enabled_methods=methods,
         )

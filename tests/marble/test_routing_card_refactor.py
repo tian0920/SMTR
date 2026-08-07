@@ -209,7 +209,7 @@ def test_encoder_tokens_exclude_legacy_writer_prefixes():
     )
     encoder = HashingTransferFeatureEncoder(feature_block="full")
     tokens = encoder.tokens(CandidateExposureInput(
-        receiver_state=_receiver(), candidate_card=card, selected_prefix_cards=(),
+        receiver_state=_receiver(), candidate_card=card,
     ))
     forbidden_prefixes = (
         "writer_role:", "writer_capability", "writer_tool",

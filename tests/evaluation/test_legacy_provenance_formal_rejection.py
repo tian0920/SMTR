@@ -1,19 +1,16 @@
-"""Legacy provenance schema handling (清单 P1-1 4.4, 4.5).
+"""Legacy provenance schema handling (清单 P1-4).
 
-Records that only carry the legacy ``source_*`` fields are accepted by
-pilots but flagged with ``legacy_schema_used``; formal audits reject
-them outright, and any audit that used the fallback cannot back a
-formal evaluation even after the fact.
+Records that only carry the legacy ``source_*`` fields are rejected by
+formal audits through the provenance schema validation. The legacy
+fallback path has been removed; formal paired records must carry
+``memory_source_*`` provenance fields.
 """
 
 from __future__ import annotations
 
 import json
 
-import pytest
-
 from smtr.evaluation.split_audit import audit_split_files
-from smtr.evaluation.split_audit_validation import validate_split_audit_artifact
 
 
 def _legacy_rec(task_id: str, memory_id: str) -> dict:
@@ -50,7 +47,18 @@ def _setup(tmp_path, *, mode: str):
     _write_jsonl(test, [_legacy_rec("t_test", "m_test")])
 
     pool = tmp_path / "memories.jsonl"
-    _write_jsonl(pool, [{"memory_id": "m_test", "payload": {"procedure": "x"}}])
+    _write_jsonl(pool, [{
+        "memory_id": "m_test",
+        "payload": {
+            "procedure": "x",
+            "provenance": {
+                "source_agent_id": "w1",
+                "source_task_id": "train_source",
+                "source_trajectory_id": "traj_train",
+                "source_split": "train",
+            },
+        },
+    }])
 
     manifest = tmp_path / "candidates.json"
     manifest.write_text(
@@ -101,11 +109,10 @@ def _setup(tmp_path, *, mode: str):
     }
 
 
-def test_pilot_accepts_legacy_records_but_flags_schema(tmp_path):
+def test_pilot_accepts_legacy_records(tmp_path):
     files = _setup(tmp_path, mode="pilot")
     summary = files["summary"]
     assert summary["split_integrity_passed"] is True
-    assert summary["legacy_schema_used"] is True
 
 
 def test_formal_rejects_legacy_records(tmp_path):
@@ -113,21 +120,16 @@ def test_formal_rejects_legacy_records(tmp_path):
     summary = files["summary"]
     assert summary["split_integrity_passed"] is False
     assert summary["provenance_errors"]
-    assert summary["legacy_schema_used"] is False
 
 
-def test_legacy_pilot_artifact_cannot_back_formal_evaluation(tmp_path):
-    files = _setup(tmp_path, mode="pilot")
-    with pytest.raises(
-        ValueError,
-        match="split audit used legacy provenance schema fallbacks",
-    ):
-        validate_split_audit_artifact(
-            split_audit_path=files["audit_path"],
-            dataset_manifest_path=files["dataset"],
-            split_manifest_path=files["splits"],
-            memory_pool_path=files["pool"],
-            candidate_manifest_path=files["manifest"],
-            checkpoint_paths={},
-            enabled_methods=["b0_no_memory"],
-        )
+def test_formal_provenance_rejects_missing_fields(tmp_path):
+    """Formal audit rejects records missing required provenance fields."""
+    files = _setup(tmp_path, mode="formal")
+    summary = files["summary"]
+    assert summary["split_integrity_passed"] is False
+    # The legacy records use source_* instead of memory_source_* fields,
+    # so the formal provenance validator rejects them.
+    assert any(
+        "missing required provenance field" in err
+        for err in summary["provenance_errors"]
+    )

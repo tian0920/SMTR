@@ -157,7 +157,6 @@ class FakeSharedControlRunner:
         control: MagicMock,
         share: MagicMock,
         candidate_memory_id: str,
-        branch_execution_order: str = "control_first",
     ) -> MagicMock:
         valid = bool(control.valid and share.real_engine_executed)
         invalid_reason: str | None = None
@@ -180,7 +179,6 @@ class FakeSharedControlRunner:
             if valid
             else None
         )
-        result.branch_execution_order = branch_execution_order
         return result
 
 

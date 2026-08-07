@@ -59,10 +59,7 @@ class HashingTransferFeatureEncoder:
     memory payload and never enters features.
 
     SMTR-v1 action space is A(o_r) in {∅, m_1, ..., m_K}: one receiver
-    receives at most one memory, so the selected-memory prefix S is fixed
-    to ∅ and is never encoded as features. ``selected_prefix_cards``
-    remains a compatibility-only field and must never influence
-    predictions.
+    receives at most one memory, so the selected-memory prefix S = ∅.
 
     Feature modes (``feature_block``):
       - ``full``: task/environment + receiver marginal + memory marginal
@@ -71,11 +68,6 @@ class HashingTransferFeatureEncoder:
         interaction block.
       - ``global_transfer``: task/environment + memory marginal only;
         receiver identity is dropped entirely.
-
-    Legacy blocks (``no_pair_interaction``, ``no_receiver``,
-    ``no_writer_receiver``, ``memory_task_only``) are not accepted here;
-    they exist only for legacy compatibility and never enter the formal
-    method registry.
 
     Forbidden: payload, procedure bodies, labels, outcomes and any
     writer/provenance token never enter features.
@@ -349,7 +341,6 @@ def build_training_data_from_records(
         exposure_input = CandidateExposureInput(
             receiver_state=receiver_state,
             candidate_card=card,
-            selected_prefix_cards=(),
         )
         results.append((exposure_input, paired_record_label(rec), rec))
     return results

@@ -29,7 +29,6 @@ class PairedCausalEvaluator:
         scenario: str,
         generation_seed: int,
         workspace: Path,
-        branch_execution_order: str = "share_then_withhold",
     ) -> dict[str, Any]:
         """Run a paired intervention and compute the treatment effect."""
         bundle = bundle_from_manifest_task(
@@ -72,7 +71,6 @@ class PairedCausalEvaluator:
             control=control,
             share=share,
             candidate_memory_id=memory_id_str,
-            branch_execution_order=branch_execution_order,
         )
         return self._compute_treatment_effect(result)
 
@@ -162,7 +160,6 @@ class PairedCausalEvaluator:
             "paired_record_valid": result.paired_record_valid,
             "invalid_reason": result.invalid_reason,
             "paired_label": result.paired_label,
-            "branch_execution_order": result.branch_execution_order,
             "share_success": share_success,
             "withhold_success": withhold_success,
             "treatment_effect": treatment_effect,

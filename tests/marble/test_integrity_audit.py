@@ -55,7 +55,19 @@ def _write_paired_records(path):
 
 def _write_memory_pool(path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"memory_id": "m1", "payload": {"procedure": "test"}, "routing_card": {}}) + "\n", encoding="utf-8")
+    path.write_text(json.dumps({
+        "memory_id": "m1",
+        "payload": {
+            "procedure": "test",
+            "provenance": {
+                "source_agent_id": "w1",
+                "source_task_id": "train_source",
+                "source_trajectory_id": "traj_train",
+                "source_split": "train",
+            },
+        },
+        "routing_card": {},
+    }) + "\n", encoding="utf-8")
 
 
 def test_missing_paired_records_fails(tmp_path):

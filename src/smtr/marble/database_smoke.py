@@ -293,7 +293,6 @@ def run_database_paired_smoke(
         control=control,
         share=share,
         candidate_memory_id=memory_id_str,
-        branch_execution_order=branch_order.replace("-", "_"),
     )
     summary = {
         "run_id": run_id,

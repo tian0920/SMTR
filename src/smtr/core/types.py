@@ -120,14 +120,12 @@ class CandidateExposureInput(BaseModel):
     receiver identity. No provenance enters the routing input.
 
     SMTR-v1: single receiver, single candidate memory exposure, S = ∅.
-    ``selected_prefix_cards`` is always empty in v1.
     """
 
     model_config = ConfigDict(frozen=True)
 
     receiver_state: ReceiverState
     candidate_card: MemoryRoutingCard
-    selected_prefix_cards: tuple[MemoryRoutingCard, ...] = ()
 
 
 class PairedTransferOutcome(BaseModel):

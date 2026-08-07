@@ -69,7 +69,6 @@ class PairedBranchResult(BaseModel):
     paired_record_valid: bool
     invalid_reason: str | None
     paired_label: str | None
-    branch_execution_order: str = "share_then_withhold"
     share_runtime_visibility_verified: bool = False
     withhold_runtime_visibility_verified: bool = False
 
@@ -272,7 +271,6 @@ class MarblePairedBranchRunner:
         control: SharedControlResult,
         share: MarbleBranchAudit,
         candidate_memory_id: str,
-        branch_execution_order: str = "control_first",
     ) -> PairedBranchResult:
         """Pair one share audit with its group's shared control.
 
@@ -311,7 +309,6 @@ class MarblePairedBranchRunner:
                 if valid
                 else None
             ),
-            branch_execution_order=branch_execution_order,
             share_runtime_visibility_verified=share.runtime_visibility_verified,
             withhold_runtime_visibility_verified=(
                 control.audit.runtime_visibility_verified

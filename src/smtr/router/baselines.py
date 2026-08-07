@@ -130,7 +130,6 @@ class NoMemoryRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         return [
             RouterDecision(
@@ -154,7 +153,6 @@ class SemanticTop1Router:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         if not candidate_cards:
             return []
@@ -189,7 +187,6 @@ class ReceiverCompatibleTop1Router:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         if not candidate_cards:
             return []
@@ -264,9 +261,8 @@ class GlobalTransferCriticRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
-        return self._router.decide(receiver_state, candidate_cards, selected_prefix_cards)
+        return self._router.decide(receiver_state, candidate_cards)
 
 
 class SMTRNoCompatibilityInteractionRouter:
@@ -289,9 +285,8 @@ class SMTRNoCompatibilityInteractionRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
-        return self._router.decide(receiver_state, candidate_cards, selected_prefix_cards)
+        return self._router.decide(receiver_state, candidate_cards)
 
 
 class SMTRNoRiskRouter:
@@ -313,14 +308,12 @@ class SMTRNoRiskRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
-        selected_prefix_cards: tuple[MemoryRoutingCard, ...] = (),
     ) -> list[RouterDecision]:
         scored: list[tuple[float, float, MemoryRoutingCard]] = []
         for card in candidate_cards:
             exposure_input = CandidateExposureInput(
                 receiver_state=receiver_state,
                 candidate_card=card,
-                selected_prefix_cards=selected_prefix_cards,
             )
             pred = self.critic.predict(exposure_input)
             scored.append((pred.tau_hat, pred.eta_hat, card))

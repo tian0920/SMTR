@@ -107,7 +107,6 @@ class MarblePairedRecordGenerator:
                         "split": split,
                         "base_episode_id": base_episode_id,
                         "candidate_memory_id": candidate_memory["memory_id"],
-                        "selected_prefix_ids": [],
                         "share_initial_digest": result.share.initial_digest,
                         "withhold_initial_digest": result.withhold.initial_digest,
                         "agent_config_digest": result.share.agent_config_digest,

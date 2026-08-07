@@ -82,7 +82,6 @@ def _paired_record(entry: dict) -> dict:
         "writer_capabilities": ["sql"],
         "writer_tool_names": ["sql_tool", "monitor_tool"],
         "writer_model_name": "qwen-max",
-        "selected_prefix_memory_ids": [],
         "candidate_rank": 1,
         "candidate_score": 0.5,
         "task_instruction": entry["task_instruction"],
@@ -95,7 +94,6 @@ def _paired_record(entry: dict) -> dict:
         "label": "positive_transfer",
         "valid": True,
         "invalid_reason": None,
-        "branch_execution_order": "share_then_withhold",
     }
 
 
@@ -141,9 +139,6 @@ def test_training_loader_preserves_receiver_context(tmp_path: Path) -> None:
     # Writer-agnostic: the card carries no writer profile at all.
     assert not hasattr(card, "writer")
 
-    # SMTR-v1: S = empty, never reconstructed from records.
-    assert training_item.selected_prefix_cards == ()
-
 
 def test_train_and_inference_feature_tokens_match(tmp_path: Path) -> None:
     records_path, pool_path, entry = _write_fixtures(tmp_path)
@@ -156,7 +151,6 @@ def test_train_and_inference_feature_tokens_match(tmp_path: Path) -> None:
     evaluation_input = CandidateExposureInput(
         receiver_state=build_receiver_state_from_entry(entry),
         candidate_card=build_routing_card_from_pool_entry(pool_entry),
-        selected_prefix_cards=(),
     )
 
     encoder = HashingTransferFeatureEncoder(feature_block="full")

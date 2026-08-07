@@ -76,7 +76,6 @@ def _pair_result_to_dict(result: PairedBranchResult) -> dict[str, Any]:
         "paired_record_valid": result.paired_record_valid,
         "invalid_reason": result.invalid_reason,
         "paired_label": result.paired_label,
-        "branch_execution_order": result.branch_execution_order,
         "share_runtime_visibility_verified": result.share_runtime_visibility_verified,
         "withhold_runtime_visibility_verified": result.withhold_runtime_visibility_verified,
         "share_success": result.share.outcome.success,
@@ -265,7 +264,6 @@ def run_paired_pilot(
                 control=control,
                 share=share,
                 candidate_memory_id=memory_id,
-                branch_execution_order=branch_order,
             )
 
             result_dict = _pair_result_to_dict(result)

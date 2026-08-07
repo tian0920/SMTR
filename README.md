@@ -135,6 +135,10 @@ Training accepts only a budget **candidate manifest**, never a bare fraction: th
 
 Budget selection is deterministic, stratified and nested (`B25 ⊆ B50 ⊆ B75 ⊆ B100`); it only applies to train candidate manifests, never reads outcomes or critic predictions, and keeps cross-receiver anchor groups atomic. Budget checkpoints record the requested/realized fractions and manifest digests. B never enters the router or validation-time tuning.
 
+Every budget level — including B=100% — uses an explicit frozen `train_B100` candidate manifest. No budget level is treated as "no manifest"; all four follow the same pipeline: manifest → selected edges → effective records → digest → checkpoint → audit.
+
+The formal split audit independently reconstructs the effective train subset from the full paired training records and the frozen train budget candidate manifest. Checkpoint-declared effective-training metadata (digest, edge count, seed support) is never trusted without independent recomputation. The audit verifies full seed support per kept edge, cross-checkpoint support equality, and agreement between each checkpoint's declared support and the audit-reconstructed truth.
+
 ## Data Splits
 
 Tasks are split **by group** (database tasks by normalized schema family; other scenarios by scenario + task-id bucket), so that structurally similar tasks never cross splits.
@@ -234,6 +238,7 @@ python -m smtr.marble.cli audit-splits \
   --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
   --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
+  --train-budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
   --test-candidate-manifest artifacts/marble/candidates/test_candidates.json \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
   --checkpoint-global-transfer-critic artifacts/marble/checkpoints/global_transfer.joblib \
@@ -347,7 +352,7 @@ Formal main table (清单 P0-2, writer-agnostic):
 
 No method consumes writer/source-agent identity: it exists only in
 `payload.provenance` for split auditing and reproducibility. Formal
-pipelines reject legacy writer-aware checkpoints (wrong feature block
+pipelines reject writer-aware checkpoints (wrong feature block
 or `writer_features_used=True` checkpoint metadata).
 
 AllShare and FactualSuccess were removed from the formal table: AllShare

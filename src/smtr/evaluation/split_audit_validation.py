@@ -30,6 +30,7 @@ def validate_split_audit_artifact(
     split_manifest_path: Path,
     memory_pool_path: Path,
     candidate_manifest_path: Path,
+    train_budget_candidate_manifest_path: Path,
     checkpoint_paths: dict[str, Path],
     enabled_methods: list[str],
 ) -> dict[str, Any]:
@@ -57,14 +58,6 @@ def validate_split_audit_artifact(
     if not audit.get("split_integrity_passed"):
         raise ValueError("formal evaluation aborted: split audit failed")
 
-    # 清单 P1-1: pilot artifacts built on legacy provenance fallbacks must
-    # never feed a formal evaluation.
-    if audit.get("legacy_schema_used"):
-        raise ValueError(
-            "formal evaluation aborted: split audit used legacy "
-            "provenance schema fallbacks"
-        )
-
     if audit.get("calibration_split") != "validation":
         raise ValueError(
             "split audit calibration used a non-validation split: "
@@ -87,6 +80,11 @@ def validate_split_audit_artifact(
             "test_candidate_manifest_digest",
             candidate_manifest_path,
             "candidate manifest",
+        ),
+        (
+            "train_budget_candidate_manifest_digest",
+            train_budget_candidate_manifest_path,
+            "train budget candidate manifest",
         ),
     )
     for digest_key, path, label in bindings:

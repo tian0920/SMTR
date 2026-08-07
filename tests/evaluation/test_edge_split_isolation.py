@@ -111,13 +111,13 @@ class TestSplitIntegrityReport:
 
     def _clean_splits(self) -> dict[str, list[dict]]:
         train = [_record("t1", "r1", "m1", 0)]
-        train[0]["source_task_id"] = "t0"
+        train[0]["memory_source_task_id"] = "t0"
         train[0]["memory_source_split"] = "train"
         validation = [_record("t2", "r1", "m1", 0)]
-        validation[0]["source_task_id"] = "t0"
+        validation[0]["memory_source_task_id"] = "t0"
         validation[0]["memory_source_split"] = "train"
         test = [_record("t3", "r2", "m2", 0)]
-        test[0]["source_task_id"] = "t0"
+        test[0]["memory_source_task_id"] = "t0"
         test[0]["memory_source_split"] = "train"
         return _splits(train=train, validation=validation, test=test)
 
@@ -138,7 +138,7 @@ class TestSplitIntegrityReport:
 
     def test_self_transfer_edge_fails_audit(self):
         splits = self._clean_splits()
-        splits["test"][0]["source_task_id"] = "t3"  # memory from target task
+        splits["test"][0]["memory_source_task_id"] = "t3"  # memory from target task
         with pytest.raises(ValueError, match="self-transfer"):
             audit_split_leakage(splits)
 
