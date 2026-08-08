@@ -102,6 +102,9 @@ class FourOutcomeTransferCritic:
         self.budget_policy_metadata: dict[str, Any] | None = None
         self.training_support_metadata: dict[str, Any] | None = None
         self.training_artifact_digests: dict[str, Any] | None = None
+        # 清单 Formal Protocol §2: seed protocol metadata bound into every
+        # checkpoint so downstream stages verify the same protocol.
+        self.seed_protocol_metadata: dict[str, Any] | None = None
         self._edge_calibration_examples: list | None = None
 
     def fit(
@@ -493,6 +496,8 @@ class FourOutcomeTransferCritic:
                 "artifact_digests": self.training_artifact_digests,
                 # 清单 Writer-Agnostic 第十章: method-schema metadata.
                 "method_schema_metadata": self.method_schema_metadata,
+                # 清单 Formal Protocol §2: seed protocol metadata.
+                "seed_protocol_metadata": self.seed_protocol_metadata,
             },
             path,
         )
@@ -552,6 +557,7 @@ class FourOutcomeTransferCritic:
         critic.training_support_metadata = data.get("training_support")
         critic.training_artifact_digests = data.get("artifact_digests")
         critic.method_schema_metadata = data.get("method_schema_metadata")
+        critic.seed_protocol_metadata = data.get("seed_protocol_metadata")
         critic._fitted = True
         return critic
 

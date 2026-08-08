@@ -35,7 +35,7 @@ class TestEndToEndSeedApiGate:
     def test_formal_with_insufficient_seeds_fails_immediately(self):
         # Three seeds pass the CLI-era default but must be rejected by the
         # in-function validator before any file is touched.
-        with pytest.raises(ValueError, match="at least 5 unique generation seeds"):
+        with pytest.raises(ValueError, match="requires exactly seeds"):
             run_end_to_end_evaluation(
                 **_dummy_kwargs(
                     experiment_mode="formal", generation_seeds=[0, 1, 2]))

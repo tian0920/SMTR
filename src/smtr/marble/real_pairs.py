@@ -327,18 +327,15 @@ def generate_candidate_level_pairs(
     from smtr.marble.branch_runner import MarblePairedBranchRunner
     from smtr.marble.paired_context import build_pair_execution_context
 
-    if experiment_mode not in MIN_SEEDS:
-        raise ValueError(
-            f"Unknown experiment_mode {experiment_mode!r}; "
-            f"expected one of {sorted(MIN_SEEDS)}."
-        )
-    min_seeds = MIN_SEEDS[experiment_mode]
-    if len(set(generation_seeds)) < min_seeds:
-        raise ValueError(
-            f"experiment_mode={experiment_mode!r} requires at least "
-            f"{min_seeds} distinct generation seeds, got "
-            f"{sorted(set(generation_seeds))}."
-        )
+    from smtr.evaluation.experiment_protocol import (
+        validate_generation_seed_protocol,
+    )
+
+    # 清单 Formal Protocol §1: exact seed protocol enforcement at generation.
+    validate_generation_seed_protocol(
+        generation_seeds=generation_seeds,
+        experiment_mode=experiment_mode,
+    )
 
     dataset = json.loads(dataset_manifest_path.read_text(encoding="utf-8"))
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))

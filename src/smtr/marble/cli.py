@@ -363,12 +363,16 @@ def _dispatch(args: argparse.Namespace) -> None:
         print(json.dumps(result, indent=2))
 
     elif cmd == "generate-database-paired-records":
-        # 清单 P0-22: formal paired data needs at least five distinct seeds
-        # per treatment edge, so generation must fail fast before any run.
-        if args.experiment_mode == "formal" and len(set(args.generation_seeds)) < 5:
-            raise ValueError(
-                "formal paired generation requires at least five distinct seeds"
-            )
+        # 清单 Formal Protocol §1: exact seed protocol enforcement at
+        # generation; arbitrary seeds or wrong counts fail closed.
+        from smtr.evaluation.experiment_protocol import (
+            validate_generation_seed_protocol,
+        )
+
+        validate_generation_seed_protocol(
+            generation_seeds=args.generation_seeds,
+            experiment_mode=args.experiment_mode,
+        )
         # 清单 Fixed-Budget 第12章: --limit-pairs truncates the treatment-edge
         # population, so formal budget experiments must never use it.
         if args.experiment_mode == "formal" and args.limit_pairs:

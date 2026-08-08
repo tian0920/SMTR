@@ -274,11 +274,14 @@ def train_critic(
     experiment_mode: str | None = None,
 ) -> dict[str, Any]:
     """Train four-outcome transfer critic from paired records."""
-    # 清单 Fixed-Budget 第3章: the budget manifest is applied before any
-    # feature construction or critic fitting. Budgeting removes complete
-    # treatment edges and never individual generation seeds; validation
-    # and test records are never filtered here.
-    mode = experiment_mode if experiment_mode is not None else coverage_mode
+    # 清单 Formal Protocol §3: experiment_mode and coverage_mode must agree;
+    # all downstream protocol checks use the unified ``mode``.
+    from smtr.evaluation.experiment_protocol import validate_mode_consistency
+
+    mode = validate_mode_consistency(
+        experiment_mode=experiment_mode,
+        coverage_mode=coverage_mode,
+    )
     # 清单最终闭环 P0-4: formal critic training always requires an explicit
     # budget candidate manifest — including B=1.0. Pilot/debug may keep
     # None -> full support.
@@ -322,7 +325,7 @@ def train_critic(
     # 清单 P0-16: formal training must pass the split audit before the
     # critic is fitted; any leakage aborts training immediately.
     split_audit_summary = None
-    if coverage_mode == "formal":
+    if mode == "formal":
         split_audit_summary = _run_training_split_audit(
             train_records=train_records,
             train_records_path=train_records_path,
@@ -556,6 +559,19 @@ def train_critic(
     critic.method_schema_metadata = dict(
         REQUIRED_FORMAL_CHECKPOINT_METADATA
     )
+
+    # 清单 Formal Protocol §2: seed protocol metadata bound into every
+    # checkpoint so downstream stages can verify the same protocol.
+    from smtr.evaluation.experiment_protocol import build_seed_protocol_block
+
+    observed_seeds = sorted({
+        int(rec.get("generation_seed", -1))
+        for rec in prepared.records
+    })
+    critic.seed_protocol_metadata = build_seed_protocol_block(
+        mode=mode, seeds=observed_seeds
+    )
+    metrics["seed_protocol"] = critic.seed_protocol_metadata
 
     # Save checkpoint after calibration so epsilon_star is persisted.
     critic.save(output_path)

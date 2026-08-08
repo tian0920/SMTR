@@ -21,18 +21,19 @@ The key distinction is the **writer-receiver mismatch**: a memory's value depend
 
 Each memory is split into:
 - **Payload**: Full procedure steps, preconditions, postconditions (private)
-- **Routing Card**: Goal summary, task tags, environment constraints, transfer hints, writer profile (public)
+- **Routing Card**: Goal summary, task tags, environment constraints, transfer hints (public)
 
 The router only sees the routing card. The payload is only revealed after a share decision.
+
+Writer/source identity is retained only for provenance and audit purposes and is not part of the causal estimand or the formal routing features.
 
 ## 4. Candidate Proposal: Card-Only Retrieval
 
 For each receiver state, retrieve candidate memories using:
 - Task similarity (receiver instruction vs card goal/tags)
 - Environment compatibility
-- Writer-receiver role/capability compatibility
 
-Candidates include `match_type`: matched_writer_receiver, mismatched_writer_receiver, cross_task_same_group, cross_task_cross_group.
+Candidates include `match_type`: semantic_top, receiver_compatible, receiver_incompatible_hard_negative, cross_receiver_anchor.
 
 ## 5. Action Space (v1)
 
@@ -84,7 +85,7 @@ Train an ensemble classifier predicting:
 - $q_{10} = P(\text{positive\_transfer})$
 - $q_{11} = P(\text{neutral\_success})$
 
-Feature blocks: task context, receiver marginal, writer marginal, writer-receiver interaction, memory card. There is no prefix block: $S = \varnothing$ in v1.
+Feature blocks: task context, receiver marginal, memory card, memory-receiver compatibility interaction. There is no prefix block: $S = \varnothing$ in v1.
 
 **Statistical dependence under shared control**: because candidates within the same task–receiver family share control outcomes, critic bootstrap members resample complete task–receiver control families. Loss weighting remains equal across treatment edges.
 
@@ -102,7 +103,7 @@ This is a **receiver-specific exposure mask**, not a global memory filter.
 
 ## 9. MARBLE Evaluation
 
-**Generation seed protocol** (enforced inside the function API, not only the CLI): a formal run requires at least 5 unique generation seeds, a pilot at least 3; duplicates are deduplicated and the unique count is validated before any critic load or episode. The result records `generation_seeds`, `unique_seed_count`, `minimum_required_seed_count` and `seed_protocol_passed`.
+**Generation seed protocol** (enforced inside the function API, not only the CLI): a formal run requires **exactly** seeds ``[0, 1, 2, 3, 4]``, a pilot requires **exactly** seeds ``[0, 1, 2]``; arbitrary seed values or different counts are rejected. The result records ``generation_seeds``, ``unique_seed_count``, ``seed_protocol`` (``formal_v1`` or ``pilot_v1``) and ``seed_protocol_passed``.
 
 **Split-audit binding**: a formal end-to-end evaluation requires a verified split-audit artifact (see §6). Before any critic load or MARBLE episode, the evaluation validates the artifact's schema version, integrity verdict, calibration/ε-selection splits and all file digests against the files it will actually consume, and aborts on any mismatch. The result records `split_audit_verified`, `split_audit_path`, `split_audit_digest` and `split_integrity_passed`.
 

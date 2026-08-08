@@ -60,6 +60,41 @@ def require_formal_checkpoint_metadata(
             )
 
 
+def require_formal_seed_protocol(
+    critic: FourOutcomeTransferCritic,
+    *,
+    method: str,
+    expected_mode: str,
+) -> None:
+    """Reject checkpoints with missing or mismatched seed protocol (清单 §2).
+
+    Formal checkpoints must carry seed-protocol metadata matching the
+    expected mode. Downstream evaluation fails closed when the seed
+    protocol is missing, or when critics were trained on different
+    seed protocols.
+    """
+    from smtr.evaluation.experiment_protocol import (
+        SEED_PROTOCOL_NAME,
+        build_seed_protocol_block,
+    )
+
+    metadata = getattr(critic, "seed_protocol_metadata", None)
+    if metadata is None:
+        raise ValueError(
+            f"{method} checkpoint lacks seed_protocol_metadata"
+        )
+    expected_block = build_seed_protocol_block(
+        mode=expected_mode,
+        seeds=metadata.get("generation_seeds", []),
+    )
+    if metadata.get("seed_protocol") != expected_block["seed_protocol"]:
+        raise ValueError(
+            f"{method} seed_protocol mismatch: "
+            f"checkpoint={metadata.get('seed_protocol')!r}, "
+            f"expected={expected_block['seed_protocol']!r}"
+        )
+
+
 def require_feature_block(
     critic: FourOutcomeTransferCritic,
     *,
@@ -184,6 +219,10 @@ def verify_formal_checkpoint_blocks(
     if "smtr" in methods:
         require_formal_calibration(full_critic, method="SMTR")
         require_formal_checkpoint_metadata(full_critic, method="SMTR")
+        # 清单 Formal Protocol §2: seed protocol metadata.
+        require_formal_seed_protocol(
+            full_critic, method="SMTR", expected_mode="formal"
+        )
 
     if "global_transfer_critic" in methods:
         require_formal_calibration(
@@ -191,6 +230,11 @@ def verify_formal_checkpoint_blocks(
         )
         require_formal_checkpoint_metadata(
             global_critic, method="GlobalTransferCritic"
+        )
+        require_formal_seed_protocol(
+            global_critic,
+            method="GlobalTransferCritic",
+            expected_mode="formal",
         )
 
     if "smtr_no_compatibility_interaction" in methods:
@@ -201,4 +245,9 @@ def verify_formal_checkpoint_blocks(
         require_formal_checkpoint_metadata(
             no_compatibility_critic,
             method="SMTR-no-compatibility-interaction",
+        )
+        require_formal_seed_protocol(
+            no_compatibility_critic,
+            method="SMTR-no-compatibility-interaction",
+            expected_mode="formal",
         )

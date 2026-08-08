@@ -11,6 +11,8 @@ from pydantic import BaseModel, ConfigDict
 from smtr.core.types import MemoryRoutingCard
 from smtr.evaluation.experiment_protocol import (
     MINIMUM_UNIQUE_SEEDS,
+    SEED_PROTOCOL_NAME,
+    build_seed_protocol_block,
     validate_generation_seed_protocol,
 )
 from smtr.evaluation.split_audit import _METHOD_CHECKPOINT_ROLES
@@ -338,11 +340,12 @@ def run_end_to_end_evaluation(
         "routing_conditioning": "memory_receiver",
         "writer_features_used": False,
         "team_outcome_only": True,
-        # 清单 R6 P1-4: record the seed protocol that this run satisfied.
+        # 清单 Formal Protocol §2: seed protocol metadata in the artifact.
         "experiment_mode": experiment_mode,
         "generation_seeds": generation_seeds,
         "unique_seed_count": len(generation_seeds),
         "minimum_required_seed_count": MINIMUM_UNIQUE_SEEDS[experiment_mode],
+        "seed_protocol": SEED_PROTOCOL_NAME[experiment_mode],
         "seed_protocol_passed": True,
         # 清单 R6 P1-9: split-audit provenance bound to this evaluation.
         "split_audit_verified": split_audit is not None,

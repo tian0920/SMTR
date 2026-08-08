@@ -1,7 +1,7 @@
-"""Seed protocol (清单 Shared-Control 第5章).
+"""Seed protocol (清单 Shared-Control 第5章, Formal Protocol §1).
 
-pilot requires at least 3 distinct seeds, formal at least 5; duplicate
-seeds collapse and the requirement is checked before any file is read.
+pilot requires exactly seeds (0, 1, 2), formal exactly seeds (0, 1, 2, 3, 4);
+duplicate seeds collapse and the requirement is checked before any file is read.
 """
 
 from __future__ import annotations
@@ -33,17 +33,17 @@ def test_min_seeds_table():
 
 
 def test_pilot_with_two_seeds_is_rejected(tmp_path):
-    with pytest.raises(ValueError, match="requires at least 3"):
+    with pytest.raises(ValueError, match="requires exactly seeds"):
         _attempt(tmp_path, seeds=[0, 1], experiment_mode="pilot")
 
 
 def test_formal_with_four_seeds_is_rejected(tmp_path):
-    with pytest.raises(ValueError, match="requires at least 5"):
+    with pytest.raises(ValueError, match="requires exactly seeds"):
         _attempt(tmp_path, seeds=[0, 1, 2, 3], experiment_mode="formal")
 
 
 def test_unknown_experiment_mode_is_rejected(tmp_path):
-    with pytest.raises(ValueError, match="Unknown experiment_mode"):
+    with pytest.raises(ValueError, match="unsupported experiment_mode"):
         _attempt(tmp_path, seeds=[0, 1, 2], experiment_mode="turbo")
 
 

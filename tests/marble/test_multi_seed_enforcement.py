@@ -1,5 +1,10 @@
 """Multi-seed enforcement, replicate identity
-and edge-level empirical probability aggregation (checklist chapter 5)."""
+and edge-level empirical probability aggregation (checklist chapter 5).
+
+清单 Formal Protocol §1: formal mode requires exactly seeds (0, 1, 2, 3, 4)
+and pilot mode requires exactly seeds (0, 1, 2). Arbitrary seed values,
+fewer seeds, or more seeds are rejected.
+"""
 
 import pytest
 
@@ -37,9 +42,9 @@ def _make_record(
 
 
 class TestMultiSeedEnforcement:
-    def test_formal_mode_requires_at_least_five_seeds(self):
+    def test_formal_mode_requires_exactly_five_seeds(self):
         assert MIN_SEEDS["formal"] == 5
-        with pytest.raises(ValueError, match="at least 5"):
+        with pytest.raises(ValueError, match="requires exactly seeds"):
             generate_candidate_level_pairs(
                 marble_root=None,  # never touched: check happens first
                 dataset_manifest_path=None,
@@ -52,9 +57,9 @@ class TestMultiSeedEnforcement:
                 experiment_mode="formal",
             )
 
-    def test_pilot_mode_requires_at_least_three_seeds(self):
+    def test_pilot_mode_requires_exactly_three_seeds(self):
         assert MIN_SEEDS["pilot"] == 3
-        with pytest.raises(ValueError, match="at least 3"):
+        with pytest.raises(ValueError, match="requires exactly seeds"):
             generate_candidate_level_pairs(
                 marble_root=None,
                 dataset_manifest_path=None,
@@ -66,8 +71,8 @@ class TestMultiSeedEnforcement:
                 output_dir=None,
                 experiment_mode="pilot",
             )
-        # Duplicate seeds do not count as distinct seeds.
-        with pytest.raises(ValueError, match="at least 3"):
+        # Duplicate seeds collapse: unique {0,1} != required {0,1,2}.
+        with pytest.raises(ValueError, match="requires exactly seeds"):
             generate_candidate_level_pairs(
                 marble_root=None,
                 dataset_manifest_path=None,
