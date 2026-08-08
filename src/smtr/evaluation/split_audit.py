@@ -21,6 +21,7 @@ from smtr.evaluation.training_support import (
     selected_edge_keys_from_candidate_manifest,
     validate_checkpoint_support_against_audit,
 )
+from smtr.marble.artifact_digests import candidate_manifest_digest_from_path
 from smtr.marble.runtime_visibility_audit import file_digest
 
 SPLIT_NAMES = ("train", "validation", "test")
@@ -281,6 +282,17 @@ def audit_split_files(
     """
     resolved_checkpoint_paths = dict(checkpoint_paths or {})
 
+    # 清单最终闭环 P0-4: formal audits must bind the same train budget
+    # manifest that training used; None -> full support stays pilot-only.
+    if (
+        experiment_mode == "formal"
+        and train_budget_candidate_manifest_path is None
+    ):
+        raise ValueError(
+            "formal split audit requires an explicit train budget "
+            "candidate manifest, including B=1.0"
+        )
+
     candidate_manifest: dict[str, Any] | None = None
     if test_candidate_manifest_path is not None:
         candidate_manifest = json.loads(
@@ -313,8 +325,15 @@ def audit_split_files(
             if candidate_manifest is not None
             else None
         ),
-        "train_budget_candidate_manifest_digest": _artifact_digest(
-            train_budget_candidate_manifest_path
+        # 清单最终闭环 P0-2: the budget manifest is identified by its
+        # canonical content digest (same algorithm as training), never by
+        # raw file bytes.
+        "train_budget_candidate_manifest_digest": (
+            candidate_manifest_digest_from_path(
+                train_budget_candidate_manifest_path
+            )
+            if train_budget_candidate_manifest_path is not None
+            else None
         ),
     }
 

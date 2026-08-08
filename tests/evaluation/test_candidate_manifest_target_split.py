@@ -75,6 +75,21 @@ def _manifest(target_split: str, memory_source_split: str) -> dict:
     }
 
 
+def _budget_manifest_path(tmp_path):
+    budget_path = tmp_path / "budget_candidates.json"
+    budget_path.write_text(
+        json.dumps(
+            {
+                "target_split": "train",
+                "memory_source_split": "train",
+                "candidates": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return budget_path
+
+
 def _audit(tmp_path, manifest: dict):
     train, val, test, pool = _split_files(tmp_path)
     manifest_path = tmp_path / "candidates.json"
@@ -85,6 +100,7 @@ def _audit(tmp_path, manifest: dict):
         test_records_path=test,
         memory_pool_path=pool,
         test_candidate_manifest_path=manifest_path,
+        train_budget_candidate_manifest_path=_budget_manifest_path(tmp_path),
         methods=["b0_no_memory"],
         experiment_mode="formal",
     )
@@ -123,6 +139,7 @@ def test_formal_audit_without_candidate_manifest_fails(tmp_path):
         test_records_path=test,
         memory_pool_path=pool,
         test_candidate_manifest_path=None,
+        train_budget_candidate_manifest_path=_budget_manifest_path(tmp_path),
         methods=["b0_no_memory"],
         experiment_mode="formal",
     )

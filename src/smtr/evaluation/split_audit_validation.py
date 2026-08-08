@@ -20,6 +20,7 @@ from smtr.evaluation.formal_artifacts import (
     required_checkpoint_roles_for_methods,
 )
 from smtr.evaluation.split_audit import SPLIT_AUDIT_SCHEMA_VERSION
+from smtr.marble.artifact_digests import candidate_manifest_digest_from_path
 from smtr.marble.runtime_visibility_audit import file_digest
 
 
@@ -81,16 +82,22 @@ def validate_split_audit_artifact(
             candidate_manifest_path,
             "candidate manifest",
         ),
-        (
-            "train_budget_candidate_manifest_digest",
-            train_budget_candidate_manifest_path,
-            "train budget candidate manifest",
-        ),
     )
     for digest_key, path, label in bindings:
         current_digest = file_digest(Path(path))
         if audit.get(digest_key) != current_digest:
             raise ValueError(f"split audit does not match current {label}")
+
+    # 清单最终闭环 P0-2: the train budget manifest is identified by its
+    # canonical content digest (same algorithm as training and audit),
+    # never by raw file bytes.
+    current_budget_digest = candidate_manifest_digest_from_path(
+        Path(train_budget_candidate_manifest_path)
+    )
+    if audit.get("train_budget_candidate_manifest_digest") != current_budget_digest:
+        raise ValueError(
+            "split audit does not match current train budget candidate manifest"
+        )
 
     # 清单 P0-2: per-role checkpoint digest map replaces the single
     # checkpoint digest; every role required by the enabled methods must be

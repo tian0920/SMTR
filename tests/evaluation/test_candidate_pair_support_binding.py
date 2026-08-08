@@ -68,12 +68,25 @@ def _audit(tmp_path, candidate_entries, *, strict: bool, mode: str):
     manifest_path = tmp_path / "candidates.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
+    budget_manifest_path = tmp_path / "budget_candidates.json"
+    budget_manifest_path.write_text(
+        json.dumps(
+            {
+                "target_split": "train",
+                "memory_source_split": "train",
+                "candidates": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
     return audit_split_files(
         train_records_path=train,
         validation_records_path=val,
         test_records_path=test,
         memory_pool_path=pool,
         test_candidate_manifest_path=manifest_path,
+        train_budget_candidate_manifest_path=budget_manifest_path,
         methods=["b0_no_memory"],
         strict_candidate_support=strict,
         experiment_mode=mode,

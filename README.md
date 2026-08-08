@@ -210,11 +210,20 @@ python -m smtr.marble.cli generate-database-paired-records \
   --experiment-mode formal \
   --output artifacts/marble/paired/validation
 
+python -m smtr.marble.cli build-budgeted-candidates \
+  --candidate-manifest artifacts/marble/candidates/train_candidates.json \
+  --budget-fraction 1.0 \
+  --output artifacts/marble/candidates/train_candidates_budget100.json
+
+# Formal critic training fails closed without an explicit budget manifest;
+# B=100 uses the frozen train_B100 manifest like every other budget level.
 python -m smtr.marble.cli train-critic \
   --train-records artifacts/marble/paired/train/paired_records.jsonl \
   --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --feature-block full \
+  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
+  --experiment-mode formal \
   --output artifacts/marble/checkpoints/smtr_full.joblib
 
 python -m smtr.marble.cli train-critic \
@@ -222,6 +231,8 @@ python -m smtr.marble.cli train-critic \
   --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --feature-block global_transfer \
+  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
+  --experiment-mode formal \
   --output artifacts/marble/checkpoints/global_transfer.joblib
 
 python -m smtr.marble.cli train-critic \
@@ -229,6 +240,8 @@ python -m smtr.marble.cli train-critic \
   --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --feature-block no_compatibility_interaction \
+  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
+  --experiment-mode formal \
   --output artifacts/marble/checkpoints/smtr_no_compatibility.joblib
 
 # Split audit: must pass (exit code 0) before any formal evaluation. The
@@ -241,8 +254,8 @@ python -m smtr.marble.cli audit-splits \
   --train-budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
   --test-candidate-manifest artifacts/marble/candidates/test_candidates.json \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --checkpoint-global-transfer-critic artifacts/marble/checkpoints/global_transfer.joblib \
-  --checkpoint-smtr-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
+  --checkpoint-global-transfer artifacts/marble/checkpoints/global_transfer.joblib \
+  --checkpoint-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
   --methods smtr global_transfer_critic smtr_no_compatibility_interaction \
   --dataset-manifest artifacts/marble/manifests/dataset.json \
   --split-manifest artifacts/marble/manifests/splits.json \
@@ -279,9 +292,10 @@ python -m smtr.marble.cli run-paired-decision-evaluation \
   --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --checkpoint-global-transfer-critic artifacts/marble/checkpoints/global_transfer.joblib \
-  --checkpoint-smtr-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
+  --checkpoint-global-transfer artifacts/marble/checkpoints/global_transfer.joblib \
+  --checkpoint-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
   --methods b0_no_memory semantic_top1 receiver_compatible_top1 global_transfer_critic smtr_no_compatibility_interaction smtr_no_risk smtr \
+  --train-budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
   --experiment-mode formal \
   --output artifacts/marble/eval/paired_test
 ```
@@ -297,10 +311,11 @@ python -m smtr.marble.cli run-marble-evaluation \
   --candidate-manifest artifacts/marble/candidates/test_candidates.json \
   --memory-pool artifacts/marble/memory/database_memories.jsonl \
   --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --checkpoint-global-transfer-critic artifacts/marble/checkpoints/global_transfer.joblib \
-  --checkpoint-smtr-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
+  --checkpoint-global-transfer artifacts/marble/checkpoints/global_transfer.joblib \
+  --checkpoint-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
   --methods b0_no_memory semantic_top1 receiver_compatible_top1 global_transfer_critic smtr_no_compatibility_interaction smtr_no_risk smtr \
   --generation-seeds 0 1 2 3 4 \
+  --train-budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
   --experiment-mode formal \
   --split-audit artifacts/marble/eval/split_audit.json \
   --output artifacts/marble/eval/end_to_end_test
@@ -310,6 +325,7 @@ Formal protocol gates (enforced inside the function API, not only the CLI):
 
 - `--generation-seeds` has no default; formal runs need at least 5 unique seeds, pilots at least 3 (`smtr.evaluation.experiment_protocol.validate_generation_seed_protocol`).
 - `--split-audit` is mandatory in formal mode; the audit must have passed and its digests must match the current dataset manifest, split manifest, memory pool and checkpoint (`smtr.evaluation.split_audit_validation.validate_split_audit_artifact`).
+- `--train-budget-candidate-manifest` is mandatory in formal mode for both paired and end-to-end evaluation; the audit independently recomputes the effective training digest and edge count from it and never trusts checkpoint-declared values (`smtr.marble.artifact_digests.candidate_manifest_digest`).
 - The result metadata records `seed_protocol_passed`, `split_audit_verified`, `split_audit_digest` and `split_integrity_passed`.
 
 ## Integrity Audit

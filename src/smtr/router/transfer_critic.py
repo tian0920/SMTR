@@ -112,7 +112,6 @@ class FourOutcomeTransferCritic:
         coverage_mode: str = "pilot",
         sample_weights: np.ndarray | None = None,
         bootstrap_clusters: dict | None = None,
-        edge_clusters: dict | None = None,
     ) -> None:
         """Train bootstrap ensemble on paired record features.
 
@@ -130,14 +129,7 @@ class FourOutcomeTransferCritic:
         so every edge contributes equal total training weight. When sample
         weights are supplied they are the only weighting scheme (class
         balancing is disabled to avoid double weighting).
-
-        ``edge_clusters`` is the deprecated alias kept for legacy callers;
-        passing both raises.
         """
-        if bootstrap_clusters is not None and edge_clusters is not None:
-            raise ValueError("provide only bootstrap_clusters")
-        if bootstrap_clusters is None:
-            bootstrap_clusters = edge_clusters
         X = self.encoder.encode_batch(inputs)
         y = np.array([LABEL_TO_INDEX[lb] for lb in labels])
         if sample_weights is not None:

@@ -87,17 +87,6 @@ def test_bootstrap_draws_keep_families_whole():
         assert sum(counts.values()) == len(draw)
 
 
-def test_fit_rejects_both_cluster_arguments():
-    critic = FourOutcomeTransferCritic()
-    with pytest.raises(ValueError, match="provide only bootstrap_clusters"):
-        critic.fit(
-            inputs=[],
-            labels=[],
-            bootstrap_clusters={("t1", "r1"): [0]},
-            edge_clusters={("t1", "r1", "m1"): [0]},
-        )
-
-
 def test_fit_requires_clusters_to_partition_every_row():
     critic = FourOutcomeTransferCritic()
     with pytest.raises(

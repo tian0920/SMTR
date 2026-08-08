@@ -24,7 +24,7 @@ def _anchor_record(memory_id: str, rank: int, group: str) -> CandidateRecord:
         writer_agent_id=f"w_{memory_id}",
         writer_role="planner",
         receiver_role="executor",
-        match_type="matched_writer_receiver",
+        match_type="compatible",
         candidate_source="cross_receiver_anchor",
         anchor_group_id=group,
         rank=rank,

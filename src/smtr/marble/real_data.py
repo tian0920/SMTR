@@ -1342,12 +1342,3 @@ class RealPairedRecord(BaseModel):
     failure_reason: str | None = None
     Y_share: bool | None = None
     Y_withhold: bool | None = None
-
-
-class CandidateSet(BaseModel):
-    """Legacy candidate set schema for backward compatibility."""
-
-    model_config = ConfigDict(frozen=True)
-
-    recipient_task_id: str = ""
-    candidate_memory_ids: list[str] = []

@@ -105,9 +105,11 @@ def prepare_effective_training_records(
         realized_fraction = 1.0
         budget_manifest_digest: str | None = None
     else:
+        from smtr.marble.artifact_digests import (
+            candidate_manifest_digest,
+        )
         from smtr.marble.budget_sampling import (
             filter_paired_records_by_edge_keys,
-            manifest_canonical_digest,
             selected_treatment_edges_from_manifest,
         )
         from smtr.marble.real_data import DatabaseCandidateManifest
@@ -129,7 +131,7 @@ def prepare_effective_training_records(
         selected_edge_keys = selected_treatment_edges_from_manifest(manifest)
         requested_fraction = budget_meta.requested_fraction
         realized_fraction = budget_meta.realized_edge_fraction
-        budget_manifest_digest = manifest_canonical_digest(manifest)
+        budget_manifest_digest = candidate_manifest_digest(manifest)
 
     if train_records_already_budgeted:
         # 清单 Fixed-Budget 第12章 mode B: the records file was already
@@ -277,6 +279,14 @@ def train_critic(
     # treatment edges and never individual generation seeds; validation
     # and test records are never filtered here.
     mode = experiment_mode if experiment_mode is not None else coverage_mode
+    # 清单最终闭环 P0-4: formal critic training always requires an explicit
+    # budget candidate manifest — including B=1.0. Pilot/debug may keep
+    # None -> full support.
+    if mode == "formal" and budget_candidate_manifest_path is None:
+        raise ValueError(
+            "formal critic training requires an explicit budget candidate "
+            "manifest, including B=1.0"
+        )
     prepared = prepare_effective_training_records(
         train_records_path=train_records_path,
         budget_candidate_manifest_path=budget_candidate_manifest_path,
@@ -440,6 +450,9 @@ def train_critic(
     critic.effective_train_record_digest = (
         prepared.effective_train_record_digest
     )
+    # 清单最终闭环 P0-1: the effective train edge count is a top-level
+    # authoritative checkpoint field, not only a nested metadata copy.
+    critic.effective_train_edge_count = prepared.effective_edge_count
 
     # 清单 Shared-Control 第16.1节: shared-control and budget provenance are
     # bound into every checkpoint; budget fields come from the budgeted
@@ -453,6 +466,10 @@ def train_critic(
     critic.bootstrap_cluster_unit = "task_receiver_control_family"
     critic.adaptive_sampling_used = False
     critic.adaptive_stopping_used = False
+    # 清单最终闭环 P0-1: budget fractions are top-level authoritative
+    # checkpoint fields sourced from the prepared effective records.
+    critic.training_budget_requested = prepared.requested_budget_fraction
+    critic.training_budget_realized = prepared.realized_budget_fraction
     budget_meta = None
     if budget_candidate_manifest_path is not None:
         from smtr.marble.real_data import DatabaseCandidateManifest
@@ -467,8 +484,6 @@ def train_critic(
                 f"{budget_candidate_manifest_path}"
             )
         critic.training_budget_policy = budget_meta.policy_version
-        critic.training_budget_requested = budget_meta.requested_fraction
-        critic.training_budget_realized = budget_meta.realized_edge_fraction
         critic.parent_train_candidate_manifest_digest = (
             budget_meta.parent_manifest_digest
         )

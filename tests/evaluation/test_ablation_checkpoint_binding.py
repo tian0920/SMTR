@@ -58,7 +58,12 @@ def _save_checkpoint(path, *, feature_block, train_path, val_path, pool_path, bu
     critic.validation_record_digest = file_digest(val_path)
     critic.memory_pool_digest = file_digest(pool_path)
     if budget_manifest_path is not None:
-        critic.budget_train_candidate_manifest_digest = file_digest(budget_manifest_path)
+        from smtr.marble.artifact_digests import (
+            candidate_manifest_digest_from_path,
+        )
+        critic.budget_train_candidate_manifest_digest = (
+            candidate_manifest_digest_from_path(budget_manifest_path)
+        )
         from smtr.evaluation.training_support import canonical_effective_record_digest
         critic.effective_train_record_digest = canonical_effective_record_digest([])
         critic.effective_train_edge_count = 0

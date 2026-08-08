@@ -68,12 +68,25 @@ def _audit(tmp_path, *, methods, checkpoint_paths):
         encoding="utf-8",
     )
 
+    budget_manifest = tmp_path / "budget_candidates.json"
+    budget_manifest.write_text(
+        json.dumps(
+            {
+                "target_split": "train",
+                "memory_source_split": "train",
+                "candidates": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
     return audit_split_files(
         train_records_path=train,
         validation_records_path=val,
         test_records_path=test,
         memory_pool_path=pool,
         test_candidate_manifest_path=manifest,
+        train_budget_candidate_manifest_path=budget_manifest,
         checkpoint_paths=checkpoint_paths,
         methods=methods,
         experiment_mode="formal",

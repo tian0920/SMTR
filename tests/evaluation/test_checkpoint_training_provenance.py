@@ -103,7 +103,12 @@ def _audit(tmp_path, *, mutate) -> dict:
     critic.train_record_digest = file_digest(train)
     critic.validation_record_digest = file_digest(val)
     critic.memory_pool_digest = file_digest(pool)
-    critic.budget_train_candidate_manifest_digest = file_digest(budget_manifest)
+    from smtr.marble.artifact_digests import (
+        candidate_manifest_digest_from_path,
+    )
+    critic.budget_train_candidate_manifest_digest = (
+        candidate_manifest_digest_from_path(budget_manifest)
+    )
     # Budget manifest has empty candidates, so effective records are empty.
     from smtr.evaluation.training_support import canonical_effective_record_digest
     critic.effective_train_record_digest = canonical_effective_record_digest([])

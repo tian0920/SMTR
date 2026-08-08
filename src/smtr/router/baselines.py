@@ -32,7 +32,6 @@ from smtr.core.types import (
     ReceiverState,
     RouterDecision,
 )
-from smtr.router.exposure_router import SMTRUCBRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import _text_tokens
 
@@ -354,5 +353,13 @@ METHOD_REGISTRY: dict[str, type] = {
     "global_transfer_critic": GlobalTransferCriticRouter,
     "smtr_no_compatibility_interaction": SMTRNoCompatibilityInteractionRouter,
     "smtr_no_risk": SMTRNoRiskRouter,
-    "smtr_ucb": SMTRUCBRouter,
 }
+
+# 清单最终闭环 §22: the formal method set is defined once here so the CLI
+# never hard-codes a second, diverging collection. "smtr" is appended even
+# though it lives in smtr.router.exposure_router (it needs live critic
+# instances rather than the zero-arg construction METHOD_REGISTRY assumes).
+FORMAL_METHOD_NAMES: tuple[str, ...] = (
+    *tuple(METHOD_REGISTRY),
+    "smtr",
+)

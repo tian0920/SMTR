@@ -1,7 +1,7 @@
 """Baseline methods need no checkpoint binding (清单 P0-2 3.4).
 
 Methods without a critic checkpoint (b0_no_memory, semantic_top1,
-role_aware_top1) must audit cleanly with an empty checkpoint digest map
+receiver_compatible_top1) must audit cleanly with an empty checkpoint digest map
 and validate without any checkpoint files.
 """
 
@@ -12,7 +12,7 @@ import json
 from smtr.evaluation.split_audit import audit_split_files
 from smtr.evaluation.split_audit_validation import validate_split_audit_artifact
 
-_BASELINE_METHODS = ["b0_no_memory", "semantic_top1", "role_aware_top1"]
+_BASELINE_METHODS = ["b0_no_memory", "semantic_top1", "receiver_compatible_top1"]
 
 
 def _rec(task_id: str, memory_id: str) -> dict:

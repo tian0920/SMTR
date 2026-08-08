@@ -56,7 +56,9 @@ class CandidateLevelPairedRecord(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     record_type: Literal["marble_candidate_level_pair"] = "marble_candidate_level_pair"
-    schema_version: str = "v1"
+    # 清单最终闭环 P1-1: the formal schema only accepts
+    # marble_candidate_pair_v4; older artifacts must be migrated offline.
+    schema_version: str = SHARED_CONTROL_SCHEMA_VERSION
     scenario: str = "database"
 
     task_id: str
@@ -67,17 +69,16 @@ class CandidateLevelPairedRecord(BaseModel):
     # Target vs memory-source provenance (R6 清单 P0-1): the target
     # trajectory is the receiver's execution of the target task, while
     # memory_source_* point back to the train trajectory the candidate
-    # memory was extracted from. Legacy artifacts that only persisted
-    # ``source_trajectory_id`` are accepted via alias.
+    # memory was extracted from. Formal schema marble_candidate_pair_v4
+    # only accepts the memory_source_* fields; legacy source_* artifacts
+    # must be migrated offline (清单最终闭环 P1-1).
     target_trajectory_id: str | None = None
+    memory_source_agent_id: str | None = None
     memory_source_task_id: str | None = None
     memory_source_trajectory_id: str | None = None
     memory_source_split: str | None = None
 
     candidate_memory_id: str
-    writer_agent_id: str
-    writer_role: str
-    writer_capabilities: tuple[str, ...] = ()
 
     candidate_rank: int = 0
     candidate_score: float = 0.0
@@ -108,17 +109,15 @@ class CandidateLevelPairedRecord(BaseModel):
 
     digests: PairedDigests
 
-    @model_validator(mode="before")
-    @classmethod
-    def _accept_legacy_source_trajectory(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if data.get("memory_source_trajectory_id") is None and data.get(
-                "source_trajectory_id"
-            ) is not None:
-                data = dict(data)
-                data["memory_source_trajectory_id"] = data["source_trajectory_id"]
-                data.pop("source_trajectory_id", None)
-        return data
+    @model_validator(mode="after")
+    def check_schema_version(self) -> CandidateLevelPairedRecord:
+        if self.schema_version != SHARED_CONTROL_SCHEMA_VERSION:
+            raise ValueError(
+                "paired record schema_version must be "
+                f"{SHARED_CONTROL_SCHEMA_VERSION!r}, "
+                f"got {self.schema_version!r}"
+            )
+        return self
 
     @model_validator(mode="after")
     def check_label_consistency(self) -> CandidateLevelPairedRecord:
@@ -132,7 +131,7 @@ class CandidateLevelPairedRecord(BaseModel):
         if self.schema_version != SHARED_CONTROL_SCHEMA_VERSION:
             return self
         if not self.control_group_id:
-            raise ValueError("v3 paired record requires control_group_id")
+            raise ValueError("v4 paired record requires control_group_id")
         expected_family = f"{self.task_id}::{self.receiver_agent_id}"
         if self.control_family_id != expected_family:
             raise ValueError(
@@ -140,10 +139,10 @@ class CandidateLevelPairedRecord(BaseModel):
                 f"match task::receiver identity {expected_family!r}"
             )
         if self.control_reused is not True:
-            raise ValueError("v3 paired record requires control_reused=true")
+            raise ValueError("v4 paired record requires control_reused=true")
         if self.control_definition_version != SHARED_CONTROL_DEFINITION_VERSION:
             raise ValueError(
-                "v3 paired record requires control_definition_version "
+                "v4 paired record requires control_definition_version "
                 f"{SHARED_CONTROL_DEFINITION_VERSION!r}"
             )
         return self

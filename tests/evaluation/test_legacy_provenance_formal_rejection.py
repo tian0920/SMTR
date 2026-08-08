@@ -80,6 +80,18 @@ def _setup(tmp_path, *, mode: str):
         encoding="utf-8",
     )
 
+    budget_manifest = tmp_path / "budget_candidates.json"
+    budget_manifest.write_text(
+        json.dumps(
+            {
+                "target_split": "train",
+                "memory_source_split": "train",
+                "candidates": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
     dataset = tmp_path / "dataset.json"
     dataset.write_text('{"tasks": []}', encoding="utf-8")
     splits = tmp_path / "splits.json"
@@ -91,6 +103,7 @@ def _setup(tmp_path, *, mode: str):
         test_records_path=test,
         memory_pool_path=pool,
         test_candidate_manifest_path=manifest,
+        train_budget_candidate_manifest_path=budget_manifest,
         dataset_manifest_path=dataset,
         split_manifest_path=splits,
         methods=["b0_no_memory"],

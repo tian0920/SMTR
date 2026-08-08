@@ -23,7 +23,7 @@ def _record(memory_id: str, rank: int) -> CandidateRecord:
         writer_agent_id=f"w_{memory_id}",
         writer_role="planner",
         receiver_role="executor",
-        match_type="matched_writer_receiver",
+        match_type="compatible",
         rank=rank,
         score=0.9,
     )

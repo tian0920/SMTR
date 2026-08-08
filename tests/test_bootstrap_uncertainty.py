@@ -1,9 +1,8 @@
-"""Tests for Commit 9: bootstrap uncertainty + SMTR-UCB (清单第九章)."""
+"""Tests for Commit 9: bootstrap uncertainty (清单第九章)."""
 
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -16,7 +15,6 @@ from smtr.core.types import (
     TransferPredictionDistribution,
 )
 from smtr.marble.paired_outcomes import LABEL_TO_OUTCOMES
-from smtr.router.exposure_router import SMTRExposureRouter, SMTRUCBRouter
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
 ALL_LABELS = ["neutral_failure", "negative_transfer", "positive_transfer", "neutral_success"]
@@ -61,25 +59,6 @@ def _make_inputs_and_labels(labels: list[str]) -> tuple[list[CandidateExposureIn
         )
         inputs.append(CandidateExposureInput(receiver_state=rs, candidate_card=card))
     return inputs, labels
-
-
-def _card(memory_id: str) -> MemoryRoutingCard:
-    return MemoryRoutingCard(
-        memory_id=memory_id,
-        goal_summary="goal",
-        writer=AgentProfile(agent_id="w1", role="planner"),
-        source_task_id="src",
-        source_scenario="database",
-    )
-
-
-def _receiver_state() -> ReceiverState:
-    return ReceiverState(
-        task_id="t1",
-        scenario="database",
-        task_instruction="do stuff",
-        receiver=AgentProfile(agent_id="r1", role="executor"),
-    )
 
 
 def _dist(tau_mean: float, eta_mean: float, tau_lower: float, eta_upper: float):
@@ -130,59 +109,3 @@ class TestPredictDistribution:
 
         dist = critic.predict_distribution(inputs[0])
         assert 0.0 <= dist.eta_upper <= 1.0
-
-
-class TestSMTRUCBRouter:
-    def test_withholds_uncertain_positive_candidate(self):
-        """SMTR-UCB must be stricter than the point-estimate SMTR rule."""
-        critic = MagicMock()
-        critic.epsilon_star = 0.2
-        critic.predict.return_value = TransferPrediction(
-            q00_neutral_failure=0.5, q01_negative_transfer=0.1,
-            q10_positive_transfer=0.5, q11_neutral_success=0.0,
-        )
-        critic.predict_calibrated.return_value = critic.predict.return_value.model_copy(
-            update={"eta_hat_calibrated": 0.1})
-        # Mean tau = 0.4 > 0 and eta = 0.1 <= budget: SMTR would share.
-        critic.predict_distribution.return_value = _dist(0.4, 0.1, -0.1, 0.2)
-
-        cards = [_card("mem1")]
-        rs = _receiver_state()
-
-        smtr = SMTRExposureRouter(critic=critic)
-        assert [d.action for d in smtr.decide(rs, cards)] == ["share"]
-
-        ucb = SMTRUCBRouter(critic=critic)
-        decisions = ucb.decide(rs, cards)
-        assert [d.action for d in decisions] == ["withhold"]
-        assert decisions[0].reason == "tau_lower<=0"
-
-    def test_shares_confident_safe_candidate(self):
-        critic = MagicMock()
-        critic.epsilon_star = 0.2
-        critic.predict_distribution.return_value = _dist(0.5, 0.05, 0.2, 0.1)
-        ucb = SMTRUCBRouter(critic=critic)
-        decisions = ucb.decide(_receiver_state(), [_card("mem1")])
-        assert [d.action for d in decisions] == ["share"]
-        assert decisions[0].reason == "tau_lower>0 and eta_upper<=epsilon_star"
-
-    def test_withholds_when_eta_upper_exceeds_budget(self):
-        critic = MagicMock()
-        critic.epsilon_star = 0.2
-        critic.predict_distribution.return_value = _dist(0.5, 0.1, 0.3, 0.5)
-        ucb = SMTRUCBRouter(critic=critic)
-        decisions = ucb.decide(_receiver_state(), [_card("mem1")])
-        assert [d.action for d in decisions] == ["withhold"]
-        assert decisions[0].reason == "eta_upper>epsilon_star"
-
-    def test_shares_at_most_one_memory(self):
-        critic = MagicMock()
-        critic.epsilon_star = 0.2
-        critic.predict_distribution.side_effect = [
-            _dist(0.6, 0.05, 0.3, 0.1),
-            _dist(0.4, 0.05, 0.2, 0.1),
-        ]
-        ucb = SMTRUCBRouter(critic=critic)
-        decisions = ucb.decide(_receiver_state(), [_card("mem1"), _card("mem2")])
-        shared = {d.memory_id for d in decisions if d.action == "share"}
-        assert shared == {"mem1"}, "top ensemble-mean tau wins under v1 limit"

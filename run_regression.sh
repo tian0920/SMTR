@@ -11,7 +11,6 @@ python -m pytest tests/ -q -p no:cacheprovider \
   --ignore=tests/test_compare_routers.py \
   --ignore=tests/test_counterfactual_cli.py \
   --ignore=tests/test_decision_point_capture.py \
-  --ignore=tests/test_factual_success_critic.py \
   --ignore=tests/test_forced_router.py \
   --ignore=tests/test_four_outcome_labels.py \
   --ignore=tests/test_gate_diagnostics.py \

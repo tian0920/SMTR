@@ -14,6 +14,7 @@ import pytest
 
 from smtr.evaluation.split_audit import SPLIT_AUDIT_SCHEMA_VERSION
 from smtr.evaluation.split_audit_validation import validate_split_audit_artifact
+from smtr.marble.artifact_digests import candidate_manifest_digest_from_path
 from smtr.marble.runtime_visibility_audit import file_digest
 
 
@@ -36,8 +37,10 @@ def _build_artifacts(tmp_path):
         ),
         (
             "train_budget_candidate_manifest",
-            '{"budget_candidates": "a"}',
-            '{"budget_candidates": "b"}',
+            '{"target_split": "train", "memory_source_split": "train",'
+            ' "candidates": []}',
+            '{"target_split": "train", "memory_source_split": "validation",'
+            ' "candidates": []}',
         ),
         ("checkpoint_full", "checkpoint-bytes-a", "checkpoint-bytes-b"),
     ):
@@ -59,8 +62,12 @@ def _write_audit(tmp_path, files) -> "object":
         "test_candidate_manifest_digest": file_digest(
             files["candidate_manifest"][0]
         ),
-        "train_budget_candidate_manifest_digest": file_digest(
-            files["train_budget_candidate_manifest"][0]
+        # 清单最终闭环 P0-2: the budget manifest is identified by its
+        # canonical content digest, never by raw file bytes.
+        "train_budget_candidate_manifest_digest": (
+            candidate_manifest_digest_from_path(
+                files["train_budget_candidate_manifest"][0]
+            )
         ),
         "train_paired_records_digest": None,
         "validation_paired_records_digest": None,

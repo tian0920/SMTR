@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
+from smtr.router.baselines import FORMAL_METHOD_NAMES
 
 
 def main() -> None:
@@ -120,17 +121,26 @@ def main() -> None:
     p.add_argument("--test-paired-records", default=None)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint-full", required=True)
-    p.add_argument("--checkpoint-global-transfer-critic", default=None)
-    p.add_argument("--checkpoint-smtr-no-compatibility-interaction", default=None)
-    p.add_argument("--methods", nargs="+", default=[
-        "b0_no_memory", "semantic_top1", "receiver_compatible_top1",
-        "global_transfer_critic", "smtr_no_compatibility_interaction",
-        "smtr_no_risk", "smtr",
-    ])
+    # 清单最终闭环 §24: unified checkpoint flag names across all commands.
+    p.add_argument("--checkpoint-global-transfer", default=None)
+    p.add_argument("--checkpoint-no-compatibility-interaction", default=None)
+    # 清单最终闭环 §22: the formal method set comes from the single registry.
+    p.add_argument("--methods", nargs="+", default=list(FORMAL_METHOD_NAMES))
     # Formal evaluations must read epsilon_star from the checkpoint; an
     # explicit budget is a debug-only override, never a silent 0.2 default.
     p.add_argument("--negative-risk-budget", type=float, default=None)
     p.add_argument("--allow-risk-budget-override", action="store_true")
+    # 清单最终闭环 P0-3: the train budget manifest binds formal evaluations
+    # to the same effective training support the critics saw.
+    p.add_argument(
+        "--train-budget-candidate-manifest",
+        required=False,
+        default=None,
+        help=(
+            "Frozen train budget candidate manifest. "
+            "Required in formal mode, including B=1.0."
+        ),
+    )
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default=None)
     p.add_argument("--output", required=True)
 
@@ -142,19 +152,27 @@ def main() -> None:
     p.add_argument("--candidate-manifest", required=True)
     p.add_argument("--memory-pool", required=True)
     p.add_argument("--checkpoint-full", required=True)
-    p.add_argument("--checkpoint-global-transfer-critic", default=None)
-    p.add_argument("--checkpoint-smtr-no-compatibility-interaction", default=None)
-    p.add_argument("--methods", nargs="+", default=[
-        "b0_no_memory", "semantic_top1", "receiver_compatible_top1",
-        "global_transfer_critic", "smtr_no_compatibility_interaction",
-        "smtr_no_risk", "smtr",
-    ])
+    # 清单最终闭环 §24: unified checkpoint flag names across all commands.
+    p.add_argument("--checkpoint-global-transfer", default=None)
+    p.add_argument("--checkpoint-no-compatibility-interaction", default=None)
+    # 清单最终闭环 §22: the formal method set comes from the single registry.
+    p.add_argument("--methods", nargs="+", default=list(FORMAL_METHOD_NAMES))
     # 清单 R6 P1-3: no default seeds; users must supply them explicitly so
     # nobody mistakes a default for the formal seed protocol.
     p.add_argument("--generation-seeds", type=int, nargs="+", required=True)
     # Same rule as run-paired-decision-evaluation: no silent 0.2 fallback.
     p.add_argument("--negative-risk-budget", type=float, default=None)
     p.add_argument("--allow-risk-budget-override", action="store_true")
+    # 清单最终闭环 P0-3: same train budget manifest binding as paired eval.
+    p.add_argument(
+        "--train-budget-candidate-manifest",
+        required=False,
+        default=None,
+        help=(
+            "Frozen train budget candidate manifest. "
+            "Required in formal mode, including B=1.0."
+        ),
+    )
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
     # 清单 R6 P1-6: formal runs must bind a verified split-audit artifact.
     p.add_argument("--split-audit", required=False, default=None)
@@ -220,6 +238,17 @@ def main() -> None:
         and not args.split_audit
     ):
         parser.error("--split-audit is required in formal mode")
+    # 清单最终闭环 P0-3: formal evaluations fail closed before dispatch when
+    # the train budget manifest is missing; pilots keep None -> full support.
+    if (
+        args.command
+        in ("run-paired-decision-evaluation", "run-marble-evaluation")
+        and args.experiment_mode == "formal"
+        and not args.train_budget_candidate_manifest
+    ):
+        parser.error(
+            "--train-budget-candidate-manifest is required in formal mode"
+        )
     _dispatch(args)
 
 
@@ -447,12 +476,17 @@ def _dispatch(args: argparse.Namespace) -> None:
             test_paired_records_path=Path(args.test_paired_records) if args.test_paired_records else None,
             memory_pool_path=Path(args.memory_pool),
             checkpoint_full=Path(args.checkpoint_full),
-            checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer_critic) if args.checkpoint_global_transfer_critic else None,
+            checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer) if args.checkpoint_global_transfer else None,
             checkpoint_smtr_no_compatibility_interaction=(
-                Path(args.checkpoint_smtr_no_compatibility_interaction)
-                if args.checkpoint_smtr_no_compatibility_interaction else None
+                Path(args.checkpoint_no_compatibility_interaction)
+                if args.checkpoint_no_compatibility_interaction else None
             ),
             methods=args.methods,
+            train_budget_candidate_manifest_path=(
+                Path(args.train_budget_candidate_manifest)
+                if args.train_budget_candidate_manifest
+                else None
+            ),
             negative_risk_budget=args.negative_risk_budget,
             allow_risk_budget_override=args.allow_risk_budget_override,
             experiment_mode=args.experiment_mode,
@@ -470,10 +504,10 @@ def _dispatch(args: argparse.Namespace) -> None:
             candidate_manifest_path=Path(args.candidate_manifest),
             memory_pool_path=Path(args.memory_pool),
             checkpoint_full=Path(args.checkpoint_full),
-            checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer_critic) if args.checkpoint_global_transfer_critic else None,
+            checkpoint_global_transfer_critic=Path(args.checkpoint_global_transfer) if args.checkpoint_global_transfer else None,
             checkpoint_smtr_no_compatibility_interaction=(
-                Path(args.checkpoint_smtr_no_compatibility_interaction)
-                if args.checkpoint_smtr_no_compatibility_interaction else None
+                Path(args.checkpoint_no_compatibility_interaction)
+                if args.checkpoint_no_compatibility_interaction else None
             ),
             methods=args.methods,
             generation_seeds=args.generation_seeds,
@@ -481,6 +515,11 @@ def _dispatch(args: argparse.Namespace) -> None:
             allow_risk_budget_override=args.allow_risk_budget_override,
             experiment_mode=args.experiment_mode,
             split_audit_path=Path(args.split_audit) if args.split_audit else None,
+            train_budget_candidate_manifest_path=(
+                Path(args.train_budget_candidate_manifest)
+                if args.train_budget_candidate_manifest
+                else None
+            ),
             output=Path(args.output),
         )
         print(json.dumps(result, indent=2))

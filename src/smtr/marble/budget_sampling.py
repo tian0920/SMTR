@@ -10,7 +10,6 @@ reads outcomes, critic predictions, or adaptive signals.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 from collections import Counter
@@ -22,6 +21,7 @@ from smtr.counterfactual.edge_keys import (
     candidate_record_edge_key,
     treatment_edge_key,
 )
+from smtr.marble.artifact_digests import candidate_manifest_digest
 from smtr.marble.real_data import (
     CandidateBudgetMetadata,
     CandidateEntry,
@@ -44,14 +44,6 @@ ANCHOR_STRATUM_KEY: tuple[str, str] = (
 )
 
 _SelectionUnitId = tuple[str, ...]
-
-
-def manifest_canonical_digest(manifest: DatabaseCandidateManifest) -> str:
-    """SHA-256 over the canonical JSON dump of a candidate manifest."""
-    payload = json.dumps(
-        manifest.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _edge_key(entry: CandidateEntry, record: CandidateRecord) -> TreatmentEdgeKey:
@@ -197,7 +189,7 @@ def build_budgeted_candidate_manifest(
         len(edges) for units in strata.values() for edges in units.values()
     )
     parent_unit_count = sum(len(units) for units in strata.values())
-    parent_digest = manifest_canonical_digest(parent_manifest)
+    parent_digest = candidate_manifest_digest(parent_manifest)
 
     if budget_fraction == 1.0:
         # Identity budget: normalized copy of the parent, never resampled
@@ -329,7 +321,7 @@ def audit_budget_manifests(
     """Budget manifest audit violations (清单 Shared-Control 第17.2节)."""
     violations: list[str] = []
     parent_edges = _manifest_edge_set(parent_manifest)
-    parent_digest = manifest_canonical_digest(parent_manifest)
+    parent_digest = candidate_manifest_digest(parent_manifest)
 
     edge_sets: dict[float, set[TreatmentEdgeKey]] = {}
     for fraction in sorted(budget_manifests):
