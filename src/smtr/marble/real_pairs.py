@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import statistics
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from smtr.marble.environment.docker_slot_pool import DockerSlotPool
 from smtr.marble.io import load_split_task_ids
 from smtr.marble.paired_outcomes import get_paired_outcomes, paired_record_label
 
@@ -310,6 +313,8 @@ def generate_candidate_level_pairs(
     output_dir: Path,
     engine_timeout_seconds: int = 1800,
     experiment_mode: str = "pilot",
+    parallel: int = 1,
+    api_keys: list[str] | None = None,
 ) -> dict[str, Any]:
     """Generate candidate-level paired records via shared-control execution.
 
@@ -441,135 +446,215 @@ def generate_candidate_level_pairs(
             )
         )
 
+    logger = logging.getLogger(__name__)
     output_dir.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, Any]] = []
-    runner = MarblePairedBranchRunner()
     share_episode_attempt_count = 0
     control_episode_attempt_count = 0
     control_episode_valid_count = 0
 
-    for (task_id, receiver_agent_id), group_edges in sorted(
-        edges_by_task_receiver.items()
-    ):
+    # --- Parallel infrastructure ---
+    _keys = api_keys or []
+    slot_pool: DockerSlotPool | None = None
+    if parallel > 1:
+        slot_pool = DockerSlotPool(
+            n_slots=parallel,
+            marble_root=marble_root,
+            api_keys=_keys,
+        )
+
+    def _run_one_group_seed(
+        task_id: str,
+        receiver_agent_id: str,
+        group_edges: list[dict[str, Any]],
+        seed: int,
+    ) -> tuple[list[dict[str, Any]], int, int, int]:
+        """Execute one (task, receiver, seed) control group.
+
+        Returns (group_records, share_attempts, control_attempts,
+        control_valid_count).
+        """
+        from smtr.marble.branch_runner import MarblePairedBranchRunner
+        from smtr.marble.paired_context import build_pair_execution_context
+
+        runner = MarblePairedBranchRunner(slot_pool=slot_pool)
+        group_records: list[dict[str, Any]] = []
+        share_attempts = 0
+        control_attempts = 0
+        control_valid = 0
+
         task_entry = tasks[task_id]
+        group_workspace = (
+            output_dir / "control_groups" / task_id / receiver_agent_id / str(seed)
+        )
 
-        for seed in sorted(set(generation_seeds)):
-            group_workspace = (
-                output_dir / "control_groups" / task_id / receiver_agent_id / str(seed)
-            )
+        # One execution context per group-seed: the shared control and
+        # all shares of the group use the identical InitialStateBundle,
+        # agent config, task and tool config (清单 Shared-Control 第5.5节).
+        context = build_pair_execution_context(
+            marble_root=marble_root,
+            task_entry=task_entry,
+            receiver_agent_id=receiver_agent_id,
+            workspace=group_workspace,
+        )
 
-            # One execution context per group-seed: the shared control and
-            # all shares of the group use the identical InitialStateBundle,
-            # agent config, task and tool config (清单 Shared-Control 第5.5节).
-            context = build_pair_execution_context(
-                marble_root=marble_root,
-                task_entry=task_entry,
-                receiver_agent_id=receiver_agent_id,
-                workspace=group_workspace,
-            )
+        control_group_id = compute_control_group_id(
+            split_name=split,
+            scenario=context.initial_state_bundle.scenario,
+            task_id=task_id,
+            receiver_agent_id=receiver_agent_id,
+            generation_seed=seed,
+        )
 
-            control_group_id = compute_control_group_id(
-                split_name=split,
-                scenario=context.initial_state_bundle.scenario,
-                task_id=task_id,
-                receiver_agent_id=receiver_agent_id,
+        # The forbidden set is fixed before any branch executes and is
+        # never changed afterwards, even if some shares fail.
+        forbidden_memory_ids = tuple(sorted({
+            edge["candidate_memory_id"] for edge in group_edges
+        }))
+
+        control_position = assign_control_execution_position(control_group_id)
+        control_workspace = group_workspace / "control"
+
+        control_result = None
+        if control_position == "control_first":
+            control_result = runner.run_no_memory_control(
+                control_group_id=control_group_id,
+                task=context.task,
+                initial_state_bundle=context.initial_state_bundle,
+                agent_config=context.agent_config,
                 generation_seed=seed,
+                workspace=control_workspace,
+                forbidden_memory_ids=forbidden_memory_ids,
+                engine_timeout_seconds=engine_timeout_seconds,
             )
+            control_attempts += 1
+            control_valid += int(control_result.valid)
 
-            # The forbidden set is fixed before any branch executes and is
-            # never changed afterwards, even if some shares fail.
-            forbidden_memory_ids = tuple(sorted({
-                edge["candidate_memory_id"] for edge in group_edges
-            }))
+        share_audits: dict[str, Any] = {}
+        for edge in group_edges:
+            share_audit = runner.run_candidate_share(
+                edge_id=edge["edge_id"],
+                task=context.task,
+                candidate_memory=memory_pool[edge["candidate_memory_id"]],
+                initial_state_bundle=context.initial_state_bundle,
+                agent_config=context.agent_config,
+                generation_seed=seed,
+                workspace=group_workspace / "shares" / edge["edge_id"],
+                engine_timeout_seconds=engine_timeout_seconds,
+            )
+            share_attempts += 1
+            share_audits[edge["edge_id"]] = share_audit
 
-            control_position = assign_control_execution_position(control_group_id)
-            control_workspace = group_workspace / "control"
+        if control_position == "control_last":
+            control_result = runner.run_no_memory_control(
+                control_group_id=control_group_id,
+                task=context.task,
+                initial_state_bundle=context.initial_state_bundle,
+                agent_config=context.agent_config,
+                generation_seed=seed,
+                workspace=control_workspace,
+                forbidden_memory_ids=forbidden_memory_ids,
+                engine_timeout_seconds=engine_timeout_seconds,
+            )
+            control_attempts += 1
+            control_valid += int(control_result.valid)
 
-            control_result = None
-            if control_position == "control_first":
-                control_result = runner.run_no_memory_control(
-                    control_group_id=control_group_id,
-                    task=context.task,
-                    initial_state_bundle=context.initial_state_bundle,
-                    agent_config=context.agent_config,
-                    generation_seed=seed,
-                    workspace=control_workspace,
-                    forbidden_memory_ids=forbidden_memory_ids,
-                    engine_timeout_seconds=engine_timeout_seconds,
-                )
-                control_episode_attempt_count += 1
-                control_episode_valid_count += int(control_result.valid)
+        assert control_result is not None
 
-            share_audits: dict[str, Any] = {}
-            for edge in group_edges:
-                share_audit = runner.run_candidate_share(
-                    edge_id=edge["edge_id"],
-                    task=context.task,
-                    candidate_memory=memory_pool[edge["candidate_memory_id"]],
-                    initial_state_bundle=context.initial_state_bundle,
-                    agent_config=context.agent_config,
-                    generation_seed=seed,
-                    workspace=group_workspace / "shares" / edge["edge_id"],
-                    engine_timeout_seconds=engine_timeout_seconds,
-                )
-                share_episode_attempt_count += 1
-                share_audits[edge["edge_id"]] = share_audit
+        # The control artifact is written exactly once per group; paired
+        # records only reference it (清单 Shared-Control 第8章).
+        control_workspace.mkdir(parents=True, exist_ok=True)
+        control_artifact_path = control_workspace / "control_audit.json"
+        control_artifact_path.write_text(
+            json.dumps(control_result.model_dump(mode="json"), indent=2, sort_keys=True)
+            + "\n",
+            encoding="utf-8",
+        )
 
-            if control_position == "control_last":
-                control_result = runner.run_no_memory_control(
-                    control_group_id=control_group_id,
-                    task=context.task,
-                    initial_state_bundle=context.initial_state_bundle,
-                    agent_config=context.agent_config,
-                    generation_seed=seed,
-                    workspace=control_workspace,
-                    forbidden_memory_ids=forbidden_memory_ids,
-                    engine_timeout_seconds=engine_timeout_seconds,
-                )
-                control_episode_attempt_count += 1
-                control_episode_valid_count += int(control_result.valid)
-
-            assert control_result is not None
-
-            # The control artifact is written exactly once per group; paired
-            # records only reference it (清单 Shared-Control 第8章).
-            control_workspace.mkdir(parents=True, exist_ok=True)
-            control_artifact_path = control_workspace / "control_audit.json"
-            control_artifact_path.write_text(
-                json.dumps(control_result.model_dump(mode="json"), indent=2, sort_keys=True)
+        for rank, edge in enumerate(group_edges, start=1):
+            share_audit = share_audits[edge["edge_id"]]
+            pair_result = runner.assemble_shared_control_pair(
+                control=control_result,
+                share=share_audit,
+                candidate_memory_id=edge["candidate_memory_id"],
+            )
+            share_workspace = group_workspace / "shares" / edge["edge_id"]
+            share_workspace.mkdir(parents=True, exist_ok=True)
+            (share_workspace / "share_audit.json").write_text(
+                json.dumps(share_audit.model_dump(mode="json"), indent=2, sort_keys=True)
                 + "\n",
                 encoding="utf-8",
             )
 
-            for rank, edge in enumerate(group_edges, start=1):
-                share_audit = share_audits[edge["edge_id"]]
-                pair_result = runner.assemble_shared_control_pair(
-                    control=control_result,
-                    share=share_audit,
-                    candidate_memory_id=edge["candidate_memory_id"],
+            group_records.append(
+                paired_result_to_record(
+                    pair_result=pair_result,
+                    edge=edge,
+                    seed=seed,
+                    replicate_id=compute_replicate_id(edge["edge_id"], seed),
+                    split_name=split,
+                    control_group_id=control_group_id,
+                    control_artifact_path=str(control_artifact_path),
+                    control_group_candidate_count=len(group_edges),
+                    share_execution_rank=rank,
+                    control_execution_position=control_position,
                 )
-                share_workspace = group_workspace / "shares" / edge["edge_id"]
-                share_workspace.mkdir(parents=True, exist_ok=True)
-                (share_workspace / "share_audit.json").write_text(
-                    json.dumps(share_audit.model_dump(mode="json"), indent=2, sort_keys=True)
-                    + "\n",
-                    encoding="utf-8",
-                )
+            )
 
-                records.append(
-                    paired_result_to_record(
-                        pair_result=pair_result,
-                        edge=edge,
-                        seed=seed,
-                        replicate_id=compute_replicate_id(edge["edge_id"], seed),
-                        split_name=split,
-                        control_group_id=control_group_id,
-                        control_artifact_path=str(control_artifact_path),
-                        control_group_candidate_count=len(group_edges),
-                        share_execution_rank=rank,
-                        control_execution_position=control_position,
+        return group_records, share_attempts, control_attempts, control_valid
+
+    # Build work items: one per (task, receiver, seed) control group
+    work_items: list[tuple[str, str, list[dict[str, Any]], int]] = []
+    for (task_id, receiver_agent_id), group_edges in sorted(
+        edges_by_task_receiver.items()
+    ):
+        for seed in sorted(set(generation_seeds)):
+            work_items.append((task_id, receiver_agent_id, group_edges, seed))
+
+    total_groups = len(work_items)
+
+    # --- Execute work items ---
+    if slot_pool is None:
+        # Sequential path (backward compatible)
+        for i, (tid, rid, ge, sd) in enumerate(work_items, 1):
+            logger.info(
+                "[%d/%d] group task=%s receiver=%s seed=%d",
+                i, total_groups, tid, rid, sd,
+            )
+            grp_records, sh_cnt, ct_cnt, ct_val = _run_one_group_seed(
+                tid, rid, ge, sd,
+            )
+            records.extend(grp_records)
+            share_episode_attempt_count += sh_cnt
+            control_episode_attempt_count += ct_cnt
+            control_episode_valid_count += ct_val
+    else:
+        # Parallel path with ThreadPoolExecutor
+        completed = 0
+        with ThreadPoolExecutor(max_workers=parallel) as pool:
+            futures = {
+                pool.submit(_run_one_group_seed, tid, rid, ge, sd): (tid, rid, sd)
+                for tid, rid, ge, sd in work_items
+            }
+            for future in as_completed(futures):
+                tid, rid, sd = futures[future]
+                completed += 1
+                try:
+                    grp_records, sh_cnt, ct_cnt, ct_val = future.result()
+                    records.extend(grp_records)
+                    share_episode_attempt_count += sh_cnt
+                    control_episode_attempt_count += ct_cnt
+                    control_episode_valid_count += ct_val
+                    logger.info(
+                        "[%d/%d] group task=%s receiver=%s seed=%d done (%d records)",
+                        completed, total_groups, tid, rid, sd, len(grp_records),
                     )
-                )
+                except Exception:
+                    logger.exception(
+                        "[%d/%d] group task=%s receiver=%s seed=%d FAILED",
+                        completed, total_groups, tid, rid, sd,
+                    )
+        slot_pool.shutdown_all()
 
     out_path = output_dir / "paired_records.jsonl"
     out_path.write_text(

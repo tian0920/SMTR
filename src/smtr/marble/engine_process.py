@@ -16,6 +16,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from smtr.counterfactual.decision_points import canonical_digest
+from smtr.marble.environment.docker_slot_pool import DockerSlot
 from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 
 DEFAULT_ENGINE_TIMEOUT_SECONDS = 900
@@ -42,17 +43,26 @@ if litellm is not None and not getattr(litellm, "_smtr_compat_patch", False):
             kwargs["base_url"] = base_url
         if api_key and not kwargs.get("api_key"):
             kwargs["api_key"] = api_key
-        if os.environ.get("SMTR_LLM_ENABLE_THINKING", "").lower() in {"1", "true", "yes"}:
+        _thinking_env = os.environ.get("SMTR_LLM_ENABLE_THINKING", "")
+        if _thinking_env:
             extra_body = dict(kwargs.get("extra_body") or {})
-            extra_body.setdefault("enable_thinking", True)
+            _thinking_on = _thinking_env.lower() in {"1", "true", "yes"}
+            extra_body.setdefault("enable_thinking", _thinking_on)
             kwargs["extra_body"] = extra_body
         # --- Runtime visibility audit ---
         _audit_path = os.environ.get("SMTR_VISIBILITY_AUDIT_PATH")
         if _audit_path:
             try:
                 _smtr_audit_completion(_audit_path, args, kwargs)
-            except Exception:
-                pass
+            except Exception as _exc:
+                try:
+                    _err_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'audit_error.log')
+                    with open(_err_path, 'a') as _ef:
+                        import traceback as _tb
+                        _ef.write(type(_exc).__name__ + ': ' + str(_exc) + chr(10))
+                        _tb.print_exc(file=_ef)
+                except Exception:
+                    pass
         return _smtr_original_completion(*args, **kwargs)
 
     def _smtr_audit_completion(audit_path, args, kwargs):
@@ -123,7 +133,7 @@ if litellm is not None and not getattr(litellm, "_smtr_compat_patch", False):
             "timestamp_utc": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
         }
         line = _json.dumps(record, sort_keys=True) + "\\n"
-        p = _audit_path
+        p = audit_path
         with open(p, "a", encoding="utf-8") as fh:
             try:
                 _fcntl.flock(fh.fileno(), _fcntl.LOCK_EX)
@@ -192,6 +202,8 @@ def run_marble_engine_process(
     termination_grace_period_seconds: float = DEFAULT_TERMINATION_GRACE_SECONDS,
     memory_injection: dict[str, Any] | None = None,
     run_metadata: dict[str, str] | None = None,
+    docker_slot: DockerSlot | None = None,
+    api_key: str | None = None,
 ) -> MarbleEngineProcessResult:
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be positive")
@@ -205,13 +217,36 @@ def run_marble_engine_process(
         memory_injection=memory_injection,
         visibility_audit_path=log_dir / "memory_visibility_audit.jsonl",
         run_metadata=run_metadata,
+        docker_slot=docker_slot,
+        api_key=api_key,
     )
     python = _marble_python(marble_root)
     if raw_result_path and raw_result_path.exists():
         raw_result_path.unlink()
+    # Write a thin launcher that forces sitecustomize loading via exec(compile(...)).
+    # Belt-and-suspenders: PYTHONPATH is already absolute, but the launcher
+    # guarantees loading regardless of sys.path quirks.
+    _shim_dir = log_dir / "runtime_shim"
+    _launcher = _shim_dir / "_smtr_launcher.py"
+    _main_py = str((marble_root / "marble/main.py").resolve())
+    _sc_abs = str((_shim_dir / "sitecustomize.py").resolve())
+    _launcher.write_text(
+        "import sys, os, runpy, traceback\n"
+        "_shim = " + repr(_sc_abs) + "\n"
+        "sys.path.insert(0, os.path.dirname(_shim))\n"
+        "try:\n"
+        "    with open(_shim) as _f:\n"
+        "        exec(compile(_f.read(), _shim, 'exec'), "
+        "{'__file__': _shim, '__name__': 'sitecustomize'})\n"
+        "except Exception as _e:\n"
+        "    traceback.print_exc()\n"
+        "sys.argv[0] = " + repr(_main_py) + "\n"
+        "runpy.run_path(sys.argv[0], run_name='__main__')\n",
+        encoding="utf-8",
+    )
     command = (
         str(python),
-        str(marble_root / "marble/main.py"),
+        str(_launcher.resolve()),
         "--config_path",
         str(config_path.resolve()),
     )
@@ -253,7 +288,7 @@ def run_marble_engine_process(
     ended_at_timestamp = time.time()
     stdout_log = _write_log(log_dir / "stdout.log", stdout)
     stderr_log = _write_log(log_dir / "stderr.log", stderr)
-    cleanup = _cleanup_database(marble_root, log_dir=log_dir)
+    cleanup = _cleanup_database(marble_root, log_dir=log_dir, docker_slot=docker_slot)
     ended = _now()
     raw_validation = _validate_raw_result(
         raw_result_path=raw_result_path,
@@ -322,6 +357,8 @@ def _engine_environment(
     memory_injection: dict[str, Any] | None = None,
     visibility_audit_path: Path | None = None,
     run_metadata: dict[str, str] | None = None,
+    docker_slot: DockerSlot | None = None,
+    api_key: str | None = None,
 ) -> dict[str, str]:
     env = dict(os.environ)
     pythonpath = env.get("PYTHONPATH")
@@ -333,7 +370,8 @@ def _engine_environment(
             visibility_audit_path=visibility_audit_path,
             run_metadata=run_metadata,
         )
-        path_entries.append(str(shim_dir))
+        # Use absolute path — subprocess CWD differs from caller CWD
+        path_entries.append(str(shim_dir.resolve()))
     path_entries.append(str(marble_root))
     # Ensure MARBLE venv bin is on PATH so `python` resolves correctly
     venv_bin = marble_root / ".venv" / "bin"
@@ -361,6 +399,13 @@ def _engine_environment(
         env["SMTR_OPENAI_COMPAT_BASE_URL"] = base_url
     if env.get("DASHSCOPE_API_KEY") and "SMTR_LLM_ENABLE_THINKING" not in env:
         env["SMTR_LLM_ENABLE_THINKING"] = "true"
+    # --- Parallel slot overrides ---
+    if docker_slot is not None:
+        for key, value in docker_slot.engine_env.items():
+            env[key] = value
+    if api_key:
+        env["DASHSCOPE_API_KEY"] = api_key
+        env["OPENAI_API_KEY"] = api_key
     return env
 
 
@@ -689,7 +734,12 @@ def _engine_version(marble_root: Path) -> str | None:
     return None
 
 
-def _cleanup_database(marble_root: Path, *, log_dir: Path) -> dict[str, Any]:
+def _cleanup_database(
+    marble_root: Path,
+    *,
+    log_dir: Path,
+    docker_slot: DockerSlot | None = None,
+) -> dict[str, Any]:
     compose_dir = marble_root / "marble/environments/db_env_docker"
     stdout = ""
     stderr = ""
@@ -698,9 +748,19 @@ def _cleanup_database(marble_root: Path, *, log_dir: Path) -> dict[str, Any]:
     if not compose_dir.exists():
         failure_reason = f"compose_dir_not_found: {compose_dir}"
     else:
+        # Use slot-specific compose project when available
+        if docker_slot is not None:
+            cmd = (
+                "sudo", "docker", "compose",
+                "-p", docker_slot.compose_project,
+                "-f", str(compose_dir / "docker-compose.yml"),
+                "down", "-v",
+            )
+        else:
+            cmd = ("sudo", "docker", "compose", "down", "-v")
         try:
             completed = subprocess.run(
-                ("sudo", "docker", "compose", "down", "-v"),
+                cmd,
                 cwd=compose_dir,
                 check=False,
                 capture_output=True,

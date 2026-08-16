@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, cast
 
@@ -47,6 +48,27 @@ def collect_database_trajectories(
             record_path = run_dir / "trajectory.json"
             if resume and record_path.exists():
                 payload = json.loads(record_path.read_text(encoding="utf-8"))
+                # Re-normalize if invalid but b0_smoke.json is available
+                if not payload.get("valid") and (run_dir / "b0_smoke.json").exists():
+                    try:
+                        summary = json.loads(
+                            (run_dir / "b0_smoke.json").read_text(encoding="utf-8")
+                        )
+                        record = _normalize_smoke(
+                            summary=summary,
+                            trajectory_id=trajectory_id,
+                            task_id=task_id,
+                            split=split,
+                            generation_seed=seed,
+                            dataset=dataset,
+                        )
+                        payload = record.model_dump(mode="json")
+                        record_path.write_text(
+                            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                            encoding="utf-8",
+                        )
+                    except Exception:
+                        pass  # keep original invalid payload
                 index.append(_index_record(payload, record_path))
                 continue
             run_dir.mkdir(parents=True, exist_ok=True)
@@ -124,6 +146,16 @@ def _normalize_smoke(
     agent_slices = structured["agent_slices"]
     if not agent_slices:
         raise ValueError("no agent-specific slices could be built from raw trace")
+    # Extract task instruction from MARBLE iterations format or top-level
+    task_instruction = ""
+    if raw.get("iterations"):
+        first_iter = raw["iterations"][0]
+        assignments = first_iter.get("task_assignments") or {}
+        if assignments:
+            task_instruction = str(next(iter(assignments.values()), ""))
+    task_instruction = task_instruction or str(raw.get("task_instruction") or raw.get("task") or raw.get("instruction") or "")
+    # Extract environment signature
+    env_sig = raw.get("environment_signature") or []
     return RealDatabaseTrajectory(
         trajectory_id=trajectory_id,
         task_id=task_id,
@@ -134,8 +166,8 @@ def _normalize_smoke(
         team_success=bool(summary.get("outcome", {}).get("success")),
         score=float(summary.get("outcome", {}).get("score") or 0.0),
         task_success=bool(summary.get("outcome", {}).get("success")),
-        task_instruction=str(raw.get("task_instruction") or raw.get("instruction") or ""),
-        environment_signature=tuple(raw.get("environment_signature") or []),
+        task_instruction=task_instruction,
+        environment_signature=tuple(env_sig),
         agents=tuple(agent_slices),
         final_answer=structured["final_answer"],
         errors=tuple(structured["errors"]),
@@ -144,9 +176,27 @@ def _normalize_smoke(
     )
 
 
+def _parse_tool_result(result_text: str) -> dict[str, Any] | None:
+    """Parse a MARBLE agent result string to extract the embedded function result JSON."""
+    match = re.search(r'Result from the function:(\{.*\})\s*$', result_text, re.DOTALL)
+    if not match:
+        return None
+    try:
+        return json.loads(match.group(1))
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
 def _structured_trace(raw: Any) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("MARBLE raw result is not an object")
+
+    # --- MARBLE iterations format (real engine output) ---
+    iterations = raw.get("iterations") or []
+    if iterations and isinstance(iterations, list):
+        return _structured_trace_from_iterations(raw, iterations)
+
+    # --- Legacy flat format (messages/actions/tool_calls at top level) ---
     messages = raw.get("messages") or raw.get("agent_messages") or raw.get("history") or []
     actions = raw.get("actions") or raw.get("agent_actions") or []
     tool_calls = raw.get("tool_calls") or []
@@ -176,6 +226,91 @@ def _structured_trace(raw: Any) -> dict[str, Any]:
         "observations": raw.get("observations") or [],
         "errors": raw.get("errors") or [],
         "final_answer": str(raw.get("final_answer") or raw.get("answer") or ""),
+    }
+
+
+def _structured_trace_from_iterations(
+    raw: dict[str, Any],
+    iterations: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Extract structured trace from MARBLE iterations-format output."""
+    all_messages: list[dict[str, Any]] = []
+    all_tool_calls: list[dict[str, Any]] = []
+    all_sql: list[str] = []
+
+    for it in iterations:
+        assignments = it.get("task_assignments") or {}
+        task_results = it.get("task_results") or []
+        iter_num = it.get("iteration", 0)
+
+        # Build messages: task assignment (user) + result (assistant) per agent
+        for agent_id, task_text in assignments.items():
+            all_messages.append({
+                "role": "user",
+                "agent_id": agent_id,
+                "content": task_text,
+                "iteration": iter_num,
+            })
+
+        for result_entry in task_results:
+            agent_id = result_entry.get("agent_id", "unknown")
+            result_text = str(result_entry.get("result") or "")
+            all_messages.append({
+                "role": "assistant",
+                "agent_id": agent_id,
+                "content": result_text,
+                "iteration": iter_num,
+            })
+
+            # Parse tool call from result text
+            parsed = _parse_tool_result(result_text)
+            if parsed and isinstance(parsed, dict):
+                func_name = parsed.get("function_name", "")
+                explanation = parsed.get("explanation", "")
+                # Extract SQL from explanation if present
+                sql_match = re.search(r'Your query is: \["(.*?)"\]', explanation) if explanation else None
+                sql_text = sql_match.group(1) if sql_match else ""
+                if sql_text:
+                    all_sql.append(sql_text)
+                tc = {
+                    "agent_id": agent_id,
+                    "tool": func_name,
+                    "name": func_name,
+                    "arguments": {"sql": sql_text} if sql_text else {},
+                    "result": parsed,
+                    "iteration": iter_num,
+                }
+                all_tool_calls.append(tc)
+
+    if not all_tool_calls:
+        raise ValueError("MARBLE raw result lacks structured action/tool trace")
+
+    # Build agent slices from the extracted tool calls and messages
+    agent_slices = _build_agent_slices(
+        raw=raw,
+        messages=all_messages,
+        actions=[],
+        tool_calls=all_tool_calls,
+        sql=all_sql,
+    )
+
+    # Extract final answer from last iteration summary
+    final_answer = ""
+    for it in reversed(iterations):
+        summary = it.get("summary")
+        if summary:
+            final_answer = str(summary)
+            break
+
+    return {
+        "agent_slices": agent_slices,
+        "messages": all_messages,
+        "actions": [],
+        "tool_calls": all_tool_calls,
+        "sql": all_sql,
+        "observations": [],
+        "errors": raw.get("errors") or [],
+        "final_answer": final_answer,
     }
 
 

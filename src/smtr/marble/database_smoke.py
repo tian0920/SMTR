@@ -27,7 +27,7 @@ from smtr.marble.outcome.protocol import outcome_from_failure
 from smtr.marble.run_identity import RunIdentity, current_marble_commit, current_smtr_commit
 from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_MODEL, run_database_runtime_preflight
 from smtr.marble.runtime_visibility_validator import validate_runtime_visibility_from_path
-from smtr.marble.task_provider import _read_jsonl_line
+from smtr.marble.task_provider import _read_jsonl_line, load_database_task_by_id
 
 
 def run_database_b0_smoke(
@@ -46,7 +46,7 @@ def run_database_b0_smoke(
         generation_seed=generation_seed,
     )
     preflight = run_database_runtime_preflight(marble_root=marble_root)
-    task = _load_database_task_by_id(marble_root, task_id)
+    task = load_database_task_by_id(marble_root, task_id)
     identity = RunIdentity(
         run_id=run_id,
         task_id=str(task_id),
@@ -201,7 +201,7 @@ def verify_database_rebuild(
 ) -> dict[str, Any]:
     assert_marble_artifact_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    task = _load_database_task_by_id(marble_root, task_id)
+    task = load_database_task_by_id(marble_root, task_id)
     run_id = _run_id(task_id=str(task_id), branch="rebuild", generation_seed=0)
     bundle = bundle_from_manifest_task(
         {"raw_task": task, "task_id": str(task_id), "scenario": "database"}
@@ -257,7 +257,7 @@ def run_database_paired_smoke(
         branch=branch_order,
         generation_seed=generation_seed,
     )
-    task = _load_database_task_by_id(marble_root, task_id)
+    task = load_database_task_by_id(marble_root, task_id)
     memory = _memory_for_id(task_id=task_id, memory_id=memory_id)
     bundle = bundle_from_manifest_task(
         {"raw_task": task, "task_id": str(task_id), "scenario": "database"},
@@ -376,15 +376,8 @@ def _configured_litellm_model() -> str:
 
 
 def _load_database_task_by_id(marble_root: Path, task_id: str) -> dict[str, Any]:
-    path = marble_root / "multiagentbench/database/database_main.jsonl"
-    with path.open("r", encoding="utf-8") as handle:
-        for line_number, line in enumerate(handle, start=1):
-            if not line.strip():
-                continue
-            task = json.loads(line)
-            if str(task.get("task_id")) == str(task_id):
-                return _read_jsonl_line(path, line_number)
-    raise ValueError(f"database task_id not found: {task_id}")
+    """Backward-compatible alias; delegates to :func:`load_database_task_by_id`."""
+    return load_database_task_by_id(marble_root, task_id)
 
 
 def _load_last_jsonl(path: Path) -> dict[str, Any] | None:

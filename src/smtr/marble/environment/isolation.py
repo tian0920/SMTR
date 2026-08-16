@@ -108,10 +108,15 @@ def materialize_bundle_workspace(
 def workspace_digest(workspace: Path) -> str:
     files: list[dict[str, str]] = []
     for path in sorted(item for item in workspace.rglob("*") if item.is_file()):
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, ValueError):
+            # Binary file (e.g. .sqlite) — hash raw bytes instead
+            content = path.read_bytes().hex()
         files.append(
             {
                 "path": str(path.relative_to(workspace)),
-                "content_digest": canonical_digest(path.read_text(encoding="utf-8")),
+                "content_digest": canonical_digest(content),
             }
         )
     return canonical_digest(files)

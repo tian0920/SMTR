@@ -67,6 +67,10 @@ def main() -> None:
     p.add_argument("--limit-pairs", type=int, default=None)
     p.add_argument("--engine-timeout-seconds", type=int, default=1800)
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default="pilot")
+    p.add_argument("--parallel", type=int, default=1,
+                   help="Parallelism degree: number of concurrent Docker slots (default 1 = sequential)")
+    p.add_argument("--api-keys", nargs="+", default=None,
+                   help="One or more LLM API keys for round-robin assignment across slots")
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("audit-splits", help="Audit train/validation/test split isolation (清单 P0-15)")
@@ -256,9 +260,11 @@ def _dispatch(args: argparse.Namespace) -> None:
     cmd = args.command
 
     if cmd == "inspect-dataset":
-        from smtr.marble.dataset import build_marble_dataset_manifest, write_marble_dataset_manifest
-        manifest = build_marble_dataset_manifest(marble_root=Path(args.marble_root))
-        write_marble_dataset_manifest(manifest, Path(args.output))
+        from smtr.marble.dataset import write_marble_dataset_manifest
+        manifest = write_marble_dataset_manifest(
+            output_path=Path(args.output),
+            marble_root=Path(args.marble_root),
+        )
         print(f"Dataset manifest written to {args.output}")
 
     elif cmd == "create-splits":
@@ -393,6 +399,8 @@ def _dispatch(args: argparse.Namespace) -> None:
             output_dir=Path(args.output),
             engine_timeout_seconds=args.engine_timeout_seconds,
             experiment_mode=args.experiment_mode,
+            parallel=args.parallel,
+            api_keys=args.api_keys,
         )
         print(json.dumps(result, indent=2))
 
@@ -540,7 +548,7 @@ def _dispatch(args: argparse.Namespace) -> None:
             train_paired_records_path=Path(args.train_paired_records) if args.train_paired_records else None,
             validation_paired_records_path=Path(args.validation_paired_records) if args.validation_paired_records else None,
             test_paired_records_path=Path(args.test_paired_records) if args.test_paired_records else None,
-            checkpoint_path=Path(args.checkpoint_full) if args.checkpoint_full else None,
+            checkpoint_paths={"full": Path(args.checkpoint_full)} if args.checkpoint_full else None,
         )
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(result, indent=2), encoding="utf-8")

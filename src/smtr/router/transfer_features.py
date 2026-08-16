@@ -181,6 +181,20 @@ class HashingTransferFeatureEncoder:
                 f"{str(_read_write_compatible(card, rs.receiver)).lower()}"
             )
 
+        # --- candidate context block (v2 extension) ---
+        # Routing-surface features describing how the candidate was selected
+        # and which task group it targets. These are NOT writer provenance:
+        # candidate_source is the retrieval strategy (semantic_top, hard
+        # negative, cross-receiver anchor), candidate_rank is the position
+        # within the candidate list, and target_task_group identifies the
+        # task difficulty/complexity group.
+        if item.candidate_source:
+            tokens.append(f"candidate_source:{item.candidate_source}")
+        if item.candidate_rank > 0:
+            tokens.append(f"candidate_rank_bucket:{_rank_bucket(item.candidate_rank)}")
+        if item.target_task_group:
+            tokens.append(f"target_task_group:{item.target_task_group}")
+
         # --- v1 action space marker ---
         # The selected-memory prefix S is fixed to ∅ in SMTR-v1; prefix
         # contents are deliberately never encoded so predictions cannot
@@ -341,6 +355,9 @@ def build_training_data_from_records(
         exposure_input = CandidateExposureInput(
             receiver_state=receiver_state,
             candidate_card=card,
+            candidate_source=rec.get("candidate_source", ""),
+            candidate_rank=rec.get("candidate_rank", 0),
+            target_task_group=rec.get("target_task_group", ""),
         )
         results.append((exposure_input, paired_record_label(rec), rec))
     return results
@@ -400,6 +417,15 @@ def _overlap_bucket(set_a: set, set_b: set) -> str:
     if overlap < 0.66:
         return "medium"
     return "high"
+
+
+def _rank_bucket(rank: int) -> str:
+    """Bucket candidate rank into coarse tiers."""
+    if rank <= 1:
+        return "top1"
+    if rank <= 3:
+        return "top2-3"
+    return "top4plus"
 
 
 def _count_bin(n: int) -> str:

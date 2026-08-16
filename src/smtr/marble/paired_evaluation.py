@@ -354,6 +354,19 @@ def run_paired_decision_evaluation(
 
     unsupported_candidate_edges: list[dict[str, str]] = []
 
+    # Build edge→target_task_group lookup from paired records so the router
+    # can forward candidate context features to the critic.
+    edge_to_task_group: dict[tuple[str, str, str], str] = {}
+    for record in paired_outcomes:
+        ek = (
+            str(record["task_id"]),
+            str(record["receiver_agent_id"]),
+            str(record["candidate_memory_id"]),
+        )
+        tg = record.get("target_task_group", "")
+        if tg:
+            edge_to_task_group[ek] = tg
+
     for entry in candidates_manifest.get("candidates", []):
         task_id = entry["task_id"]
         receiver_agent_id = entry.get("receiver_agent_id", "")
@@ -363,10 +376,17 @@ def run_paired_decision_evaluation(
 
         # Get candidate cards from manifest for this entry
         candidate_cards: list[MemoryRoutingCard] = []
+        candidate_context: dict[str, dict[str, Any]] = {}
         for rec in entry.get("candidate_records", []):
             card = cards_by_id.get(rec["memory_id"])
             if card is not None:
                 candidate_cards.append(card)
+                ek = (str(task_id), str(receiver_agent_id), str(rec["memory_id"]))
+                candidate_context[card.memory_id] = {
+                    "candidate_source": rec.get("candidate_source", ""),
+                    "candidate_rank": rec.get("rank", 0),
+                    "target_task_group": edge_to_task_group.get(ek, ""),
+                }
                 if (task_id, receiver_agent_id, rec["memory_id"]) not in edge_to_seeds:
                     unsupported_candidate_edges.append({
                         "task_id": task_id,
@@ -392,7 +412,9 @@ def run_paired_decision_evaluation(
 
         for method in methods:
             router = routers[method]
-            decisions = router.decide(receiver_state, candidate_cards)
+            decisions = router.decide(
+                receiver_state, candidate_cards, candidate_context,
+            )
 
             # Candidate decision traces (清单 P0-10/11): the router decision
             # is computed once per edge and copied to that edge's own

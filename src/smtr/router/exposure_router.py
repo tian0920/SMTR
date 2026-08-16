@@ -79,14 +79,27 @@ class SMTRExposureRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[RouterDecision]:
-        """Make share/withhold decisions for all candidates."""
+        """Make share/withhold decisions for all candidates.
+
+        ``candidate_context`` is an optional mapping from memory_id to a dict
+        with keys ``candidate_source``, ``candidate_rank``,
+        ``target_task_group``.  When provided these fields are forwarded to
+        the critic's feature encoder so that routing-surface candidate
+        provenance participates in the prediction.
+        """
         budget = self._effective_risk_budget()
         scored: list[tuple[float, float, float, MemoryRoutingCard]] = []
+        ctx = candidate_context or {}
         for card in candidate_cards:
+            card_ctx = ctx.get(card.memory_id, {})
             exposure_input = CandidateExposureInput(
                 receiver_state=receiver_state,
                 candidate_card=card,
+                candidate_source=card_ctx.get("candidate_source", ""),
+                candidate_rank=card_ctx.get("candidate_rank", 0),
+                target_task_group=card_ctx.get("target_task_group", ""),
             )
             pred = self.critic.predict_calibrated(exposure_input)
             tau = pred.tau_hat
@@ -138,9 +151,10 @@ class SMTRExposureRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         """Produce router trace (no payload/procedure included)."""
-        decisions = self.decide(receiver_state, candidate_cards)
+        decisions = self.decide(receiver_state, candidate_cards, candidate_context)
         traces = []
         for dec in decisions:
             card = next(c for c in candidate_cards if c.memory_id == dec.memory_id)

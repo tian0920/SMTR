@@ -19,8 +19,10 @@ from smtr.marble.engine_process import DEFAULT_ENGINE_TIMEOUT_SECONDS
 from smtr.marble.environment.database_fingerprint import DatabaseLogicalFingerprint
 from smtr.marble.environment.database_rebuild import (
     DatabaseCleanupResult,
+    ParallelDatabaseRebuilder,
     SequentialDatabaseRebuilder,
 )
+from smtr.marble.environment.docker_slot_pool import DockerSlot, DockerSlotPool
 from smtr.marble.environment.isolation import InitialStateBundle
 from smtr.marble.environment.scenarios.database import MarbleDatabaseEnvironment
 from smtr.marble.memory_injection import MarbleAgentInputAudit, MarbleMemoryInjector
@@ -103,7 +105,18 @@ class MarblePairedBranchRunner:
     Formal paired generation uses ``run_no_memory_control`` +
     ``run_candidate_share`` + ``assemble_shared_control_pair``.
     The legacy ``run_pair`` API has been removed (清单 P0-2 第三章).
+
+    Parameters
+    ----------
+    slot_pool:
+        Optional ``DockerSlotPool`` for parallel execution.  When
+        provided, each branch acquires a Docker compose slot with
+        isolated host ports.  When ``None`` (default), the original
+        sequential rebuilder is used.
     """
+
+    def __init__(self, *, slot_pool: DockerSlotPool | None = None) -> None:
+        self._slot_pool = slot_pool
 
     # ------------------------------------------------------------------
     # Shared-control execution (清单 Shared-Control 第3章)
@@ -346,7 +359,10 @@ class MarblePairedBranchRunner:
         (清单 Shared-Control 第3/4章).
         """
         evaluator = evaluator_for_scenario(initial_state_bundle.scenario)
-        rebuilder = SequentialDatabaseRebuilder()
+        if self._slot_pool is not None:
+            rebuilder = ParallelDatabaseRebuilder(self._slot_pool)
+        else:
+            rebuilder = SequentialDatabaseRebuilder()
         env = MarbleDatabaseEnvironment(
             task=task,
             workspace=workspace / branch_id,
@@ -360,6 +376,13 @@ class MarblePairedBranchRunner:
                 initial_state_bundle=initial_state_bundle,
                 branch_workspace=workspace / branch_id,
             )
+            # Determine slot and API key for the engine subprocess
+            docker_slot: DockerSlot | None = None
+            api_key: str | None = None
+            if isinstance(rebuilder, ParallelDatabaseRebuilder):
+                docker_slot = rebuilder.slot
+                if self._slot_pool is not None and docker_slot is not None:
+                    api_key = self._slot_pool.get_api_key(docker_slot)
             try:
                 run = env.run(
                     agent_input=agent_input,
@@ -367,6 +390,8 @@ class MarblePairedBranchRunner:
                     memory_injection=memory_injection,
                     engine_timeout_seconds=engine_timeout_seconds,
                     run_metadata=run_metadata,
+                    docker_slot=docker_slot,
+                    api_key=api_key,
                 )
                 outcome = evaluator.evaluate(task=task, run_result=run)
                 branch_engine_executed = True
@@ -412,7 +437,7 @@ class MarblePairedBranchRunner:
             return audit, engine_name, engine_version
         finally:
             env.close()
-            rebuilder.destroy()
+            rebuilder.destroy(remove_workspace=False)
 
     def _audit(
         self,

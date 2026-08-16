@@ -77,9 +77,18 @@ class DatabaseOutcomeEvaluator:
         )
 
 
+def _task_body(task: dict[str, Any]) -> dict[str, Any]:
+    """Extract task body from either nested MARBLE format or flat dataset manifest."""
+    nested = task.get("task")
+    if isinstance(nested, dict):
+        return nested
+    # Flat dataset manifest: root_causes/labels/content at top level
+    return task
+
+
 def _root_causes(task: dict[str, Any]) -> list[str]:
-    task_body = task.get("task") if isinstance(task.get("task"), dict) else {}
-    return [str(item) for item in task_body.get("root_causes", [])]
+    body = _task_body(task)
+    return [str(item) for item in body.get("root_causes", [])]
 
 
 def _as_prediction_list(predictions: Any) -> list[str]:
@@ -136,20 +145,25 @@ def _call_native_evaluator(
         from marble.evaluator.evaluator import Evaluator
 
         evaluator = Evaluator(metrics_config=task.get("metrics", {}))
-        task_body = task.get("task") if isinstance(task.get("task"), dict) else {}
+        body = _task_body(task)
         result = run_result.get("final_output") or run_result.get("result") or ""
         evaluator.evaluate_task_db(
-            task=str(task_body.get("content", "")),
+            task=str(body.get("content", "")),
             result=str(result),
-            labels=[str(item) for item in task_body.get("labels", [])],
-            pred_num=int(task_body.get("number_of_labels_pred", 0) or 0),
-            root_causes=[str(item) for item in task_body.get("root_causes", [])],
+            labels=[str(item) for item in body.get("labels", [])],
+            pred_num=int(body.get("number_of_labels_pred", 0) or 0),
+            root_causes=[str(item) for item in body.get("root_causes", [])],
         )
         task_eval = evaluator.metrics.get("task_evaluation")
         if isinstance(task_eval, dict):
             return task_eval, True, canonical_digest(task_eval)
         return None, False, None
-    except Exception:
+    except Exception as exc:
+        import sys
+        print(
+            f"[SMTR] _call_native_evaluator failed: {type(exc).__name__}: {exc}",
+            file=sys.stderr, flush=True,
+        )
         return None, False, None
     finally:
         os.chdir(previous_cwd)

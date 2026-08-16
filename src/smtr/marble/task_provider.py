@@ -67,6 +67,23 @@ class MarbleTaskProvider:
         return specs
 
 
+def load_database_task_by_id(marble_root: Path, task_id: str) -> dict[str, Any]:
+    """Load a full MARBLE database task entry from the source JSONL file.
+
+    Returns the complete task dict including ``agents``, ``relationships``,
+    ``environment``, ``task`` (content/labels/root_causes), etc.
+    """
+    path = marble_root / "multiagentbench" / "database" / "database_main.jsonl"
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            task = json.loads(line)
+            if str(task.get("task_id")) == str(task_id):
+                return _read_jsonl_line(path, line_number)
+    raise ValueError(f"database task_id not found: {task_id}")
+
+
 def _read_jsonl_line(path: Path, line_number: int) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         for current, line in enumerate(handle, start=1):

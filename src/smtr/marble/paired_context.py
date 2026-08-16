@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from smtr.marble.environment.isolation import InitialStateBundle
+from smtr.marble.task_provider import load_database_task_by_id
 
 
 class PairExecutionContext(BaseModel):
@@ -29,6 +30,11 @@ def build_pair_execution_context(
     needed by the shared-control branch runner protocol (清单
     Shared-Control 第3章).
 
+    The full MARBLE task is loaded from the source JSONL file so that
+    ``agents``, ``relationships``, ``environment.init_sql``,
+    ``task.content`` / ``labels`` / ``root_causes`` are available for the
+    engine and outcome evaluator.
+
     Requirements:
     - target_receiver_agent_id must equal receiver_agent_id
     - task digest must come from the frozen MARBLE task
@@ -41,32 +47,31 @@ def build_pair_execution_context(
     task_id = str(task_entry["task_id"])
     scenario = task_entry.get("scenario", "database")
 
+    # Load the full MARBLE task from source JSONL (agents, env, task content, etc.)
+    full_task = load_database_task_by_id(marble_root, task_id)
+
     # Build agent config targeting the specific receiver
     agent_config: dict[str, Any] = {
         "target_receiver_agent_id": receiver_agent_id,
         "scenario": scenario,
         "task_id": task_id,
-        "agents": task_entry.get("agents", []),
+        "agents": full_task.get("agents", []),
     }
 
     # Compute digests from frozen task
-    task_digest = canonical_digest(task_entry)
+    task_digest = canonical_digest(full_task)
     tool_config_digest = canonical_digest({"scenario": scenario, "task_id": task_id})
     agent_config_digest = canonical_digest(agent_config)
 
-    # Build initial state bundle
+    # Build initial state bundle using full task source data
     initial_state_bundle = InitialStateBundle(
         task_id=task_id,
         scenario=scenario,
-        task_digest=task_digest,
-        tool_config_digest=tool_config_digest,
-        agent_config_digest=agent_config_digest,
-        database_path=task_entry.get("database_path", ""),
-        workspace=str(workspace),
+        task_source_snapshot=task_entry,
     )
 
     return PairExecutionContext(
-        task=task_entry,
+        task=full_task,
         initial_state_bundle=initial_state_bundle,
         agent_config=agent_config,
     )

@@ -26,6 +26,8 @@ historical aggregates.
 
 from __future__ import annotations
 
+from typing import Any
+
 from smtr.core.types import (
     CandidateExposureInput,
     MemoryRoutingCard,
@@ -129,6 +131,7 @@ class NoMemoryRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[RouterDecision]:
         return [
             RouterDecision(
@@ -152,6 +155,7 @@ class SemanticTop1Router:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[RouterDecision]:
         if not candidate_cards:
             return []
@@ -186,6 +190,7 @@ class ReceiverCompatibleTop1Router:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[RouterDecision]:
         if not candidate_cards:
             return []
@@ -260,8 +265,9 @@ class GlobalTransferCriticRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[RouterDecision]:
-        return self._router.decide(receiver_state, candidate_cards)
+        return self._router.decide(receiver_state, candidate_cards, candidate_context)
 
 
 class SMTRNoCompatibilityInteractionRouter:
@@ -284,8 +290,9 @@ class SMTRNoCompatibilityInteractionRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[RouterDecision]:
-        return self._router.decide(receiver_state, candidate_cards)
+        return self._router.decide(receiver_state, candidate_cards, candidate_context)
 
 
 class SMTRNoRiskRouter:
@@ -307,12 +314,18 @@ class SMTRNoRiskRouter:
         self,
         receiver_state: ReceiverState,
         candidate_cards: list[MemoryRoutingCard],
+        candidate_context: dict[str, dict[str, Any]] | None = None,
     ) -> list[RouterDecision]:
         scored: list[tuple[float, float, MemoryRoutingCard]] = []
+        ctx = candidate_context or {}
         for card in candidate_cards:
+            card_ctx = ctx.get(card.memory_id, {})
             exposure_input = CandidateExposureInput(
                 receiver_state=receiver_state,
                 candidate_card=card,
+                candidate_source=card_ctx.get("candidate_source", ""),
+                candidate_rank=card_ctx.get("candidate_rank", 0),
+                target_task_group=card_ctx.get("target_task_group", ""),
             )
             pred = self.critic.predict(exposure_input)
             scored.append((pred.tau_hat, pred.eta_hat, card))
