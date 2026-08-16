@@ -19,7 +19,7 @@ from smtr.router.sequential_router import (
     SequentialRouterConfig,
     SequentialRouterDecision,
 )
-from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
+from smtr.router.smtr_gate import SMTRGate
 from smtr.router.transfer_critic import FourOutcomeTransferCritic, TransferEstimate
 
 
@@ -194,24 +194,13 @@ class FallbackRouter:
     def _create_router(
         self,
         config: SequentialRouterConfig,
-        *,
-        negative_risk_budget: float | None = None,
     ):
         """Create a sequential router with the given config."""
         if self.critic is None:
             return NoMemoryRouter()
-        if negative_risk_budget is None:
-            # Formal default: resolve the budget from the checkpoint's
-            # validation-selected epsilon_star (清单 P1-2).
-            epsilon_star = getattr(self.critic, "epsilon_star", None)
-            if epsilon_star is None:
-                raise ValueError(
-                    "Checkpoint does not contain validation-selected epsilon_star."
-                )
-            negative_risk_budget = float(epsilon_star)
         return ProductionSequentialRouter(
             critic=self.critic,
-            gate=SMTRGate(SMTRGateConfig(negative_risk_budget=negative_risk_budget)),
+            gate=SMTRGate(),
             config=config,
             seed=self.seed,
         )
@@ -326,10 +315,7 @@ class FallbackRouter:
         conservative_config = SequentialRouterConfig(
             max_shares_per_invocation=self.fallback_config.max_shares_in_fallback,
         )
-        self._primary_router = self._create_router(
-            conservative_config,
-            negative_risk_budget=self.fallback_config.conservative_negative_risk_veto,
-        )
+        self._primary_router = self._create_router(conservative_config)
 
     def _exit_fallback_mode(self) -> None:
         """Exit fallback mode and return to normal configuration."""

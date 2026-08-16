@@ -1,4 +1,4 @@
-"""Unified formal protocol for SMTR checkpoints (清单 Writer-Agnostic 第十章).
+"""Formal checkpoint feature-block binding and calibration gate (清单 P0-4).
 
 Every formal method may only consume its own feature block, and formal
 checkpoints must carry a fitted isotonic q01 calibrator plus a
@@ -17,7 +17,6 @@ from smtr.router.transfer_critic import FourOutcomeTransferCritic
 
 FORMAL_FEATURE_BLOCKS = {
     "smtr": ("full",),
-    "smtr_no_risk": ("full",),
     "global_transfer_critic": ("global_transfer",),
     "smtr_no_compatibility_interaction": (
         "no_compatibility_interaction",
@@ -178,11 +177,11 @@ def verify_formal_checkpoint_blocks(
 ) -> None:
     """Each formal method may only consume its own feature block.
 
-    SMTR-no-risk reuses the full checkpoint without a separate calibration
-    gate (it has no eta gate); as long as SMTR itself is in the method list
-    the full checkpoint must still pass the formal calibration gate.
+    SMTR uses the full checkpoint with pure tau > 0 selective exposure;
+    as long as SMTR itself is in the method list the full checkpoint must
+    still pass the formal calibration gate.
     """
-    if any(method in methods for method in ("smtr", "smtr_no_risk")):
+    if "smtr" in methods:
         require_feature_block(
             full_critic,
             method="SMTR",

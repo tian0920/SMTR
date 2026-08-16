@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, log_loss, roc_auc_score
 
 from smtr.counterfactual.schemas import PairedInterventionRecord
-from smtr.router.transfer_critic import CLASS_ORDER, LABEL_TO_CLASS, FourOutcomeTransferCritic
+from smtr.router.transfer_critic import CLASS_ORDER, LABEL_TO_INDEX, FourOutcomeTransferCritic
 from smtr.router.transfer_features import prediction_input_from_record
 
 
@@ -34,7 +34,7 @@ def evaluate_records(
 ) -> dict:
     if not records:
         return {}
-    y_true = [CLASS_ORDER.index(LABEL_TO_CLASS[record.transfer_class]) for record in records]
+    y_true = [LABEL_TO_INDEX[record.transfer_class] for record in records]
     estimates = [critic.predict(prediction_input_from_record(record)) for record in records]
     probs = np.array(
         [
@@ -107,7 +107,7 @@ def _metrics_by_prefix_size(critic, records) -> dict:
 
 
 def _simple_accuracy(critic, records) -> dict:
-    y_true = [CLASS_ORDER.index(LABEL_TO_CLASS[record.transfer_class]) for record in records]
+    y_true = [LABEL_TO_INDEX[record.transfer_class] for record in records]
     estimates = [critic.predict(prediction_input_from_record(record)) for record in records]
     y_pred = [
         int(np.argmax([e.q00_mean, e.q01_mean, e.q10_mean, e.q11_mean]))
@@ -128,7 +128,7 @@ def _subset_accuracy(records, estimates, low_support: bool) -> dict:
     if not selected:
         return {"record_count": 0}
     y_true = [
-        CLASS_ORDER.index(LABEL_TO_CLASS[record.transfer_class])
+        LABEL_TO_INDEX[record.transfer_class]
         for record, _ in selected
     ]
     y_pred = [

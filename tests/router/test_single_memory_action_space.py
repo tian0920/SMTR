@@ -21,7 +21,6 @@ from smtr.core.types import (
 from smtr.router.baselines import (
     METHOD_REGISTRY,
     ReceiverCompatibleTop1Router,
-    SMTRNoRiskRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter
 from smtr.router.transfer_features import HashingTransferFeatureEncoder
@@ -45,10 +44,9 @@ def _receiver_state() -> ReceiverState:
 
 
 class _AllSafeCritic:
-    """Critic stub where every candidate is safe (tau>0, eta<=eps*)."""
+    """Critic stub where every candidate has positive tau."""
 
     feature_block = "full"
-    epsilon_star = 0.5
     q01_calibrator = None
 
     def predict(self, item) -> TransferPrediction:
@@ -71,13 +69,6 @@ class TestSingleMemoryActionSpace:
         shared = [d for d in decisions if d.action == "share"]
         assert len(shared) == 1
 
-    def test_smtr_no_risk_shares_at_most_one_memory_per_receiver(self):
-        critic = _AllSafeCritic()
-        decisions = SMTRNoRiskRouter(critic=critic).decide(
-            _receiver_state(), [_card(f"m{i}") for i in range(4)])
-        shared = [d for d in decisions if d.action == "share"]
-        assert len(shared) == 1
-
     def test_label_free_baselines_share_at_most_one_memory(self):
         cards = [_card(f"m{i}") for i in range(4)]
         decisions = ReceiverCompatibleTop1Router().decide(_receiver_state(), cards)
@@ -87,8 +78,6 @@ class TestSingleMemoryActionSpace:
     def test_multi_memory_action_space_is_rejected(self):
         with pytest.raises(ValueError, match="single-memory"):
             SMTRExposureRouter(critic=_AllSafeCritic(), max_shared_memories_per_receiver=2)
-        with pytest.raises(ValueError, match="single-memory"):
-            SMTRNoRiskRouter(critic=_AllSafeCritic(), max_shared_memories_per_receiver=3)
 
 
 class TestPrefixIndependence:

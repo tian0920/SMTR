@@ -12,16 +12,18 @@ single-memory setting):
                            and no compatibility interaction;
 * B4-SMTR-no-compatibility-interaction — task/memory/receiver marginals,
                            no explicit compatibility interactions;
-* B5-SMTR-no-risk        — full memory-receiver critic with tau_hat > 0
-                           only (no risk gate);
-* SMTR                   — full memory-receiver critic with
-                           tau_hat > 0 and eta_cal <= epsilon_star.
+* SMTR                   — full memory-receiver critic with pure
+                           tau_hat > 0 selective exposure.
 
 Writer identity is never a conditioning variable in any baseline (清单
 Writer-Agnostic 第二章). AllShare and FactualSuccess were removed: in the
 v1 single-memory action space AllShare is behaviorally identical to a
 top-1 heuristic baseline, and FactualSuccess has no reliable memory-level
 historical aggregates.
+
+SMTR-no-risk was removed: the new SMTR-v1 definition uses tau > 0 as the
+only selective-exposure gate, so SMTR-no-risk is behaviorally identical
+to SMTR.
 """
 
 from __future__ import annotations
@@ -215,9 +217,7 @@ class ReceiverCompatibleTop1Router:
 def _critic_router(
     critic: FourOutcomeTransferCritic,
     expected_feature_blocks: str | tuple[str, ...],
-    negative_risk_budget: float | None = None,
     max_shared_memories_per_receiver: int = 1,
-    allow_risk_budget_override: bool = False,
 ):
     from smtr.router.exposure_router import SMTRExposureRouter
 
@@ -235,9 +235,7 @@ def _critic_router(
 
     return SMTRExposureRouter(
         critic=critic,
-        negative_risk_budget=negative_risk_budget,
         max_shared_memories_per_receiver=max_shared_memories_per_receiver,
-        allow_risk_budget_override=allow_risk_budget_override,
     )
 
 
@@ -252,13 +250,11 @@ class GlobalTransferCriticRouter:
     def __init__(
         self,
         critic: FourOutcomeTransferCritic,
-        negative_risk_budget: float | None = None,
         max_shared_memories_per_receiver: int = 1,
-        allow_risk_budget_override: bool = False,
     ) -> None:
         self._router = _critic_router(
-            critic, "global_transfer", negative_risk_budget,
-            max_shared_memories_per_receiver, allow_risk_budget_override,
+            critic, "global_transfer",
+            max_shared_memories_per_receiver,
         )
 
     def decide(
@@ -277,13 +273,11 @@ class SMTRNoCompatibilityInteractionRouter:
     def __init__(
         self,
         critic: FourOutcomeTransferCritic,
-        negative_risk_budget: float | None = None,
         max_shared_memories_per_receiver: int = 1,
-        allow_risk_budget_override: bool = False,
     ) -> None:
         self._router = _critic_router(
-            critic, "no_compatibility_interaction", negative_risk_budget,
-            max_shared_memories_per_receiver, allow_risk_budget_override,
+            critic, "no_compatibility_interaction",
+            max_shared_memories_per_receiver,
         )
 
     def decide(
@@ -295,77 +289,20 @@ class SMTRNoCompatibilityInteractionRouter:
         return self._router.decide(receiver_state, candidate_cards, candidate_context)
 
 
-class SMTRNoRiskRouter:
-    """B5-SMTR-no-risk: reuse the full memory-receiver critic, keeping only
-    tau_hat > 0 and dropping the eta_cal <= epsilon_star risk gate (清单 8.6)."""
-
-    def __init__(
-        self,
-        critic: FourOutcomeTransferCritic,
-        max_shared_memories_per_receiver: int = 1,
-    ) -> None:
-        from smtr.router.exposure_router import _require_single_memory_action_space
-
-        _require_single_memory_action_space(max_shared_memories_per_receiver)
-        self.critic = critic
-        self.max_shared_memories_per_receiver = max_shared_memories_per_receiver
-
-    def decide(
-        self,
-        receiver_state: ReceiverState,
-        candidate_cards: list[MemoryRoutingCard],
-        candidate_context: dict[str, dict[str, Any]] | None = None,
-    ) -> list[RouterDecision]:
-        scored: list[tuple[float, float, MemoryRoutingCard]] = []
-        ctx = candidate_context or {}
-        for card in candidate_cards:
-            card_ctx = ctx.get(card.memory_id, {})
-            exposure_input = CandidateExposureInput(
-                receiver_state=receiver_state,
-                candidate_card=card,
-                candidate_source=card_ctx.get("candidate_source", ""),
-                candidate_rank=card_ctx.get("candidate_rank", 0),
-                target_task_group=card_ctx.get("target_task_group", ""),
-            )
-            pred = self.critic.predict(exposure_input)
-            scored.append((pred.tau_hat, pred.eta_hat, card))
-
-        # Share top tau>0 without risk constraint
-        positive = [(tau, eta, c) for tau, eta, c in scored if tau > 0]
-        positive_sorted = sorted(positive, key=lambda x: -x[0])
-        share_set = {
-            c.memory_id for _, _, c in positive_sorted[: self.max_shared_memories_per_receiver]
-        }
-
-        decisions = []
-        for tau, eta, card in scored:
-            if card.memory_id in share_set:
-                decisions.append(RouterDecision(
-                    memory_id=card.memory_id, action="share",
-                    tau_hat=tau, eta_raw=eta,
-                    reason="tau>0_no_risk_constraint",
-                ))
-            else:
-                decisions.append(RouterDecision(
-                    memory_id=card.memory_id, action="withhold",
-                    tau_hat=tau, eta_raw=eta, reason="tau<=0_or_not_top",
-                ))
-        return decisions
-
-
 # Formal method registry (清单 Writer-Agnostic 第九章). AllShare and
 # FactualSuccess are deliberately absent: AllShare duplicates a top-1
 # heuristic baseline under the v1 single-memory action space, and
 # FactualSuccess lacks reliable memory-level historical aggregates.
 # smtr_no_writer_receiver was removed because the new full SMTR never
 # conditions on writer identity (清单 8.7).
+# smtr_no_risk was removed: SMTR-v1 uses tau > 0 as the only gate,
+# making SMTR-no-risk behaviorally identical to SMTR.
 METHOD_REGISTRY: dict[str, type] = {
     "b0_no_memory": NoMemoryRouter,
     "semantic_top1": SemanticTop1Router,
     "receiver_compatible_top1": ReceiverCompatibleTop1Router,
     "global_transfer_critic": GlobalTransferCriticRouter,
     "smtr_no_compatibility_interaction": SMTRNoCompatibilityInteractionRouter,
-    "smtr_no_risk": SMTRNoRiskRouter,
 }
 
 # 清单最终闭环 §22: the formal method set is defined once here so the CLI

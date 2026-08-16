@@ -1,12 +1,15 @@
 """Stage A.5 comprehensive diagnostic analysis.
 
-Phases D, F, G, H, I, J:
+Phases D, F, G, H, J:
 - D: Transfer-state distribution audit
 - F: Critic diagnostics (confusion matrix, OVR metrics, PR-AUC, ROC-AUC)
 - G: tau_hat distribution analysis by true state
-- H: eta_hat distribution analysis by true state
-- I: SMTR vs SMTR-no-risk disagreement analysis
+- H: eta_hat distribution analysis by true state (diagnostic only)
 - J: Baseline decision overlap analysis
+
+SMTR-v1: eta (= q01) is diagnostic only; epsilon* is no longer a routing
+parameter.  Phase I (SMTR vs SMTR-no-risk disagreement) has been removed
+because smtr_no_risk is no longer a separate method.
 """
 
 import json
@@ -276,8 +279,8 @@ def phase_g(matched):
             print(f"  VERDICT: tau shows directional signal (delta={p_pos-p_neg:.3f})")
 
 
-def phase_h(matched, critic_eps_star=None):
-    """Phase H: Analyze eta_hat distributions."""
+def phase_h(matched):
+    """Phase H: Analyze eta_hat distributions (diagnostic only)."""
     print(f"\n{'='*60}")
     print(f"Phase H: eta_hat Distribution Analysis")
     print(f"{'='*60}")
@@ -320,84 +323,14 @@ def phase_h(matched, critic_eps_star=None):
             print(f"  AUC(q01 vs rest using eta_hat): {auc:.3f}")
             print(f"  PR-AUC(q01 vs rest): {pr_auc:.3f} (baseline: {prevalence:.3f})")
 
-    # H3: epsilon* analysis
-    print(f"\n--- H3: Calibrated epsilon* analysis ---")
-    if critic_eps_star is not None:
-        eps = critic_eps_star
-        print(f"  epsilon* = {eps:.4f}")
-        if q01_eta:
-            p_q01 = np.mean(np.array(q01_eta) <= eps)
-            print(f"  P(eta_hat <= eps* | q01) = {p_q01:.3f} (should be LOW, harmful memories rejected)")
-        if non_q01_eta:
-            p_rest = np.mean(np.array(non_q01_eta) <= eps)
-            print(f"  P(eta_hat <= eps* | non-q01) = {p_rest:.3f}")
-    else:
-        print(f"  epsilon* not available from checkpoint")
-
-
-def phase_i(traces, paired_records):
-    """Phase I: SMTR vs SMTR-no-risk disagreement analysis."""
-    print(f"\n{'='*60}")
-    print(f"Phase I: SMTR vs SMTR-no-risk Disagreement")
-    print(f"{'='*60}")
-
-    smtr = traces.get("smtr", [])
-    no_risk = traces.get("smtr_no_risk", [])
-
-    # Build lookup
-    def trace_key(t):
-        return (
-            str(t.get("task_id", "")),
-            int(t.get("generation_seed", 0)),
-            str(t.get("receiver_agent_id", "")),
-            str(t.get("candidate_memory_id", "")),
-        )
-
-    smtr_by_key = {trace_key(t): t for t in smtr}
-    no_risk_by_key = {trace_key(t): t for t in no_risk}
-
-    common_keys = set(smtr_by_key.keys()) & set(no_risk_by_key.keys())
-    print(f"\nCommon traces: {len(common_keys)}")
-
-    disagree = 0
-    changed_details = []
-    for key in sorted(common_keys):
-        s_action = smtr_by_key[key]["action"]
-        nr_action = no_risk_by_key[key]["action"]
-        if s_action != nr_action:
-            disagree += 1
-            changed_details.append({
-                "key": key,
-                "smtr": s_action,
-                "no_risk": nr_action,
-                "tau_hat": smtr_by_key[key].get("tau_hat"),
-                "eta_cal": smtr_by_key[key].get("eta_calibrated"),
-            })
-
-    print(f"Disagreements: {disagree} ({disagree/len(common_keys)*100:.1f}%)" if common_keys else "")
-
-    if changed_details:
-        print(f"\nChanged decisions (first 10):")
-        for d in changed_details[:10]:
-            print(f"  task={d['key'][0]} seed={d['key'][1]} agent={d['key'][2]} mem={d['key'][3][:12]}")
-            print(f"    SMTR: {d['smtr']}, no-risk: {d['no_risk']}, tau={d['tau_hat']:.4f}, eta_cal={d['eta_cal']:.4f}")
-
-    # Classify the situation
-    print(f"\n--- I3: Situation Classification ---")
-    all_eta = [t.get("eta_calibrated", 0) for t in smtr if t.get("action") == "share"]
-    if all_eta:
-        max_eta = max(all_eta)
-        print(f"  Max eta_calibrated among shared: {max_eta:.4f}")
-        if max_eta < 0.05:
-            print(f"  Case A: eta_hat almost always very low → eta learner didn't learn risk")
-        elif disagree == 0:
-            print(f"  Case B: eta has variation but epsilon* too loose → calibration issue")
-        elif disagree > 0 and disagree < 10:
-            print(f"  Case C: Risk gate filters some but routing still converges → candidate interaction")
-        else:
-            print(f"  Case D: Only very few harmful examples → sample-size issue")
-    else:
-        print(f"  No shared memories in SMTR traces")
+    # H3: epsilon diagnostic analysis (no longer a routing gate)
+    print(f"\n--- H3: eta diagnostic summary ---")
+    print(f"  SMTR-v1: eta (= q01) is diagnostic only; no epsilon* routing gate.")
+    if q01_eta:
+        print(f"  mean(eta | q01) = {np.mean(q01_eta):.4f}")
+        print(f"  max(eta | q01)  = {np.max(q01_eta):.4f}")
+    if non_q01_eta:
+        print(f"  mean(eta | non-q01) = {np.mean(non_q01_eta):.4f}")
 
 
 def phase_j(traces):
@@ -476,13 +409,11 @@ def main():
     paired_records = load_jsonl(paired_path)
     traces = json.load(open(traces_path))
 
-    # Load critic for epsilon_star
-    critic_eps_star = None
+    # Load critic (diagnostic only; no epsilon* in SMTR-v1)
     try:
         from smtr.router.transfer_critic import FourOutcomeTransferCritic
-        critic = FourOutcomeTransferCritic.load(Path(critic_path))
-        critic_eps_star = getattr(critic, "epsilon_star", None)
-        print(f"  epsilon* = {critic_eps_star}")
+        _critic = FourOutcomeTransferCritic.load(Path(critic_path))
+        print(f"  Critic loaded (diagnostic only; no epsilon* in SMTR-v1)")
     except Exception as e:
         print(f"  Could not load critic: {e}")
 
@@ -497,10 +428,7 @@ def main():
     phase_g(matched)
 
     # Phase H
-    phase_h(matched, critic_eps_star)
-
-    # Phase I
-    phase_i(traces, paired_records)
+    phase_h(matched)
 
     # Phase J
     phase_j(traces)

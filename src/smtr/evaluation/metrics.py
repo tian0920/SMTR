@@ -476,7 +476,6 @@ def compute_method_metrics(
     method: str,
     decisions: list[dict[str, Any]],
     paired_outcomes: list[dict[str, Any]],
-    negative_risk_budget: float | None = None,
 ) -> dict[str, Any]:
     """Compute paper-required metrics for one method.
 
@@ -490,10 +489,6 @@ def compute_method_metrics(
             candidate_memory_id, receiver_agent_id, receiver_role, writer_role, action,
             task_id, generation_seed
         paired_outcomes: list of paired record dicts
-        negative_risk_budget: threshold for quarantine; ``None`` (the formal
-            default) means no explicit budget was supplied, so the
-            quarantine count is reported as 0 rather than against a
-            hard-coded default.
     """
     candidate_metrics = compute_candidate_transfer_metrics(
         method=method,
@@ -547,20 +542,6 @@ def compute_method_metrics(
         if len(unique_actions) > 1:
             same_memory_different_receiver_flip_count += 1
 
-    # Receiver-specific quarantine pair count (P2-4: use negative_risk_budget param)
-    def _eta_for_quarantine(d: dict) -> float:
-        # R6 P0-7: prefer eta_calibrated; fall back to deprecated eta_hat.
-        value = d.get("eta_calibrated")
-        return float(value if value is not None else d.get("eta_hat", 0))
-
-    quarantine_count = (
-        0 if negative_risk_budget is None
-        else sum(
-            1 for d in decisions
-            if d["action"] == "withhold" and _eta_for_quarantine(d) > negative_risk_budget
-        )
-    )
-
     return {
         "method": method,
         # Receiver-episode-level policy metrics (one unit per episode)
@@ -585,7 +566,6 @@ def compute_method_metrics(
         ],
         "writer_receiver_mismatch_share_rate": round(writer_receiver_mismatch_share_rate, 4),
         "same_memory_different_receiver_flip_count": same_memory_different_receiver_flip_count,
-        "receiver_specific_quarantine_pair_count": quarantine_count,
     }
 
 

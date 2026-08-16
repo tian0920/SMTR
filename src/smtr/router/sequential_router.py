@@ -21,7 +21,7 @@ from smtr.router.conditioning import (
     SelectedSetConditioningPolicy,
 )
 from smtr.router.gate_protocol import GateDecision, RoutingGate, TransferPointEstimate
-from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
+from smtr.router.smtr_gate import SMTRGate
 from smtr.router.traces import CandidateTrace, RouterDecision
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import TransferPredictionInput
@@ -99,15 +99,8 @@ class ProductionSequentialRouter:
             )
         self.critic = critic
         if gate is None:
-            # Resolve the gate budget from the checkpoint epsilon_star;
-            # a checkpoint without validation-selected epsilon_star fails
-            # closed instead of using a hard-coded default (清单 P1-2).
-            epsilon_star = getattr(critic, "epsilon_star", None)
-            if epsilon_star is None:
-                raise ValueError(
-                    "Checkpoint does not contain validation-selected epsilon_star."
-                )
-            gate = SMTRGate(SMTRGateConfig(negative_risk_budget=float(epsilon_star)))
+            # SMTR-v1: pure tau > 0 selective-exposure gate.
+            gate = SMTRGate()
         self.gate = gate
         self.conditioning_policy = conditioning_policy or DynamicSelectedSetConditioning()
         self.traversal_policy = traversal_policy or RandomTraversal()

@@ -19,7 +19,6 @@ from smtr.router.baselines import (
     ReceiverCompatibleTop1Router,
     SemanticTop1Router,
     SMTRNoCompatibilityInteractionRouter,
-    SMTRNoRiskRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter
 
@@ -135,20 +134,13 @@ class TestCriticBaselineDistinctness:
 
     def test_global_transfer_critic_differs_from_smtr(self):
         cards = [_card("mem1", goal="diagnose database issue", tags=("database",))]
-        # Same raw scores, but the full critic's calibrated risk exceeds the
-        # budget while the global critic stays safe: the receiver-conditioned
-        # risk gate flips the decision.
+        # Global critic sees positive tau; full critic sees non-positive tau,
+        # so the receiver-conditioned model flips the decision.
         global_router = GlobalTransferCriticRouter(
             critic=_critic("global_transfer", {"mem1": (0.4, 0.05)}))
         smtr_router = SMTRExposureRouter(
-            critic=_critic("full", {"mem1": (0.4, 0.6)}))
+            critic=_critic("full", {"mem1": (-0.1, 0.6)}))
         assert _actions(global_router, cards) != _actions(smtr_router, cards)
-
-    def test_smtr_differs_from_smtr_no_risk(self):
-        cards = [_card("mem1", goal="diagnose database issue", tags=("database",))]
-        smtr = SMTRExposureRouter(critic=_critic("full", {"mem1": (0.4, 0.6)}))
-        no_risk = SMTRNoRiskRouter(critic=_critic("full", {"mem1": (0.4, 0.6)}))
-        assert _actions(smtr, cards) != _actions(no_risk, cards)
 
     def test_smtr_differs_from_smtr_no_compatibility_interaction(self):
         cards = [_card("mem1", goal="diagnose database issue", tags=("database",))]
@@ -179,15 +171,10 @@ class TestMainTablePairwiseDistinct:
                     "mem_sem": (-0.1, 0.05), "mem_compat": (0.2, 0.05),
                     "mem1": (-0.1, 0.05), "mem2": (0.2, 0.05),
                 })),
-            "smtr_no_risk": lambda: SMTRNoRiskRouter(
-                critic=_critic("full", {
-                    "mem_sem": (-0.5, 0.9), "mem_compat": (0.2, 0.9),
-                    "mem1": (0.4, 0.9), "mem2": (-0.2, 0.9),
-                })),
             "smtr": lambda: SMTRExposureRouter(
                 critic=_critic("full", {
-                    "mem_sem": (0.5, 0.05), "mem_compat": (0.1, 0.6),
-                    "mem1": (0.4, 0.6), "mem2": (-0.2, 0.05),
+                    "mem_sem": (0.5, 0.05), "mem_compat": (-0.1, 0.6),
+                    "mem1": (-0.3, 0.6), "mem2": (0.2, 0.05),
                 })),
         }
         action_profiles = {}

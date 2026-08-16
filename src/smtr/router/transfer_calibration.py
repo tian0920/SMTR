@@ -1,10 +1,12 @@
-"""q01 risk calibration, calibration metrics and epsilon selection (清单第八章).
+"""q01 risk calibration and calibration metrics (清单第八章).
 
-The SMTR decision rule depends on eta_hat <= epsilon, so probability
-calibration of q01 (predicted negative-transfer probability) and a
-validation-selected risk budget are required; overall classification
-accuracy alone is not sufficient. The risk budget is never selected on the
-test split.
+In SMTR-v1 the routing decision is pure tau selective exposure
+(``tau_hat > 0``).  The predicted negative-transfer probability
+``eta_hat = q01`` is calibrated and reported for **diagnostic** purposes
+(risk analysis, negative-transfer visualisation, safety characterisation)
+but is **not** used as a routing gate.  The ``epsilon`` candidates and
+``select_epsilon`` helpers remain available for diagnostic risk-utility
+curves but do not define the primary method.
 """
 
 from __future__ import annotations
@@ -401,7 +403,13 @@ def share_decisions(
     q01_calibrated: np.ndarray,
     epsilon: float,
 ) -> np.ndarray:
-    """SMTR-v1 decision rule: share iff tau_hat > 0 and eta_hat <= epsilon."""
+    """Decision rule for diagnostic risk-utility curves.
+
+    .. note::
+       SMTR-v1 primary routing is ``tau_hat > 0`` only.  This helper
+       applies an additional ``eta_hat <= epsilon`` filter for diagnostic
+       risk-utility analysis and is **not** the method's decision rule.
+    """
     return (np.asarray(tau_hat) > 0) & (np.asarray(q01_calibrated) <= epsilon)
 
 

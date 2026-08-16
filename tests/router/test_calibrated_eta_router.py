@@ -1,8 +1,11 @@
-"""Commit 3 tests: calibrated eta + checkpoint epsilon_star drive routing (清单第三章)."""
+"""SMTR-v1 tau-only routing: eta is diagnostic, never a routing gate.
+
+The old calibrated-eta + epsilon_star routing was removed.  SMTR-v1
+decides solely on tau > 0 (net transfer effect).  eta (= q01) is
+reported for diagnostics but does not gate share/withhold.
+"""
 
 from __future__ import annotations
-
-import pytest
 
 from smtr.core.types import (
     AgentProfile,
@@ -10,7 +13,6 @@ from smtr.core.types import (
     ReceiverState,
     TransferPrediction,
 )
-from smtr.router.baselines import SMTRNoRiskRouter
 from smtr.router.exposure_router import SMTRExposureRouter
 
 
@@ -18,9 +20,6 @@ def _card(memory_id: str = "mem1") -> MemoryRoutingCard:
     return MemoryRoutingCard(
         memory_id=memory_id,
         goal_summary="goal",
-        writer=AgentProfile(agent_id="w1", role="planner"),
-        source_task_id="src",
-        source_scenario="database",
     )
 
 
@@ -34,20 +33,18 @@ def _receiver_state() -> ReceiverState:
 
 
 class _StubCritic:
-    """Critic stub exposing raw and calibrated eta separately."""
+    """Critic stub exposing tau and eta independently."""
 
     def __init__(
         self,
         *,
         tau_hat: float,
-        eta_raw: float,
-        eta_calibrated: float,
-        epsilon_star: float | None = None,
+        eta_raw: float = 0.0,
+        eta_calibrated: float = 0.0,
     ) -> None:
         self.tau_hat = tau_hat
         self.eta_raw = eta_raw
         self.eta_calibrated = eta_calibrated
-        self.epsilon_star = epsilon_star
         self.q01_calibrator = None
         self.feature_block = "full"
 
@@ -69,82 +66,45 @@ class _StubCritic:
             update={"eta_hat_calibrated": self.eta_calibrated})
 
 
-class TestCalibratedEtaRouting:
-    def test_router_uses_calibrated_eta_not_raw_eta(self):
-        # Case 1: raw eta=0.30 (unsafe), calibrated eta=0.08 <= eps*=0.10,
-        # tau=0.20 > 0 -> share. Raw eta must not gate the decision.
-        critic_share = _StubCritic(
-            tau_hat=0.20, eta_raw=0.30, eta_calibrated=0.08, epsilon_star=0.10)
-        decisions = SMTRExposureRouter(critic=critic_share).decide(
+class TestTauOnlyRouting:
+    """SMTR-v1 routes on tau > 0 regardless of eta magnitude."""
+
+    def test_positive_tau_shares_even_with_high_eta(self):
+        # tau=0.20 > 0, eta=0.99 (huge risk) -> still share.
+        critic = _StubCritic(tau_hat=0.20, eta_raw=0.99, eta_calibrated=0.99)
+        decisions = SMTRExposureRouter(critic=critic).decide(
             _receiver_state(), [_card()])
         assert [d.action for d in decisions] == ["share"]
-        assert decisions[0].reason == "tau>0 and eta_calibrated<=epsilon_star"
+        assert decisions[0].reason == "tau>0"
 
-        # Case 2: raw eta=0.05 (looks safe), calibrated eta=0.20 > eps*=0.10
-        # -> withhold. Calibrated eta must gate the decision.
-        critic_withhold = _StubCritic(
-            tau_hat=0.20, eta_raw=0.05, eta_calibrated=0.20, epsilon_star=0.10)
-        decisions = SMTRExposureRouter(critic=critic_withhold).decide(
+    def test_negative_tau_withholds_even_with_zero_eta(self):
+        # tau=-0.10, eta=0.00 (zero risk) -> withhold.
+        critic = _StubCritic(tau_hat=-0.10, eta_raw=0.0, eta_calibrated=0.0)
+        decisions = SMTRExposureRouter(critic=critic).decide(
             _receiver_state(), [_card()])
         assert [d.action for d in decisions] == ["withhold"]
-        assert decisions[0].reason == "eta_calibrated>epsilon_star"
+        assert decisions[0].reason == "tau<=0"
 
-    def test_test_router_uses_checkpoint_epsilon_star(self):
-        # Budget must come from the checkpoint: eps*=0.05 rejects eta_cal=0.08,
-        # eps*=0.10 accepts it. No explicit budget is passed anywhere.
-        strict = _StubCritic(
-            tau_hat=0.20, eta_raw=0.08, eta_calibrated=0.08, epsilon_star=0.05)
-        decisions = SMTRExposureRouter(critic=strict).decide(
+    def test_zero_tau_withholds(self):
+        # tau=0.0 exactly -> withhold (strict > 0).
+        critic = _StubCritic(tau_hat=0.0, eta_raw=0.05, eta_calibrated=0.05)
+        decisions = SMTRExposureRouter(critic=critic).decide(
             _receiver_state(), [_card()])
         assert [d.action for d in decisions] == ["withhold"]
 
-        relaxed = _StubCritic(
-            tau_hat=0.20, eta_raw=0.08, eta_calibrated=0.08, epsilon_star=0.10)
-        decisions = SMTRExposureRouter(critic=relaxed).decide(
+    def test_no_epsilon_star_required(self):
+        # SMTR-v1 never reads epsilon_star; no checkpoint metadata needed.
+        critic = _StubCritic(tau_hat=0.30, eta_raw=0.50, eta_calibrated=0.50)
+        assert not hasattr(critic, "epsilon_star")
+        decisions = SMTRExposureRouter(critic=critic).decide(
             _receiver_state(), [_card()])
         assert [d.action for d in decisions] == ["share"]
 
-    def test_missing_epsilon_star_fails_in_formal_mode(self):
-        critic = _StubCritic(
-            tau_hat=0.20, eta_raw=0.05, eta_calibrated=0.05, epsilon_star=None)
-        router = SMTRExposureRouter(critic=critic)
-        with pytest.raises(
-            ValueError,
-            match="Checkpoint does not contain validation-selected epsilon_star.",
-        ):
-            router.decide(_receiver_state(), [_card()])
-
-    def test_no_risk_router_ignores_eta(self):
-        # SMTR-no-risk must ignore eta entirely (not epsilon=1): a huge raw eta
-        # with positive tau still shares, and epsilon_star is never required.
-        critic = _StubCritic(
-            tau_hat=0.20, eta_raw=0.99, eta_calibrated=0.99, epsilon_star=None)
-        decisions = SMTRNoRiskRouter(critic=critic).decide(
+    def test_eta_reported_in_trace(self):
+        # eta is diagnostic: reported in traces but never gates decisions.
+        critic = _StubCritic(tau_hat=0.20, eta_raw=0.30, eta_calibrated=0.08)
+        traces = SMTRExposureRouter(critic=critic).trace(
             _receiver_state(), [_card()])
-        assert [d.action for d in decisions] == ["share"]
-        assert decisions[0].reason == "tau>0_no_risk_constraint"
-
-        # Negative tau still withholds even with zero risk.
-        critic_neg = _StubCritic(
-            tau_hat=-0.10, eta_raw=0.0, eta_calibrated=0.0, epsilon_star=None)
-        decisions = SMTRNoRiskRouter(critic=critic_neg).decide(
-            _receiver_state(), [_card()])
-        assert [d.action for d in decisions] == ["withhold"]
-
-
-class TestRiskBudgetOverrideGuard:
-    def test_explicit_budget_forbidden_without_debug_flag(self):
-        critic = _StubCritic(
-            tau_hat=0.20, eta_raw=0.05, eta_calibrated=0.05, epsilon_star=0.10)
-        with pytest.raises(ValueError, match="allow_risk_budget_override"):
-            SMTRExposureRouter(critic=critic, negative_risk_budget=0.2)
-
-    def test_explicit_budget_allowed_in_debug_mode(self):
-        critic = _StubCritic(
-            tau_hat=0.20, eta_raw=0.15, eta_calibrated=0.15, epsilon_star=0.10)
-        # eps*=0.10 would withhold (eta_cal=0.15); debug override 0.2 shares.
-        router = SMTRExposureRouter(
-            critic=critic, negative_risk_budget=0.2,
-            allow_risk_budget_override=True)
-        decisions = router.decide(_receiver_state(), [_card()])
-        assert [d.action for d in decisions] == ["share"]
+        assert traces[0]["action"] == "share"
+        assert traces[0]["eta_calibrated"] == 0.08
+        assert traces[0]["eta_raw"] == 0.30

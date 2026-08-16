@@ -285,7 +285,6 @@ class TestMainTableMethods:
             "receiver_compatible_top1",
             "global_transfer_critic",
             "smtr_no_compatibility_interaction",
-            "smtr_no_risk",
             "smtr",
         ]
         assert "factual_success" not in MAIN_TABLE_METHODS

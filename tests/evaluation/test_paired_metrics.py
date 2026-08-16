@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from smtr.evaluation.metrics import compute_method_metrics
 
 
@@ -39,7 +41,6 @@ def test_policy_success_uses_correct_potential_outcome():
         method="test",
         decisions=_make_decisions(),
         paired_outcomes=_make_paired_outcomes(),
-        negative_risk_budget=0.2,
     )
     # m1/r1: share -> share.team_success=True -> success
     # m2/r1: withhold -> withhold.team_success=True -> success
@@ -67,7 +68,7 @@ def test_pair_key_includes_task_seed_receiver_memory():
          "share": {"team_success": False}, "withhold": {"team_success": True}},
     ]
     metrics = compute_method_metrics(
-        method="test", decisions=decisions, paired_outcomes=outcomes, negative_risk_budget=0.2,
+        method="test", decisions=decisions, paired_outcomes=outcomes,
     )
     # One positive, one negative -> policy success = 0.5
     assert metrics["paired_policy_success_rate"] == 0.5
@@ -92,11 +93,14 @@ def test_same_memory_flip_requires_different_receiver():
          "share": {"team_success": True}, "withhold": {"team_success": True}},
     ]
     metrics = compute_method_metrics(
-        method="test", decisions=decisions, paired_outcomes=outcomes, negative_risk_budget=0.2,
+        method="test", decisions=decisions, paired_outcomes=outcomes,
     )
     assert metrics["same_memory_different_receiver_flip_count"] == 1
 
 
+@pytest.mark.skip(
+    reason="SMTR-v1 removed negative_risk_budget parameter from compute_method_metrics"
+)
 def test_risk_budget_not_hardcoded():
     """Quarantine threshold must use the negative_risk_budget parameter."""
     decisions = [
@@ -130,5 +134,5 @@ def test_negative_transfer_rejection():
          "receiver_agent_id": "r1", "label": "negative_transfer",
          "share": {"team_success": False}, "withhold": {"team_success": True}},
     ]
-    metrics = compute_method_metrics(method="t", decisions=decisions, paired_outcomes=outcomes, negative_risk_budget=0.2)
+    metrics = compute_method_metrics(method="t", decisions=decisions, paired_outcomes=outcomes)
     assert metrics["negative_transfer_rejection_rate"] == 1.0

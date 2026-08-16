@@ -111,8 +111,6 @@ def run_end_to_end_evaluation(
     checkpoint_smtr_no_compatibility_interaction: Path | None = None,
     methods: list[str],
     generation_seeds: list[int],
-    negative_risk_budget: float | None = None,
-    allow_risk_budget_override: bool = False,
     experiment_mode: str = "pilot",
     split_audit_path: Path | None = None,
     train_budget_candidate_manifest_path: Path | None = None,
@@ -120,31 +118,10 @@ def run_end_to_end_evaluation(
 ) -> dict[str, Any]:
     """Run end-to-end MARBLE evaluation with real engine execution.
 
-    Risk-budget semantics are unified (清单 P1-2): the default ``None``
-    makes every critic-gated method read the validation-selected
-    ``epsilon_star`` stored in its own checkpoint; formal evaluations may
-    never override it, pilots only with an explicit opt-in flag.
+    SMTR-v1 uses pure tau > 0 selective exposure; eta (= q01) is reported
+    for risk diagnostics but never used as a routing gate.
     """
     from smtr.marble.policy_runner import MarblePolicyRunner
-
-    # 清单 P1-2: formal runs must keep the checkpoint-selected epsilon_star;
-    # an explicit budget is a debug-only override, rejected unless opted in.
-    if experiment_mode == "formal" and negative_risk_budget is not None:
-        raise ValueError(
-            "formal evaluation must use the "
-            "validation-selected epsilon_star "
-            "stored in the checkpoint"
-        )
-    if negative_risk_budget is not None and not allow_risk_budget_override:
-        raise ValueError(
-            "negative_risk_budget override requires "
-            "allow_risk_budget_override=True"
-        )
-    risk_budget_source = (
-        "explicit_override"
-        if negative_risk_budget is not None
-        else "checkpoint_validation_selection"
-    )
 
     # 清单 R6 P1-2: the seed protocol is enforced inside the function (not
     # only at the CLI), so any call path fails fast before any MARBLE run.
@@ -233,8 +210,6 @@ def run_end_to_end_evaluation(
         full_critic=full_critic,
         global_critic=global_critic,
         no_compatibility_critic=no_compatibility_critic,
-        negative_risk_budget=negative_risk_budget,
-        allow_risk_budget_override=allow_risk_budget_override,
     )
 
     # Build routing cards (shared construction path with training loader)
@@ -303,30 +278,23 @@ def run_end_to_end_evaluation(
     )
 
     # 清单 P1-2 5.6: per-method provenance records which checkpoint role and
-    # digest each method consumed, and where its risk budget came from.
+    # digest each method consumed.
     critic_by_role = {
         "full": full_critic,
         "global_transfer": global_critic,
         "no_compatibility_interaction": no_compatibility_critic,
     }
-    method_risk_budget_provenance: list[dict[str, Any]] = []
+    method_checkpoint_provenance: list[dict[str, Any]] = []
     for method in methods:
         role = _METHOD_CHECKPOINT_ROLES.get(method)
         role_path = checkpoint_role_paths.get(role) if role else None
-        resolved_budget = negative_risk_budget
-        if resolved_budget is None and role is not None:
-            epsilon_star = getattr(critic_by_role.get(role), "epsilon_star", None)
-            if isinstance(epsilon_star, (int, float)):
-                resolved_budget = float(epsilon_star)
-        method_risk_budget_provenance.append(
+        method_checkpoint_provenance.append(
             {
                 "method": method,
                 "checkpoint_role": role,
                 "checkpoint_digest": (
                     file_digest(Path(role_path)) if role_path is not None else None
                 ),
-                "risk_budget": resolved_budget,
-                "risk_budget_source": risk_budget_source,
             }
         )
 
@@ -363,6 +331,5 @@ def run_end_to_end_evaluation(
         # recorded so results are reproducible.
         "candidate_manifest_verified": split_audit is not None,
         "checkpoint_bindings_verified": split_audit is not None,
-        "risk_budget_source": risk_budget_source,
-        "method_risk_budget_provenance": method_risk_budget_provenance,
+        "method_checkpoint_provenance": method_checkpoint_provenance,
     }

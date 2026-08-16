@@ -20,7 +20,7 @@ from smtr.router.sequential_router import (
     ProductionSequentialRouter,
     SequentialRouterConfig,
 )
-from smtr.router.smtr_gate import SMTRGate, SMTRGateConfig
+from smtr.router.smtr_gate import SMTRGate
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.traversal import TraversalPolicy
 
@@ -53,7 +53,6 @@ def build_router(
     seed: int = 0,
     critic_config: SequentialRouterConfig | None = None,
     expected_feature_block: str | None = None,
-    negative_risk_budget: float | None = None,
     conditioning_policy: SelectedSetConditioningPolicy | None = None,
     traversal_policy: TraversalPolicy | None = None,
 ) -> MemoryRouter:
@@ -70,9 +69,6 @@ def build_router(
         critic_config: Optional SequentialRouterConfig for "learned" mode.
         expected_feature_block: Optional feature block name to validate. The
             checkpoint is never mutated after loading.
-        negative_risk_budget: Debug-only gate budget override. ``None`` (the
-            formal default) resolves the budget from the checkpoint's
-            validation-selected epsilon_star and fails closed when absent.
 
     Returns:
         A MemoryRouter instance.
@@ -107,16 +103,9 @@ def build_router(
             require_metadata=expected_feature_block is not None,
         )
         _validate_feature_block(critic, expected_feature_block)
-        if negative_risk_budget is None:
-            epsilon_star = getattr(critic, "epsilon_star", None)
-            if epsilon_star is None:
-                raise ValueError(
-                    "Checkpoint does not contain validation-selected epsilon_star."
-                )
-            negative_risk_budget = float(epsilon_star)
         return ProductionSequentialRouter(
             critic=critic,
-            gate=SMTRGate(SMTRGateConfig(negative_risk_budget=negative_risk_budget)),
+            gate=SMTRGate(),
             conditioning_policy=conditioning_policy or DynamicSelectedSetConditioning(),
             traversal_policy=traversal_policy,
             config=critic_config or SequentialRouterConfig(),
@@ -135,7 +124,6 @@ def load_learned_router(
     expected_feature_block: str,
     config: SequentialRouterConfig,
     seed: int,
-    negative_risk_budget: float | None = None,
     conditioning_policy: SelectedSetConditioningPolicy | None = None,
     traversal_policy: TraversalPolicy | None = None,
 ) -> ProductionSequentialRouter:
@@ -146,7 +134,6 @@ def load_learned_router(
         expected_feature_block=expected_feature_block,
         critic_config=config,
         seed=seed,
-        negative_risk_budget=negative_risk_budget,
         conditioning_policy=conditioning_policy,
         traversal_policy=traversal_policy,
     )
@@ -158,7 +145,6 @@ def load_learned_router(
 def build_smtr_router(
     *,
     critic_checkpoint: str | Path,
-    negative_risk_budget: float,
     seed: int,
     conditioning_policy: SelectedSetConditioningPolicy | None = None,
     traversal_policy: TraversalPolicy | None = None,
@@ -169,7 +155,6 @@ def build_smtr_router(
         critic_checkpoint=critic_checkpoint,
         expected_feature_block="full",
         seed=seed,
-        negative_risk_budget=negative_risk_budget,
         conditioning_policy=conditioning_policy,
         traversal_policy=traversal_policy,
     )
@@ -185,11 +170,9 @@ def smtr_router_observability(
 ) -> dict[str, object]:
     """Return formal SMTR router observability fields."""
     feature_block = getattr(router.critic.encoder, "feature_block", None)
-    gate_config = getattr(router.gate, "config", None)
     return {
         "router_class": router.__class__.__name__,
         "gate_name": router.gate.gate_name,
-        "negative_risk_budget": getattr(gate_config, "negative_risk_budget", None),
         "critic_checkpoint_digest": critic_checkpoint_digest,
         "feature_block": feature_block,
         "conditioning_policy_name": router.conditioning_policy.policy_name,

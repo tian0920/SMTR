@@ -31,49 +31,26 @@ def _require_single_memory_action_space(max_shared_memories_per_receiver: int) -
 class SMTRExposureRouter:
     """Receiver-specific exposure router using four-outcome transfer critic.
 
-    Decision rule (清单第三章):
+    Decision rule (SMTR-v1):
       For each candidate:
-        pred = critic.predict_calibrated(receiver_state, candidate_card, ...)
-        tau = pred.tau_hat
-        eta = pred.eta_hat_calibrated   (never the raw eta)
-      Safe candidate: tau > 0 and eta <= epsilon_star
-      Decision: share the safe candidate with largest tau; withhold all others.
-      If no safe candidate: share nothing.
+        pred = critic.predict_calibrated(receiver_state, candidate_card)
+        tau = pred.tau_hat  (= q10 - q01, net transfer effect)
+        eta = pred.eta_hat_calibrated  (= q01, diagnostic only)
+      Select m* = argmax tau among candidates with tau > 0.
+      If tau(m*) > 0: expose m*. Otherwise: withhold all.
 
-    The risk budget epsilon_star is read from the critic checkpoint
-    (selected on validation, never re-selected on test). An explicit
-    ``negative_risk_budget`` overrides the checkpoint only in debug mode.
+    eta (= q01, harmful-transfer probability) is reported for diagnostics
+    but never used as a routing gate. No epsilon* risk threshold.
     """
 
     def __init__(
         self,
         critic: FourOutcomeTransferCritic,
-        negative_risk_budget: float | None = None,
         max_shared_memories_per_receiver: int = 1,
-        allow_risk_budget_override: bool = False,
     ) -> None:
-        if negative_risk_budget is not None and not allow_risk_budget_override:
-            raise ValueError(
-                "An explicit negative_risk_budget overrides the checkpoint "
-                "epsilon_star and is only allowed in debug mode "
-                "(allow_risk_budget_override=True)."
-            )
         _require_single_memory_action_space(max_shared_memories_per_receiver)
         self.critic = critic
-        self.negative_risk_budget = negative_risk_budget
-        self.allow_risk_budget_override = allow_risk_budget_override
         self.max_shared_memories_per_receiver = max_shared_memories_per_receiver
-
-    def _effective_risk_budget(self) -> float:
-        """Risk budget for decisions: checkpoint epsilon_star unless overridden."""
-        if self.negative_risk_budget is not None:
-            return float(self.negative_risk_budget)
-        epsilon_star = getattr(self.critic, "epsilon_star", None)
-        if epsilon_star is None:
-            raise ValueError(
-                "Checkpoint does not contain validation-selected epsilon_star."
-            )
-        return float(epsilon_star)
 
     def decide(
         self,
@@ -83,41 +60,32 @@ class SMTRExposureRouter:
     ) -> list[RouterDecision]:
         """Make share/withhold decisions for all candidates.
 
-        ``candidate_context`` is an optional mapping from memory_id to a dict
-        with keys ``candidate_source``, ``candidate_rank``,
-        ``target_task_group``.  When provided these fields are forwarded to
-        the critic's feature encoder so that routing-surface candidate
-        provenance participates in the prediction.
+        SMTR-v1: pure tau selective exposure. eta is diagnostic only.
         """
-        budget = self._effective_risk_budget()
         scored: list[tuple[float, float, float, MemoryRoutingCard]] = []
-        ctx = candidate_context or {}
         for card in candidate_cards:
-            card_ctx = ctx.get(card.memory_id, {})
             exposure_input = CandidateExposureInput(
                 receiver_state=receiver_state,
                 candidate_card=card,
-                candidate_source=card_ctx.get("candidate_source", ""),
-                candidate_rank=card_ctx.get("candidate_rank", 0),
-                target_task_group=card_ctx.get("target_task_group", ""),
             )
             pred = self.critic.predict_calibrated(exposure_input)
             tau = pred.tau_hat
             eta = float(pred.eta_hat_calibrated)
-            # eta_hat is the raw q01 estimand; kept as fallback for fakes
-            # that expose the raw value only through eta_hat.
             raw = float(getattr(pred, "eta_hat_raw", pred.eta_hat))
             scored.append((tau, eta, raw, card))
 
         decisions: list[RouterDecision] = []
-        # Find safe candidates
-        safe = [
+        # Find candidates with positive net transfer effect
+        positive = [
             (tau, eta, raw, card)
             for tau, eta, raw, card in scored
-            if tau > 0 and eta <= budget
+            if tau > 0
         ]
-        safe_sorted = sorted(safe, key=lambda x: -x[0])
-        share_set = {card.memory_id for *_, card in safe_sorted[:self.max_shared_memories_per_receiver]}
+        positive_sorted = sorted(positive, key=lambda x: -x[0])
+        share_set = {
+            card.memory_id
+            for *_, card in positive_sorted[:self.max_shared_memories_per_receiver]
+        }
 
         for tau, eta, raw, card in scored:
             if card.memory_id in share_set:
@@ -127,22 +95,18 @@ class SMTRExposureRouter:
                     tau_hat=tau,
                     eta_raw=raw,
                     eta_calibrated=eta,
-                    risk_budget=budget,
-                    reason="tau>0 and eta_calibrated<=epsilon_star",
+                    reason="tau>0",
                 ))
             else:
-                reason = "no safe candidate" if not safe else "not top safe candidate"
+                reason = "no positive tau candidate" if not positive else "not top tau candidate"
                 if tau <= 0:
                     reason = "tau<=0"
-                elif eta > budget:
-                    reason = "eta_calibrated>epsilon_star"
                 decisions.append(RouterDecision(
                     memory_id=card.memory_id,
                     action="withhold",
                     tau_hat=tau,
                     eta_raw=raw,
                     eta_calibrated=eta,
-                    risk_budget=budget,
                     reason=reason,
                 ))
         return decisions
@@ -174,7 +138,6 @@ class SMTRExposureRouter:
                     if dec.eta_calibrated is not None
                     else None
                 ),
-                "risk_budget": dec.risk_budget,
                 "action": dec.action,
                 "reason": dec.reason,
             })

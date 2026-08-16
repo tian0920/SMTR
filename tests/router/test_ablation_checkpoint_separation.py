@@ -48,17 +48,6 @@ def test_no_compatibility_interaction_checkpoint_not_full(tmp_path):
     assert loaded.feature_block != "full"
 
 
-def test_smtr_no_risk_uses_full_critic():
-    """SMTR-no-risk must use full critic, only ignoring eta."""
-    from smtr.router.baselines import SMTRNoRiskRouter
-
-    inputs, labels = _make_inputs_and_labels(20)
-    critic = FourOutcomeTransferCritic(n_bootstrap=3, n_features=64, feature_block="full", seed=0)
-    critic.fit(inputs, labels)
-    router = SMTRNoRiskRouter(critic=critic)
-    assert router.critic.feature_block == "full"
-
-
 def test_smtr_no_compatibility_interaction_uses_separate_critic():
     """SMTR-no-compatibility-interaction must use its own critic and reject others."""
     from smtr.router.baselines import SMTRNoCompatibilityInteractionRouter

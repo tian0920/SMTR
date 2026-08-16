@@ -121,22 +121,17 @@ class CandidateExposureInput(BaseModel):
 
     SMTR-v1: single receiver, single candidate memory exposure, S = ∅.
 
-    Extended fields (candidate_source, candidate_rank, target_task_group)
-    encode the candidate's provenance within the retrieval pipeline and the
-    task-group identity. These are *routing-surface* features, not writer
-    provenance: they describe how the candidate was selected and which task
-    group it targets, not who authored the memory.
+    The critic learns P(Y^1, Y^0 | t, x_r^pre, m, r): only task/context,
+    receiver state, candidate memory content and receiver-memory
+    interaction features are legitimate inputs. Retrieval-heuristic
+    provenance (candidate_source, candidate_rank) and task identity
+    (target_task_group) are deliberately excluded.
     """
 
     model_config = ConfigDict(frozen=True)
 
     receiver_state: ReceiverState
     candidate_card: MemoryRoutingCard
-
-    # Candidate context features (v2 extension)
-    candidate_source: str = ""
-    candidate_rank: int = 0
-    target_task_group: str = ""
 
 
 class PairedTransferOutcome(BaseModel):

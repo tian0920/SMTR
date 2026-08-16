@@ -43,7 +43,6 @@ from smtr.router.baselines import (
     ReceiverCompatibleTop1Router,
     SemanticTop1Router,
     SMTRNoCompatibilityInteractionRouter,
-    SMTRNoRiskRouter,
 )
 from smtr.router.exposure_router import SMTRExposureRouter
 from smtr.router.transfer_calibration import DEFAULT_EPSILONS, risk_utility_curve
@@ -58,7 +57,6 @@ MAIN_TABLE_METHODS = [
     "receiver_compatible_top1",
     "global_transfer_critic",
     "smtr_no_compatibility_interaction",
-    "smtr_no_risk",
     "smtr",
 ]
 
@@ -157,17 +155,14 @@ def run_paired_decision_evaluation(
     checkpoint_smtr_no_compatibility_interaction: Path | None = None,
     methods: list[str] | None = None,
     train_budget_candidate_manifest_path: Path | None = None,
-    negative_risk_budget: float | None = None,
-    allow_risk_budget_override: bool = False,
     ci_bootstrap: int = 1000,
     experiment_mode: str | None = None,
     output: Path,
 ) -> dict[str, Any]:
     """Run paired decision evaluation using candidate manifest and paired records.
 
-    Formal evaluations keep ``negative_risk_budget=None`` so every
-    risk-gated method reads epsilon_star from its critic checkpoint
-    (清单第三章); an explicit budget is a debug-only override.
+    SMTR-v1 uses pure tau > 0 selective exposure; eta (= q01) is reported
+    for risk diagnostics but never used as a routing gate.
 
     Records failing the core-validity filter (清单第十二章) never enter
     policy metrics or receiver-effect analysis; with
@@ -177,26 +172,6 @@ def run_paired_decision_evaluation(
     methods = list(methods) if methods else list(MAIN_TABLE_METHODS)
     formal_mode = experiment_mode == "formal"
     split_audit_summary: dict[str, Any] | None = None
-
-    # 清单 P1-2: unified risk-budget semantics — formal runs must keep the
-    # checkpoint-selected epsilon_star; an explicit budget is a debug-only
-    # override, rejected unless opted in.
-    if formal_mode and negative_risk_budget is not None:
-        raise ValueError(
-            "formal evaluation must use the "
-            "validation-selected epsilon_star "
-            "stored in the checkpoint"
-        )
-    if negative_risk_budget is not None and not allow_risk_budget_override:
-        raise ValueError(
-            "negative_risk_budget override requires "
-            "allow_risk_budget_override=True"
-        )
-    risk_budget_source = (
-        "explicit_override"
-        if negative_risk_budget is not None
-        else "checkpoint_validation_selection"
-    )
 
     # 清单 P0-11/17: formal evaluations must pass the split audit before any
     # evaluation step; all three split files are required inputs.
@@ -315,17 +290,13 @@ def run_paired_decision_evaluation(
         full_critic=full_critic,
         global_critic=global_critic,
         no_compatibility_critic=no_compatibility_critic,
-        negative_risk_budget=negative_risk_budget,
-        allow_risk_budget_override=allow_risk_budget_override,
     )
 
-    # Risk budget used only for quarantine diagnostics; decisions themselves
-    # resolve epsilon_star inside each router.
+    # epsilon_star used only for quarantine diagnostics; routing decisions
+    # use pure tau > 0.
     eps_star = getattr(full_critic, "epsilon_star", None)
     diagnostic_budget = (
-        negative_risk_budget
-        if negative_risk_budget is not None
-        else (float(eps_star) if isinstance(eps_star, (int, float)) else 0.2)
+        float(eps_star) if isinstance(eps_star, (int, float)) else 0.2
     )
 
     # Run evaluation per method using candidate manifest
@@ -354,19 +325,6 @@ def run_paired_decision_evaluation(
 
     unsupported_candidate_edges: list[dict[str, str]] = []
 
-    # Build edge→target_task_group lookup from paired records so the router
-    # can forward candidate context features to the critic.
-    edge_to_task_group: dict[tuple[str, str, str], str] = {}
-    for record in paired_outcomes:
-        ek = (
-            str(record["task_id"]),
-            str(record["receiver_agent_id"]),
-            str(record["candidate_memory_id"]),
-        )
-        tg = record.get("target_task_group", "")
-        if tg:
-            edge_to_task_group[ek] = tg
-
     for entry in candidates_manifest.get("candidates", []):
         task_id = entry["task_id"]
         receiver_agent_id = entry.get("receiver_agent_id", "")
@@ -374,19 +332,18 @@ def run_paired_decision_evaluation(
 
         receiver_state = build_receiver_state_from_entry(entry)
 
-        # Get candidate cards from manifest for this entry
+        # Get candidate cards from manifest for this entry.
+        # candidate_context is kept as an empty dict: the critic only
+        # uses (t, x_r^pre, m, r) features; retrieval provenance
+        # (candidate_source, candidate_rank, target_task_group) is
+        # deliberately excluded.
         candidate_cards: list[MemoryRoutingCard] = []
         candidate_context: dict[str, dict[str, Any]] = {}
         for rec in entry.get("candidate_records", []):
             card = cards_by_id.get(rec["memory_id"])
             if card is not None:
                 candidate_cards.append(card)
-                ek = (str(task_id), str(receiver_agent_id), str(rec["memory_id"]))
-                candidate_context[card.memory_id] = {
-                    "candidate_source": rec.get("candidate_source", ""),
-                    "candidate_rank": rec.get("rank", 0),
-                    "target_task_group": edge_to_task_group.get(ek, ""),
-                }
+                candidate_context[card.memory_id] = {}
                 if (task_id, receiver_agent_id, rec["memory_id"]) not in edge_to_seeds:
                     unsupported_candidate_edges.append({
                         "task_id": task_id,
@@ -447,7 +404,6 @@ def run_paired_decision_evaluation(
                         "tau_hat": dec.tau_hat,
                         "eta_raw": dec.eta_raw,
                         "eta_calibrated": dec.eta_calibrated,
-                        "risk_budget": dec.risk_budget,
                         "action": dec.action,
                     }
                     all_traces[method].append(trace)
@@ -502,7 +458,6 @@ def run_paired_decision_evaluation(
             method=method,
             decisions=all_traces[method],
             paired_outcomes=paired_outcomes,
-            negative_risk_budget=diagnostic_budget,
         )
         # 清单 P0-18: the result JSON must report both coverage levels and
         # the unsupported-trace count as top-level fields of every method.
@@ -645,7 +600,6 @@ def run_paired_decision_evaluation(
         },
         "result_table": str(paths["json"]),
         "metrics": all_method_metrics,
-        "risk_budget_source": risk_budget_source,
         "unsupported_candidate_edges": unsupported_candidate_edges,
         "coverage_by_method": coverage_by_method,
         "candidate_trace_counts": {
@@ -915,8 +869,6 @@ def _build_routers(
     full_critic: FourOutcomeTransferCritic,
     global_critic: FourOutcomeTransferCritic | None = None,
     no_compatibility_critic: FourOutcomeTransferCritic | None = None,
-    negative_risk_budget: float | None = None,
-    allow_risk_budget_override: bool = False,
 ) -> dict[str, Any]:
     """Build router instances for each method."""
     routers: dict[str, Any] = {}
@@ -934,12 +886,10 @@ def _build_routers(
                     "checkpoint_global_transfer_critic (feature_block='global_transfer')"
                 )
             routers[method] = GlobalTransferCriticRouter(
-                critic=global_critic, negative_risk_budget=negative_risk_budget,
-                allow_risk_budget_override=allow_risk_budget_override)
+                critic=global_critic)
         elif method == "smtr":
             routers[method] = SMTRExposureRouter(
-                critic=full_critic, negative_risk_budget=negative_risk_budget,
-                allow_risk_budget_override=allow_risk_budget_override)
+                critic=full_critic)
         elif method == "smtr_no_compatibility_interaction":
             if no_compatibility_critic is None:
                 raise ValueError(
@@ -948,11 +898,7 @@ def _build_routers(
                     "(feature_block='no_compatibility_interaction')"
                 )
             routers[method] = SMTRNoCompatibilityInteractionRouter(
-                critic=no_compatibility_critic,
-                negative_risk_budget=negative_risk_budget,
-                allow_risk_budget_override=allow_risk_budget_override)
-        elif method == "smtr_no_risk":
-            routers[method] = SMTRNoRiskRouter(critic=full_critic)
+                critic=no_compatibility_critic)
         else:
             raise ValueError(f"unknown method: {method}")
     return routers

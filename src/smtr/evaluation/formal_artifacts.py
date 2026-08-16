@@ -12,13 +12,12 @@ from pathlib import Path
 from typing import Any
 
 # 清单 3.2: every formal checkpoint role maps to one feature block and the
-# methods allowed to consume it. SMTR-no-risk shares the full checkpoint.
+# methods allowed to consume it.
 FORMAL_CHECKPOINT_ROLES: dict[str, dict[str, Any]] = {
     "full": {
         "feature_block": "full",
         "methods": {
             "smtr",
-            "smtr_no_risk",
         },
     },
     "global_transfer": {
@@ -45,7 +44,7 @@ def required_checkpoint_roles_for_methods(methods: list[str]) -> set[str]:
     required: set[str] = set()
 
     for method in methods:
-        if method in {"smtr", "smtr_no_risk"}:
+        if method == "smtr":
             required.add("full")
         elif method == "global_transfer_critic":
             required.add("global_transfer")

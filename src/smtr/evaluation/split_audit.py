@@ -35,7 +35,6 @@ SPLIT_AUDIT_SCHEMA_VERSION = "smtr_split_audit_v4"
 # Method -> checkpoint role required to run that method (清单 3.4).
 _METHOD_CHECKPOINT_ROLES = {
     "smtr": "full",
-    "smtr_no_risk": "full",
     "global_transfer_critic": "global_transfer",
     "smtr_no_compatibility_interaction": "no_compatibility_interaction",
 }

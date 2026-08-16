@@ -130,10 +130,6 @@ def main() -> None:
     p.add_argument("--checkpoint-no-compatibility-interaction", default=None)
     # 清单最终闭环 §22: the formal method set comes from the single registry.
     p.add_argument("--methods", nargs="+", default=list(FORMAL_METHOD_NAMES))
-    # Formal evaluations must read epsilon_star from the checkpoint; an
-    # explicit budget is a debug-only override, never a silent 0.2 default.
-    p.add_argument("--negative-risk-budget", type=float, default=None)
-    p.add_argument("--allow-risk-budget-override", action="store_true")
     # 清单最终闭环 P0-3: the train budget manifest binds formal evaluations
     # to the same effective training support the critics saw.
     p.add_argument(
@@ -164,9 +160,6 @@ def main() -> None:
     # 清单 R6 P1-3: no default seeds; users must supply them explicitly so
     # nobody mistakes a default for the formal seed protocol.
     p.add_argument("--generation-seeds", type=int, nargs="+", required=True)
-    # Same rule as run-paired-decision-evaluation: no silent 0.2 fallback.
-    p.add_argument("--negative-risk-budget", type=float, default=None)
-    p.add_argument("--allow-risk-budget-override", action="store_true")
     # 清单最终闭环 P0-3: same train budget manifest binding as paired eval.
     p.add_argument(
         "--train-budget-candidate-manifest",
@@ -499,8 +492,6 @@ def _dispatch(args: argparse.Namespace) -> None:
                 if args.train_budget_candidate_manifest
                 else None
             ),
-            negative_risk_budget=args.negative_risk_budget,
-            allow_risk_budget_override=args.allow_risk_budget_override,
             experiment_mode=args.experiment_mode,
             output=Path(args.output),
         )
@@ -523,8 +514,6 @@ def _dispatch(args: argparse.Namespace) -> None:
             ),
             methods=args.methods,
             generation_seeds=args.generation_seeds,
-            negative_risk_budget=args.negative_risk_budget,
-            allow_risk_budget_override=args.allow_risk_budget_override,
             experiment_mode=args.experiment_mode,
             split_audit_path=Path(args.split_audit) if args.split_audit else None,
             train_budget_candidate_manifest_path=(
