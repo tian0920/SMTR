@@ -1,4 +1,13 @@
-"""Memory-receiver transfer feature encoder (writer-agnostic blocks)."""
+"""Memory-receiver transfer feature encoder (writer-agnostic blocks).
+
+Feature blocks:
+  - task context block (scenario, task tokens, environment)
+  - receiver marginal block (role, capabilities, tools)
+  - memory marginal block (goal, tags, explicit requirements, procedure metadata)
+  - memory behavioral procedure signature ψ(m) block (P1-B)
+  - memory-receiver compatibility interaction block (φ_rm)
+  - task-memory applicability interaction block φ_tm (P1-A)
+"""
 
 from __future__ import annotations
 
@@ -44,16 +53,83 @@ FORBIDDEN_PROVENANCE_FEATURE_PREFIXES = frozenset({
 
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 
+# Stop words for domain-keyword extraction from task instructions.
+# Removing these leaves domain-specific terms (finance, streaming, etc.).
+_STOP_WORDS = frozenset(
+    "a an the is are was were to of and in for on with by at from as "
+    "be been being have has had do does did will would shall should may "
+    "might can could this that these those it its they them their what "
+    "which who whom how when where why all each every both some any no "
+    "not but or if then so than too very just about up out over under "
+    "into through during before after above below between same different "
+    "recently recently use uses using used find findout what wrong reason "
+    "caused cause root planner assign agent analyze possibility also".split()
+)
+
+# Table-name → abstract category mapping for procedure signature.
+_TABLE_CATEGORY_MAP = {
+    "users": "user_mgmt",
+    "accounts": "financial",
+    "transactions": "financial",
+    "investments": "financial",
+    "investment_transactions": "financial",
+    "payments": "financial",
+    "posts": "content",
+    "comments": "content",
+    "likes": "content",
+    "followers": "social",
+    "messages": "communication",
+    "media": "content",
+    "files": "file_mgmt",
+    "shared_files": "file_mgmt",
+    "file_access_logs": "logging",
+    "access_logs": "logging",
+    "orders": "commerce",
+    "products": "commerce",
+    "inventory": "commerce",
+    "suppliers": "commerce",
+    "artists": "content",
+    "albums": "content",
+    "songs": "content",
+    "playlists": "content",
+    "subscriptions": "subscription",
+    "user_activities": "activity",
+    "logs": "logging",
+    "configurations": "config",
+    "devices": "iot",
+    "sensors": "iot",
+    "sensor_data": "iot",
+    "notifications": "communication",
+}
+
+# Domain keyword extraction patterns from task content.
+_DOMAIN_KEYWORDS = {
+    "finance": ["financial", "finance", "account", "transaction", "investment", "payment", "banking"],
+    "social_media": ["social media", "post", "comment", "follow", "like", "friend", "share"],
+    "file_sharing": ["file sharing", "file", "shared", "upload", "download", "document"],
+    "music_streaming": ["music", "song", "album", "artist", "playlist", "streaming"],
+    "ecommerce": ["product", "order", "cart", "shopping", "store", "inventory", "supplier"],
+    "iot": ["iot", "device", "sensor", "monitor", "telemetry", "configuration"],
+    "healthcare": ["patient", "medical", "health", "hospital", "clinic", "diagnosis"],
+    "education": ["student", "course", "enrollment", "grade", "university", "school"],
+    "manufacturing": ["manufacturing", "production", "factory", "assembly", "supply chain"],
+    "transportation": ["transport", "vehicle", "route", "shipment", "logistics", "delivery"],
+    "real_estate": ["property", "real estate", "building", "tenant", "lease", "rental"],
+    "gaming": ["game", "player", "score", "level", "match", "tournament"],
+}
+
 
 class HashingTransferFeatureEncoder:
     """Deterministic feature encoder for memory-receiver transfer prediction.
 
-    Feature blocks (清单 Writer-Agnostic 第六章):
+    Feature blocks (清单 Writer-Agnostic 第六章 + P1-A/P1-B):
       - task context block (scenario, task tokens, environment)
       - receiver marginal block (role, capabilities, tools)
       - memory marginal block (goal, tags, explicit requirements,
         procedure metadata)
-      - memory-receiver compatibility interaction block
+      - memory behavioral procedure signature ψ(m) block (P1-B)
+      - memory-receiver compatibility interaction block (φ_rm)
+      - task-memory applicability interaction block φ_tm (P1-A)
 
     Writer/source-agent identity is never encoded: provenance stays in the
     memory payload and never enters features.
@@ -63,7 +139,8 @@ class HashingTransferFeatureEncoder:
 
     Feature modes (``feature_block``):
       - ``full``: task/environment + receiver marginal + memory marginal
-        + memory-receiver compatibility interaction.
+        + procedure signature + memory-receiver compatibility interaction
+        + task-memory applicability interaction.
       - ``no_compatibility_interaction``: drop the explicit memory-receiver
         interaction block.
       - ``global_transfer``: task/environment + memory marginal only;
@@ -73,7 +150,7 @@ class HashingTransferFeatureEncoder:
     writer/provenance token never enter features.
     """
 
-    schema_version = "3.0"
+    schema_version = "3.1"
 
     def __init__(self, *, n_features: int = 512, feature_block: str = "full") -> None:
         self.n_features = n_features
@@ -143,6 +220,86 @@ class HashingTransferFeatureEncoder:
         tokens.append(f"memory_procedure_type:{card.procedure_type}")
         tokens.append(f"memory_length_bucket:{card.procedure_length_bucket}")
         tokens.append(f"memory_read_write_scope:{card.read_write_scope}")
+
+        # --- memory behavioral procedure signature ψ(m) block (P1-B) ---
+        # Writer-agnostic, outcome-free, pre-execution available.
+        # Describes WHAT kind of procedure this memory encodes.
+        for tag in sorted(card.procedure_domain_tags):
+            tokens.append(f"psi_domain:{tag}")
+        for cat in sorted(card.procedure_table_categories):
+            tokens.append(f"psi_table_cat:{cat}")
+        for pat in sorted(card.procedure_pattern_tags):
+            tokens.append(f"psi_pattern:{pat}")
+        if card.procedure_domain_tags:
+            tokens.append(
+                f"psi_domain_count:{_count_bin(len(card.procedure_domain_tags))}"
+            )
+        if card.procedure_table_categories:
+            tokens.append(
+                f"psi_table_cat_count:{_count_bin(len(card.procedure_table_categories))}"
+            )
+
+        # --- task-memory applicability interaction block φ_tm (P1-A) ---
+        # Directly models task–memory semantic compatibility.
+        # This is g(t,m), a deterministic function of task and memory content.
+        task_tokens_set = set(_text_tokens(rs.task_instruction))
+        memory_tokens_set = (
+            set(_text_tokens(card.goal_summary))
+            | set(t.lower() for t in card.task_tags)
+        )
+        # (a) Shared lexical tokens between task instruction and memory
+        shared = (task_tokens_set & memory_tokens_set) - _STOP_WORDS
+        for tok in sorted(shared)[:6]:
+            tokens.append(f"tm_shared_token:{tok}")
+        tokens.append(f"tm_shared_token_count:{_count_bin(len(shared))}")
+        # (b) Task domain keywords vs memory domain tags
+        task_domain_kw = _extract_domain_keywords(rs.task_instruction)
+        if task_domain_kw and card.procedure_domain_tags:
+            domain_overlap = task_domain_kw & set(card.procedure_domain_tags)
+            tokens.append(
+                f"tm_domain_match:{_overlap_bucket(domain_overlap, set(card.procedure_domain_tags))}"
+            )
+        else:
+            tokens.append("tm_domain_match:none")
+        # (c) Task table categories vs memory table categories
+        task_table_cats = _extract_table_categories(rs.task_instruction)
+        if task_table_cats and card.procedure_table_categories:
+            table_overlap = task_table_cats & set(card.procedure_table_categories)
+            tokens.append(
+                f"tm_table_cat_match:"
+                f"{_overlap_bucket(table_overlap, set(card.procedure_table_categories))}"
+            )
+        else:
+            tokens.append("tm_table_cat_match:none")
+        # (d) Task instruction × memory goal lexical overlap
+        tm_overlap = _overlap_bucket(
+            task_tokens_set - _STOP_WORDS,
+            memory_tokens_set,
+        )
+        tokens.append(f"tm_lexical_overlap:{tm_overlap}")
+        # (e) Task environment × memory environment constraints
+        task_env = set(rs.environment_signature)
+        tokens.append(
+            f"tm_environment_match:"
+            f"{_satisfaction_bucket(set(card.environment_constraints), task_env)}"
+        )
+        # (f) Memory required tools × task context (operation match)
+        task_tool_tokens = {
+            t for t in task_tokens_set
+            if t in {"sql", "query", "execute", "select", "insert", "update",
+                     "delete", "create", "drop", "alter", "index", "vacuum",
+                     "lock", "table", "schema", "database"}
+        }
+        memory_tool_tokens = set()
+        for t in card.required_tools:
+            memory_tool_tokens.update(_text_tokens(t))
+        if task_tool_tokens and memory_tool_tokens:
+            op_overlap = task_tool_tokens & memory_tool_tokens
+            tokens.append(
+                f"tm_operation_match:{_overlap_bucket(op_overlap, memory_tool_tokens)}"
+            )
+        else:
+            tokens.append("tm_operation_match:none")
 
         # --- memory-receiver compatibility interaction block (full only) ---
         # Derived from routing card + receiver state only; never payload,
@@ -232,6 +389,27 @@ def build_routing_card_from_pool_entry(mem_entry: dict[str, Any]) -> MemoryRouti
             "legacy routing-card schema detected; rebuild the memory pool "
             "with routing-card schema v3 (writer-agnostic)"
         )
+    # --- Behavioral procedure signature ψ(m) (P1-B) ---
+    # Derived from source task content when available; otherwise from
+    # pre-computed routing_card fields.
+    source_task_content = mem_entry.get("source_task_content", "")
+    if source_task_content:
+        procedure_domain_tags = tuple(sorted(
+            _extract_domain_keywords(source_task_content)
+        ))
+        procedure_table_categories = tuple(sorted(
+            _extract_table_categories(source_task_content)
+        ))
+    else:
+        procedure_domain_tags = tuple(
+            routing_card_data.get("procedure_domain_tags", [])
+        )
+        procedure_table_categories = tuple(
+            routing_card_data.get("procedure_table_categories", [])
+        )
+    procedure_pattern_tags = tuple(
+        routing_card_data.get("procedure_pattern_tags", [])
+    )
     return MemoryRoutingCard(
         memory_id=mem_entry["memory_id"],
         goal_summary=routing_card_data.get("goal_summary", ""),
@@ -245,12 +423,17 @@ def build_routing_card_from_pool_entry(mem_entry: dict[str, Any]) -> MemoryRouti
         procedure_length_bucket=routing_card_data.get("procedure_length_bucket", "unknown"),
         read_write_scope=routing_card_data.get("read_write_scope", "unknown"),
         evidence_count=routing_card_data.get("evidence_count", 0),
+        procedure_domain_tags=procedure_domain_tags,
+        procedure_table_categories=procedure_table_categories,
+        procedure_pattern_tags=procedure_pattern_tags,
     )
 
 
 def load_paired_records_for_training(
     records_path: Path,
     memory_pool_path: Path,
+    *,
+    marble_source_path: Path | None = None,
 ) -> list[tuple[CandidateExposureInput, str]]:
     """Load paired records and construct (input, label) pairs for critic training.
 
@@ -260,7 +443,8 @@ def load_paired_records_for_training(
     return [
         (exposure_input, label)
         for exposure_input, label, _ in load_paired_records_with_metadata(
-            records_path, memory_pool_path
+            records_path, memory_pool_path,
+            marble_source_path=marble_source_path,
         )
     ]
 
@@ -268,6 +452,8 @@ def load_paired_records_for_training(
 def load_paired_records_with_metadata(
     records_path: Path,
     memory_pool_path: Path,
+    *,
+    marble_source_path: Path | None = None,
 ) -> list[tuple[CandidateExposureInput, str, dict]]:
     """Load paired records into (input, label, record) triples.
 
@@ -281,6 +467,11 @@ def load_paired_records_with_metadata(
     signature, subtask, context summaries, receiver tool_names and
     model_name) are restored so training features match inference features.
 
+    When ``marble_source_path`` is provided, task instructions are injected
+    from the MARBLE source database for records whose ``task_instruction``
+    field is empty.  This is the P1-A path: the MARBLE source is the
+    authoritative task-content store, not the paired record.
+
     Records failing the core-validity filter (incomplete branches, missing
     identity fields, cross-branch config mismatches, upstream invalid flag)
     never enter critic training, risk calibration or epsilon selection.
@@ -289,12 +480,17 @@ def load_paired_records_with_metadata(
     for line in records_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             raw_records.append(json.loads(line))
-    return build_training_data_from_records(raw_records, memory_pool_path)
+    return build_training_data_from_records(
+        raw_records, memory_pool_path,
+        marble_source_path=marble_source_path,
+    )
 
 
 def build_training_data_from_records(
     records: list[dict],
     memory_pool_path: Path,
+    *,
+    marble_source_path: Path | None = None,
 ) -> list[tuple[CandidateExposureInput, str, dict]]:
     """Build (input, label, record) triples from an explicit record list.
 
@@ -302,12 +498,26 @@ def build_training_data_from_records(
     construction, so the caller passes the already-filtered effective
     training records and features/labels are never built from the full
     parent record file.
+
+    When ``marble_source_path`` is given, task instructions missing from
+    paired records are back-filled from the MARBLE source (P1-A).
     """
     pool: dict[str, dict] = {}
     for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             mem = json.loads(line)
             pool[mem["memory_id"]] = mem
+
+    # Optional MARBLE source lookup for task instruction injection (P1-A).
+    marble_tasks: dict[str, str] = {}
+    if marble_source_path is not None and marble_source_path.exists():
+        for line in marble_source_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                task_rec = json.loads(line)
+                tid = str(task_rec.get("task_id", ""))
+                content = task_rec.get("task", {}).get("content", "")
+                if tid and content:
+                    marble_tasks[tid] = content
 
     results: list[tuple[CandidateExposureInput, str, dict]] = []
     for rec in records:
@@ -328,10 +538,15 @@ def build_training_data_from_records(
             model_name=rec.get("receiver_model_name"),
             tool_names=tuple(rec.get("receiver_tool_names", [])),
         )
+        # P1-A: inject task instruction from MARBLE source when the
+        # paired record has an empty task_instruction field.
+        task_instruction = rec.get("task_instruction", "")
+        if not task_instruction and marble_tasks:
+            task_instruction = marble_tasks.get(str(rec.get("task_id", "")), "")
         receiver_state = ReceiverState(
             task_id=rec["task_id"],
             scenario=rec.get("scenario", "database"),
-            task_instruction=rec.get("task_instruction", ""),
+            task_instruction=task_instruction,
             receiver=receiver,
             subtask=rec.get("subtask"),
             environment_signature=tuple(rec.get("environment_signature", [])),
@@ -410,6 +625,46 @@ def _count_bin(n: int) -> str:
     if n <= 5:
         return "3-5"
     return "6+"
+
+
+def _extract_domain_keywords(text: str) -> set[str]:
+    """Extract abstract domain labels from a task instruction or memory content.
+
+    Scans ``text`` for keyword patterns defined in ``_DOMAIN_KEYWORDS`` and
+    returns the matching domain names (e.g. ``{"finance", "social_media"}``).
+    Uses word-boundary matching to avoid substring false positives.
+    The result is writer-agnostic and outcome-free.
+    """
+    if not text:
+        return set()
+    text_lower = text.lower()
+    matched: set[str] = set()
+    for domain, keywords in _DOMAIN_KEYWORDS.items():
+        for kw in keywords:
+            # Use word-boundary regex to avoid substring matches
+            # (e.g. "lease" matching inside "please").
+            pattern = r"\b" + re.escape(kw) + r"\b"
+            if re.search(pattern, text_lower):
+                matched.add(domain)
+                break
+    return matched
+
+
+def _extract_table_categories(text: str) -> set[str]:
+    """Extract abstract table categories from text mentioning table names.
+
+    Maps concrete table names found in ``text`` to their abstract category
+    via ``_TABLE_CATEGORY_MAP`` (e.g. ``users`` -> ``user_mgmt``,
+    ``transactions`` -> ``financial``).  The result is writer-agnostic.
+    """
+    if not text:
+        return set()
+    tokens = set(_text_tokens(text))
+    cats: set[str] = set()
+    for table_name, category in _TABLE_CATEGORY_MAP.items():
+        if table_name in tokens:
+            cats.add(category)
+    return cats
 
 
 def prediction_input_from_record(record: Any) -> CandidateExposureInput:

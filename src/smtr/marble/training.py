@@ -272,6 +272,7 @@ def train_critic(
     budget_candidate_manifest_path: Path | None = None,
     train_records_already_budgeted: bool = False,
     experiment_mode: str | None = None,
+    marble_source_path: Path | None = None,
 ) -> dict[str, Any]:
     """Train four-outcome transfer critic from paired records."""
     # 清单 Formal Protocol §3: experiment_mode and coverage_mode must agree;
@@ -308,7 +309,8 @@ def train_critic(
     # control families (清单 Shared-Control 第10章) so rows sharing one
     # no-memory control resample together.
     train_data = build_training_data_from_records(
-        prepared.records, memory_pool_path
+        prepared.records, memory_pool_path,
+        marble_source_path=marble_source_path,
     )
     if not train_data:
         raise ValueError(f"no valid training records in {train_records_path}")
@@ -381,7 +383,8 @@ def train_critic(
 
     if validation_records_path and validation_records_path.exists():
         val_data = load_paired_records_with_metadata(
-            validation_records_path, memory_pool_path
+            validation_records_path, memory_pool_path,
+            marble_source_path=marble_source_path,
         )
         if val_data:
             val_inputs = [item for item, _, _ in val_data]
@@ -706,7 +709,7 @@ def _build_feature_audit(
             interaction_found = True
 
     return {
-        "schema_version": "3.0",
+        "schema_version": "3.1",
         "feature_block": feature_block,
         "sample_count": len(sample),
         "routing_conditioning": "memory_receiver",
@@ -714,6 +717,12 @@ def _build_feature_audit(
         "provenance_features_present": provenance_found,
         "receiver_features_present": receiver_found,
         "memory_receiver_interactions_present": interaction_found,
+        "task_memory_interaction_present": any(
+            p.startswith("tm_") for p in observed_prefixes
+        ),
+        "procedure_signature_present": any(
+            p.startswith("psi_") for p in observed_prefixes
+        ),
         "forbidden_feature_leakage": forbidden_found or provenance_found,
         "observed_prefixes": sorted(observed_prefixes),
     }

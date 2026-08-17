@@ -241,7 +241,13 @@ def run_end_to_end_evaluation(
         if not candidate_cards:
             continue
 
-        receiver_state = build_receiver_state_from_entry(entry)
+        receiver_state = build_receiver_state_from_entry(
+            entry,
+            marble_tasks={
+                tid: t.get("content", "")
+                for tid, t in tasks.items()
+            },
+        )
 
         for method in methods:
             router = routers[method]

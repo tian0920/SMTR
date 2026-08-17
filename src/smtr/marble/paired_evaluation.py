@@ -61,11 +61,18 @@ MAIN_TABLE_METHODS = [
 ]
 
 
-def build_receiver_state_from_entry(entry: dict[str, Any]) -> ReceiverState:
+def build_receiver_state_from_entry(
+    entry: dict[str, Any],
+    *,
+    marble_tasks: dict[str, str] | None = None,
+) -> ReceiverState:
     """Build the pre-execution ReceiverState from a candidate-manifest entry.
 
     Shared by paired evaluation, end-to-end evaluation and tests so that the
     inference-time receiver context matches the training loader exactly.
+
+    When ``marble_tasks`` is provided, task instructions missing from the
+    entry are back-filled from the MARBLE source (P1-A).
     """
     receiver = AgentProfile(
         agent_id=entry.get("receiver_agent_id", ""),
@@ -74,10 +81,13 @@ def build_receiver_state_from_entry(entry: dict[str, Any]) -> ReceiverState:
         model_name=entry.get("receiver_model_name"),
         tool_names=tuple(entry.get("receiver_tool_names", [])),
     )
+    task_instruction = entry.get("task_instruction", "")
+    if not task_instruction and marble_tasks:
+        task_instruction = marble_tasks.get(str(entry.get("task_id", "")), "")
     return ReceiverState(
         task_id=entry["task_id"],
         scenario=entry.get("scenario", "database"),
-        task_instruction=entry.get("task_instruction", ""),
+        task_instruction=task_instruction,
         receiver=receiver,
         subtask=entry.get("subtask"),
         local_context_summary=entry.get("local_context_summary", ""),
@@ -158,6 +168,7 @@ def run_paired_decision_evaluation(
     ci_bootstrap: int = 1000,
     experiment_mode: str | None = None,
     output: Path,
+    marble_source_path: Path | None = None,
 ) -> dict[str, Any]:
     """Run paired decision evaluation using candidate manifest and paired records.
 
@@ -267,6 +278,18 @@ def run_paired_decision_evaluation(
         mem = json.loads(line)
         cards_by_id[mem["memory_id"]] = build_routing_card_from_pool_entry(mem)
 
+    # P1-A: optional MARBLE source for task instruction back-fill.
+    marble_tasks: dict[str, str] | None = None
+    if marble_source_path is not None and marble_source_path.exists():
+        marble_tasks = {}
+        for line in marble_source_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                task_rec = json.loads(line)
+                tid = str(task_rec.get("task_id", ""))
+                content = task_rec.get("task", {}).get("content", "")
+                if tid and content:
+                    marble_tasks[tid] = content
+
     # Load candidate manifest
     candidates_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
 
@@ -330,7 +353,9 @@ def run_paired_decision_evaluation(
         receiver_agent_id = entry.get("receiver_agent_id", "")
         receiver_role = entry.get("receiver_role", "unknown")
 
-        receiver_state = build_receiver_state_from_entry(entry)
+        receiver_state = build_receiver_state_from_entry(
+            entry, marble_tasks=marble_tasks,
+        )
 
         # Get candidate cards from manifest for this entry.
         # candidate_context is kept as an empty dict: the critic only

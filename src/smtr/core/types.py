@@ -87,12 +87,18 @@ class ProcedurePayload(BaseModel):
 
 
 class MemoryRoutingCard(BaseModel):
-    """Routing-card schema v3 (清单 Writer-Agnostic 第三章).
+    """Routing-card schema v3.1 (清单 Writer-Agnostic 第三章 + P1-B ψ(m)).
 
     Writer/source-agent identity is removed from the routing surface;
     implicit writer capabilities are replaced by explicit memory
     requirements (required tools / capabilities / execution roles /
     environment constraints / preconditions).
+
+    v3.1 adds behavioral procedure signature fields (ψ(m)):
+      - procedure_domain_tags: abstract problem-domain keywords
+      - procedure_table_categories: schema-level table categories
+      - procedure_pattern_tags: structural procedure patterns
+    These are writer-agnostic, outcome-free, pre-execution available.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -110,6 +116,16 @@ class MemoryRoutingCard(BaseModel):
     read_write_scope: str = "unknown"
 
     evidence_count: int = 0
+
+    # --- Behavioral procedure signature ψ(m) (P1-B) ---
+    # Abstract domain tags derived from the source task's problem domain
+    # (e.g. "finance", "social_media").  No entity values, no ground-truth.
+    procedure_domain_tags: tuple[str, ...] = ()
+    # Schema-level table categories (e.g. "content", "financial").
+    # Describes WHAT kind of data the procedure operates on.
+    procedure_table_categories: tuple[str, ...] = ()
+    # Structural pattern tags (e.g. "single_source", "schema_first").
+    procedure_pattern_tags: tuple[str, ...] = ()
 
 
 class CandidateExposureInput(BaseModel):

@@ -113,6 +113,9 @@ def main() -> None:
     # edge set is still validated against the budget manifest.
     p.add_argument("--train-records-already-budgeted", action="store_true")
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default=None)
+    # P1-A: MARBLE source path for task instruction injection.
+    p.add_argument("--marble-source", default=None,
+                   help="Path to MARBLE database_main.jsonl for task instruction back-fill")
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("run-paired-decision-evaluation", help="Paired decision evaluation on test pairs")
@@ -142,6 +145,9 @@ def main() -> None:
         ),
     )
     p.add_argument("--experiment-mode", choices=["pilot", "formal"], default=None)
+    # P1-A: MARBLE source path for task instruction injection in evaluation.
+    p.add_argument("--marble-source", default=None,
+                   help="Path to MARBLE database_main.jsonl for task instruction back-fill")
     p.add_argument("--output", required=True)
 
     p = subparsers.add_parser("run-marble-evaluation", help="End-to-end MARBLE evaluation")
@@ -468,6 +474,11 @@ def _dispatch(args: argparse.Namespace) -> None:
                 args, "train_records_already_budgeted", False
             ),
             experiment_mode=getattr(args, "experiment_mode", None),
+            marble_source_path=(
+                Path(args.marble_source)
+                if getattr(args, "marble_source", None)
+                else None
+            ),
         )
         print(json.dumps(result, indent=2))
 
@@ -494,6 +505,11 @@ def _dispatch(args: argparse.Namespace) -> None:
             ),
             experiment_mode=args.experiment_mode,
             output=Path(args.output),
+            marble_source_path=(
+                Path(args.marble_source)
+                if getattr(args, "marble_source", None)
+                else None
+            ),
         )
         print(json.dumps(result, indent=2))
 
