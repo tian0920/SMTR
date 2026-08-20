@@ -49,6 +49,18 @@ LABEL_TO_INDEX = {
 
 _VALID_CRITIC_MODES = frozenset({"flat", "opportunity_factorized"})
 
+# Task 1: Explicit critic training modes for the final integration.
+# ``observational``: L = L_obs (original flat/factorized, backward compatible).
+# ``tci_augmented``: L = L_obs + L_TCI (alpha=1 fixed, TCI examples appended
+# with obs_weight=1 per observational example, tci_weight=1 per TCI example).
+# Factorized critic + TCI is intentionally excluded: ablation showed
+# factorized intervention ranking = 0.1842 (worse than random).
+_VALID_CRITIC_TRAINING_MODES: frozenset[str] = frozenset({
+    "observational",
+    "tci_augmented",
+})
+TCI_SCHEMA_VERSION: str = "v1"
+
 
 @dataclass
 class FactorizedCriticMember:
@@ -148,6 +160,13 @@ class FourOutcomeTransferCritic:
         self.tci_distillation_n_examples: int = 0
         self.tci_distillation_alpha: float | None = None
         self.tci_distillation_metrics: dict[str, Any] | None = None
+        # Task 1: formal training mode label (checkpoint provenance).
+        # Defaults to "observational" for old checkpoints and for
+        # fit() calls with tci_inputs=None.
+        self.training_mode: str = "observational"
+        self.n_observational_examples: int = 0
+        self.n_tci_examples: int = 0
+        self.tci_schema_version: str | None = None
 
     def fit(
         self,
@@ -216,34 +235,45 @@ class FourOutcomeTransferCritic:
         ]] | None = None,
         tci_alpha: float = 1.0,
     ) -> None:
-        """Original flat four-outcome training (unchanged behaviour).
+        """Flat four-outcome training.
 
-        When ``tci_inputs`` is provided, appends distillation examples
-        to the observational data (observational+tci joint training).
-        Old callers (tci_inputs=None) get identical behaviour.
+        Training modes:
+          - ``observational`` (default): L = L_obs. Identical to original
+            behaviour when ``tci_inputs`` is None.
+          - ``tci_augmented``: L = L_obs + L_TCI, with fixed weights
+            obs_weight=1 per observational example, tci_weight=1 per TCI
+            example (alpha=1, not exposed as hyperparameter).
         """
         # Build observational feature matrix.
         X_obs = self.encoder.encode_batch(inputs)
         y_obs = np.array([LABEL_TO_INDEX[lb] for lb in labels])
+        n_obs = len(labels)
 
-        # Optional TCI distillation block.
+        # Task 3: TCI augmentation block with fixed weight=1 per example.
+        # No alpha exposure to CLI / paper (fixed at 1.0 internally).
         X_tci = None
         y_tci = None
-        w_tci = None
         if tci_inputs:
-            from smtr.router.tci_supervision import (
-                build_tci_distillation_examples,
+            from smtr.router.tci_augmentation import (
+                build_tci_augmentation_examples,
             )
-            batch = build_tci_distillation_examples(
-                tci_inputs, alpha=tci_alpha,
-            )
+            batch = build_tci_augmentation_examples(tci_inputs)
             if batch.inputs:
                 X_tci = self.encoder.encode_batch(batch.inputs)
                 y_tci = np.array(
                     [LABEL_TO_INDEX[lb] for lb in batch.labels]
                 )
-                w_tci = batch.weights
         tci_n = X_tci.shape[0] if X_tci is not None else 0
+
+        # Task 1: set training_mode based on whether TCI was provided.
+        if tci_n > 0:
+            self.training_mode = "tci_augmented"
+            self.tci_schema_version = TCI_SCHEMA_VERSION
+        else:
+            self.training_mode = "observational"
+            self.tci_schema_version = None
+        self.n_observational_examples = n_obs
+        self.n_tci_examples = tci_n
 
         if sample_weights is not None:
             sample_weights = np.asarray(sample_weights, dtype=float)
@@ -280,14 +310,16 @@ class FourOutcomeTransferCritic:
                     y_obs, required_classes, rng
                 )
             if idx is None:
-                # Skip this member rather than fitting on a class-deficient
-                # sample; zero-padding missing classes is forbidden.
                 continue
             X_boot = X_obs[idx]
             y_boot = y_obs[idx]
             w_boot = None if sample_weights is None else sample_weights[idx]
 
-            # Append TCI examples to this bootstrap sample (fixed set).
+            # Task 3: Append TCI examples. Each TCI example gets
+            # weight = alpha / n_tci_examples = 1 / n_tci (alpha=1 fixed).
+            # This ensures the total TCI weight = 1, proportional to
+            # the alpha constraint without over-dominating the
+            # observational training signal.
             if X_tci is not None:
                 from scipy import sparse as sp_sparse
                 if sp_sparse.issparse(X_boot) or sp_sparse.issparse(X_tci):
@@ -295,13 +327,12 @@ class FourOutcomeTransferCritic:
                 else:
                     X_boot = np.vstack([X_boot, X_tci])
                 y_boot = np.concatenate([y_boot, y_tci])
+                # TCI weight per example: 1/n_tci (total TCI weight = 1).
+                w_tci = np.full(tci_n, 1.0 / tci_n)
                 if w_boot is not None:
                     w_boot = np.concatenate([w_boot, w_tci])
                 else:
-                    # Observational rows are unweighted (class_weight=
-                    # "balanced" handles class imbalance); TCI rows keep
-                    # their soft weights. Use explicit sample_weight for
-                    # both blocks so class_weight must be disabled.
+                    # Obs examples get weight=1; TCI gets 1/n_tci.
                     w_obs = np.ones(len(idx), dtype=float)
                     w_boot = np.concatenate([w_obs, w_tci])
 
@@ -839,6 +870,11 @@ class FourOutcomeTransferCritic:
                 ),
                 "tci_distillation_alpha": self.tci_distillation_alpha,
                 "tci_distillation_metrics": self.tci_distillation_metrics,
+                # Task 1/4: formal training mode + example counts.
+                "training_mode": self.training_mode,
+                "n_observational_examples": self.n_observational_examples,
+                "n_tci_examples": self.n_tci_examples,
+                "tci_schema_version": self.tci_schema_version,
             },
             path,
         )
@@ -907,6 +943,13 @@ class FourOutcomeTransferCritic:
         )
         critic.tci_distillation_alpha = data.get("tci_distillation_alpha")
         critic.tci_distillation_metrics = data.get("tci_distillation_metrics")
+        # Task 1/4: training mode + example counts (defaults for old checkpoints).
+        critic.training_mode = data.get("training_mode", "observational")
+        critic.n_observational_examples = int(
+            data.get("n_observational_examples", 0)
+        )
+        critic.n_tci_examples = int(data.get("n_tci_examples", 0))
+        critic.tci_schema_version = data.get("tci_schema_version")
         critic._fitted = True
         return critic
 

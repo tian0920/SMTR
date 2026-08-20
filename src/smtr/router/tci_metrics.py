@@ -352,3 +352,72 @@ def compute_feature_shift(
         "zero_shift_rate": zero_count / len(arr) if len(arr) > 0 else 1.0,
         "n_pairs": len(pairs),
     }
+
+
+# ---------------------------------------------------------------------------
+# Routing-level metrics (Codex Task 6).
+# These operate on RoutingSelection objects from tci_routing_eval.
+# ---------------------------------------------------------------------------
+
+
+def compute_positive_transfer_capture(selections: list[Any]) -> float:
+    """PTC = P(selected_effect > 0).
+
+    Fraction of routing decisions where the selected memory has a
+    positive true transfer effect.
+    """
+    if not selections:
+        return 0.0
+    return sum(1 for s in selections if s.is_positive_transfer) / len(selections)
+
+
+def compute_negative_transfer_exposure(selections: list[Any]) -> float:
+    """NTE = P(selected_effect < 0).
+
+    Fraction of routing decisions where the selected memory causes
+    negative transfer (damage). This is the most critical failure mode.
+    """
+    if not selections:
+        return 0.0
+    return sum(1 for s in selections if s.is_negative_transfer) / len(selections)
+
+
+def compute_transfer_regret(selections: list[Any]) -> float:
+    """R = E[effect* - effect(selected)].
+
+    Mean regret per routing decision: difference between the best
+    available transfer effect and the one actually selected.
+    """
+    if not selections:
+        return 0.0
+    return float(np.mean([s.regret for s in selections]))
+
+
+def compute_top1_hit_rate(selections: list[Any]) -> float:
+    """Top-1 transfer hit: P(argmax(score) == argmax(effect)).
+
+    Fraction of routing decisions where the critic-selected memory
+    is exactly the memory with the highest true transfer effect.
+    """
+    if not selections:
+        return 0.0
+    return sum(1 for s in selections if s.is_top1_hit) / len(selections)
+
+
+def compute_routing_metrics_summary(selections: list[Any]) -> dict[str, float]:
+    """Compute all routing metrics in one call.
+
+    Returns dict with:
+      - positive_capture: PTC
+      - negative_exposure: NTE
+      - transfer_regret: mean regret
+      - top1_hit_rate: top-1 hit rate
+      - n_selections: number of routing decisions
+    """
+    return {
+        "positive_capture": compute_positive_transfer_capture(selections),
+        "negative_exposure": compute_negative_transfer_exposure(selections),
+        "transfer_regret": compute_transfer_regret(selections),
+        "top1_hit_rate": compute_top1_hit_rate(selections),
+        "n_selections": len(selections),
+    }
