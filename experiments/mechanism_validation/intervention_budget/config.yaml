@@ -1,0 +1,50 @@
+# Intervention Budget Efficiency Validation Configuration
+# ---------------------------------------------------------
+# Tests SMTR performance under varying intervention coverage.
+
+# Environment (same as receiver heterogeneity)
+environment:
+  n_memories: 50
+  n_receivers: 20
+  embedding_dim: 16
+  noise_std: 0.1
+  seed: 42
+
+# Data sampling
+data:
+  n_train: 1000
+  n_test: 400
+
+# Budget ratios
+budget:
+  ratios: [0.0, 0.25, 0.50, 0.75, 1.0]
+  seeds: [0, 1, 2]
+
+# Model architecture (same as receiver heterogeneity)
+model:
+  hidden_dim_1: 128
+  hidden_dim_2: 64
+  dropout: 0.1
+
+# Training
+training:
+  epochs: 300
+  lr: 0.005
+  batch_size: 128
+  weight_decay: 0.001
+  patience: 30
+
+# Evaluation
+evaluation:
+  n_pairwise_samples: 10000
+
+# Shared control ablation
+shared_control:
+  n_memories: 50
+  n_receivers: 20
+
+# Acceptance criteria
+acceptance:
+  budget_50_ranking_min: 0.90
+  budget_25_ranking_min: 0.80
+  shared_control_reduction_min: 0.80

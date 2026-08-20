@@ -1,0 +1,61 @@
+{
+  "efficiency": {
+    "0.00": {
+      "ranking": 0.501261401125558,
+      "cost": 0.0,
+      "efficiency": 501261.40112555795
+    },
+    "0.25": {
+      "ranking": 0.872954266123294,
+      "cost": 0.25,
+      "efficiency": 3.491817064493176
+    },
+    "0.50": {
+      "ranking": 0.931237466847791,
+      "cost": 0.5,
+      "efficiency": 1.862474933695582
+    },
+    "0.75": {
+      "ranking": 0.9596998512193543,
+      "cost": 0.75,
+      "efficiency": 1.2795998016258057
+    },
+    "1.00": {
+      "ranking": 0.9805938288375704,
+      "cost": 1.0,
+      "efficiency": 0.9805938288375704
+    }
+  },
+  "shared_control": {
+    "naive_cost": 1000,
+    "shared_cost": 20,
+    "reduction": 0.98
+  },
+  "acceptance_criteria": {
+    "budget_50_ranking": {
+      "description": "50% budget ranking \u2265 0.90",
+      "value": 0.931237466847791,
+      "threshold": 0.9,
+      "passed": true
+    },
+    "budget_25_ranking": {
+      "description": "25% budget ranking \u2265 0.80",
+      "value": 0.872954266123294,
+      "threshold": 0.8,
+      "passed": true
+    },
+    "efficiency_exceeds_full": {
+      "description": "At least one non-100% budget efficiency > Full",
+      "value": 3.4918,
+      "threshold": 0.9806,
+      "passed": true
+    },
+    "shared_control_reduction": {
+      "description": "Shared control reduction \u2265 80%",
+      "value": 0.98,
+      "threshold": 0.8,
+      "passed": true
+    }
+  },
+  "verdict": "PASS"
+}

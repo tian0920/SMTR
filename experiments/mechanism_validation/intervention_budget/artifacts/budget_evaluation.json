@@ -1,0 +1,162 @@
+{
+  "0.00": {
+    "avg_pearson": 0.010398316849856915,
+    "avg_sign": 0.53,
+    "avg_ranking": 0.501261401125558,
+    "std_pearson": 0.0,
+    "std_sign": 0.0,
+    "std_ranking": 0.0,
+    "cost": 0.0,
+    "per_seed": [
+      {
+        "seed": 0,
+        "pearson": 0.010398316849856915,
+        "sign_accuracy": 0.53,
+        "ranking": 0.501261401125558,
+        "cost": 0.0
+      },
+      {
+        "seed": 1,
+        "pearson": 0.010398316849856915,
+        "sign_accuracy": 0.53,
+        "ranking": 0.501261401125558,
+        "cost": 0.0
+      },
+      {
+        "seed": 2,
+        "pearson": 0.010398316849856915,
+        "sign_accuracy": 0.53,
+        "ranking": 0.501261401125558,
+        "cost": 0.0
+      }
+    ]
+  },
+  "0.25": {
+    "avg_pearson": 0.630668721076769,
+    "avg_sign": 0.785,
+    "avg_ranking": 0.872954266123294,
+    "std_pearson": 0.055698656272058444,
+    "std_sign": 0.03341656275960568,
+    "std_ranking": 0.027353447817252425,
+    "cost": 0.25,
+    "per_seed": [
+      {
+        "seed": 0,
+        "pearson": 0.7075019826923418,
+        "sign_accuracy": 0.83,
+        "ranking": 0.9087909955365806,
+        "cost": 0.25
+      },
+      {
+        "seed": 1,
+        "pearson": 0.6072853167325225,
+        "sign_accuracy": 0.775,
+        "ranking": 0.8676499126722298,
+        "cost": 0.25
+      },
+      {
+        "seed": 2,
+        "pearson": 0.5772188638054425,
+        "sign_accuracy": 0.75,
+        "ranking": 0.8424218901610713,
+        "cost": 0.25
+      }
+    ]
+  },
+  "0.50": {
+    "avg_pearson": 0.7467471219753232,
+    "avg_sign": 0.8441666666666666,
+    "avg_ranking": 0.931237466847791,
+    "std_pearson": 0.023002806825231863,
+    "std_sign": 0.0042491829279939835,
+    "std_ranking": 0.013295076448635037,
+    "cost": 0.5,
+    "per_seed": [
+      {
+        "seed": 0,
+        "pearson": 0.7751667588396026,
+        "sign_accuracy": 0.85,
+        "ranking": 0.94896176984281,
+        "cost": 0.5
+      },
+      {
+        "seed": 1,
+        "pearson": 0.7188282969002765,
+        "sign_accuracy": 0.84,
+        "ranking": 0.9169415874248011,
+        "cost": 0.5
+      },
+      {
+        "seed": 2,
+        "pearson": 0.7462463101860906,
+        "sign_accuracy": 0.8425,
+        "ranking": 0.9278090432757617,
+        "cost": 0.5
+      }
+    ]
+  },
+  "0.75": {
+    "avg_pearson": 0.8199563529663312,
+    "avg_sign": 0.9058333333333334,
+    "avg_ranking": 0.9596998512193543,
+    "std_pearson": 0.020021898654357183,
+    "std_sign": 0.0031180478223116403,
+    "std_ranking": 0.012187666038585194,
+    "cost": 0.75,
+    "per_seed": [
+      {
+        "seed": 0,
+        "pearson": 0.8245804212415953,
+        "sign_accuracy": 0.905,
+        "ranking": 0.9654570153308752,
+        "cost": 0.75
+      },
+      {
+        "seed": 1,
+        "pearson": 0.7934517965743475,
+        "sign_accuracy": 0.9025,
+        "ranking": 0.9427517950708325,
+        "cost": 0.75
+      },
+      {
+        "seed": 2,
+        "pearson": 0.8418368410830507,
+        "sign_accuracy": 0.91,
+        "ranking": 0.9708907432563555,
+        "cost": 0.75
+      }
+    ]
+  },
+  "1.00": {
+    "avg_pearson": 0.8476787656626902,
+    "avg_sign": 0.9425,
+    "avg_ranking": 0.9805938288375704,
+    "std_pearson": 0.0,
+    "std_sign": 0.0,
+    "std_ranking": 0.0,
+    "cost": 1.0,
+    "per_seed": [
+      {
+        "seed": 0,
+        "pearson": 0.8476787656626902,
+        "sign_accuracy": 0.9425,
+        "ranking": 0.9805938288375704,
+        "cost": 1.0
+      },
+      {
+        "seed": 1,
+        "pearson": 0.8476787656626902,
+        "sign_accuracy": 0.9425,
+        "ranking": 0.9805938288375704,
+        "cost": 1.0
+      },
+      {
+        "seed": 2,
+        "pearson": 0.8476787656626902,
+        "sign_accuracy": 0.9425,
+        "ranking": 0.9805938288375704,
+        "cost": 1.0
+      }
+    ]
+  }
+}
