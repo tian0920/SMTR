@@ -1,0 +1,376 @@
+{
+  "timestamp": "2026-08-20T19:33:08Z",
+  "method": "TCI-SMTR (unified critic, no separate value head)",
+  "objective": "L = L_obs + L_rank + L_\u03c4 (all weight=1, no lambda)",
+  "critic_output": "s_\u03b8(m) = q10(m) - q01(m) \u2248 E[Y_m - Y_0]",
+  "models": {
+    "A_observational": {
+      "training": {
+        "training_mode": "observational",
+        "n_observational_examples": 642,
+        "n_tci_examples": 0,
+        "tci_rank_examples": 0,
+        "tci_value_examples": 0,
+        "wall_seconds": 1.6
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 0.5,
+        "pairwise_margin": 0.0,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5,
+        "utility_correlation": 0.1772,
+        "sign_accuracy": 0.6579,
+        "per_class": {
+          "-1": 0.0,
+          "0": 1.0,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.2895,
+        "mean_regret": 0.6842,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    },
+    "B_tci_rank": {
+      "training": {
+        "training_mode": "tci_augmented",
+        "n_observational_examples": 642,
+        "n_tci_examples": 76,
+        "tci_rank_examples": 76,
+        "tci_value_examples": 0,
+        "wall_seconds": 1.9
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.3156,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5132,
+        "utility_correlation": 0.7112,
+        "sign_accuracy": 0.7895,
+        "per_class": {
+          "-1": 0.6842105263157895,
+          "0": 0.6842105263157895,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.6053,
+        "mean_regret": 0.3158,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    },
+    "C_tci_full": {
+      "training": {
+        "training_mode": "tci_full",
+        "n_observational_examples": 642,
+        "n_tci_examples": 152,
+        "tci_rank_examples": 76,
+        "tci_value_examples": 76,
+        "wall_seconds": 1.9
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.205,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5526,
+        "utility_correlation": 0.7138,
+        "sign_accuracy": 0.7895,
+        "per_class": {
+          "-1": 0.5263157894736842,
+          "0": 0.8421052631578947,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.5789,
+        "mean_regret": 0.3421,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    },
+    "random_effect": {
+      "training": {
+        "training_mode": "tci_full",
+        "n_observational_examples": 642,
+        "n_tci_examples": 152,
+        "tci_rank_examples": 76,
+        "tci_value_examples": 76
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.1598,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5526,
+        "utility_correlation": 0.7172,
+        "sign_accuracy": 0.7895,
+        "per_class": {
+          "-1": 0.5263157894736842,
+          "0": 0.8421052631578947,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.5789,
+        "mean_regret": 0.3421,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    }
+  },
+  "budget_curve": {
+    "0%": {
+      "training": {
+        "training_mode": "tci_augmented",
+        "n_observational_examples": 642,
+        "n_tci_examples": 76,
+        "tci_rank_examples": 76,
+        "tci_value_examples": 0
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.3156,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5132,
+        "utility_correlation": 0.7112,
+        "sign_accuracy": 0.7895,
+        "per_class": {
+          "-1": 0.6842105263157895,
+          "0": 0.6842105263157895,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.6053,
+        "mean_regret": 0.3158,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    },
+    "25%": {
+      "training": {
+        "training_mode": "tci_full",
+        "n_observational_examples": 642,
+        "n_tci_examples": 96,
+        "tci_rank_examples": 76,
+        "tci_value_examples": 20
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.2601,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5526,
+        "utility_correlation": 0.7121,
+        "sign_accuracy": 0.7895,
+        "per_class": {
+          "-1": 0.5789473684210527,
+          "0": 0.8157894736842105,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.5789,
+        "mean_regret": 0.3421,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    },
+    "50%": {
+      "training": {
+        "training_mode": "tci_full",
+        "n_observational_examples": 642,
+        "n_tci_examples": 114,
+        "tci_rank_examples": 76,
+        "tci_value_examples": 38
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.2354,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5526,
+        "utility_correlation": 0.7214,
+        "sign_accuracy": 0.7895,
+        "per_class": {
+          "-1": 0.5263157894736842,
+          "0": 0.8421052631578947,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.5789,
+        "mean_regret": 0.3421,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    },
+    "100%": {
+      "training": {
+        "training_mode": "tci_full",
+        "n_observational_examples": 642,
+        "n_tci_examples": 152,
+        "tci_rank_examples": 76,
+        "tci_value_examples": 76
+      },
+      "intervention_ranking": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.205,
+        "n_pairs": 38
+      },
+      "effect_prediction": {
+        "accuracy": 0.5526,
+        "utility_correlation": 0.7138,
+        "sign_accuracy": 0.7895,
+        "per_class": {
+          "-1": 0.5263157894736842,
+          "0": 0.8421052631578947,
+          "1": 0.0
+        },
+        "n_examples": 76
+      },
+      "routing": {
+        "positive_capture": 0.1429,
+        "negative_exposure": 0.0,
+        "transfer_regret": 0.4286,
+        "top1_hit_rate": 0.0714,
+        "n_selections": 14
+      },
+      "synthetic_candidates": {
+        "top1_hit_rate": 0.5789,
+        "mean_regret": 0.3421,
+        "n_contrasts": 38
+      },
+      "test_classification": {
+        "test_accuracy": 0.6763,
+        "test_n": 173
+      }
+    }
+  },
+  "gates": {
+    "A_pairwise_ranking": {
+      "pass": true,
+      "value": 1.0
+    },
+    "B_effect_correlation": {
+      "pass": true,
+      "tci_full_corr": 0.7138,
+      "tci_full_sign_acc": 0.7895
+    },
+    "C_synthetic_improvement": {
+      "pass": true,
+      "tci_full": 0.5789,
+      "observational": 0.2895
+    },
+    "D_value_signal": {
+      "pass": true,
+      "tci_full_corr": 0.7138,
+      "observational_corr": 0.1772,
+      "tci_rank_corr": 0.7112
+    },
+    "E_no_test_regression": {
+      "pass": true,
+      "test_acc_A": 0.6763,
+      "test_acc_B": 0.6763,
+      "test_acc_C": 0.6763
+    },
+    "F_rank_vs_full_separation": {
+      "pass": true,
+      "rank_corr": 0.7112,
+      "full_corr": 0.7138
+    }
+  },
+  "final_verdict": "PASS (6/6)",
+  "runtime_seconds": 21.7
+}

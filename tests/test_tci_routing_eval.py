@@ -484,7 +484,7 @@ class TestTrainingModeConstants:
     def test_valid_training_modes(self) -> None:
         assert "observational" in _VALID_CRITIC_TRAINING_MODES
         assert "tci_augmented" in _VALID_CRITIC_TRAINING_MODES
-        assert "tci_value_augmented" in _VALID_CRITIC_TRAINING_MODES
+        assert "tci_full" in _VALID_CRITIC_TRAINING_MODES
         assert len(_VALID_CRITIC_TRAINING_MODES) == 3
 
     def test_tci_schema_version(self) -> None:

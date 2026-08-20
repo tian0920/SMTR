@@ -263,7 +263,7 @@ class TestTCIValueHead:
 
 class TestValueHeadCheckpoint:
     def test_value_head_checkpoint_save_load(self) -> None:
-        """Value head persists through save/load."""
+        """Unified critic persists through save/load (no separate head)."""
         critic = FourOutcomeTransferCritic(
             n_features=32, n_bootstrap=3, seed=7, critic_mode="flat"
         )
@@ -291,7 +291,7 @@ class TestValueHeadCheckpoint:
             (inp_orig, inp_pert, -1, "environment_constraint"),
         ]
 
-        # Build effect batch.
+        # Build effect batch: 2 contrasts → 4 examples (orig+pert each).
         examples = [
             TCIEffectExample(
                 memory_features=[0.1] * 32,
@@ -304,15 +304,22 @@ class TestValueHeadCheckpoint:
                 memory_features=[0.2] * 32,
                 transfer_effect=-1,
                 effect_source="tci_intervention",
+                contrast_type="precondition",
+                perturbation_type="precondition_tags",
+            ),
+            TCIEffectExample(
+                memory_features=[0.3] * 32,
+                transfer_effect=-1,
+                effect_source="tci_intervention",
                 contrast_type="environment_constraint",
                 perturbation_type="environment_constraints",
             ),
             TCIEffectExample(
-                memory_features=[0.3] * 32,
-                transfer_effect=0,
+                memory_features=[0.4] * 32,
+                transfer_effect=1,
                 effect_source="tci_intervention",
-                contrast_type="precondition",
-                perturbation_type="precondition_tags",
+                contrast_type="environment_constraint",
+                perturbation_type="environment_constraints",
             ),
         ]
         effect_batch = TCIEffectBatch(examples=examples)
@@ -324,19 +331,18 @@ class TestValueHeadCheckpoint:
             tci_effect_batch=effect_batch,
         )
 
-        assert critic.training_mode == "tci_value_augmented"
-        assert critic.tci_value_head is not None
-        assert critic.tci_value_examples == 3
+        assert critic.training_mode == "tci_full"
+        assert critic.tci_value_examples == 4  # 2 contrasts → 4 examples.
+        assert critic.tci_rank_examples == 4  # 2 pairs → 4 rank examples.
 
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "value_critic.joblib"
             critic.save(path)
             loaded = FourOutcomeTransferCritic.load(path)
 
-        assert loaded.training_mode == "tci_value_augmented"
-        assert loaded.tci_value_head is not None
-        assert loaded.tci_value_examples == 3
-        assert loaded.tci_rank_examples == 4  # 2 pairs → 4 examples.
+        assert loaded.training_mode == "tci_full"
+        assert loaded.tci_value_examples == 4
+        assert loaded.tci_rank_examples == 4
 
     def test_old_checkpoint_no_value_head(self) -> None:
         """Old checkpoints without value head load correctly."""
@@ -372,7 +378,7 @@ class TestValueHeadCheckpoint:
 
 class TestTrainingModes:
     def test_value_augmented_mode_in_valid_modes(self) -> None:
-        assert "tci_value_augmented" in _VALID_CRITIC_TRAINING_MODES
+        assert "tci_full" in _VALID_CRITIC_TRAINING_MODES
 
     def test_effect_classes_defined(self) -> None:
         assert EFFECT_CLASSES == (-1, 0, 1)

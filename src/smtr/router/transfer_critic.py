@@ -58,7 +58,7 @@ _VALID_CRITIC_MODES = frozenset({"flat", "opportunity_factorized"})
 _VALID_CRITIC_TRAINING_MODES: frozenset[str] = frozenset({
     "observational",
     "tci_augmented",
-    "tci_value_augmented",
+    "tci_full",
 })
 TCI_SCHEMA_VERSION: str = "v1"
 
@@ -138,7 +138,22 @@ class TCIValueHead:
 
 
 class FourOutcomeTransferCritic:
-    """Ensemble of logistic regression critics predicting four transfer outcomes.
+    """TCI-SMTR: Transfer-Critical Intervention-guided critic.
+
+    Ensemble of logistic regression critics predicting four transfer
+    outcomes. The critic output ``s_θ(m) = q10(m) - q01(m)`` is the
+    **transfer utility score** estimating E[Y_m - Y_0].
+
+    Training objective (unified, no separate heads):
+      L = L_obs + L_rank + L_τ
+
+    where:
+      - L_obs: observational four-outcome classification (P(Y))
+      - L_rank: pairwise ranking from TCI contrasts (τ(m) > τ(m̃))
+      - L_τ: absolute transfer effect prediction (P(τ))
+
+    All three losses share the same four-class output. Fixed weights:
+    obs_weight=1, rank_weight=1, value_weight=1 (no lambda search).
 
     Outputs: q00=P(neutral_failure), q01=P(negative_transfer),
              q10=P(positive_transfer), q11=P(neutral_success)
@@ -306,50 +321,96 @@ class FourOutcomeTransferCritic:
         tci_alpha: float = 1.0,
         tci_effect_batch: Any | None = None,
     ) -> None:
-        """Flat four-outcome training.
+        """Flat four-outcome training (TCI-SMTR unified critic).
 
         Training modes:
-          - ``observational`` (default): L = L_obs. Identical to original
-            behaviour when ``tci_inputs`` is None.
-          - ``tci_augmented``: L = L_obs + L_TCI, with fixed weights
-            obs_weight=1 per observational example, tci_weight=1 per TCI
-            example (alpha=1, not exposed as hyperparameter).
-          - ``tci_value_augmented``: L = L_obs + L_TCI + L_value, where
-            L_value trains a separate value head for absolute transfer
-            effect prediction τ(m) ∈ {-1, 0, +1}.
+          - ``observational`` (default): L = L_obs.
+          - ``tci_augmented``: L = L_obs + L_rank (pairwise ranking).
+          - ``tci_full``: L = L_obs + L_rank + L_τ (ranking + effect).
+
+        TCI effect supervision is unified into the same critic: effect
+        labels {-1, 0, +1} are mapped to the four-outcome space and
+        appended as additional training examples. No separate value head.
         """
         # Build observational feature matrix.
         X_obs = self.encoder.encode_batch(inputs)
         y_obs = np.array([LABEL_TO_INDEX[lb] for lb in labels])
         n_obs = len(labels)
 
-        # Task 3: TCI augmentation block with fixed weight=1 per example.
-        # No alpha exposure to CLI / paper (fixed at 1.0 internally).
-        X_tci = None
-        y_tci = None
+        # TCI rank augmentation: pairwise ranking examples.
+        X_tci_rank = None
+        y_tci_rank = None
         if tci_inputs:
             from smtr.router.tci_augmentation import (
                 build_tci_augmentation_examples,
             )
             batch = build_tci_augmentation_examples(tci_inputs)
             if batch.inputs:
-                X_tci = self.encoder.encode_batch(batch.inputs)
-                y_tci = np.array(
+                X_tci_rank = self.encoder.encode_batch(batch.inputs)
+                y_tci_rank = np.array(
                     [LABEL_TO_INDEX[lb] for lb in batch.labels]
                 )
-        tci_n = X_tci.shape[0] if X_tci is not None else 0
+        n_rank = X_tci_rank.shape[0] if X_tci_rank is not None else 0
 
-        # Task 1/5: set training_mode based on TCI supervision provided.
-        # Priority: value_augmented > augmented > observational.
-        has_value = (
+        # TCI effect augmentation: absolute effect → 4-class labels.
+        # effect=+1 → positive_transfer, effect=-1 → negative_transfer,
+        # effect= 0 → neutral_success.
+        X_tci_effect = None
+        y_tci_effect = None
+        n_effect = 0
+        has_effect = (
             tci_effect_batch is not None
             and hasattr(tci_effect_batch, 'n_examples')
             and tci_effect_batch.n_examples > 0
+            and tci_inputs is not None
         )
-        if has_value and tci_n > 0:
-            self.training_mode = "tci_value_augmented"
+        if has_effect:
+            from smtr.router.transfer_target import (
+                build_effect_targets,
+            )
+            effect_targets = build_effect_targets(
+                tci_effect_batch, tci_inputs=tci_inputs,
+            )
+            if effect_targets:
+                effect_inputs = [t.input for t in effect_targets]
+                effect_labels = [t.unified_label for t in effect_targets]
+                X_tci_effect = self.encoder.encode_batch(effect_inputs)
+                y_tci_effect = np.array(
+                    [LABEL_TO_INDEX[lb] for lb in effect_labels]
+                )
+                n_effect = X_tci_effect.shape[0]
+
+        # Combine rank + effect into unified TCI block.
+        from scipy import sparse as sp_sparse
+        X_tci = None
+        y_tci = None
+        tci_n = 0
+        if X_tci_rank is not None and X_tci_effect is not None:
+            if sp_sparse.issparse(X_tci_rank) or sp_sparse.issparse(
+                X_tci_effect
+            ):
+                X_tci = sp_sparse.vstack(
+                    [X_tci_rank, X_tci_effect]
+                ).tocsr()
+            else:
+                X_tci = np.vstack([X_tci_rank, X_tci_effect])
+            y_tci = np.concatenate([y_tci_rank, y_tci_effect])
+            tci_n = X_tci.shape[0]
+        elif X_tci_rank is not None:
+            X_tci = X_tci_rank
+            y_tci = y_tci_rank
+            tci_n = n_rank
+        elif X_tci_effect is not None:
+            X_tci = X_tci_effect
+            y_tci = y_tci_effect
+            tci_n = n_effect
+
+        # Set training_mode.
+        # Priority: tci_full > tci_augmented > observational.
+        if n_effect > 0 and n_rank > 0:
+            self.training_mode = "tci_full"
             self.tci_schema_version = TCI_SCHEMA_VERSION
-        elif tci_n > 0:
+        elif n_rank > 0:
             self.training_mode = "tci_augmented"
             self.tci_schema_version = TCI_SCHEMA_VERSION
         else:
@@ -357,7 +418,8 @@ class FourOutcomeTransferCritic:
             self.tci_schema_version = None
         self.n_observational_examples = n_obs
         self.n_tci_examples = tci_n
-        self.tci_rank_examples = tci_n  # rank supervision count.
+        self.tci_rank_examples = n_rank
+        self.tci_value_examples = n_effect
 
         if sample_weights is not None:
             sample_weights = np.asarray(sample_weights, dtype=float)
@@ -366,9 +428,6 @@ class FourOutcomeTransferCritic:
                     "sample_weights must have one entry per training record"
                 )
         if bootstrap_clusters is not None and tci_n > 0:
-            # TCI examples cannot participate in bootstrap clusters (they
-            # are not observational records); disable cluster bootstrap
-            # and fall back to per-row bootstrap when TCI is active.
             bootstrap_clusters = None
 
         unique_classes = np.unique(y_obs)
@@ -399,24 +458,18 @@ class FourOutcomeTransferCritic:
             y_boot = y_obs[idx]
             w_boot = None if sample_weights is None else sample_weights[idx]
 
-            # Task 3: Append TCI examples. Each TCI example gets
-            # weight = alpha / n_tci_examples = 1 / n_tci (alpha=1 fixed).
-            # This ensures the total TCI weight = 1, proportional to
-            # the alpha constraint without over-dominating the
-            # observational training signal.
+            # Append unified TCI examples (rank + effect).
+            # Each TCI example gets weight 1/n_tci (total TCI weight=1).
             if X_tci is not None:
-                from scipy import sparse as sp_sparse
                 if sp_sparse.issparse(X_boot) or sp_sparse.issparse(X_tci):
                     X_boot = sp_sparse.vstack([X_boot, X_tci]).tocsr()
                 else:
                     X_boot = np.vstack([X_boot, X_tci])
                 y_boot = np.concatenate([y_boot, y_tci])
-                # TCI weight per example: 1/n_tci (total TCI weight = 1).
                 w_tci = np.full(tci_n, 1.0 / tci_n)
                 if w_boot is not None:
                     w_boot = np.concatenate([w_boot, w_tci])
                 else:
-                    # Obs examples get weight=1; TCI gets 1/n_tci.
                     w_obs = np.ones(len(idx), dtype=float)
                     w_boot = np.concatenate([w_obs, w_tci])
 
@@ -431,34 +484,6 @@ class FourOutcomeTransferCritic:
             raise ValueError("no bootstrap member covered all required classes")
         self._fitted = True
         self.tci_distillation_n_examples = tci_n
-
-        # Task 3: Train value head for absolute transfer effect prediction.
-        # Only when tci_effect_batch is provided with examples.
-        if has_value:
-            from scipy import sparse as sp_sparse
-            X_val = tci_effect_batch.features
-            y_val = tci_effect_batch.effects
-            # Convert sparse to dense if needed.
-            if sp_sparse.issparse(X_val):
-                X_val = X_val.toarray()
-            # Check class diversity: need at least 2 classes.
-            unique_effects = np.unique(y_val)
-            if len(unique_effects) < 2:
-                # Not enough class diversity; skip value head.
-                self.tci_value_head = None
-                self.tci_value_examples = 0
-            else:
-                clf_val = LogisticRegression(
-                    max_iter=1000,
-                    solver="lbfgs",
-                    class_weight="balanced",
-                )
-                clf_val.fit(X_val, y_val)
-                self.tci_value_head = TCIValueHead(
-                    model=clf_val,
-                    n_examples=len(y_val),
-                )
-                self.tci_value_examples = len(y_val)
 
     def _fit_factorized(
         self,
