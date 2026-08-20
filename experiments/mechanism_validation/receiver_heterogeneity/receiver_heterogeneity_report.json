@@ -1,0 +1,54 @@
+{
+  "generated": "2026-08-20 16:37:51 UTC",
+  "global": {
+    "pearson": 0.144,
+    "sign_accuracy": 0.555,
+    "ranking": 0.5543
+  },
+  "smtr": {
+    "pearson": 0.8361,
+    "sign_accuracy": 0.895,
+    "ranking": 0.9602
+  },
+  "improvement": {
+    "pearson": 0.692,
+    "sign": 0.34,
+    "ranking": 0.4059
+  },
+  "receiver_shuffle": {
+    "normal_pearson": 0.8361,
+    "shuffled_pearson": 0.0748,
+    "pearson_drop": 0.7613,
+    "pearson_drop_std": 0.0489,
+    "normal_sign": 0.895,
+    "shuffled_sign": 0.5371,
+    "sign_drop": 0.3579
+  },
+  "acceptance_criteria": {
+    "smtr_pearson_min": {
+      "description": "SMTR Pearson \u2265 0.75",
+      "value": 0.8361,
+      "threshold": 0.75,
+      "passed": true
+    },
+    "improvement_min": {
+      "description": "SMTR improvement over Global \u2265 0.20",
+      "value": 0.692,
+      "threshold": 0.2,
+      "passed": true
+    },
+    "permutation_drop_min": {
+      "description": "Receiver permutation drop \u2265 20%",
+      "value": 0.7613,
+      "threshold": 0.2,
+      "passed": true
+    },
+    "smtr_ranking_min": {
+      "description": "SMTR pairwise ranking \u2265 0.85",
+      "value": 0.9602,
+      "threshold": 0.85,
+      "passed": true
+    }
+  },
+  "verdict": "PASS"
+}

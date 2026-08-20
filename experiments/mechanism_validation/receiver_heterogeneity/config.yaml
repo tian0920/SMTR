@@ -1,0 +1,44 @@
+# Receiver Heterogeneity Stress Test Configuration
+# --------------------------------------------------
+# Tests whether τ(m,r₁) ≠ τ(m,r₂): same memory has
+# different causal effects for different receivers.
+
+# Synthetic environment
+environment:
+  n_memories: 50
+  n_receivers: 20
+  embedding_dim: 16
+  noise_std: 0.1
+  seed: 42
+
+# Data sampling
+data:
+  n_train: 1000
+  n_test: 400
+  test_fraction: 0.3
+
+# Model architecture
+model:
+  hidden_dim_1: 128
+  hidden_dim_2: 64
+  dropout: 0.1
+
+# Training
+training:
+  epochs: 300
+  lr: 0.005
+  batch_size: 128
+  weight_decay: 0.001
+  patience: 30
+
+# Evaluation
+evaluation:
+  n_permutations: 100
+  n_pairwise_samples: 1000
+
+# Acceptance criteria
+acceptance:
+  smtr_pearson_min: 0.75
+  improvement_min: 0.20
+  permutation_drop_min: 0.20
+  smtr_ranking_min: 0.85
