@@ -1,0 +1,30 @@
+{
+  "obs": {
+    "pairwise_accuracy": 0.5,
+    "utility_correlation": 0.0,
+    "n_pairs": 38,
+    "n_nonzero": 38,
+    "wall_seconds": 1.3
+  },
+  "rank": {
+    "pairwise_accuracy": 1.0,
+    "utility_correlation": 0.0,
+    "n_pairs": 38,
+    "n_nonzero": 38,
+    "wall_seconds": 1.5
+  },
+  "value": {
+    "pairwise_accuracy": 0.8421,
+    "utility_correlation": 0.0,
+    "n_pairs": 38,
+    "n_nonzero": 38,
+    "wall_seconds": 0.7
+  },
+  "full": {
+    "pairwise_accuracy": 1.0,
+    "utility_correlation": 0.0,
+    "n_pairs": 38,
+    "n_nonzero": 38,
+    "wall_seconds": 1.6
+  }
+}

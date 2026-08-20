@@ -421,3 +421,96 @@ def compute_routing_metrics_summary(selections: list[Any]) -> dict[str, float]:
         "top1_hit_rate": compute_top1_hit_rate(selections),
         "n_selections": len(selections),
     }
+
+
+# ---------------------------------------------------------------------------
+# Cross-intervention generalization evaluation (Task 2)
+# ---------------------------------------------------------------------------
+
+def evaluate_cross_intervention(
+    model,
+    split,
+    feature_encoder=None,
+) -> dict[str, Any]:
+    """Evaluate model on cross-intervention split.
+    
+    Tests whether the model learns transferable mechanism by evaluating
+    on held-out intervention factors not seen during training.
+    
+    Parameters
+    ----------
+    model : FourOutcomeTransferCritic
+        Trained critic model.
+    split : InterventionGeneralizationSplit
+        Cross-intervention split with train/test examples.
+    feature_encoder : TransferFeatureEncoder, optional
+        Feature encoder. If None, uses model.encoder.
+        
+    Returns
+    -------
+    dict
+        Dictionary with:
+        - train_factors: list of training factor names
+        - test_factors: list of test factor names
+        - pairwise_accuracy: float, accuracy on test set
+        - utility_correlation: float, Spearman correlation on test set
+        - n_test: int, number of test examples
+    """
+    from scipy.stats import spearmanr
+    
+    if feature_encoder is None:
+        feature_encoder = model.encoder
+    
+    # Extract test examples
+    test_examples = split.test_examples
+    if not test_examples:
+        return {
+            "train_factors": sorted(split.train_factors),
+            "test_factors": sorted(split.test_factors),
+            "pairwise_accuracy": 0.0,
+            "utility_correlation": 0.0,
+            "n_test": 0,
+        }
+    
+    # Encode features for test examples
+    test_features = feature_encoder.encode_batch(test_examples)
+    
+    # Get predicted utility scores
+    # s_theta(m) = q10(m) - q01(m)
+    probas = model.predict_proba(test_features)
+    q10 = probas[:, 2]  # P(Y=1 | memory)
+    q01 = probas[:, 1]  # P(Y=1 | no memory)
+    predicted_utility = q10 - q01
+    
+    # Get ground truth contrast directions
+    true_directions = np.array([ex.contrast_direction for ex in test_examples])
+    
+    # Compute pairwise accuracy: P(predicted_sign matches true_direction)
+    # Only consider examples with non-zero true direction
+    nonzero_mask = true_directions != 0
+    if nonzero_mask.sum() == 0:
+        pairwise_accuracy = 0.0
+        utility_correlation = 0.0
+    else:
+        pred_utility_nonzero = predicted_utility[nonzero_mask]
+        true_dirs_nonzero = true_directions[nonzero_mask]
+        
+        # Predicted direction: sign of utility
+        pred_directions = np.sign(pred_utility_nonzero)
+        
+        # Accuracy: fraction where predicted sign matches true direction
+        correct = (pred_directions == true_dirs_nonzero)
+        pairwise_accuracy = float(correct.mean())
+        
+        # Utility correlation: Spearman correlation between predicted utility
+        # and true direction
+        utility_correlation, _ = spearmanr(pred_utility_nonzero, true_dirs_nonzero)
+        utility_correlation = float(utility_correlation)
+    
+    return {
+        "train_factors": sorted(split.train_factors),
+        "test_factors": sorted(split.test_factors),
+        "pairwise_accuracy": pairwise_accuracy,
+        "utility_correlation": utility_correlation,
+        "n_test": len(test_examples),
+    }

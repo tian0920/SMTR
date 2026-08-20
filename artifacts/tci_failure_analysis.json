@@ -1,0 +1,43 @@
+{
+  "overall": {
+    "n_pairs": 38,
+    "n_nonzero_pairs": 38,
+    "n_neutral_pairs": 0,
+    "accuracy": 1.0,
+    "false_positive": {
+      "count": 0,
+      "examples": []
+    },
+    "false_negative": {
+      "count": 0,
+      "examples": []
+    },
+    "neutral_confusion": {
+      "count": 0,
+      "examples": []
+    }
+  },
+  "by_factor": {
+    "environment_constraint": {
+      "n_pairs": 17,
+      "n_correct": 17,
+      "accuracy": 1.0,
+      "false_positive": 0,
+      "false_negative": 0,
+      "neutral_confusion": 0
+    },
+    "precondition": {
+      "n_pairs": 21,
+      "n_correct": 21,
+      "accuracy": 1.0,
+      "false_positive": 0,
+      "false_negative": 0,
+      "neutral_confusion": 0
+    }
+  },
+  "critic_info": {
+    "training_mode": "tci_full",
+    "n_observational": 642,
+    "n_tci": 152
+  }
+}
