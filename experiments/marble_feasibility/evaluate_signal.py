@@ -1,9 +1,17 @@
-"""Evaluate SMTR probe signal on real MARBLE test data.
+"""Evaluate SMTR probe signal with informative-pair ranking.
 
 Metrics:
-  1. Pairwise ranking: P(τ̂(m1) > τ̂(m2) | τ(m1) > τ(m2))
-  2. Transfer identification accuracy: predicted label vs actual label
-  3. Baseline comparison: random ranking + outcome-only probe
+  1. Informative ranking: pairwise accuracy on pairs where τ(m1) ≠ τ(m2)
+     (excludes τ=0 vs τ=0 — only measures discrimination ability)
+  2. Full ranking: standard pairwise (for comparison)
+  3. Sign classification: z = sign(τ) accuracy
+  4. Transfer identification: 4-class accuracy
+  5. Baselines: random + outcome-only
+
+Diagnostic outputs:
+  - Label distribution (positive/negative/neutral %)
+  - Prediction distribution (mean, std, unique values)
+  - Ranking only on informative pairs
 
 Outputs:
   - data/evaluation_results.json
@@ -41,7 +49,7 @@ def _load_paired_records(path: Path) -> list[dict]:
 
 
 def _get_tau_from_record(record: dict) -> int:
-    """Compute tau = Y_expose - Y_withhold from a paired record."""
+    """Compute τ = Y_expose - Y_withhold from a paired record."""
     y_expose = 1 if record.get("share", {}).get("team_success") else 0
     y_withhold = 1 if record.get("withhold", {}).get("team_success") else 0
     return y_expose - y_withhold
@@ -52,37 +60,32 @@ def _pairwise_ranking(
     true_values: np.ndarray,
     n_samples: int,
     rng: np.random.RandomState,
-) -> float:
-    """Compute pairwise ranking accuracy."""
+    *,
+    informative_only: bool = False,
+) -> tuple[float, int]:
+    """Compute pairwise ranking accuracy.
+
+    If informative_only=True, only count pairs where τ(i) ≠ τ(j).
+    Returns (accuracy, n_informative_pairs).
+    """
     n = len(predictions)
     indices = rng.randint(0, n, size=(n_samples, 2))
     correct = 0
     total = 0
 
     for i, j in indices:
-        if true_values[i] > true_values[j]:
+        if true_values[i] != true_values[j]:
+            if informative_only and true_values[i] == 0 and true_values[j] == 0:
+                continue
             total += 1
-            if predictions[i] > predictions[j]:
-                correct += 1
-        elif true_values[i] < true_values[j]:
-            total += 1
-            if predictions[i] < predictions[j]:
-                correct += 1
+            if true_values[i] > true_values[j]:
+                if predictions[i] > predictions[j]:
+                    correct += 1
+            elif true_values[i] < true_values[j]:
+                if predictions[i] < predictions[j]:
+                    correct += 1
 
-    return correct / max(total, 1)
-
-
-def _predict_with_critic(critic, records: list[dict], memory_pool_path: Path) -> np.ndarray:
-    """Generate tau scores using the trained critic."""
-    from smtr.router.transfer_features import build_training_data_from_records
-
-    eval_data = build_training_data_from_records(records, memory_pool_path)
-    if not eval_data:
-        return np.zeros(len(records))
-
-    inputs = [item for item, _, _ in eval_data]
-    predictions = critic.predict_batch(inputs)
-    return np.array([p.tau_hat for p in predictions])
+    return correct / max(total, 1), total
 
 
 def main() -> None:
@@ -91,10 +94,10 @@ def main() -> None:
     eval_cfg = config["evaluation"]
 
     print("=" * 60)
-    print("MARBLE Feasibility Test — Signal Evaluation")
+    print("MARBLE Feasibility Test — Signal Evaluation (Informative)")
     print("=" * 60)
 
-    # Load test records
+    # ── Load test records ──
     test_path = _PROJECT_ROOT / data_cfg["test_records_path"]
     memory_pool_path = _PROJECT_ROOT / data_cfg["memory_pool_path"]
     print(f"\n  Loading test records: {test_path}")
@@ -103,63 +106,110 @@ def main() -> None:
     print(f"  Total test records: {len(test_records)}")
     print(f"  Valid test records: {len(valid_records)}")
 
-    # Get ground truth tau values
     tau_true = np.array([_get_tau_from_record(r) for r in valid_records])
-    print(f"  τ distribution: +{(tau_true > 0).sum()}, "
-          f"{(tau_true < 0).sum()}, 0={(tau_true == 0).sum()}")
+    n_pos = int((tau_true > 0).sum())
+    n_neg = int((tau_true < 0).sum())
+    n_neu = int((tau_true == 0).sum())
+    print(f"  τ distribution: +{n_pos}, -{n_neg}, 0={n_neu}")
 
-    # Load SMTR probe
+    # ── Load SMTR probe ──
     probe_path = _THIS_DIR / "data" / "smtr_probe.joblib"
     print(f"\n  Loading SMTR probe: {probe_path}")
     from smtr.router.transfer_critic import FourOutcomeTransferCritic
+    from smtr.router.transfer_features import build_training_data_from_records
+
     smtr_probe = FourOutcomeTransferCritic.load(probe_path)
 
-    # SMTR probe predictions (use build_training_data to get aligned records)
+    # ── SMTR predictions ──
     print("  Computing SMTR probe predictions...")
-    from smtr.router.transfer_features import build_training_data_from_records
     eval_data = build_training_data_from_records(valid_records, memory_pool_path)
     eval_inputs = [item for item, _, _ in eval_data]
     eval_records = [rec for _, _, rec in eval_data]
     tau_aligned = np.array([_get_tau_from_record(r) for r in eval_records])
 
-    # Predict tau scores using predict_batch → TransferPrediction.tau_hat
     predictions_raw = smtr_probe.predict_batch(eval_inputs)
     smtr_preds = np.array([p.tau_hat for p in predictions_raw])
 
-    # Evaluate SMTR probe (use tau_aligned which matches smtr_preds)
-    rng = np.random.RandomState(eval_cfg["seed"])
-    smtr_ranking = _pairwise_ranking(
-        smtr_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng
-    )
-    print(f"  SMTR pairwise ranking: {smtr_ranking:.4f}")
+    # ── Diagnostic: prediction distribution ──
+    pred_std = float(np.std(smtr_preds))
+    pred_mean = float(np.mean(smtr_preds))
+    pred_min = float(np.min(smtr_preds))
+    pred_max = float(np.max(smtr_preds))
+    unique_vals = len(set(round(t, 6) for t in smtr_preds))
 
-    # Random baseline
+    print(f"\n  Prediction distribution:")
+    print(f"    mean={pred_mean:.4f}, std={pred_std:.4f}")
+    print(f"    min={pred_min:.4f}, max={pred_max:.4f}")
+    print(f"    unique values: {unique_vals}")
+
+    # ── Label distribution ──
+    true_labels = [r.get("label", "unknown") for r in eval_records]
+    label_dist = Counter(true_labels)
+    print(f"\n  Label distribution:")
+    for label, count in sorted(label_dist.items()):
+        print(f"    {label}: {count} ({count/len(true_labels):.1%})")
+
+    # ── Informative-pair ranking ──
+    rng = np.random.RandomState(eval_cfg["seed"])
+    informative_only = eval_cfg.get("informative_only_ranking", True)
+
+    print(f"\n  Computing {'informative-only' if informative_only else 'full'} ranking...")
+    smtr_ranking, n_info_pairs = _pairwise_ranking(
+        smtr_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng,
+        informative_only=informative_only,
+    )
+    print(f"  SMTR ranking: {smtr_ranking:.4f} ({n_info_pairs} informative pairs)")
+
+    # Random baseline (informative)
     print("\n  Computing random baseline...")
     random_preds = rng.randn(len(tau_aligned))
-    random_ranking = _pairwise_ranking(
-        random_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng
+    random_ranking, _ = _pairwise_ranking(
+        random_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng,
+        informative_only=informative_only,
     )
-    print(f"  Random pairwise ranking: {random_ranking:.4f}")
+    print(f"  Random ranking: {random_ranking:.4f}")
 
-    # Outcome-only baseline: predict P(Y_expose) without using Y_withhold
+    # Outcome-only baseline
     print("\n  Computing outcome-only baseline...")
     outcome_preds = np.array([
         1.0 if r.get("share", {}).get("team_success") else 0.0
         for r in eval_records
     ])
-    outcome_ranking = _pairwise_ranking(
-        outcome_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng
+    outcome_ranking, _ = _pairwise_ranking(
+        outcome_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng,
+        informative_only=informative_only,
     )
-    print(f"  Outcome-only pairwise ranking: {outcome_ranking:.4f}")
+    print(f"  Outcome-only ranking: {outcome_ranking:.4f}")
 
-    # Transfer identification accuracy
+    # ── Full ranking (for reference) ──
+    print("\n  Computing full ranking (reference)...")
+    smtr_full_ranking, n_full_pairs = _pairwise_ranking(
+        smtr_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng,
+        informative_only=False,
+    )
+    print(f"  SMTR full ranking: {smtr_full_ranking:.4f} ({n_full_pairs} total informative pairs)")
+
+    # ── Sign classifier evaluation ──
+    sign_clf_path = _THIS_DIR / "data" / "sign_classifier.joblib"
+    sign_accuracy = None
+    sign_pred_dist = {}
+    if sign_clf_path.exists():
+        print("\n  Evaluating sign classifier...")
+        sign_clf = joblib.load(sign_clf_path)
+        encoder = smtr_probe.encoder
+        X_test_sparse = encoder.encode_batch(eval_inputs)
+        X_test = X_test_sparse.toarray() if hasattr(X_test_sparse, 'toarray') else np.asarray(X_test_sparse)
+        z_pred = sign_clf.predict(X_test)
+        z_true = np.array([np.sign(t) + 1 for t in tau_aligned])  # {-1,0,1}→{0,1,2}
+        sign_accuracy = float((z_pred == z_true).mean())
+
+        z_names = ["negative", "neutral", "positive"]
+        sign_pred_dist = {z_names[k]: int((z_pred == k).sum()) for k in range(3)}
+        print(f"  Sign classifier accuracy: {sign_accuracy:.4f}")
+        print(f"  Sign predictions: {sign_pred_dist}")
+
+    # ── Transfer identification accuracy ──
     print("\n  Computing transfer identification accuracy...")
-    _LABEL_MAP = {
-        "q00_neutral_failure": "neutral_failure",
-        "q01_negative_transfer": "negative_transfer",
-        "q10_positive_transfer": "positive_transfer",
-        "q11_neutral_success": "neutral_success",
-    }
     smtr_labels = []
     for pred in predictions_raw:
         probs = {
@@ -170,29 +220,42 @@ def main() -> None:
         }
         smtr_labels.append(max(probs, key=probs.get))
 
-    true_labels = [r.get("label", "unknown") for r in eval_records]
     correct = sum(1 for p, t in zip(smtr_labels, true_labels) if p == t)
     smtr_identification_acc = correct / len(true_labels) if true_labels else 0.0
-    print(f"  SMTR transfer identification accuracy: {smtr_identification_acc:.4f}")
+    print(f"  SMTR 4-class identification accuracy: {smtr_identification_acc:.4f}")
 
-    # Save results
+    # ── Save results ──
     results = {
         "test_records": len(test_records),
         "valid_records": len(valid_records),
         "tau_distribution": {
-            "positive": int((tau_true > 0).sum()),
-            "negative": int((tau_true < 0).sum()),
-            "neutral": int((tau_true == 0).sum()),
+            "positive": n_pos,
+            "negative": n_neg,
+            "neutral": n_neu,
         },
+        "prediction_distribution": {
+            "mean": round(pred_mean, 4),
+            "std": round(pred_std, 4),
+            "min": round(pred_min, 4),
+            "max": round(pred_max, 4),
+            "unique_values": unique_vals,
+        },
+        "label_distribution": dict(label_dist),
         "smtr_probe": {
-            "pairwise_ranking": round(smtr_ranking, 4),
+            "informative_ranking": round(smtr_ranking, 4),
+            "full_ranking": round(smtr_full_ranking, 4),
             "identification_accuracy": round(smtr_identification_acc, 4),
+            "n_informative_pairs": n_info_pairs,
         },
         "random_baseline": {
             "pairwise_ranking": round(random_ranking, 4),
         },
         "outcome_only_baseline": {
             "pairwise_ranking": round(outcome_ranking, 4),
+        },
+        "sign_classifier": {
+            "accuracy": round(sign_accuracy, 4) if sign_accuracy is not None else None,
+            "prediction_distribution": sign_pred_dist,
         },
         "improvement": {
             "vs_random": round(smtr_ranking - random_ranking, 4),
@@ -205,13 +268,16 @@ def main() -> None:
         json.dump(results, f, indent=2)
     print(f"\n  Saved: {results_path}")
 
-    # Summary
+    # ── Summary ──
     print("\n  Evaluation Summary:")
-    print(f"    SMTR probe ranking:     {smtr_ranking:.4f}")
-    print(f"    Random baseline:       {random_ranking:.4f}")
-    print(f"    Outcome-only baseline: {outcome_ranking:.4f}")
-    print(f"    SMTR vs random:        +{smtr_ranking - random_ranking:.4f}")
-    print(f"    SMTR vs outcome-only:  +{smtr_ranking - outcome_ranking:.4f}")
+    print(f"    SMTR informative ranking: {smtr_ranking:.4f}")
+    print(f"    Random baseline:          {random_ranking:.4f}")
+    print(f"    Outcome-only baseline:    {outcome_ranking:.4f}")
+    print(f"    SMTR vs random:           {smtr_ranking - random_ranking:+.4f}")
+    print(f"    SMTR vs outcome-only:     {smtr_ranking - outcome_ranking:+.4f}")
+    print(f"    τ pred std:               {pred_std:.4f}")
+    if sign_accuracy is not None:
+        print(f"    Sign classifier acc:      {sign_accuracy:.4f}")
 
     print("\nDone.")
 

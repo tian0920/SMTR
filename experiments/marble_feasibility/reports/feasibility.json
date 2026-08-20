@@ -1,13 +1,15 @@
 {
   "signal_statistics": {
-    "total_pairs": 1008,
-    "valid_pairs": 642,
-    "positive_transfer": 40,
-    "negative_transfer": 40,
-    "neutral": 562,
-    "positive_pct": 0.0623,
-    "negative_pct": 0.0623,
-    "neutral_pct": 0.8754
+    "total_pairs": 500,
+    "valid_pairs": 500,
+    "positive_transfer": 125,
+    "negative_transfer": 125,
+    "neutral": 250,
+    "positive_pct": 0.25,
+    "negative_pct": 0.25,
+    "neutral_pct": 0.5,
+    "informative_ratio": 0.5,
+    "sampling_strategy": "informative"
   },
   "evaluation_results": {
     "test_records": 252,
@@ -17,9 +19,24 @@
       "negative": 8,
       "neutral": 150
     },
+    "prediction_distribution": {
+      "mean": 0.0113,
+      "std": 0.1628,
+      "min": -0.2639,
+      "max": 0.2542,
+      "unique_values": 6
+    },
+    "label_distribution": {
+      "neutral_success": 33,
+      "positive_transfer": 15,
+      "neutral_failure": 117,
+      "negative_transfer": 8
+    },
     "smtr_probe": {
-      "pairwise_ranking": 0.478,
-      "identification_accuracy": 0.6763
+      "informative_ranking": 0.5034,
+      "full_ranking": 0.4996,
+      "identification_accuracy": 0.1965,
+      "n_informative_pairs": 1182
     },
     "random_baseline": {
       "pairwise_ranking": 0.5235
@@ -27,40 +44,43 @@
     "outcome_only_baseline": {
       "pairwise_ranking": 0.5956
     },
+    "sign_classifier": {
+      "accuracy": 0.341,
+      "prediction_distribution": {
+        "negative": 93,
+        "neutral": 52,
+        "positive": 28
+      }
+    },
     "improvement": {
-      "vs_random": -0.0455,
-      "vs_outcome_only": -0.1176
+      "vs_random": -0.0201,
+      "vs_outcome_only": -0.0922
     }
   },
   "acceptance_criteria": {
     "checks": {
-      "intervention_executable": {
-        "description": "expose/withhold intervention executable",
+      "informative_ratio": {
+        "description": "Informative ratio >= 30%",
         "passed": true,
-        "value": "Yes (existing paired records loaded)"
+        "value": "50.0%",
+        "threshold": "30%"
       },
-      "positive_transfer": {
-        "description": "Positive transfer >= 5%",
+      "tau_pred_std": {
+        "description": "\u03c4 prediction std > 0.1",
         "passed": true,
-        "value": "6.2%",
-        "threshold": "5%"
+        "value": "0.1628",
+        "threshold": ">0.1"
       },
-      "negative_transfer": {
-        "description": "Negative transfer > 0%",
-        "passed": true,
-        "value": "6.2%",
-        "threshold": ">0%"
-      },
-      "smtr_ranking": {
-        "description": "SMTR ranking > random + 10%",
+      "informative_ranking": {
+        "description": "Informative ranking > 0.65",
         "passed": false,
-        "value": "0.4780 (vs random 0.5235, diff=-0.0455)",
-        "threshold": "random + 10%"
+        "value": "0.5034",
+        "threshold": ">0.65"
       },
       "smtr_vs_outcome_only": {
-        "description": "SMTR > outcome-only baseline",
+        "description": "SMTR > outcome-only (informative ranking)",
         "passed": false,
-        "value": "SMTR=0.4780, outcome-only=0.5956",
+        "value": "SMTR=0.5034, outcome-only=0.5956",
         "threshold": "SMTR > outcome-only"
       }
     },

@@ -6,9 +6,24 @@
     "negative": 8,
     "neutral": 150
   },
+  "prediction_distribution": {
+    "mean": 0.0113,
+    "std": 0.1628,
+    "min": -0.2639,
+    "max": 0.2542,
+    "unique_values": 6
+  },
+  "label_distribution": {
+    "neutral_success": 33,
+    "positive_transfer": 15,
+    "neutral_failure": 117,
+    "negative_transfer": 8
+  },
   "smtr_probe": {
-    "pairwise_ranking": 0.478,
-    "identification_accuracy": 0.6763
+    "informative_ranking": 0.5034,
+    "full_ranking": 0.4996,
+    "identification_accuracy": 0.1965,
+    "n_informative_pairs": 1182
   },
   "random_baseline": {
     "pairwise_ranking": 0.5235
@@ -16,8 +31,16 @@
   "outcome_only_baseline": {
     "pairwise_ranking": 0.5956
   },
+  "sign_classifier": {
+    "accuracy": 0.341,
+    "prediction_distribution": {
+      "negative": 93,
+      "neutral": 52,
+      "positive": 28
+    }
+  },
   "improvement": {
-    "vs_random": -0.0455,
-    "vs_outcome_only": -0.1176
+    "vs_random": -0.0201,
+    "vs_outcome_only": -0.0922
   }
 }

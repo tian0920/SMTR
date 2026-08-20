@@ -1,10 +1,12 @@
 {
-  "total_pairs": 1008,
-  "valid_pairs": 642,
-  "positive_transfer": 40,
-  "negative_transfer": 40,
-  "neutral": 562,
-  "positive_pct": 0.0623,
-  "negative_pct": 0.0623,
-  "neutral_pct": 0.8754
+  "total_pairs": 500,
+  "valid_pairs": 500,
+  "positive_transfer": 125,
+  "negative_transfer": 125,
+  "neutral": 250,
+  "positive_pct": 0.25,
+  "negative_pct": 0.25,
+  "neutral_pct": 0.5,
+  "informative_ratio": 0.5,
+  "sampling_strategy": "informative"
 }

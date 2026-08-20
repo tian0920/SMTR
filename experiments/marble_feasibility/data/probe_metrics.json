@@ -1,161 +1,45 @@
 {
-  "train_records": 642,
-  "train_edges": 303,
-  "train_control_families": 56,
-  "loss_weighting_unit": "treatment_edge",
-  "bootstrap_cluster_unit": "task_receiver_control_family",
+  "train_records": 500,
   "label_distribution": {
-    "positive_transfer": 40,
-    "neutral_failure": 403,
-    "neutral_success": 159,
-    "negative_transfer": 40
+    "neutral_failure": 187,
+    "negative_transfer": 125,
+    "positive_transfer": 125,
+    "neutral_success": 63
   },
-  "coverage_mode": "pilot",
-  "coverage_report": {
-    "coverage_mode": "pilot",
-    "label_counts": {
-      "neutral_failure": 403,
-      "negative_transfer": 40,
-      "positive_transfer": 40,
-      "neutral_success": 159
-    },
-    "minority_class_rate": 0.06230529595015576,
-    "positive_transfer_edges": 37,
-    "negative_transfer_edges": 34,
-    "neutral_success_edges": 85,
-    "neutral_failure_edges": 206
+  "class_weights": {
+    "positive_transfer": 2.0,
+    "negative_transfer": 2.0,
+    "neutral_success": 0.5,
+    "neutral_failure": 0.5
+  },
+  "sample_weights_stats": {
+    "min": 0.0263,
+    "max": 2.0,
+    "mean": 0.4417
   },
   "n_features": 32,
-  "n_bootstrap": 31,
   "feature_block": "full",
-  "seed": 42,
-  "checkpoint": "/home/ecs-user/SMTR/experiments/marble_feasibility/data/smtr_probe.joblib",
   "critic_mode": "flat",
-  "tci_distillation_n_examples": 76,
-  "tci_distillation_alpha": 1.0,
-  "tci_distillation_metrics": {
-    "pairwise_accuracy": 1.0,
-    "pairwise_margin": 0.42738878311596157,
-    "pairwise_loss": 0.5031544616509521,
-    "n_pairs": 38,
-    "precondition_accuracy": 1.0,
-    "precondition_n": 21,
-    "environment_constraint_accuracy": 1.0,
-    "environment_constraint_n": 17
-  },
-  "tci_training_mode": "observational+tci",
-  "validation_records": 173,
-  "validation_edges": 77,
-  "validation_accuracy": 0.6763005780346821,
-  "validation_classification": {
-    "accuracy": 0.6763005780346821,
-    "macro_f1": 0.20172413793103447,
-    "per_class_precision": {
-      "neutral_failure": 0.6763005780346821,
-      "negative_transfer": 0.0,
-      "positive_transfer": 0.0,
-      "neutral_success": 0.0
-    },
-    "per_class_recall": {
-      "neutral_failure": 1.0,
-      "negative_transfer": 0.0,
-      "positive_transfer": 0.0,
-      "neutral_success": 0.0
-    },
-    "confusion_matrix": {
-      "neutral_failure": {
-        "neutral_failure": 117,
-        "negative_transfer": 0,
-        "positive_transfer": 0,
-        "neutral_success": 0
-      },
-      "negative_transfer": {
-        "neutral_failure": 8,
-        "negative_transfer": 0,
-        "positive_transfer": 0,
-        "neutral_success": 0
-      },
-      "positive_transfer": {
-        "neutral_failure": 15,
-        "negative_transfer": 0,
-        "positive_transfer": 0,
-        "neutral_success": 0
-      },
-      "neutral_success": {
-        "neutral_failure": 33,
-        "negative_transfer": 0,
-        "positive_transfer": 0,
-        "neutral_success": 0
-      }
-    },
-    "negative_transfer_recall": 0.0
-  },
-  "validation_probability": {
-    "multiclass_log_loss": 0.9441898719871613,
-    "multiclass_brier_score": 0.5028564909904176,
-    "expected_calibration_error": 0.021243512639434123,
-    "negative_transfer_brier_score": 0.04503572963938918,
-    "q01_calibration_curve": [
-      {
-        "bin": 0,
-        "mean_predicted_q01": 0.06013315315533339,
-        "observed_rate": 0.04225352112676056,
-        "weight": 0.8208092485549133
-      },
-      {
-        "bin": 1,
-        "mean_predicted_q01": 0.10116838511499232,
-        "observed_rate": 0.06451612903225806,
-        "weight": 0.1791907514450867
-      }
-    ]
-  },
-  "epsilon_star": 0.05,
-  "risk_delta": 0.1,
-  "epsilon_selected_on": "validation",
-  "calibration_split": "validation",
-  "epsilon_selection_split": "validation",
-  "validation_edge_count": 77,
-  "calibration_unit": "treatment_edge",
-  "calibration_method": "isotonic",
-  "calibration_status": "fitted",
-  "calibration_edge_count": 77,
-  "epsilon_selection_unit": "treatment_edge",
-  "epsilon_validation_edge_count": 77,
-  "budget_policy": {
-    "name": null,
-    "requested_fraction": 1.0,
-    "realized_fraction": 1.0,
-    "adaptive_sampling": false,
-    "outcome_fields_used": false,
-    "critic_predictions_used": false,
-    "budget_scope": "train_treatment_edges_only",
-    "validation_support": "full",
-    "test_support": "full"
-  },
-  "training_support": {
-    "parent_train_record_count": 1008,
-    "effective_train_record_count": 1008,
-    "parent_train_edge_count": 336,
-    "effective_train_edge_count": 336,
-    "selected_edge_count_from_manifest": 336,
-    "all_selected_edges_found": true,
-    "unexpected_training_edge_count": 0,
-    "incomplete_seed_support_edge_count": 0,
-    "all_selected_edges_have_full_seed_support": true
-  },
-  "artifact_digests": {
-    "parent_train_records": "407835acc02eca47d182a0f94307787082a9ec0b09e32698ec6355b19f1e9ede",
-    "effective_train_records": "407835acc02eca47d182a0f94307787082a9ec0b09e32698ec6355b19f1e9ede",
-    "budget_candidate_manifest": null
-  },
-  "seed_protocol": {
-    "seed_protocol": "pilot_v1",
-    "generation_seeds": [
-      0,
-      1,
-      2
+  "seed": 42,
+  "tci_distillation_n_examples": 37,
+  "sign_classifier": {
+    "train_accuracy": 0.412,
+    "class_labels": [
+      "negative",
+      "neutral",
+      "positive"
     ],
-    "seed_manifest_digest": "sha256:326c1e5d8234b395"
-  }
+    "label_distribution": {
+      "negative": 125,
+      "neutral": 250,
+      "positive": 125
+    }
+  },
+  "validation_records": 173,
+  "validation_accuracy": 0.1965,
+  "tau_pred_mean": 0.0113,
+  "tau_pred_std": 0.1628,
+  "tau_pred_min": -0.2639,
+  "tau_pred_max": 0.2542,
+  "unique_tau_values": 6
 }
