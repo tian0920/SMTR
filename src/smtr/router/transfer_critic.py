@@ -1,8 +1,15 @@
-"""Four-outcome transfer critic for cross-agent memory exposure."""
+"""Four-outcome transfer critic for cross-agent memory exposure.
+
+Supports two modes:
+  - ``flat``: original four-class multinomial logistic regression.
+  - ``opportunity_factorized``: three binary heads (baseline, rescue, damage)
+    whose predictions are combined into the four-outcome distribution.
+"""
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +47,26 @@ LABEL_TO_INDEX = {
     "neutral_success": 3,
 }
 
+_VALID_CRITIC_MODES = frozenset({"flat", "opportunity_factorized"})
+
+
+@dataclass
+class FactorizedCriticMember:
+    """One bootstrap member of the opportunity-factorized critic."""
+
+    baseline_model: Any
+    rescue_model: Any
+    damage_model: Any
+
+
+@dataclass(frozen=True)
+class FactorizedDiagnostics:
+    """Per-head predicted probabilities for one candidate exposure."""
+
+    baseline_success: float
+    rescue_given_failure: float
+    damage_given_success: float
+
 
 class FourOutcomeTransferCritic:
     """Ensemble of logistic regression critics predicting four transfer outcomes.
@@ -55,7 +82,14 @@ class FourOutcomeTransferCritic:
         n_bootstrap: int = 31,
         feature_block: str = "full",
         seed: int = 7,
+        critic_mode: str = "flat",
     ) -> None:
+        if critic_mode not in _VALID_CRITIC_MODES:
+            raise ValueError(
+                f"unknown critic_mode: {critic_mode!r}; "
+                f"valid: {sorted(_VALID_CRITIC_MODES)}"
+            )
+        self.critic_mode = critic_mode
         self.n_features = n_features
         self.n_bootstrap = n_bootstrap
         self.feature_block = feature_block
@@ -64,6 +98,8 @@ class FourOutcomeTransferCritic:
             n_features=n_features, feature_block=feature_block
         )
         self.members: list[LogisticRegression] = []
+        self.factorized_members: list[FactorizedCriticMember] = []
+        self.head_support_report: dict[str, Any] | None = None
         self._fitted = False
         self.coverage_report: dict[str, Any] | None = None
         self.q01_calibrator: Q01Calibrator | None = None
@@ -106,8 +142,65 @@ class FourOutcomeTransferCritic:
         # checkpoint so downstream stages verify the same protocol.
         self.seed_protocol_metadata: dict[str, Any] | None = None
         self._edge_calibration_examples: list | None = None
+        # TCI distillation provenance: number of TCI examples appended
+        # during fit(); zero for observational-only critics (and for
+        # old checkpoints loaded before distillation was added).
+        self.tci_distillation_n_examples: int = 0
+        self.tci_distillation_alpha: float | None = None
+        self.tci_distillation_metrics: dict[str, Any] | None = None
 
     def fit(
+        self,
+        inputs: list[CandidateExposureInput],
+        labels: list[str],
+        *,
+        records: list[dict[str, Any]] | None = None,
+        coverage_mode: str = "pilot",
+        sample_weights: np.ndarray | None = None,
+        bootstrap_clusters: dict | None = None,
+        tci_inputs: list[tuple[
+            CandidateExposureInput,
+            CandidateExposureInput,
+            int,
+            str,
+        ]] | None = None,
+        tci_alpha: float = 1.0,
+    ) -> None:
+        """Train bootstrap ensemble on paired record features.
+
+        Dispatches to ``_fit_flat`` or ``_fit_factorized`` based on
+        ``self.critic_mode``. Flat mode ignores ``records``.
+
+        Optional TCI distillation supervision (observational+tci mode):
+        when ``tci_inputs`` is provided, the TCI pairs are converted to
+        soft-labeled binary classification examples and appended to the
+        observational training data with weight ``tci_alpha / n_tci``.
+        When ``tci_inputs`` is None, behaviour is identical to the
+        original ``observational`` training. Default: observational.
+        """
+        if self.critic_mode == "flat":
+            return self._fit_flat(
+                inputs, labels,
+                coverage_mode=coverage_mode,
+                sample_weights=sample_weights,
+                bootstrap_clusters=bootstrap_clusters,
+                tci_inputs=tci_inputs,
+                tci_alpha=tci_alpha,
+            )
+        if self.critic_mode == "opportunity_factorized":
+            if records is None:
+                raise ValueError(
+                    "opportunity_factorized mode requires records="
+                )
+            return self._fit_factorized(
+                inputs, records,
+                coverage_mode=coverage_mode,
+                sample_weights=sample_weights,
+                bootstrap_clusters=bootstrap_clusters,
+            )
+        raise ValueError(f"unknown critic_mode: {self.critic_mode!r}")
+
+    def _fit_flat(
         self,
         inputs: list[CandidateExposureInput],
         labels: list[str],
@@ -115,40 +208,56 @@ class FourOutcomeTransferCritic:
         coverage_mode: str = "pilot",
         sample_weights: np.ndarray | None = None,
         bootstrap_clusters: dict | None = None,
+        tci_inputs: list[tuple[
+            CandidateExposureInput,
+            CandidateExposureInput,
+            int,
+            str,
+        ]] | None = None,
+        tci_alpha: float = 1.0,
     ) -> None:
-        """Train bootstrap ensemble on paired record features.
+        """Original flat four-outcome training (unchanged behaviour).
 
-        ``coverage_mode`` enforces four-outcome label coverage (清单第七章):
-        ``formal`` requires all four classes, ``pilot`` requires at least
-        positive_transfer and negative_transfer. Training without negative
-        transfer always fails fast.
-
-        ``sample_weights`` define the loss contribution of each treatment
-        edge. ``bootstrap_clusters`` define dependence groups for ensemble
-        resampling. Under shared controls, one bootstrap cluster is a
-        task-receiver control family containing all candidates and seeds,
-        so rows sharing one no-memory control never split across a member.
-        ``sample_weights`` should then be the edge-equal weights ``1/n_e``
-        so every edge contributes equal total training weight. When sample
-        weights are supplied they are the only weighting scheme (class
-        balancing is disabled to avoid double weighting).
+        When ``tci_inputs`` is provided, appends distillation examples
+        to the observational data (observational+tci joint training).
+        Old callers (tci_inputs=None) get identical behaviour.
         """
-        X = self.encoder.encode_batch(inputs)
-        y = np.array([LABEL_TO_INDEX[lb] for lb in labels])
+        # Build observational feature matrix.
+        X_obs = self.encoder.encode_batch(inputs)
+        y_obs = np.array([LABEL_TO_INDEX[lb] for lb in labels])
+
+        # Optional TCI distillation block.
+        X_tci = None
+        y_tci = None
+        w_tci = None
+        if tci_inputs:
+            from smtr.router.tci_supervision import (
+                build_tci_distillation_examples,
+            )
+            batch = build_tci_distillation_examples(
+                tci_inputs, alpha=tci_alpha,
+            )
+            if batch.inputs:
+                X_tci = self.encoder.encode_batch(batch.inputs)
+                y_tci = np.array(
+                    [LABEL_TO_INDEX[lb] for lb in batch.labels]
+                )
+                w_tci = batch.weights
+        tci_n = X_tci.shape[0] if X_tci is not None else 0
+
         if sample_weights is not None:
             sample_weights = np.asarray(sample_weights, dtype=float)
             if len(sample_weights) != len(labels):
                 raise ValueError(
                     "sample_weights must have one entry per training record"
                 )
-        if bootstrap_clusters is not None:
-            covered = {i for rows in bootstrap_clusters.values() for i in rows}
-            if covered != set(range(len(labels))):
-                raise ValueError(
-                    "bootstrap_clusters must partition every training record row"
-                )
+        if bootstrap_clusters is not None and tci_n > 0:
+            # TCI examples cannot participate in bootstrap clusters (they
+            # are not observational records); disable cluster bootstrap
+            # and fall back to per-row bootstrap when TCI is active.
+            bootstrap_clusters = None
 
-        unique_classes = np.unique(y)
+        unique_classes = np.unique(y_obs)
         if len(unique_classes) < 2:
             raise ValueError(
                 "training data must contain at least two transfer outcome classes"
@@ -164,26 +273,183 @@ class FourOutcomeTransferCritic:
         for _ in range(self.n_bootstrap):
             if bootstrap_clusters is not None:
                 idx = _cluster_bootstrap_with_full_coverage(
-                    y, bootstrap_clusters, required_classes, rng
+                    y_obs, bootstrap_clusters, required_classes, rng
                 )
             else:
-                idx = _bootstrap_with_full_coverage(y, required_classes, rng)
+                idx = _bootstrap_with_full_coverage(
+                    y_obs, required_classes, rng
+                )
             if idx is None:
                 # Skip this member rather than fitting on a class-deficient
                 # sample; zero-padding missing classes is forbidden.
                 continue
-            X_boot = X[idx]
-            y_boot = y[idx]
+            X_boot = X_obs[idx]
+            y_boot = y_obs[idx]
             w_boot = None if sample_weights is None else sample_weights[idx]
+
+            # Append TCI examples to this bootstrap sample (fixed set).
+            if X_tci is not None:
+                from scipy import sparse as sp_sparse
+                if sp_sparse.issparse(X_boot) or sp_sparse.issparse(X_tci):
+                    X_boot = sp_sparse.vstack([X_boot, X_tci]).tocsr()
+                else:
+                    X_boot = np.vstack([X_boot, X_tci])
+                y_boot = np.concatenate([y_boot, y_tci])
+                if w_boot is not None:
+                    w_boot = np.concatenate([w_boot, w_tci])
+                else:
+                    # Observational rows are unweighted (class_weight=
+                    # "balanced" handles class imbalance); TCI rows keep
+                    # their soft weights. Use explicit sample_weight for
+                    # both blocks so class_weight must be disabled.
+                    w_obs = np.ones(len(idx), dtype=float)
+                    w_boot = np.concatenate([w_obs, w_tci])
+
             clf = LogisticRegression(
                 max_iter=1000,
                 solver="lbfgs",
-                class_weight=None if w_boot is not None else "balanced",
+                class_weight="balanced" if w_boot is None else None,
             )
             clf.fit(X_boot, y_boot, sample_weight=w_boot)
             self.members.append(clf)
         if not self.members:
             raise ValueError("no bootstrap member covered all required classes")
+        self._fitted = True
+        self.tci_distillation_n_examples = tci_n
+
+    def _fit_factorized(
+        self,
+        inputs: list[CandidateExposureInput],
+        records: list[dict[str, Any]],
+        *,
+        coverage_mode: str = "pilot",
+        sample_weights: np.ndarray | None = None,
+        bootstrap_clusters: dict | None = None,
+    ) -> None:
+        """Opportunity-factorized training: three binary heads."""
+        from smtr.router.opportunity_training import (
+            apply_family_multiplicities,
+            bootstrap_family_multiplicities,
+            build_opportunity_training_data,
+        )
+
+        opp = build_opportunity_training_data(inputs, records)
+        self.head_support_report = opp.support_report
+
+        # ---- Formal mode: fail-fast if any head lacks both classes ----
+        for head_name, ds in [
+            ("baseline", opp.baseline),
+            ("rescue", opp.rescue),
+            ("damage", opp.damage),
+        ]:
+            if len(ds.inputs) == 0:
+                if head_name in ("rescue", "damage"):
+                    # Allowed: no opportunity for this head.
+                    continue
+                raise ValueError(
+                    f"formal mode: {head_name} head has no training data"
+                )
+            unique = set(ds.targets.tolist())
+            if head_name == "baseline" and len(unique) < 2:
+                raise ValueError(
+                    f"formal mode: {head_name} head lacks class diversity: "
+                    f"{unique}"
+                )
+
+        # ---- Bootstrap: shared family multiplicities ----
+        # Use baseline family_ids as the canonical family set.
+        all_family_ids = opp.baseline.family_ids
+        rng = np.random.default_rng(self.seed)
+        self.factorized_members = []
+        max_attempts = self.n_bootstrap * 20
+
+        for attempt in range(max_attempts):
+            if len(self.factorized_members) >= self.n_bootstrap:
+                break
+            mult = bootstrap_family_multiplicities(all_family_ids, rng)
+
+            # Apply to baseline.
+            b_idx, b_w = apply_family_multiplicities(opp.baseline, mult)
+            if len(b_idx) == 0:
+                continue
+            b_targets = opp.baseline.targets[b_idx]
+            if len(set(b_targets.tolist())) < 2:
+                continue  # skip: baseline lacks both classes
+
+            # Apply to rescue.
+            r_idx, r_w = apply_family_multiplicities(opp.rescue, mult)
+            # Apply to damage.
+            d_idx, d_w = apply_family_multiplicities(opp.damage, mult)
+
+            # ---- Fit baseline head ----
+            X_b = self.encoder.encode_baseline_batch(
+                [opp.baseline.inputs[i].receiver_state for i in b_idx]
+            )
+            baseline_clf = LogisticRegression(
+                max_iter=1000, solver="lbfgs", class_weight=None,
+            )
+            baseline_clf.fit(X_b, b_targets, sample_weight=b_w)
+
+            # ---- Fit rescue head (may be empty) ----
+            rescue_clf = None
+            if len(r_idx) > 0:
+                r_targets = opp.rescue.targets[r_idx]
+                if len(set(r_targets.tolist())) >= 2:
+                    X_r = self.encoder.encode_batch(
+                        [opp.rescue.inputs[i] for i in r_idx]
+                    )
+                    rescue_clf = LogisticRegression(
+                        max_iter=1000, solver="lbfgs", class_weight=None,
+                    )
+                    rescue_clf.fit(X_r, r_targets, sample_weight=r_w)
+
+            # ---- Fit damage head (may be empty) ----
+            damage_clf = None
+            if len(d_idx) > 0:
+                d_targets = opp.damage.targets[d_idx]
+                if len(set(d_targets.tolist())) >= 2:
+                    X_d = self.encoder.encode_batch(
+                        [opp.damage.inputs[i] for i in d_idx]
+                    )
+                    damage_clf = LogisticRegression(
+                        max_iter=1000, solver="lbfgs", class_weight=None,
+                    )
+                    damage_clf.fit(X_d, d_targets, sample_weight=d_w)
+
+            # Skip member if rescue or damage had opportunity but
+            # lacked class diversity.
+            if len(r_idx) > 0 and rescue_clf is None:
+                continue
+            if len(d_idx) > 0 and damage_clf is None:
+                continue
+
+            self.factorized_members.append(FactorizedCriticMember(
+                baseline_model=baseline_clf,
+                rescue_model=rescue_clf,
+                damage_model=damage_clf,
+            ))
+
+        if len(self.factorized_members) < self.n_bootstrap:
+            raise ValueError(
+                f"could not fit {self.n_bootstrap} factorized members; "
+                f"got {len(self.factorized_members)} after {max_attempts} "
+                f"attempts. Check head support."
+            )
+
+        # Also run flat coverage report for checkpoint compatibility.
+        labels = [
+            f"q{int(r['share']['team_success'])}{int(r['withhold']['team_success'])}"
+            .replace("q00", "neutral_failure")
+            .replace("q01", "negative_transfer")
+            .replace("q10", "positive_transfer")
+            .replace("q11", "neutral_success")
+            for r in records
+        ]
+        from smtr.marble.paired_outcomes import paired_record_label
+        labels = [paired_record_label(r) for r in records]
+        report = validate_transfer_label_coverage(labels, mode=coverage_mode)
+        report.update(count_outcome_edges(inputs, labels))
+        self.coverage_report = report
         self._fitted = True
 
     def predict(self, item: CandidateExposureInput) -> TransferPrediction:
@@ -200,6 +466,8 @@ class FourOutcomeTransferCritic:
         """Per-bootstrap-member four-outcome probabilities, shape (M, 4)."""
         if not self._fitted:
             raise RuntimeError("critic not fitted")
+        if self.critic_mode == "opportunity_factorized":
+            return self._factorized_member_probs(item)
         X = self.encoder.encode_one(item)
         member_probs = []
         for clf in self.members:
@@ -210,6 +478,64 @@ class FourOutcomeTransferCritic:
                 full_p[int(c)] = p[i]
             member_probs.append(full_p)
         return np.asarray(member_probs)
+
+    def _factorized_member_probs(
+        self, item: CandidateExposureInput
+    ) -> np.ndarray:
+        """Per-member four-outcome probs from factorized heads, shape (M, 4)."""
+        X_b = self.encoder.encode_baseline_one(item.receiver_state)
+        X_full = self.encoder.encode_one(item)
+        member_probs = []
+        for member in self.factorized_members:
+            b = _binary_prob(member.baseline_model, X_b)
+            g = (
+                _binary_prob(member.rescue_model, X_full)
+                if member.rescue_model is not None
+                else 0.0
+            )
+            h = (
+                _binary_prob(member.damage_model, X_full)
+                if member.damage_model is not None
+                else 0.0
+            )
+            q00 = (1.0 - b) * (1.0 - g)
+            q01 = b * h
+            q10 = (1.0 - b) * g
+            q11 = b * (1.0 - h)
+            # Numerical invariant: no softmax, strict conservation.
+            assert q00 >= 0 and q01 >= 0 and q10 >= 0 and q11 >= 0
+            assert abs(q00 + q01 + q10 + q11 - 1.0) < 1e-8
+            member_probs.append(np.array([q00, q01, q10, q11]))
+        return np.asarray(member_probs)
+
+    def predict_factorized_diagnostics(
+        self, item: CandidateExposureInput
+    ) -> FactorizedDiagnostics:
+        """Per-head mean predictions for debugging (factorized mode only)."""
+        if self.critic_mode != "opportunity_factorized":
+            raise RuntimeError(
+                "predict_factorized_diagnostics requires opportunity_factorized mode"
+            )
+        X_b = self.encoder.encode_baseline_one(item.receiver_state)
+        X_full = self.encoder.encode_one(item)
+        b_vals, g_vals, h_vals = [], [], []
+        for member in self.factorized_members:
+            b_vals.append(_binary_prob(member.baseline_model, X_b))
+            g_vals.append(
+                _binary_prob(member.rescue_model, X_full)
+                if member.rescue_model is not None
+                else 0.0
+            )
+            h_vals.append(
+                _binary_prob(member.damage_model, X_full)
+                if member.damage_model is not None
+                else 0.0
+            )
+        return FactorizedDiagnostics(
+            baseline_success=float(np.mean(b_vals)),
+            rescue_given_failure=float(np.mean(g_vals)),
+            damage_given_success=float(np.mean(h_vals)),
+        )
 
     def predict_distribution(
         self, item: CandidateExposureInput
@@ -498,6 +824,21 @@ class FourOutcomeTransferCritic:
                 "method_schema_metadata": self.method_schema_metadata,
                 # 清单 Formal Protocol §2: seed protocol metadata.
                 "seed_protocol_metadata": self.seed_protocol_metadata,
+                # Counterfactual Opportunity v1: factorized state.
+                "critic_mode": self.critic_mode,
+                "factorization_version": (
+                    "counterfactual_opportunity_v1"
+                    if self.critic_mode == "opportunity_factorized"
+                    else None
+                ),
+                "factorized_members": self.factorized_members,
+                "head_support_report": self.head_support_report,
+                # TCI Distillation provenance (Task 6).
+                "tci_distillation_n_examples": (
+                    self.tci_distillation_n_examples
+                ),
+                "tci_distillation_alpha": self.tci_distillation_alpha,
+                "tci_distillation_metrics": self.tci_distillation_metrics,
             },
             path,
         )
@@ -511,6 +852,7 @@ class FourOutcomeTransferCritic:
             n_bootstrap=data["n_bootstrap"],
             feature_block=data["feature_block"],
             seed=data["seed"],
+            critic_mode=data.get("critic_mode", "flat"),
         )
         critic.members = data["members"]
         critic.encoder = data["encoder"]
@@ -558,6 +900,13 @@ class FourOutcomeTransferCritic:
         critic.training_artifact_digests = data.get("artifact_digests")
         critic.method_schema_metadata = data.get("method_schema_metadata")
         critic.seed_protocol_metadata = data.get("seed_protocol_metadata")
+        critic.factorized_members = data.get("factorized_members", [])
+        critic.head_support_report = data.get("head_support_report")
+        critic.tci_distillation_n_examples = int(
+            data.get("tci_distillation_n_examples", 0)
+        )
+        critic.tci_distillation_alpha = data.get("tci_distillation_alpha")
+        critic.tci_distillation_metrics = data.get("tci_distillation_metrics")
         critic._fitted = True
         return critic
 
@@ -628,3 +977,15 @@ def _stratified_bootstrap_indices(
     sampled_array = np.asarray(sampled)
     rng.shuffle(sampled_array)
     return sampled_array
+
+
+def _binary_prob(model: Any, X: Any) -> float:
+    """P(target=1) from a binary LogisticRegression model."""
+    p = model.predict_proba(X)[0]
+    # Find the index of class 1.
+    classes = model.classes_
+    idx1 = list(classes).index(1) if 1 in classes else None
+    if idx1 is None:
+        # Model only saw one class; return 0 or 1.
+        return float(classes[0] == 1)
+    return float(p[idx1])

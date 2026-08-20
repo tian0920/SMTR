@@ -192,6 +192,8 @@ class CapturingCritic:
         self,
         inputs,
         labels,
+        *,
+        records=None,
         coverage_mode=None,
         sample_weights=None,
         bootstrap_clusters=None,
@@ -199,6 +201,7 @@ class CapturingCritic:
         self.fit_inputs = list(inputs)
         self.fit_labels = list(labels)
         self.fit_kwargs = {
+            "records": records,
             "coverage_mode": coverage_mode,
             "sample_weights": sample_weights,
             "bootstrap_clusters": bootstrap_clusters,

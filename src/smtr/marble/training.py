@@ -35,6 +35,7 @@ from smtr.router.transfer_calibration import (
 )
 from smtr.router.transfer_critic import FourOutcomeTransferCritic
 from smtr.router.transfer_features import (
+    build_routing_card_from_pool_entry,
     build_training_data_from_records,
     load_paired_records_with_metadata,
 )
@@ -256,6 +257,164 @@ def prepare_effective_training_records(
     )
 
 
+def _build_tci_inputs_for_critic(
+    *,
+    tci_contrasts_path: Path | None,
+    perturbations_manifest_path: Path | None,
+    paired_records_path: Path | None,
+    memory_pool_path: Path,
+    marble_source_path: Path | None = None,
+) -> list[tuple[CandidateExposureInput, CandidateExposureInput, int, str]]:
+    """Build TCI supervision tuples for critic.fit.
+
+    Returns list of ``(input_original, input_perturbed, direction,
+    contrast_type)``. Empty list when any path is missing (graceful
+    fallback to observational-only training).
+
+    The receiver/task context is taken from the paired records file
+    matched by (task_id, receiver_agent_id) — the same context that
+    observational training uses. The original card comes from the
+    memory pool; the perturbed card from the perturbations manifest.
+    Both cards share one ReceiverState so the critic sees a true
+    memory-level contrast in its own feature space.
+    """
+    from smtr.core.types import (
+        AgentProfile,
+        CandidateExposureInput,
+        MemoryRoutingCard,
+        ReceiverState,
+    )
+
+    if (
+        tci_contrasts_path is None
+        or perturbations_manifest_path is None
+        or paired_records_path is None
+        or not tci_contrasts_path.exists()
+        or not perturbations_manifest_path.exists()
+        or not paired_records_path.exists()
+    ):
+        return []
+
+    # ---- Load memory pool (dict by memory_id) ----
+    pool: dict[str, dict] = {}
+    for line in memory_pool_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            mem = json.loads(line)
+            pool[mem["memory_id"]] = mem
+
+    # ---- Load perturbations manifest ----
+    manifest = json.loads(
+        perturbations_manifest_path.read_text(encoding="utf-8")
+    )
+    perturbations_by_id: dict[str, dict] = {}
+    for entry in manifest.get("perturbations", []):
+        spec = entry.get("spec", {})
+        pid = spec.get("perturbation_id")
+        if pid:
+            perturbations_by_id[pid] = entry
+
+    # ---- Build receiver context lookup from paired records ----
+    # Keyed by (task_id, receiver_agent_id); first match wins.
+    def _lookup_context(rec: dict) -> tuple[str, str] | None:
+        tid = str(rec.get("task_id", ""))
+        rid = rec.get("receiver_agent_id", "")
+        return (tid, rid) if tid and rid else None
+
+    context_records: dict[tuple[str, str], dict] = {}
+    for line in paired_records_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        rec = json.loads(line)
+        key = _lookup_context(rec)
+        if key is not None and key not in context_records:
+            context_records[key] = rec
+
+    if not context_records:
+        return []
+
+    # ---- Load contrasts ----
+    contrasts: list[dict] = []
+    for line in tci_contrasts_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            contrasts.append(json.loads(line))
+
+    tci_inputs: list[
+        tuple[CandidateExposureInput, CandidateExposureInput, int, str]
+    ] = []
+    for c in contrasts:
+        pid = c.get("perturbation_id")
+        direction = c.get("contrast_direction", 0)
+        if pid is None or direction == 0:
+            continue
+        entry = perturbations_by_id.get(pid)
+        if entry is None:
+            continue
+        spec = entry["spec"]
+        perturbed_card_raw = entry.get("perturbed_card")
+        if perturbed_card_raw is None:
+            continue
+
+        candidate_memory_id = spec.get("candidate_memory_id")
+        if candidate_memory_id not in pool:
+            continue
+
+        # Original card from pool.
+        original_card = build_routing_card_from_pool_entry(
+            pool[candidate_memory_id]
+        )
+        # Perturbed card from manifest.
+        perturbed_card = MemoryRoutingCard(**perturbed_card_raw)
+
+        # Receiver context lookup by (task_id, receiver_agent_id).
+        task_id = str(spec.get("task_id", c.get("task_id", "")))
+        receiver_agent_id = spec.get(
+            "receiver_agent_id", c.get("receiver_agent_id", "")
+        )
+        rec = context_records.get((task_id, receiver_agent_id))
+        if rec is None:
+            continue
+
+        receiver = AgentProfile(
+            agent_id=rec.get("receiver_agent_id", ""),
+            role=rec.get("receiver_role", "unknown"),
+            capabilities=tuple(rec.get("receiver_capabilities", [])),
+            model_name=rec.get("receiver_model_name"),
+            tool_names=tuple(rec.get("receiver_tool_names", [])),
+        )
+        receiver_state = ReceiverState(
+            task_id=task_id,
+            scenario=rec.get("scenario", "database"),
+            task_instruction=rec.get("task_instruction", ""),
+            receiver=receiver,
+            subtask=rec.get("subtask"),
+            environment_signature=tuple(
+                rec.get("environment_signature", [])
+            ),
+            local_context_summary=rec.get("local_context_summary", ""),
+            team_context_summary=rec.get("team_context_summary", ""),
+        )
+
+        input_orig = CandidateExposureInput(
+            receiver_state=receiver_state,
+            candidate_card=original_card,
+        )
+        input_pert = CandidateExposureInput(
+            receiver_state=receiver_state,
+            candidate_card=perturbed_card,
+        )
+
+        # contrast_type derived from the perturbation operator
+        # (precondition, environment_constraint, capability, etc.)
+        contrast_type = spec.get(
+            "perturbation_type", spec.get("changed_field", "unknown")
+        )
+        tci_inputs.append(
+            (input_orig, input_pert, int(direction), contrast_type)
+        )
+
+    return tci_inputs
+
+
 def train_critic(
     *,
     train_records_path: Path,
@@ -273,8 +432,21 @@ def train_critic(
     train_records_already_budgeted: bool = False,
     experiment_mode: str | None = None,
     marble_source_path: Path | None = None,
+    critic_mode: str = "flat",
+    tci_contrasts_path: Path | None = None,
+    tci_perturbations_manifest_path: Path | None = None,
+    tci_paired_records_path: Path | None = None,
+    tci_alpha: float = 1.0,
 ) -> dict[str, Any]:
-    """Train four-outcome transfer critic from paired records."""
+    """Train four-outcome transfer critic from paired records.
+
+    Optional TCI distillation (observational+tci training mode):
+    when ``tci_contrasts_path`` is provided along with the perturbation
+    manifest and paired records, TCI intervention pairs are encoded in
+    the critic's feature space and appended to the observational training
+    data with total weight ``tci_alpha``. When not provided, behaviour
+    is identical to the original observational training.
+    """
     # 清单 Formal Protocol §3: experiment_mode and coverage_mode must agree;
     # all downstream protocol checks use the unified ``mode``.
     from smtr.evaluation.experiment_protocol import validate_mode_consistency
@@ -342,14 +514,41 @@ def train_critic(
         n_bootstrap=n_bootstrap,
         feature_block=feature_block,
         seed=seed,
+        critic_mode=critic_mode,
     )
     critic.fit(
         inputs,
         labels,
+        records=train_records,
         coverage_mode=coverage_mode,
         sample_weights=sample_weights,
         bootstrap_clusters=bootstrap_clusters,
+        tci_inputs=_build_tci_inputs_for_critic(
+            tci_contrasts_path=tci_contrasts_path,
+            perturbations_manifest_path=tci_perturbations_manifest_path,
+            paired_records_path=tci_paired_records_path,
+            memory_pool_path=memory_pool_path,
+            marble_source_path=marble_source_path,
+        ),
+        tci_alpha=tci_alpha,
     )
+    # TCI distillation provenance (Task 6).
+    if tci_contrasts_path is not None:
+        critic.tci_distillation_alpha = tci_alpha
+        tci_eval_inputs = _build_tci_inputs_for_critic(
+            tci_contrasts_path=tci_contrasts_path,
+            perturbations_manifest_path=tci_perturbations_manifest_path,
+            paired_records_path=tci_paired_records_path,
+            memory_pool_path=memory_pool_path,
+            marble_source_path=marble_source_path,
+        )
+        if tci_eval_inputs:
+            from smtr.router.tci_supervision import (
+                evaluate_tci_loss_on_critic,
+            )
+            critic.tci_distillation_metrics = (
+                evaluate_tci_loss_on_critic(critic, tci_eval_inputs)
+            )
 
     # Write feature audit
     feature_audit = _build_feature_audit(
@@ -377,7 +576,20 @@ def train_critic(
         "feature_block": feature_block,
         "seed": seed,
         "checkpoint": str(output_path),
+        "critic_mode": critic_mode,
+        # TCI Distillation provenance (Task 6).
+        "tci_distillation_n_examples": critic.tci_distillation_n_examples,
+        "tci_distillation_alpha": critic.tci_distillation_alpha,
+        "tci_distillation_metrics": critic.tci_distillation_metrics,
+        "tci_training_mode": (
+            "observational+tci"
+            if tci_contrasts_path is not None
+            else "observational"
+        ),
     }
+    if critic_mode == "opportunity_factorized":
+        metrics["factorization_version"] = "counterfactual_opportunity_v1"
+        metrics["head_support"] = critic.head_support_report
     if split_audit_summary is not None:
         metrics["split_audit"] = split_audit_summary
 

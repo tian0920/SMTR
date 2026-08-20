@@ -370,6 +370,49 @@ class HashingTransferFeatureEncoder:
         """Encode a batch of inputs."""
         return self._hasher.transform([self.tokens(item) for item in items])
 
+    # ------------------------------------------------------------------
+    # Baseline-only encoder path (Counterfactual Opportunity v1)
+    # ------------------------------------------------------------------
+    # Encodes (t, o_r, r) only — strictly NO candidate memory tokens.
+    # Used by the baseline head to learn b = P(Y_0=1 | t, o_r, r).
+
+    def baseline_tokens(self, receiver_state: ReceiverState) -> list[str]:
+        """Feature tokens for the baseline head — no memory allowed.
+
+        Only scenario, task tokens, environment signature, receiver role,
+        capabilities and tools. No memory_goal_token, memory_task_tag,
+        psi_*, rm_*, tm_*, source_agent, writer, outcome or label.
+        """
+        rs = receiver_state
+        tokens: list[str] = []
+        tokens.append(f"scenario:{rs.scenario}")
+        for tok in _text_tokens(rs.task_instruction)[:8]:
+            tokens.append(f"task_token:{tok}")
+        for env in sorted(rs.environment_signature):
+            tokens.append(f"env:{env}")
+        tokens.append(f"receiver_role:{rs.receiver.role}")
+        for cap in sorted(rs.receiver.capabilities):
+            tokens.append(f"receiver_cap:{cap}")
+        for tool in sorted(rs.receiver.tool_names):
+            tokens.append(f"receiver_tool:{tool}")
+        # Forbidden check: baseline tokens must never contain memory,
+        # provenance or outcome prefixes.
+        self._reject_forbidden_tokens(tokens)
+        _reject_baseline_memory_tokens(tokens)
+        return tokens
+
+    def encode_baseline_one(self, receiver_state: ReceiverState) -> Any:
+        """Encode one receiver state for the baseline head."""
+        return self._hasher.transform([self.baseline_tokens(receiver_state)])
+
+    def encode_baseline_batch(
+        self, receiver_states: list[ReceiverState]
+    ) -> Any:
+        """Encode a batch of receiver states for the baseline head."""
+        return self._hasher.transform(
+            [self.baseline_tokens(rs) for rs in receiver_states]
+        )
+
 
 def build_routing_card_from_pool_entry(mem_entry: dict[str, Any]) -> MemoryRoutingCard:
     """Build a MemoryRoutingCard from a memory-pool JSONL entry.
@@ -564,6 +607,35 @@ def build_training_data_from_records(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+# Baseline-forbidden prefixes: these must never appear in baseline tokens.
+_BASELINE_FORBIDDEN_PREFIXES = frozenset({
+    "memory_goal_token", "memory_task_tag", "memory_required_tool",
+    "memory_required_capability", "memory_execution_role",
+    "memory_environment_constraint", "memory_precondition_tag",
+    "memory_procedure_type", "memory_length_bucket", "memory_read_write_scope",
+    "psi_domain", "psi_table_cat", "psi_pattern",
+    "psi_domain_count", "psi_table_cat_count",
+    "tm_shared_token", "tm_shared_token_count", "tm_domain_match",
+    "tm_table_cat_match", "tm_lexical_overlap", "tm_environment_match",
+    "tm_operation_match",
+    "mr_tool_satisfaction", "mr_capability_satisfaction",
+    "mr_environment_satisfaction", "mr_role_satisfaction",
+    "mr_missing_tool_count", "mr_missing_capability_count",
+    "mr_read_write_compatible",
+    "prefix_size",
+})
+
+
+def _reject_baseline_memory_tokens(tokens: list[str]) -> None:
+    """Raise if any baseline token has a memory/provenance prefix."""
+    for token in tokens:
+        prefix = token.lower().split(":", 1)[0]
+        if prefix in _BASELINE_FORBIDDEN_PREFIXES:
+            raise ValueError(
+                f"baseline token contains forbidden memory prefix: {token}"
+            )
 
 
 def _text_tokens(text: str) -> list[str]:
