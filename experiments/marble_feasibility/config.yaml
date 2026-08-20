@@ -1,0 +1,39 @@
+# MARBLE Real Environment Feasibility Test Configuration
+
+# Data paths (existing MARBLE artifacts)
+data:
+  paired_records_path: artifacts/marble/paired/train/paired_records.jsonl
+  validation_records_path: artifacts/marble/paired/validation/paired_records.jsonl
+  test_records_path: artifacts/marble/paired/test/paired_records.jsonl
+  memory_pool_path: artifacts/marble/real_data/database_v1/memory_pool.jsonl
+  intervention_contrasts_path: artifacts/marble/interventions/p2_pilot_real/intervention_contrasts.jsonl
+  tci_contrasts_path: artifacts/marble/interventions/p2_pilot_real/intervention_contrasts.jsonl
+  tci_perturbations_manifest_path: artifacts/marble/interventions/p2_pilot_real/perturbations.json
+  tci_ranker_path: artifacts/marble/interventions/p2_pilot_real/tci_ranker.joblib
+
+# Environment
+environment:
+  marble_root: /home/ecs-user/MARBLE
+  scenario: database
+  n_agents: 2-4
+  seeds: [0, 1, 2]
+
+# Probe training
+probe:
+  n_features: 32
+  seed: 42
+  max_epochs: 50
+  feature_block: full
+  critic_mode: flat
+
+# Evaluation
+evaluation:
+  n_pairwise_samples: 5000
+  seed: 42
+
+# Acceptance criteria
+acceptance:
+  positive_transfer_min: 0.05
+  negative_transfer_min: 0.0
+  smtr_ranking_above_random: 0.10
+  smtr_beats_outcome_only: true

@@ -1,0 +1,23 @@
+{
+  "test_records": 252,
+  "valid_records": 173,
+  "tau_distribution": {
+    "positive": 15,
+    "negative": 8,
+    "neutral": 150
+  },
+  "smtr_probe": {
+    "pairwise_ranking": 0.478,
+    "identification_accuracy": 0.6763
+  },
+  "random_baseline": {
+    "pairwise_ranking": 0.5235
+  },
+  "outcome_only_baseline": {
+    "pairwise_ranking": 0.5956
+  },
+  "improvement": {
+    "vs_random": -0.0455,
+    "vs_outcome_only": -0.1176
+  }
+}

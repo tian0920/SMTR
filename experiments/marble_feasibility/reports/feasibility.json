@@ -1,0 +1,70 @@
+{
+  "signal_statistics": {
+    "total_pairs": 1008,
+    "valid_pairs": 642,
+    "positive_transfer": 40,
+    "negative_transfer": 40,
+    "neutral": 562,
+    "positive_pct": 0.0623,
+    "negative_pct": 0.0623,
+    "neutral_pct": 0.8754
+  },
+  "evaluation_results": {
+    "test_records": 252,
+    "valid_records": 173,
+    "tau_distribution": {
+      "positive": 15,
+      "negative": 8,
+      "neutral": 150
+    },
+    "smtr_probe": {
+      "pairwise_ranking": 0.478,
+      "identification_accuracy": 0.6763
+    },
+    "random_baseline": {
+      "pairwise_ranking": 0.5235
+    },
+    "outcome_only_baseline": {
+      "pairwise_ranking": 0.5956
+    },
+    "improvement": {
+      "vs_random": -0.0455,
+      "vs_outcome_only": -0.1176
+    }
+  },
+  "acceptance_criteria": {
+    "checks": {
+      "intervention_executable": {
+        "description": "expose/withhold intervention executable",
+        "passed": true,
+        "value": "Yes (existing paired records loaded)"
+      },
+      "positive_transfer": {
+        "description": "Positive transfer >= 5%",
+        "passed": true,
+        "value": "6.2%",
+        "threshold": "5%"
+      },
+      "negative_transfer": {
+        "description": "Negative transfer > 0%",
+        "passed": true,
+        "value": "6.2%",
+        "threshold": ">0%"
+      },
+      "smtr_ranking": {
+        "description": "SMTR ranking > random + 10%",
+        "passed": false,
+        "value": "0.4780 (vs random 0.5235, diff=-0.0455)",
+        "threshold": "random + 10%"
+      },
+      "smtr_vs_outcome_only": {
+        "description": "SMTR > outcome-only baseline",
+        "passed": false,
+        "value": "SMTR=0.4780, outcome-only=0.5956",
+        "threshold": "SMTR > outcome-only"
+      }
+    },
+    "all_passed": false,
+    "verdict": "FAIL"
+  }
+}
