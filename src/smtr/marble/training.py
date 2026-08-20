@@ -437,6 +437,7 @@ def train_critic(
     tci_perturbations_manifest_path: Path | None = None,
     tci_paired_records_path: Path | None = None,
     tci_alpha: float = 1.0,
+    tci_effect_batch: Any | None = None,
 ) -> dict[str, Any]:
     """Train four-outcome transfer critic from paired records.
 
@@ -531,6 +532,7 @@ def train_critic(
             marble_source_path=marble_source_path,
         ),
         tci_alpha=tci_alpha,
+        tci_effect_batch=tci_effect_batch,
     )
     # TCI distillation provenance (Task 6).
     if tci_contrasts_path is not None:

@@ -247,3 +247,54 @@ def evaluate_tci_loss_on_critic(
         result[f"{ct}_n"] = len(ct_dirs)
 
     return result
+
+
+def tci_value_loss(
+    logits: np.ndarray,
+    effect_labels: np.ndarray,
+) -> float:
+    """Cross-entropy loss for absolute transfer effect prediction.
+
+    L_value = -Σ y * log(p(y))
+
+    where y is the one-hot encoded effect label and p(y) is the softmax
+    probability from the value head.
+
+    Parameters
+    ----------
+    logits : array of shape (n_examples, 3)
+        Raw logits from value head. Columns correspond to effect classes
+        [-1, 0, 1] at indices [0, 1, 2].
+    effect_labels : array of shape (n_examples,)
+        Ground truth effects in {-1, 0, 1}.
+
+    Returns
+    -------
+    float : mean cross-entropy loss.
+
+    Notes
+    -----
+    Fixed weight: value_weight=1 (no alpha, no lambda).
+    """
+    logits = np.asarray(logits, dtype=float)
+    effect_labels = np.asarray(effect_labels, dtype=int)
+
+    if logits.ndim != 2 or logits.shape[1] != 3:
+        raise ValueError(
+            f"logits must have shape (n, 3); got {logits.shape}"
+        )
+
+    # Map effect labels to class indices: -1→0, 0→1, 1→2.
+    class_indices = effect_labels + 1
+
+    # Numerically stable softmax.
+    logits_shifted = logits - logits.max(axis=1, keepdims=True)
+    exp_logits = np.exp(logits_shifted)
+    probs = exp_logits / exp_logits.sum(axis=1, keepdims=True)
+
+    # Cross-entropy: -log(p(y_true)).
+    n = len(effect_labels)
+    log_probs = -np.log(
+        probs[np.arange(n), class_indices] + 1e-15
+    )
+    return float(np.mean(log_probs))

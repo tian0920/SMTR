@@ -58,8 +58,12 @@ _VALID_CRITIC_MODES = frozenset({"flat", "opportunity_factorized"})
 _VALID_CRITIC_TRAINING_MODES: frozenset[str] = frozenset({
     "observational",
     "tci_augmented",
+    "tci_value_augmented",
 })
 TCI_SCHEMA_VERSION: str = "v1"
+
+# Effect classes for absolute transfer value supervision.
+EFFECT_CLASSES: tuple[int, ...] = (-1, 0, 1)
 
 
 @dataclass
@@ -78,6 +82,59 @@ class FactorizedDiagnostics:
     baseline_success: float
     rescue_given_failure: float
     damage_given_success: float
+
+
+@dataclass
+class TCIValueHead:
+    """Absolute transfer effect predictor (Task 3).
+
+    Predicts τ(m) ∈ {-1, 0, +1} from memory features φ(m).
+
+    Uses sklearn LogisticRegression with class_weight="balanced" for
+    the three-class problem. No neural networks, transformers, or
+    attention (forbidden).
+
+    Attributes
+    ----------
+    model : LogisticRegression
+        Fitted classifier with classes=[-1, 0, 1].
+    n_examples : int
+        Number of training examples used.
+    """
+
+    model: Any
+    n_examples: int = 0
+
+    def predict(self, features: np.ndarray) -> np.ndarray:
+        """Predict effect class for each row in features.
+
+        Parameters
+        ----------
+        features : (n, n_features) array
+
+        Returns
+        -------
+        (n,) array of predicted effects in {-1, 0, 1}.
+        """
+        return self.model.predict(features)
+
+    def predict_proba(self, features: np.ndarray) -> np.ndarray:
+        """Predict probability distribution over effect classes.
+
+        Returns
+        -------
+        (n, 3) array of probabilities for classes [-1, 0, 1].
+        """
+        return self.model.predict_proba(features)
+
+    def decision_function(self, features: np.ndarray) -> np.ndarray:
+        """Raw decision function values.
+
+        Returns
+        -------
+        (n, 3) array of raw logits (one per class).
+        """
+        return self.model.decision_function(features)
 
 
 class FourOutcomeTransferCritic:
@@ -167,6 +224,11 @@ class FourOutcomeTransferCritic:
         self.n_observational_examples: int = 0
         self.n_tci_examples: int = 0
         self.tci_schema_version: str | None = None
+        # Task 3/6: TCI value head for absolute transfer effect prediction.
+        # None for observational and tci_augmented modes.
+        self.tci_value_head: TCIValueHead | None = None
+        self.tci_rank_examples: int = 0
+        self.tci_value_examples: int = 0
 
     def fit(
         self,
@@ -184,6 +246,7 @@ class FourOutcomeTransferCritic:
             str,
         ]] | None = None,
         tci_alpha: float = 1.0,
+        tci_effect_batch: Any | None = None,
     ) -> None:
         """Train bootstrap ensemble on paired record features.
 
@@ -196,6 +259,12 @@ class FourOutcomeTransferCritic:
         observational training data with weight ``tci_alpha / n_tci``.
         When ``tci_inputs`` is None, behaviour is identical to the
         original ``observational`` training. Default: observational.
+
+        Optional TCI value supervision (tci_value_augmented mode):
+        when ``tci_effect_batch`` is provided (alongside ``tci_inputs``),
+        a separate value head is trained to predict absolute transfer
+        effect τ(m) ∈ {-1, 0, +1}. Training mode becomes
+        ``tci_value_augmented``. Default: None.
         """
         if self.critic_mode == "flat":
             return self._fit_flat(
@@ -205,6 +274,7 @@ class FourOutcomeTransferCritic:
                 bootstrap_clusters=bootstrap_clusters,
                 tci_inputs=tci_inputs,
                 tci_alpha=tci_alpha,
+                tci_effect_batch=tci_effect_batch,
             )
         if self.critic_mode == "opportunity_factorized":
             if records is None:
@@ -234,6 +304,7 @@ class FourOutcomeTransferCritic:
             str,
         ]] | None = None,
         tci_alpha: float = 1.0,
+        tci_effect_batch: Any | None = None,
     ) -> None:
         """Flat four-outcome training.
 
@@ -243,6 +314,9 @@ class FourOutcomeTransferCritic:
           - ``tci_augmented``: L = L_obs + L_TCI, with fixed weights
             obs_weight=1 per observational example, tci_weight=1 per TCI
             example (alpha=1, not exposed as hyperparameter).
+          - ``tci_value_augmented``: L = L_obs + L_TCI + L_value, where
+            L_value trains a separate value head for absolute transfer
+            effect prediction τ(m) ∈ {-1, 0, +1}.
         """
         # Build observational feature matrix.
         X_obs = self.encoder.encode_batch(inputs)
@@ -265,8 +339,17 @@ class FourOutcomeTransferCritic:
                 )
         tci_n = X_tci.shape[0] if X_tci is not None else 0
 
-        # Task 1: set training_mode based on whether TCI was provided.
-        if tci_n > 0:
+        # Task 1/5: set training_mode based on TCI supervision provided.
+        # Priority: value_augmented > augmented > observational.
+        has_value = (
+            tci_effect_batch is not None
+            and hasattr(tci_effect_batch, 'n_examples')
+            and tci_effect_batch.n_examples > 0
+        )
+        if has_value and tci_n > 0:
+            self.training_mode = "tci_value_augmented"
+            self.tci_schema_version = TCI_SCHEMA_VERSION
+        elif tci_n > 0:
             self.training_mode = "tci_augmented"
             self.tci_schema_version = TCI_SCHEMA_VERSION
         else:
@@ -274,6 +357,7 @@ class FourOutcomeTransferCritic:
             self.tci_schema_version = None
         self.n_observational_examples = n_obs
         self.n_tci_examples = tci_n
+        self.tci_rank_examples = tci_n  # rank supervision count.
 
         if sample_weights is not None:
             sample_weights = np.asarray(sample_weights, dtype=float)
@@ -347,6 +431,34 @@ class FourOutcomeTransferCritic:
             raise ValueError("no bootstrap member covered all required classes")
         self._fitted = True
         self.tci_distillation_n_examples = tci_n
+
+        # Task 3: Train value head for absolute transfer effect prediction.
+        # Only when tci_effect_batch is provided with examples.
+        if has_value:
+            from scipy import sparse as sp_sparse
+            X_val = tci_effect_batch.features
+            y_val = tci_effect_batch.effects
+            # Convert sparse to dense if needed.
+            if sp_sparse.issparse(X_val):
+                X_val = X_val.toarray()
+            # Check class diversity: need at least 2 classes.
+            unique_effects = np.unique(y_val)
+            if len(unique_effects) < 2:
+                # Not enough class diversity; skip value head.
+                self.tci_value_head = None
+                self.tci_value_examples = 0
+            else:
+                clf_val = LogisticRegression(
+                    max_iter=1000,
+                    solver="lbfgs",
+                    class_weight="balanced",
+                )
+                clf_val.fit(X_val, y_val)
+                self.tci_value_head = TCIValueHead(
+                    model=clf_val,
+                    n_examples=len(y_val),
+                )
+                self.tci_value_examples = len(y_val)
 
     def _fit_factorized(
         self,
@@ -875,6 +987,11 @@ class FourOutcomeTransferCritic:
                 "n_observational_examples": self.n_observational_examples,
                 "n_tci_examples": self.n_tci_examples,
                 "tci_schema_version": self.tci_schema_version,
+                # Task 3/6: TCI value head checkpoint.
+                "tci_value_head": self.tci_value_head,
+                "tci_rank_examples": self.tci_rank_examples,
+                "tci_value_examples": self.tci_value_examples,
+                "effect_classes": list(EFFECT_CLASSES),
             },
             path,
         )
@@ -950,6 +1067,10 @@ class FourOutcomeTransferCritic:
         )
         critic.n_tci_examples = int(data.get("n_tci_examples", 0))
         critic.tci_schema_version = data.get("tci_schema_version")
+        # Task 3/6: TCI value head (defaults for old checkpoints).
+        critic.tci_value_head = data.get("tci_value_head")
+        critic.tci_rank_examples = int(data.get("tci_rank_examples", 0))
+        critic.tci_value_examples = int(data.get("tci_value_examples", 0))
         critic._fitted = True
         return critic
 
