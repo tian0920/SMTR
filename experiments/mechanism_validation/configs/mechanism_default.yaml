@@ -1,0 +1,89 @@
+# SMTR Mechanism Validation Configuration
+# ----------------------------------------
+# Default configuration for mechanism validation experiments.
+# Modify paths and parameters as needed.
+
+# Data paths (relative to project root)
+data:
+  paired_records:
+    train: artifacts/marble/paired/train/paired_records.jsonl
+    validation: artifacts/marble/paired/validation/paired_records.jsonl
+    test: artifacts/marble/paired/test/paired_records.jsonl
+  memory_pool: artifacts/marble/real_data/database_v1/memory_pool.jsonl
+  interventions:
+    contrasts: artifacts/marble/interventions/p2_pilot_real/intervention_contrasts.jsonl
+    perturbations: artifacts/marble/interventions/p2_pilot_real/perturbations.json
+
+# Model configuration
+model:
+  n_features: 512
+  n_bootstrap: 11
+  feature_block: full
+  critic_mode: flat
+  seed: 7
+
+# Training configuration
+training:
+  coverage_mode: pilot
+  risk_delta: 0.10
+  tci_alpha: 1.0  # Fixed, not tunable
+
+# Validation experiments
+experiments:
+  contrast_necessity:
+    enabled: true
+    description: "Test whether expose/withhold contrast is necessary"
+    
+  receiver_conditioning:
+    enabled: true
+    description: "Test whether memory value is receiver-dependent"
+    
+  rank_loss:
+    enabled: true
+    description: "Test whether ranking objective is necessary"
+    
+  memory_shuffle:
+    enabled: true
+    description: "Test whether model uses memory content"
+    n_shuffles: 10
+    
+  source_leakage:
+    enabled: true
+    description: "Test for source identity shortcuts"
+    
+  synthetic_causal:
+    enabled: true
+    description: "Test on synthetic causal benchmark"
+    n_receivers: 5
+    n_memories: 10
+    n_examples_per_pair: 50
+
+# Output configuration
+output:
+  reports_dir: experiments/mechanism_validation/reports
+  json_format: true
+  markdown_format: true
+  verbose: true
+
+# Acceptance criteria
+acceptance:
+  contrast_necessity:
+    smtr_gt_outcome_only: true
+    outcome_only_gt_observational: true
+    
+  receiver_conditioning:
+    receiver_conditioned_gt_global: true
+    
+  rank_loss:
+    rank_gt_obs: true
+    
+  memory_shuffle:
+    normal_gt_shuffle: true
+    shuffle_near_random: true  # shuffle accuracy ~ 0.5
+    
+  source_leakage:
+    full_approx_full_plus_source: true  # No significant improvement from source
+    
+  synthetic_causal:
+    pearson_gt_06: true
+    sign_accuracy_gt_07: true

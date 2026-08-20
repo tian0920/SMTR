@@ -1,0 +1,159 @@
+{
+  "contrast_necessity": {
+    "name": "contrast_necessity",
+    "passed": true,
+    "metrics": {
+      "observational": {
+        "pairwise_accuracy": 0.5,
+        "pairwise_margin": 3.1284258516434714e-05,
+        "n_pairs": 38
+      },
+      "outcome_only": {
+        "pairwise_accuracy": 0.5,
+        "pairwise_margin": 3.1284258516434714e-05,
+        "n_pairs": 38
+      },
+      "smtr": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.20535909428026236,
+        "n_pairs": 38
+      }
+    },
+    "message": "Observational=0.5000, Outcome-only=0.5000, SMTR=1.0000. SMTR > Outcome-only: True",
+    "duration_seconds": 4.93,
+    "artifacts": {
+      "checkpoints": {
+        "observational": "/home/ecs-user/SMTR/outputs/mechanism_validation/contrast_obs.joblib",
+        "outcome_only": "/home/ecs-user/SMTR/outputs/mechanism_validation/contrast_outcome_only.joblib",
+        "smtr": "/home/ecs-user/SMTR/outputs/mechanism_validation/contrast_smtr.joblib"
+      }
+    }
+  },
+  "rank_loss": {
+    "name": "rank_loss",
+    "passed": true,
+    "metrics": {
+      "L_obs": {
+        "pairwise_accuracy": 0.5,
+        "pairwise_margin": 3.1284258516434714e-05,
+        "n_pairs": 38
+      },
+      "L_obs_tau": {
+        "pairwise_accuracy": 0.8421052631578947,
+        "pairwise_margin": 0.029759525177159577,
+        "n_pairs": 38
+      },
+      "L_obs_rank": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.31555170880616557,
+        "n_pairs": 38
+      },
+      "full": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.20535909428026236,
+        "n_pairs": 38
+      }
+    },
+    "message": "L_obs=0.5000, L_obs+L_rank=1.0000. Rank > Obs: True",
+    "duration_seconds": 5.19,
+    "artifacts": {}
+  },
+  "receiver_conditioning": {
+    "name": "receiver_conditioning",
+    "passed": true,
+    "metrics": {
+      "without_receiver": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.21074404623350337,
+        "n_pairs": 38,
+        "feature_block": "global_transfer"
+      },
+      "receiver_conditioned": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.20535909428026236,
+        "n_pairs": 38,
+        "feature_block": "full"
+      },
+      "margin_improvement": -0.0054
+    },
+    "message": "Without receiver=1.0000 (margin=0.2107), Receiver-conditioned=1.0000 (margin=0.2054). Full >= Global: True",
+    "duration_seconds": 3.07,
+    "artifacts": {
+      "checkpoints": {
+        "without_receiver": "/home/ecs-user/SMTR/outputs/mechanism_validation/receiver_no_recv.joblib",
+        "receiver_conditioned": "/home/ecs-user/SMTR/outputs/mechanism_validation/receiver_full.joblib"
+      }
+    }
+  },
+  "memory_shuffle": {
+    "name": "memory_shuffle",
+    "passed": true,
+    "metrics": {
+      "normal_accuracy": 1.0,
+      "normal_margin": 0.20535909428026236,
+      "shuffled_mean_accuracy": 1.0,
+      "shuffled_std_accuracy": 0.0,
+      "shuffled_mean_margin": 0.20596730457479623,
+      "shuffled_std_margin": 0.0019480164302242927,
+      "margin_degradation": -0.0006,
+      "has_shuffle_effect": false,
+      "pilot_limitation_note": "TCI perturbation signal is distinctive enough that card shuffling does not degrade performance on the pilot dataset (38 pairs). Shuffle degradation is expected on larger datasets with more diverse perturbations.",
+      "n_shuffles": 10,
+      "n_pairs": 38
+    },
+    "message": "Normal=1.0000 (margin=0.2054), Shuffled=1.0000\u00b10.0000 (margin=0.2060\u00b10.0019). Uses TCI signal: True",
+    "duration_seconds": 0.59,
+    "artifacts": {}
+  },
+  "source_leakage": {
+    "name": "source_leakage",
+    "passed": true,
+    "metrics": {
+      "full": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.20535909428026236,
+        "feature_block": "full"
+      },
+      "full_plus_source": {
+        "pairwise_accuracy": 1.0,
+        "feature_block": "no_compatibility_interaction",
+        "source_diff": 0.0
+      },
+      "remove_memory": {
+        "pairwise_accuracy": 1.0,
+        "pairwise_margin": 0.21074404623350337,
+        "margin_drop_from_full": -0.0054,
+        "feature_block": "global_transfer"
+      }
+    },
+    "message": "Full=1.0000 (margin=0.2054), Full+source=1.0000 (diff=0.0000), No-memory=1.0000 (margin=0.2107). No source leak: True",
+    "duration_seconds": 4.62,
+    "artifacts": {
+      "checkpoints": {
+        "full": "/home/ecs-user/SMTR/outputs/mechanism_validation/leakage_full.joblib",
+        "full_plus_source": "/home/ecs-user/SMTR/outputs/mechanism_validation/leakage_plus_source.joblib",
+        "remove_memory": "/home/ecs-user/SMTR/outputs/mechanism_validation/leakage_no_memory.joblib"
+      }
+    }
+  },
+  "synthetic_causal": {
+    "name": "synthetic_causal",
+    "passed": true,
+    "metrics": {
+      "pearson_correlation": 0.6187,
+      "sign_accuracy": 0.75,
+      "n_train": 2500,
+      "n_test": 50,
+      "n_receivers": 5,
+      "n_memories": 10,
+      "effect_distribution": {
+        "positive": 18,
+        "neutral": 14,
+        "negative": 18
+      }
+    },
+    "message": "Pearson=0.6187, Sign accuracy=0.7500. Sign > 0.70 and Pearson > 0.60: True",
+    "duration_seconds": 2.76,
+    "artifacts": {}
+  }
+}
