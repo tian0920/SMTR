@@ -1,0 +1,97 @@
+{
+  "paired_tests": [
+    {
+      "metric": "team_reward",
+      "paired_by": "task_id (within seed)",
+      "n_pairs": 136,
+      "uniform_mean": 0.7755718954248365,
+      "receiver_mean": 0.8098856209150327,
+      "diff_mean": 0.03431372549019608,
+      "diff_std": 0.10129401137143054,
+      "t_statistic": 3.935962814698396,
+      "p_value": 0.00013208178993413743,
+      "significant_005": "True",
+      "bootstrap_ci_lo": 0.017156862745098044,
+      "bootstrap_ci_hi": 0.05147058823529413,
+      "cohens_d": 0.338753742947079,
+      "paired_keys": "10|s0;10|s1;10|s2"
+    },
+    {
+      "metric": "negative_transfer_count",
+      "paired_by": "task_id (within seed)",
+      "n_pairs": 136,
+      "uniform_mean": 0.0,
+      "receiver_mean": 0.0,
+      "diff_mean": 0.0,
+      "diff_std": 0.0,
+      "t_statistic": NaN,
+      "p_value": NaN,
+      "significant_005": "False",
+      "bootstrap_ci_lo": 0.0,
+      "bootstrap_ci_hi": 0.0,
+      "cohens_d": Infinity,
+      "paired_keys": "10|s0;10|s1;10|s2"
+    },
+    {
+      "metric": "positive_transfer_count",
+      "paired_by": "task_id (within seed)",
+      "n_pairs": 136,
+      "uniform_mean": 1.2647058823529411,
+      "receiver_mean": 1.3676470588235294,
+      "diff_mean": 0.10294117647058823,
+      "diff_std": 0.30388203411429154,
+      "t_statistic": 3.9359628146983967,
+      "p_value": 0.00013208178993413705,
+      "significant_005": "True",
+      "bootstrap_ci_lo": 0.051470588235294115,
+      "bootstrap_ci_hi": 0.15441176470588236,
+      "cohens_d": 0.33875374294707905,
+      "paired_keys": "10|s0;10|s1;10|s2"
+    },
+    {
+      "metric": "contamination_rate_ratio0.3",
+      "paired_by": "task_id (within seed)",
+      "n_pairs": 408,
+      "uniform_mean": 0.056372549019607844,
+      "receiver_mean": 0.019605882352941178,
+      "diff_mean": -0.03676666666666667,
+      "diff_std": 0.15484657133302882,
+      "t_statistic": -4.790158334033089,
+      "p_value": 2.3383223128599965e-06,
+      "significant_005": "True",
+      "bootstrap_ci_lo": -0.052290441176470595,
+      "bootstrap_ci_hi": -0.022060294117647063,
+      "cohens_d": -0.23743933333591566,
+      "paired_keys": "episode_index"
+    }
+  ],
+  "per_seed": [
+    {
+      "seed": 0,
+      "uniform_mean": 0.7451851851851853,
+      "uniform_std": 0.5442814066795452,
+      "receiver_mean": 0.7674074074074075,
+      "receiver_std": 0.5589484051465862,
+      "gain": 0.022222222222222254,
+      "paired_p_value": 0.08318303083243828
+    },
+    {
+      "seed": 1,
+      "uniform_mean": 0.8364734299516909,
+      "uniform_std": 0.6621046123373246,
+      "receiver_mean": 0.8727053140096619,
+      "receiver_std": 0.665190420764022,
+      "gain": 0.03623188405797095,
+      "paired_p_value": 0.023631729571315704
+    },
+    {
+      "seed": 2,
+      "uniform_mean": 0.7437037037037035,
+      "uniform_std": 0.554944849519509,
+      "receiver_mean": 0.7881481481481482,
+      "receiver_std": 0.5861613985799348,
+      "gain": 0.04444444444444462,
+      "paired_p_value": 0.012587709050022848
+    }
+  ]
+}
