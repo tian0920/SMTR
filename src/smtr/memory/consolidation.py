@@ -13,6 +13,10 @@ The gate is deliberately threshold-free: causal utility is
 rule is ``delta > 0 -> validated, else rejected``. No new tunable
 hyperparameters are introduced, and no existing memory interface is
 modified.
+
+Receiver-conditioned extension (Receiver=3 protocol):
+    ``admit_for_receiver()`` adds per-receiver TCI validation.
+    Same delta rule, but decision is recorded per receiver_id.
 """
 
 from datetime import UTC, datetime
@@ -20,6 +24,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
+from smtr.memory.memory_schema import ReceiverValidationRecord
 from smtr.memory.persistent_memory import PersistentMemoryBank
 
 if TYPE_CHECKING:
@@ -36,6 +41,21 @@ class AdmissionDecision(BaseModel):
     reward_withhold: float
     delta: float
     decision: str  # "validated" | "rejected"
+    timestamp: datetime
+
+
+class ReceiverAdmissionDecision(BaseModel):
+    """One receiver-conditioned TCI gate decision."""
+
+    model_config = ConfigDict(frozen=True)
+
+    memory_id: str
+    receiver_id: str
+    reward_expose: float
+    reward_withhold: float
+    delta: float
+    decision: str  # "validated" | "rejected"
+    validation_source: str = "receiver_counterfactual_rollout"
     timestamp: datetime
 
 
@@ -109,6 +129,83 @@ class MemoryAdmissionController:
         self._decisions.append(record)
         return record
 
+    def admit_for_receiver(
+        self,
+        memory_id: str,
+        *,
+        receiver_id: str,
+        reward_expose: float,
+        reward_withhold: float,
+        episode_id: int = -1,
+        validation_source: str = "receiver_counterfactual_rollout",
+    ) -> ReceiverAdmissionDecision:
+        """Run receiver-conditioned TCI gate for one (memory, receiver) pair.
+
+        Same threshold-free delta rule as ``admit()`` but records the
+        decision per-receiver. The bank entry is updated with
+        receiver-specific validation history.
+
+        Does NOT modify the global status (validated/rejected) — only
+        records per-receiver decisions in ``receiver_decisions``.
+        """
+        if self._cost_tracker is not None:
+            self._cost_tracker.record_intervention(
+                memory_id=memory_id,
+                expose_reward=reward_expose,
+                withhold_reward=reward_withhold,
+                episode=episode_id,
+            )
+
+        delta = reward_expose - reward_withhold
+        decision = "validated" if delta > 0 else "rejected"
+
+        # Record per-receiver validation in bank
+        rec = ReceiverValidationRecord(
+            receiver_id=receiver_id,
+            episode_id=episode_id,
+            expose_reward=reward_expose,
+            withhold_reward=reward_withhold,
+            delta=delta,
+            decision=decision,
+            validation_source=validation_source,
+        )
+        entry = self._bank.get(memory_id)
+        new_decisions = dict(entry.receiver_decisions)
+        new_decisions[receiver_id] = decision
+        updated = entry.model_copy(
+            update={
+                "receiver_id": receiver_id,
+                "validation_target": receiver_id,
+                "receiver_validation_history": entry.receiver_validation_history + (rec,),
+                "receiver_decisions": new_decisions,
+                "validation_source": validation_source,
+                "validation_count": entry.validation_count + 1,
+                "updated_at": datetime.now(UTC),
+            }
+        )
+        self._bank._entries[memory_id] = updated
+
+        if self._cost_tracker is not None:
+            self._cost_tracker.record_validation(
+                memory_id=memory_id,
+                delta=delta,
+                decision=decision,
+                episode=episode_id,
+            )
+
+        record = ReceiverAdmissionDecision(
+            memory_id=memory_id,
+            receiver_id=receiver_id,
+            reward_expose=reward_expose,
+            reward_withhold=reward_withhold,
+            delta=delta,
+            decision=decision,
+            validation_source=validation_source,
+            timestamp=datetime.now(UTC),
+        )
+        self._decisions.append(record)
+        return record
+
     def admit_from_pair_record(self, record: dict) -> AdmissionDecision:
         """Convenience adapter for shared-control paired records.
 
@@ -131,6 +228,17 @@ class MemoryAdmissionController:
             "validated": sum(1 for d in self._decisions if d.decision == "validated"),
             "rejected": sum(1 for d in self._decisions if d.decision == "rejected"),
         }
+
+    def receiver_summary(self) -> dict[str, dict[str, int]]:
+        """Per-receiver validation counts across all decisions."""
+        result: dict[str, dict[str, int]] = {}
+        for d in self._decisions:
+            if isinstance(d, ReceiverAdmissionDecision):
+                rid = d.receiver_id
+                if rid not in result:
+                    result[rid] = {"validated": 0, "rejected": 0}
+                result[rid][d.decision] = result[rid].get(d.decision, 0) + 1
+        return result
 
 
 def _outcome(record: dict, keys: tuple[str, ...]) -> float:

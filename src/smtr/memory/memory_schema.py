@@ -7,6 +7,10 @@ experience-derived memory through
     candidate -> validated | rejected
 
 without modifying any existing memory interface.
+
+Receiver-conditioned extension (Receiver=3 protocol):
+    Adds per-receiver validation tracking so the same memory can be
+    validated for one receiver but rejected for another.
 """
 
 from datetime import UTC, datetime
@@ -31,6 +35,24 @@ class ValidationRecord(BaseModel):
     withhold_reward: float
     delta: float
     decision: str  # "validated" | "rejected" | "suspect"
+
+
+class ReceiverValidationRecord(BaseModel):
+    """One receiver-conditioned TCI validation event.
+
+    Extends ValidationRecord with receiver identity so the same memory
+    can have different validation outcomes per receiver.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    receiver_id: str
+    episode_id: int
+    expose_reward: float
+    withhold_reward: float
+    delta: float
+    decision: str  # "validated" | "rejected"
+    validation_source: str = "receiver_counterfactual_rollout"
 
 
 class PersistentMemoryEntry(BaseModel):
@@ -59,5 +81,12 @@ class PersistentMemoryEntry(BaseModel):
     status: MemoryLifecycleStatus = "candidate"
     validation_count: int = 0
     validation_history: tuple[ValidationRecord, ...] = ()
+    # Receiver-conditioned extension (backward compatible: all optional)
+    receiver_id: str | None = None
+    validation_target: str | None = None
+    receiver_context: str | None = None
+    receiver_validation_history: tuple[ReceiverValidationRecord, ...] = ()
+    receiver_decisions: dict[str, str] = Field(default_factory=dict)
+    validation_source: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
