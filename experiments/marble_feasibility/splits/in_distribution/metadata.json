@@ -1,0 +1,9 @@
+{
+  "split_name": "in_distribution",
+  "split_type": "random_pair",
+  "train_size": 500,
+  "test_size": 297,
+  "test_informative": 41,
+  "train_informative": 250,
+  "seed": 42
+}

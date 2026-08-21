@@ -19,6 +19,7 @@ Outputs:
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -89,17 +90,44 @@ def _pairwise_ranking(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Evaluate SMTR probe signal")
+    parser.add_argument(
+        "--split",
+        default=None,
+        help="Split name (e.g. in_distribution, memory_holdout, task_holdout). "
+             "If provided, reads from splits/<split>/test.jsonl and loads probe "
+             "from splits/<split>/smtr_probe.joblib.",
+    )
+    args = parser.parse_args()
+
     config = _load_config()
     data_cfg = config["data"]
     eval_cfg = config["evaluation"]
 
+    split_name = args.split
+
     print("=" * 60)
-    print("MARBLE Feasibility Test — Signal Evaluation (Informative)")
+    if split_name:
+        print(f"MARBLE Feasibility — Signal Evaluation [{split_name}]")
+    else:
+        print("MARBLE Feasibility Test — Signal Evaluation (Informative)")
     print("=" * 60)
 
-    # ── Load test records ──
-    test_path = _PROJECT_ROOT / data_cfg["test_records_path"]
+    # ── Paths (split-aware) ──
+    if split_name:
+        split_dir = _THIS_DIR / "splits" / split_name
+        test_path = split_dir / "test.jsonl"
+        probe_path = split_dir / "smtr_probe.joblib"
+        sign_clf_path = split_dir / "sign_classifier.joblib"
+        results_path = split_dir / "evaluation_results.json"
+    else:
+        test_path = _PROJECT_ROOT / data_cfg["test_records_path"]
+        probe_path = _THIS_DIR / "data" / "smtr_probe.joblib"
+        sign_clf_path = _THIS_DIR / "data" / "sign_classifier.joblib"
+        results_path = _THIS_DIR / "data" / "evaluation_results.json"
+
     memory_pool_path = _PROJECT_ROOT / data_cfg["memory_pool_path"]
+    # ── Load test records ──
     print(f"\n  Loading test records: {test_path}")
     test_records = _load_paired_records(test_path)
     valid_records = [r for r in test_records if r.get("valid", False)]
@@ -113,7 +141,6 @@ def main() -> None:
     print(f"  τ distribution: +{n_pos}, -{n_neg}, 0={n_neu}")
 
     # ── Load SMTR probe ──
-    probe_path = _THIS_DIR / "data" / "smtr_probe.joblib"
     print(f"\n  Loading SMTR probe: {probe_path}")
     from smtr.router.transfer_critic import FourOutcomeTransferCritic
     from smtr.router.transfer_features import build_training_data_from_records
@@ -190,7 +217,6 @@ def main() -> None:
     print(f"  SMTR full ranking: {smtr_full_ranking:.4f} ({n_full_pairs} total informative pairs)")
 
     # ── Sign classifier evaluation ──
-    sign_clf_path = _THIS_DIR / "data" / "sign_classifier.joblib"
     sign_accuracy = None
     sign_pred_dist = {}
     if sign_clf_path.exists():
@@ -224,8 +250,8 @@ def main() -> None:
     smtr_identification_acc = correct / len(true_labels) if true_labels else 0.0
     print(f"  SMTR 4-class identification accuracy: {smtr_identification_acc:.4f}")
 
-    # ── Save results ──
     results = {
+        "split_name": split_name,
         "test_records": len(test_records),
         "valid_records": len(valid_records),
         "tau_distribution": {
@@ -263,7 +289,6 @@ def main() -> None:
         },
     }
 
-    results_path = _THIS_DIR / "data" / "evaluation_results.json"
     with open(results_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
     print(f"\n  Saved: {results_path}")

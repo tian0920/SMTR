@@ -14,6 +14,7 @@ Outputs:
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -65,12 +66,27 @@ def _build_class_weighted_sample_weights(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Train SMTR critic probe")
+    parser.add_argument(
+        "--split",
+        default=None,
+        help="Split name (e.g. in_distribution, memory_holdout, task_holdout). "
+             "If provided, reads from splits/<split>/train.jsonl and saves to "
+             "splits/<split>/.",
+    )
+    args = parser.parse_args()
+
     config = _load_config()
     data_cfg = config["data"]
     probe_cfg = config["probe"]
 
+    split_name = args.split
+
     print("=" * 60)
-    print("MARBLE Feasibility Test — SMTR Probe Training (Balanced)")
+    if split_name:
+        print(f"MARBLE Feasibility — Probe Training [{split_name}]")
+    else:
+        print("MARBLE Feasibility Test — SMTR Probe Training (Balanced)")
     print("=" * 60)
 
     # ── Import SMTR internals ──
@@ -78,12 +94,20 @@ def main() -> None:
     from smtr.router.transfer_features import build_training_data_from_records
     from smtr.counterfactual.edge_keys import group_records_by_control_family
 
-    # ── Paths ──
-    balanced_train_path = _THIS_DIR / "data" / "balanced_train.jsonl"
-    balanced_val_path = _THIS_DIR / "data" / "balanced_validation.jsonl"
+    # ── Paths (split-aware) ──
+    if split_name:
+        split_dir = _THIS_DIR / "splits" / split_name
+        balanced_train_path = split_dir / "train.jsonl"
+        balanced_val_path = split_dir / "test.jsonl"  # use test split as val
+        output_path = split_dir / "smtr_probe.joblib"
+        sign_clf_path = split_dir / "sign_classifier.joblib"
+    else:
+        balanced_train_path = _THIS_DIR / "data" / "balanced_train.jsonl"
+        balanced_val_path = _THIS_DIR / "data" / "balanced_validation.jsonl"
+        output_path = _THIS_DIR / "data" / "smtr_probe.joblib"
+        sign_clf_path = _THIS_DIR / "data" / "sign_classifier.joblib"
+
     memory_pool_path = _PROJECT_ROOT / data_cfg["memory_pool_path"]
-    output_path = _THIS_DIR / "data" / "smtr_probe.joblib"
-    sign_clf_path = _THIS_DIR / "data" / "sign_classifier.joblib"
 
     # TCI supervision (optional)
     tci_contrasts_path_raw = data_cfg.get("tci_contrasts_path")
@@ -135,9 +159,9 @@ def main() -> None:
     # ── Bootstrap clusters ──
     bootstrap_clusters = group_records_by_control_family(records)
 
-    # ── Build TCI inputs (optional) ──
+    # ── Build TCI inputs (optional — only when not using splits) ──
     tci_inputs = None
-    if tci_contrasts_path and tci_perturbations_manifest_path:
+    if not split_name and tci_contrasts_path and tci_perturbations_manifest_path:
         from smtr.marble.training import _build_tci_inputs_for_critic
         tci_inputs = _build_tci_inputs_for_critic(
             tci_contrasts_path=tci_contrasts_path,
@@ -267,6 +291,7 @@ def main() -> None:
 
     # ── Save all metrics ──
     metrics = {
+        "split_name": split_name,
         "train_records": len(records),
         "label_distribution": dict(Counter(labels)),
         "class_weights": class_weights,
@@ -284,7 +309,10 @@ def main() -> None:
         **val_metrics,
     }
 
-    metrics_path = _THIS_DIR / "data" / "probe_metrics.json"
+    if split_name:
+        metrics_path = split_dir / "probe_metrics.json"
+    else:
+        metrics_path = _THIS_DIR / "data" / "probe_metrics.json"
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2, default=str)
     print(f"\n  Saved metrics: {metrics_path}")

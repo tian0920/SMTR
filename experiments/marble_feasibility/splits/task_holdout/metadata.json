@@ -1,0 +1,18 @@
+{
+  "split_name": "task_holdout",
+  "split_type": "task_holdout",
+  "holdout_tasks": [
+    "19",
+    "3",
+    "32",
+    "41",
+    "6",
+    "69",
+    "9"
+  ],
+  "train_size": 500,
+  "test_size": 109,
+  "test_informative": 49,
+  "train_informative": 250,
+  "seed": 42
+}

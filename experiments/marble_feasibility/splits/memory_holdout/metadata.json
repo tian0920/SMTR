@@ -1,0 +1,25 @@
+{
+  "split_name": "memory_holdout",
+  "split_type": "memory_base_holdout",
+  "holdout_base": "dbproc-06c28b92d681",
+  "train_size": 500,
+  "test_size": 172,
+  "test_informative": 20,
+  "train_informative": 250,
+  "train_memories": [
+    "dbproc-01870edcc464-agent1",
+    "dbproc-01870edcc464-agent2",
+    "dbproc-01870edcc464-agent3",
+    "dbproc-01870edcc464-agent4",
+    "dbproc-01870edcc464-agent5",
+    "dbproc-0d97cd2103b4-agent1"
+  ],
+  "test_memories": [
+    "dbproc-06c28b92d681-agent1",
+    "dbproc-06c28b92d681-agent2",
+    "dbproc-06c28b92d681-agent3",
+    "dbproc-06c28b92d681-agent4",
+    "dbproc-06c28b92d681-agent5"
+  ],
+  "seed": 42
+}
