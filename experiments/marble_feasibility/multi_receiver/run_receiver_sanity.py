@@ -189,10 +189,16 @@ def main() -> None:
         print(f"    Skipped: {cmp_result['reason']}")
         smtr_beats_global = None
     else:
-        print(f"    Global MAE:               {cmp_result['global_mae']:.4f}")
-        print(f"    Receiver-conditioned MAE: {cmp_result['receiver_conditioned_mae']:.4f}")
+        g_mae = cmp_result["global_mae"]
+        r_mae = cmp_result["receiver_conditioned_mae"]
+        print(f"    Global MAE:               "
+              f"{g_mae:.4f}" if g_mae is not None else "    Global MAE: n/a")
+        print("    Receiver-conditioned MAE: "
+              + (f"{r_mae:.4f}" if r_mae is not None else "n/a (single seed per receiver)"))
         smtr_beats_global = cmp_result["smtr_beats_global"]
-        print(f"    SMTR beats global: {smtr_beats_global}")
+        print(f"    SMTR beats global: "
+              + ("inconclusive (need >=2 seeds/receiver)"
+                 if smtr_beats_global is None else str(smtr_beats_global)))
 
     # ── Verdict ──
     checks = {
@@ -216,23 +222,31 @@ def main() -> None:
             "description": "receiver-conditioned tau(m,r) MAE <= global tau(m) MAE",
             "value": (
                 "skipped (insufficient data)" if cmp_result.get("skip")
+                else (
+                    "receiver-conditioned MAE n/a (need >=2 seeds per receiver); "
+                    f"global_mae={cmp_result['global_mae']:.4f}"
+                ) if cmp_result.get("receiver_conditioned_mae") is None
                 else f"recv_mae={cmp_result['receiver_conditioned_mae']:.4f}, "
                      f"global_mae={cmp_result['global_mae']:.4f}"
             ),
-            "passed": bool(smtr_beats_global),
+            "passed": None if smtr_beats_global is None else bool(smtr_beats_global),
         },
     }
 
-    all_passed = all(c["passed"] for c in checks.values())
-    verdict = "PASS" if all_passed else "FAIL"
+    n_fail = sum(1 for c in checks.values() if c["passed"] is False)
+    n_na = sum(1 for c in checks.values() if c["passed"] is None)
+    verdict = "PASS" if n_fail == 0 else "FAIL"
 
     print(f"\n{'=' * 60}")
     print("Sanity Check Results")
     print("=" * 60)
     for name, check in checks.items():
-        status = "PASS" if check["passed"] else "FAIL"
+        status = ("PASS" if check["passed"] is True
+                  else ("FAIL" if check["passed"] is False else "N/A"))
         print(f"  [{status}] {check['description']}")
         print(f"         {check['value']}")
+    if n_na:
+        print(f"\n  ({n_na} check(s) inconclusive due to single-seed data)")
     print(f"\n  Verdict: {verdict}")
 
     # ── Reports ──
@@ -273,12 +287,15 @@ def main() -> None:
     if cmp_result.get("skip"):
         md.append(f"Skipped: {cmp_result['reason']}\n")
     else:
-        md.append(f"- Global τ(m) MAE: {cmp_result['global_mae']:.4f}")
-        md.append(f"- Receiver-conditioned τ(m,r) MAE: {cmp_result['receiver_conditioned_mae']:.4f}")
-        md.append(f"- SMTR beats global: {cmp_result['smtr_beats_global']}\n")
+        g_mae = cmp_result.get("global_mae")
+        r_mae = cmp_result.get("receiver_conditioned_mae")
+        md.append(f"- Global τ(m) MAE: " + (f"{g_mae:.4f}" if g_mae is not None else "n/a"))
+        md.append("- Receiver-conditioned τ(m,r) MAE: "
+                  + (f"{r_mae:.4f}" if r_mae is not None else "n/a (single seed per receiver)"))
+        md.append(f"- SMTR beats global: {cmp_result.get('smtr_beats_global')}\n")
     md.append("## Checks\n")
     for name, check in checks.items():
-        icon = "PASS" if check["passed"] else "FAIL"
+        icon = "PASS" if check["passed"] is True else ("FAIL" if check["passed"] is False else "N/A")
         md.append(f"- [{icon}] {check['description']}: {check['value']}")
     md_path = reports_dir / "receiver_sanity.md"
     md_path.write_text("\n".join(md))

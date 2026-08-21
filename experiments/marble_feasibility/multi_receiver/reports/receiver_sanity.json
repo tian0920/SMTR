@@ -1,41 +1,62 @@
 {
-  "verdict": "FAIL",
+  "verdict": "PASS",
   "checks": {
     "multi_receiver_data_collected": {
       "description": "Records span >= 2 receivers",
-      "value": "receivers=[]",
-      "passed": false
+      "value": "receivers=['agent1', 'agent2', 'agent3']",
+      "passed": true
     },
     "receiver_effect_variance_positive": {
       "description": "receiver_effect_variance > 0",
-      "value": "variance=0.0000",
-      "passed": false
+      "value": "variance=0.3333",
+      "passed": true
     },
     "heterogeneity_exists": {
       "description": "at least one memory shows tau(m,r1) != tau(m,r2)",
-      "value": "heterogeneous=0/0",
-      "passed": false
+      "value": "heterogeneous=1/2",
+      "passed": true
     },
     "smtr_beats_global": {
       "description": "receiver-conditioned tau(m,r) MAE <= global tau(m) MAE",
-      "value": "skipped (insufficient data)",
-      "passed": false
+      "value": "receiver-conditioned MAE n/a (need >=2 seeds per receiver); global_mae=0.5000",
+      "passed": null
     }
   },
   "receiver_variance": {
-    "per_memory": {},
-    "receiver_effect_variance": 0.0,
-    "heterogeneous_memories": 0,
-    "n_comparable_memories": 0
+    "per_memory": {
+      "1::database_1_harmful": {
+        "agent1": 0.0,
+        "agent2": 0.0,
+        "agent3": 0.0
+      },
+      "1::database_1_helpful": {
+        "agent1": 0.0,
+        "agent2": 1.0,
+        "agent3": -1.0
+      }
+    },
+    "receiver_effect_variance": 0.3333333333333333,
+    "heterogeneous_memories": 1,
+    "n_comparable_memories": 2
   },
   "global_vs_receiver": {
-    "skip": true,
-    "reason": "only 0 valid records"
+    "skip": false,
+    "global_mae": 0.5,
+    "receiver_conditioned_mae": null,
+    "smtr_beats_global": null,
+    "n_global_evaluated": 6,
+    "n_receiver_evaluated": 0
   },
   "data_summary": {
-    "n_records": 2,
-    "n_valid": 0,
-    "receivers": [],
-    "tasks": []
+    "n_records": 6,
+    "n_valid": 6,
+    "receivers": [
+      "agent1",
+      "agent2",
+      "agent3"
+    ],
+    "tasks": [
+      "1"
+    ]
   }
 }
