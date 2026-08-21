@@ -1,0 +1,82 @@
+[
+  {
+    "method": "smtr_tci",
+    "noise_sigma": 0.0,
+    "n_groups": 590,
+    "mean_reward": 0.6949152542372882,
+    "std_reward": 0.8183123867507329,
+    "mean_precision": 0.17796610169491525,
+    "mean_false_rejection": 0.0,
+    "mean_harmful": 0.0
+  },
+  {
+    "method": "random_validation",
+    "noise_sigma": 0.0,
+    "n_groups": 590,
+    "mean_reward": 0.33559322033898303,
+    "std_reward": 0.7125420503474572,
+    "mean_precision": 0.05963276836158193,
+    "mean_false_rejection": 0.10070621468926555,
+    "mean_harmful": 0.17966101694915254
+  },
+  {
+    "method": "smtr_tci",
+    "noise_sigma": 0.1,
+    "n_groups": 590,
+    "mean_reward": 0.6949152542372882,
+    "std_reward": 0.8183123867507329,
+    "mean_precision": 0.17796610169491525,
+    "mean_false_rejection": 0.0,
+    "mean_harmful": 0.0
+  },
+  {
+    "method": "random_validation",
+    "noise_sigma": 0.1,
+    "n_groups": 590,
+    "mean_reward": 0.3559322033898305,
+    "std_reward": 0.7470328167503251,
+    "mean_precision": 0.06748587570621468,
+    "mean_false_rejection": 0.09223163841807908,
+    "mean_harmful": 0.17457627118644067
+  },
+  {
+    "method": "smtr_tci",
+    "noise_sigma": 0.2,
+    "n_groups": 590,
+    "mean_reward": 0.6915254237288135,
+    "std_reward": 0.810793320566757,
+    "mean_precision": 0.17711864406779662,
+    "mean_false_rejection": 0.001271186440677966,
+    "mean_harmful": 0.0
+  },
+  {
+    "method": "random_validation",
+    "noise_sigma": 0.2,
+    "n_groups": 590,
+    "mean_reward": 0.31186440677966104,
+    "std_reward": 0.7018340973895087,
+    "mean_precision": 0.05615819209039548,
+    "mean_false_rejection": 0.10536723163841807,
+    "mean_harmful": 0.1847457627118644
+  },
+  {
+    "method": "smtr_tci",
+    "noise_sigma": 0.3,
+    "n_groups": 590,
+    "mean_reward": 0.6694915254237288,
+    "std_reward": 0.7967634183642193,
+    "mean_precision": 0.16257062146892653,
+    "mean_false_rejection": 0.015677966101694914,
+    "mean_harmful": 0.0
+  },
+  {
+    "method": "random_validation",
+    "noise_sigma": 0.3,
+    "n_groups": 590,
+    "mean_reward": 0.3728813559322034,
+    "std_reward": 0.7154068437087251,
+    "mean_precision": 0.07361581920903955,
+    "mean_false_rejection": 0.08714689265536724,
+    "mean_harmful": 0.16101694915254236
+  }
+]

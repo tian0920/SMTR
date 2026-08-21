@@ -36,6 +36,11 @@ from experiments.lifelong.lifelong_env import (
     TaskSample,
 )
 from experiments.lifelong.methods import METHODS, LifelongPolicy
+from experiments.lifelong.baseline_policies import BASELINE_METHODS
+
+# Merge baseline methods into the global registry so --methods can
+# reference them without extra plumbing.
+METHODS = {**METHODS, **BASELINE_METHODS}
 
 ALL_TOPICS = tuple(range(10))
 TOPICS_A = tuple(range(5))
@@ -233,7 +238,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     parser.add_argument("--methods", nargs="+",
-                        default=["no_memory", "full_memory", "retrieval", "smtr_tci"])
+                        default=["no_memory", "full_memory", "retrieval", "smtr_tci",
+                                 "reflexion", "agile", "heuristic", "agemem"])
     parser.add_argument("--contamination-ratio", type=float, default=0.2)
     parser.add_argument("--change-episode", type=int, default=None)
     parser.add_argument("--changed-topics", type=int, nargs="*", default=[])

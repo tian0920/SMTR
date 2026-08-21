@@ -1,0 +1,8 @@
+method,seeds_found,seed_count,expected,warning
+agemem,"0,1,2",3,"0,1,2,3,4","MISSING seeds 3,4"
+full_memory,"0,1,2",3,"0,1,2,3,4","MISSING seeds 3,4"
+heuristic,"0,1,2",3,"0,1,2,3,4","MISSING seeds 3,4"
+no_memory,"0,1,2",3,"0,1,2,3,4","MISSING seeds 3,4"
+reflexion,"0,1,2",3,"0,1,2,3,4","MISSING seeds 3,4"
+retrieval,"0,1,2",3,"0,1,2,3,4","MISSING seeds 3,4"
+smtr_tci,"0,1,2",3,"0,1,2,3,4","MISSING seeds 3,4"

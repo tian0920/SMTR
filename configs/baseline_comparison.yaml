@@ -1,0 +1,79 @@
+# Baseline Comparison Experiment Configuration
+# All methods read this config. No baseline may independently modify:
+#   task sequence, seed, memory budget, or evaluation.
+
+experiment:
+  name: baseline_comparison
+  description: >
+    Systematic comparison of SMTR-TCI against memory controller baselines.
+    All methods share the same environment, task stream, seeds, and
+    evaluation protocol.
+
+environment:
+  type: lifelong
+  n_topics: 10
+  base_success: 0.40
+  helpful_effect: 0.35
+  harmful_effect: -0.35
+  distraction_penalty: 0.02
+
+episodes: 100
+seeds: [0, 1, 2, 3, 4]
+
+memory:
+  budget: null  # null = unlimited; set to int for budget experiments
+  retrieval_top_k: 3
+
+evaluation:
+  same_task_sequence: true   # paired design: shared task RNG across all methods
+  contamination_ratio: 0.2
+  validation_trials: 3       # TCI probe trials (only used by SMTR-TCI)
+
+methods:
+  - no_memory
+  - full_memory
+  - retrieval
+  - reflexion
+  - agile
+  - heuristic
+  - agemem
+  - smtr_tci
+
+output:
+  dir: results/baseline_comparison
+  artifacts:
+    - performance.csv
+    - trajectory.jsonl
+    - memory_history.jsonl
+    - statistics.json
+
+# Contamination benchmark (Task 7) — extends the base config
+contamination:
+  ratios: [0.1, 0.2, 0.3]
+  seeds: [0, 1, 2, 3, 4]
+  methods:
+    - full_memory
+    - retrieval
+    - reflexion
+    - heuristic
+    - agemem
+    - smtr_tci
+  outdated:
+    change_episode: 60
+    changed_topics: [0, 1, 2]
+    ratio: 0.2
+
+# Cost comparison (Task 8) — equal-cost evaluation
+cost_comparison:
+  methods:
+    - smtr_tci
+    - random_validation
+    - reflexion
+    - heuristic
+    - agemem
+  metrics:
+    - additional_computation
+    - validation_actions
+    - memory_operations
+    - reward_per_operation
+    - knowledge_quality_per_cost

@@ -1,0 +1,26 @@
+method,label,seed,final_reward,late_reward,probe_trials,validation_actions,memory_operations,total_operations
+smtr_tci,SMTR-TCI,0,0.84,1.0,900,100,300,1300
+random_validation,Random Validation,0,0.84,1.0,900,100,300,1300
+reflexion,Reflexion,0,0.77,1.0,0,0,200,200
+heuristic,Heuristic,0,0.7,0.85,0,0,200,200
+agemem,AgeMem-inspired,0,0.66,0.65,0,0,200,200
+smtr_tci,SMTR-TCI,1,0.85,1.0,900,100,300,1300
+random_validation,Random Validation,1,0.72,0.75,900,100,300,1300
+reflexion,Reflexion,1,0.83,0.85,0,0,200,200
+heuristic,Heuristic,1,0.79,0.85,0,0,200,200
+agemem,AgeMem-inspired,1,0.85,0.95,0,0,200,200
+smtr_tci,SMTR-TCI,2,0.95,1.0,900,100,300,1300
+random_validation,Random Validation,2,0.84,1.0,900,100,300,1300
+reflexion,Reflexion,2,0.86,0.95,0,0,200,200
+heuristic,Heuristic,2,0.86,1.0,0,0,200,200
+agemem,AgeMem-inspired,2,0.85,1.0,0,0,200,200
+smtr_tci,SMTR-TCI,3,0.85,1.0,900,100,300,1300
+random_validation,Random Validation,3,0.83,1.0,900,100,300,1300
+reflexion,Reflexion,3,0.87,0.9,0,0,200,200
+heuristic,Heuristic,3,0.77,0.9,0,0,200,200
+agemem,AgeMem-inspired,3,0.72,0.8,0,0,200,200
+smtr_tci,SMTR-TCI,4,0.87,0.95,900,100,300,1300
+random_validation,Random Validation,4,0.85,0.9,900,100,300,1300
+reflexion,Reflexion,4,0.77,0.9,0,0,200,200
+heuristic,Heuristic,4,0.76,0.85,0,0,200,200
+agemem,AgeMem-inspired,4,0.7,0.8,0,0,200,200

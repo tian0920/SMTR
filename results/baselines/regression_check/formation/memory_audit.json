@@ -1,0 +1,244 @@
+[
+  {
+    "memory_id": "mem_ep0_f87f16083c",
+    "content": "validated procedure for topic 5",
+    "source_episode": 0,
+    "receiver": "agent1",
+    "created_step": 0,
+    "status": "validated",
+    "tci_effect": 0.3333333333333333,
+    "validation_count": 3,
+    "validation_history": [
+      {
+        "episode_id": 0,
+        "expose_reward": 0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": 0.3333333333333333,
+        "decision": "validated"
+      },
+      {
+        "episode_id": 1,
+        "expose_reward": 0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": 0.3333333333333333,
+        "decision": "validated"
+      },
+      {
+        "episode_id": 7,
+        "expose_reward": 0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": 0.3333333333333333,
+        "decision": "validated"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep1_28d6986210",
+    "content": "validated procedure for topic 0",
+    "source_episode": 1,
+    "receiver": "agent1",
+    "created_step": 1,
+    "status": "rejected",
+    "tci_effect": -0.3333333333333333,
+    "validation_count": 1,
+    "validation_history": [
+      {
+        "episode_id": 1,
+        "expose_reward": -0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": -0.3333333333333333,
+        "decision": "rejected"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep2_26740357ac",
+    "content": "validated procedure for topic 3",
+    "source_episode": 2,
+    "receiver": "agent1",
+    "created_step": 2,
+    "status": "validated",
+    "tci_effect": 1.0,
+    "validation_count": 3,
+    "validation_history": [
+      {
+        "episode_id": 2,
+        "expose_reward": 0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": 0.3333333333333333,
+        "decision": "validated"
+      },
+      {
+        "episode_id": 3,
+        "expose_reward": 0.0,
+        "withhold_reward": 0.0,
+        "delta": 0.0,
+        "decision": "suspect"
+      },
+      {
+        "episode_id": 6,
+        "expose_reward": 1.0,
+        "withhold_reward": 0.0,
+        "delta": 1.0,
+        "decision": "validated"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep3_66dfc0b1af",
+    "content": "validated procedure for topic 3",
+    "source_episode": 3,
+    "receiver": "agent1",
+    "created_step": 3,
+    "status": "rejected",
+    "tci_effect": 0.0,
+    "validation_count": 1,
+    "validation_history": [
+      {
+        "episode_id": 3,
+        "expose_reward": 0.0,
+        "withhold_reward": 0.0,
+        "delta": 0.0,
+        "decision": "rejected"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep4_4ff9e8b9be",
+    "content": "validated procedure for topic 7",
+    "source_episode": 4,
+    "receiver": "agent1",
+    "created_step": 4,
+    "status": "validated",
+    "tci_effect": 0.6666666666666666,
+    "validation_count": 2,
+    "validation_history": [
+      {
+        "episode_id": 4,
+        "expose_reward": 1.0,
+        "withhold_reward": 0.0,
+        "delta": 1.0,
+        "decision": "validated"
+      },
+      {
+        "episode_id": 8,
+        "expose_reward": 0.6666666666666666,
+        "withhold_reward": 0.0,
+        "delta": 0.6666666666666666,
+        "decision": "validated"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep5_34e9658d41",
+    "content": "validated procedure for topic 9",
+    "source_episode": 5,
+    "receiver": "agent1",
+    "created_step": 5,
+    "status": "validated",
+    "tci_effect": 0.3333333333333333,
+    "validation_count": 2,
+    "validation_history": [
+      {
+        "episode_id": 5,
+        "expose_reward": 1.0,
+        "withhold_reward": 0.0,
+        "delta": 1.0,
+        "decision": "validated"
+      },
+      {
+        "episode_id": 9,
+        "expose_reward": 0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": 0.3333333333333333,
+        "decision": "validated"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep6_961bbe33c3",
+    "content": "validated procedure for topic 3",
+    "source_episode": 6,
+    "receiver": "agent1",
+    "created_step": 6,
+    "status": "validated",
+    "tci_effect": 0.3333333333333333,
+    "validation_count": 1,
+    "validation_history": [
+      {
+        "episode_id": 6,
+        "expose_reward": 0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": 0.3333333333333333,
+        "decision": "validated"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep7_c35fab0a16",
+    "content": "validated procedure for topic 5",
+    "source_episode": 7,
+    "receiver": "agent1",
+    "created_step": 7,
+    "status": "validated",
+    "tci_effect": 1.0,
+    "validation_count": 1,
+    "validation_history": [
+      {
+        "episode_id": 7,
+        "expose_reward": 1.0,
+        "withhold_reward": 0.0,
+        "delta": 1.0,
+        "decision": "validated"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep8_0aa4c95a59",
+    "content": "validated procedure for topic 2",
+    "source_episode": 8,
+    "receiver": "agent1",
+    "created_step": 8,
+    "status": "rejected",
+    "tci_effect": 0.0,
+    "validation_count": 1,
+    "validation_history": [
+      {
+        "episode_id": 8,
+        "expose_reward": 0.0,
+        "withhold_reward": 0.0,
+        "delta": 0.0,
+        "decision": "rejected"
+      }
+    ],
+    "seed": 0
+  },
+  {
+    "memory_id": "mem_ep9_964453a447",
+    "content": "validated procedure for topic 4",
+    "source_episode": 9,
+    "receiver": "agent1",
+    "created_step": 9,
+    "status": "rejected",
+    "tci_effect": -0.3333333333333333,
+    "validation_count": 1,
+    "validation_history": [
+      {
+        "episode_id": 9,
+        "expose_reward": -0.3333333333333333,
+        "withhold_reward": 0.0,
+        "delta": -0.3333333333333333,
+        "decision": "rejected"
+      }
+    ],
+    "seed": 0
+  }
+]

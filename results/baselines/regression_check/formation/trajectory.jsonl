@@ -1,0 +1,40 @@
+{"episode": 0, "topic": 5, "distribution": "A", "method": "no_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 1, "topic": 0, "distribution": "A", "method": "no_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 2, "topic": 3, "distribution": "A", "method": "no_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 3, "topic": 3, "distribution": "A", "method": "no_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 4, "topic": 7, "distribution": "A", "method": "no_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 5, "topic": 9, "distribution": "A", "method": "no_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 6, "topic": 3, "distribution": "A", "method": "no_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 7, "topic": 5, "distribution": "A", "method": "no_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 8, "topic": 2, "distribution": "A", "method": "no_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 9, "topic": 4, "distribution": "A", "method": "no_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 0, "topic": 5, "distribution": "A", "method": "full_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 1, "topic": 0, "distribution": "A", "method": "full_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 1, "injected_ids": ["mem_ep0_8182afe789"]}
+{"episode": 2, "topic": 3, "distribution": "A", "method": "full_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 2, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210"]}
+{"episode": 3, "topic": 3, "distribution": "A", "method": "full_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 3, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210", "mem_ep2_26740357ac"]}
+{"episode": 4, "topic": 7, "distribution": "A", "method": "full_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 4, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210", "mem_ep2_26740357ac", "mem_ep3_66dfc0b1af"]}
+{"episode": 5, "topic": 9, "distribution": "A", "method": "full_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 5, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210", "mem_ep2_26740357ac", "mem_ep3_66dfc0b1af", "mem_ep4_4ff9e8b9be"]}
+{"episode": 6, "topic": 3, "distribution": "A", "method": "full_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 6, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210", "mem_ep2_26740357ac", "mem_ep3_66dfc0b1af", "mem_ep4_4ff9e8b9be", "mem_ep5_34e9658d41"]}
+{"episode": 7, "topic": 5, "distribution": "A", "method": "full_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 7, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210", "mem_ep2_26740357ac", "mem_ep3_66dfc0b1af", "mem_ep4_4ff9e8b9be", "mem_ep5_34e9658d41", "mem_ep6_5eab8b4f81"]}
+{"episode": 8, "topic": 2, "distribution": "A", "method": "full_memory", "seed": 0, "success": false, "reward": 0.0, "n_injected": 8, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210", "mem_ep2_26740357ac", "mem_ep3_66dfc0b1af", "mem_ep4_4ff9e8b9be", "mem_ep5_34e9658d41", "mem_ep6_5eab8b4f81", "mem_ep7_c35fab0a16"]}
+{"episode": 9, "topic": 4, "distribution": "A", "method": "full_memory", "seed": 0, "success": true, "reward": 1.0, "n_injected": 9, "injected_ids": ["mem_ep0_8182afe789", "mem_ep1_28d6986210", "mem_ep2_26740357ac", "mem_ep3_66dfc0b1af", "mem_ep4_4ff9e8b9be", "mem_ep5_34e9658d41", "mem_ep6_5eab8b4f81", "mem_ep7_c35fab0a16", "mem_ep8_fdda81b71f"]}
+{"episode": 0, "topic": 5, "distribution": "A", "method": "retrieval", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 1, "topic": 0, "distribution": "A", "method": "retrieval", "seed": 0, "success": false, "reward": 0.0, "n_injected": 1, "injected_ids": ["mem_ep0_f87f16083c"]}
+{"episode": 2, "topic": 3, "distribution": "A", "method": "retrieval", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 3, "topic": 3, "distribution": "A", "method": "retrieval", "seed": 0, "success": true, "reward": 1.0, "n_injected": 1, "injected_ids": ["mem_ep2_26740357ac"]}
+{"episode": 4, "topic": 7, "distribution": "A", "method": "retrieval", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 5, "topic": 9, "distribution": "A", "method": "retrieval", "seed": 0, "success": true, "reward": 1.0, "n_injected": 0, "injected_ids": []}
+{"episode": 6, "topic": 3, "distribution": "A", "method": "retrieval", "seed": 0, "success": true, "reward": 1.0, "n_injected": 2, "injected_ids": ["mem_ep3_e8c0245ec4", "mem_ep2_26740357ac"]}
+{"episode": 7, "topic": 5, "distribution": "A", "method": "retrieval", "seed": 0, "success": false, "reward": 0.0, "n_injected": 2, "injected_ids": ["mem_ep0_f87f16083c", "mem_ep1_786d0fd1df"]}
+{"episode": 8, "topic": 2, "distribution": "A", "method": "retrieval", "seed": 0, "success": false, "reward": 0.0, "n_injected": 1, "injected_ids": ["mem_ep4_4ff9e8b9be"]}
+{"episode": 9, "topic": 4, "distribution": "A", "method": "retrieval", "seed": 0, "success": true, "reward": 1.0, "n_injected": 1, "injected_ids": ["mem_ep5_34e9658d41"]}
+{"episode": 0, "topic": 5, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 1, "topic": 0, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": true, "reward": 1.0, "n_injected": 1, "injected_ids": ["mem_ep0_f87f16083c"]}
+{"episode": 2, "topic": 3, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 3, "topic": 3, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": true, "reward": 1.0, "n_injected": 1, "injected_ids": ["mem_ep2_26740357ac"]}
+{"episode": 4, "topic": 7, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 5, "topic": 9, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": false, "reward": 0.0, "n_injected": 0, "injected_ids": []}
+{"episode": 6, "topic": 3, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": true, "reward": 1.0, "n_injected": 1, "injected_ids": ["mem_ep2_26740357ac"]}
+{"episode": 7, "topic": 5, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": false, "reward": 0.0, "n_injected": 1, "injected_ids": ["mem_ep0_f87f16083c"]}
+{"episode": 8, "topic": 2, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": true, "reward": 1.0, "n_injected": 1, "injected_ids": ["mem_ep4_4ff9e8b9be"]}
+{"episode": 9, "topic": 4, "distribution": "A", "method": "smtr_tci", "seed": 0, "success": false, "reward": 0.0, "n_injected": 1, "injected_ids": ["mem_ep5_34e9658d41"]}
