@@ -1,0 +1,12 @@
+{
+  "unique_memories": 11,
+  "ground_truth_positive": 6,
+  "base_rate": 0.5454545454545454,
+  "tci_tp": 5,
+  "tci_fp": 0,
+  "tci_fn": 1,
+  "tci_tn": 5,
+  "precision": 1.0,
+  "recall": 0.8333333333333334,
+  "enrichment_factor": 1.8333333333333335
+}

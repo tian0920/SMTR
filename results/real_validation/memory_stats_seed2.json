@@ -1,0 +1,38 @@
+{
+  "no_memory": {
+    "total": 0,
+    "candidate": 0,
+    "validated": 0,
+    "rejected": 0,
+    "mean_tci_effect_validated": null,
+    "mean_validation_count": null,
+    "validated_memories": 0
+  },
+  "full_memory": {
+    "total": 11,
+    "candidate": 11,
+    "validated": 0,
+    "rejected": 0,
+    "mean_tci_effect_validated": null,
+    "mean_validation_count": 0.0,
+    "validated_memories": 11
+  },
+  "retrieval": {
+    "total": 11,
+    "candidate": 11,
+    "validated": 0,
+    "rejected": 0,
+    "mean_tci_effect_validated": null,
+    "mean_validation_count": 0.0,
+    "validated_memories": 11
+  },
+  "smtr_tci": {
+    "total": 11,
+    "candidate": 0,
+    "validated": 2,
+    "rejected": 9,
+    "mean_tci_effect_validated": 1.0,
+    "mean_validation_count": 1.0,
+    "validated_memories": 2
+  }
+}
