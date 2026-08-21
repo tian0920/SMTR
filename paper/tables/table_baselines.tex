@@ -1,0 +1,18 @@
+\begin{table}[t]
+\caption{Baseline memory controller comparison.}
+\label{tab:baselines}
+\centering
+\begin{tabular}{l l l c c c c}
+\toprule
+Method & Memory Type & Selection Principle & Final Reward & Late Reward & Transfer & Contamination \\
+\midrule
+Full Memory & Verbatim experience & All stored memories & --- & --- & --- & --- \\
+Retrieval & Verbatim experience & Top-k topic match & --- & --- & --- & --- \\
+Reflexion & Verbal reflection & All reflections (topic filter) & --- & --- & --- & --- \\
+AGILE & Consolidated experience & Experience-score ranked & --- & --- & --- & --- \\
+Heuristic & Importance-scored & Recency + usage + retrieval & --- & --- & --- & --- \\
+AgeMem & Managed (ADD/DELETE/COMPRESS) & Frozen learned-style policy & --- & --- & --- & --- \\
+SMTR & TCI-validated knowledge & Causal-utility gated & --- & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{table}

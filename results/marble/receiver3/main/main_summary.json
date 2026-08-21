@@ -1,0 +1,62 @@
+[
+  {
+    "method": "no_memory",
+    "n_episodes": 136,
+    "mean_team_reward": 0.3589052287581699,
+    "std_team_reward": 0.44904192744282073,
+    "mean_receiver_1_reward": 0.3235294117647059,
+    "mean_receiver_2_reward": 0.3686274509803922,
+    "mean_receiver_3_reward": 0.38455882352941173,
+    "mean_disagreement_std": 0.0,
+    "total_positive_injected": 0,
+    "total_negative_injected": 0
+  },
+  {
+    "method": "full_memory",
+    "n_episodes": 136,
+    "mean_team_reward": 0.36135620915032673,
+    "std_team_reward": 1.0118893945973684,
+    "mean_receiver_1_reward": 0.3235294117647059,
+    "mean_receiver_2_reward": 0.4715686274509803,
+    "mean_receiver_3_reward": 0.2889705882352941,
+    "mean_disagreement_std": 0.0,
+    "total_positive_injected": 203,
+    "total_negative_injected": 202
+  },
+  {
+    "method": "retrieval",
+    "n_episodes": 136,
+    "mean_team_reward": 0.34910130718954246,
+    "std_team_reward": 0.6038649500505273,
+    "mean_receiver_1_reward": 0.3602941176470588,
+    "mean_receiver_2_reward": 0.4200980392156862,
+    "mean_receiver_3_reward": 0.26691176470588235,
+    "mean_disagreement_std": 0.0,
+    "total_positive_injected": 116,
+    "total_negative_injected": 120
+  },
+  {
+    "method": "smtr_uniform",
+    "n_episodes": 136,
+    "mean_team_reward": 0.8172385620915033,
+    "std_team_reward": 0.564004495462773,
+    "mean_receiver_1_reward": 0.5955882352941176,
+    "mean_receiver_2_reward": 0.9789215686274509,
+    "mean_receiver_3_reward": 0.8772058823529413,
+    "mean_disagreement_std": 0.0,
+    "total_positive_injected": 187,
+    "total_negative_injected": 0
+  },
+  {
+    "method": "smtr_receiver",
+    "n_episodes": 136,
+    "mean_team_reward": 0.8417483660130719,
+    "std_team_reward": 0.5548995249548145,
+    "mean_receiver_1_reward": 0.5955882352941176,
+    "mean_receiver_2_reward": 1.0156862745098039,
+    "mean_receiver_3_reward": 0.9139705882352942,
+    "mean_disagreement_std": 0.3162368998163198,
+    "total_positive_injected": 197,
+    "total_negative_injected": 0
+  }
+]

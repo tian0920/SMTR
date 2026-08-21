@@ -1,0 +1,26 @@
+{
+  "smtr_uniform": {
+    "n_unique_memories": 120,
+    "n_receivers_validated": 1,
+    "n_validations": 120,
+    "n_expose_rollouts": 120,
+    "n_withhold_rollouts": 120,
+    "total_rollouts": 240,
+    "mean_team_reward": 0.8172,
+    "reward_per_validation": 0.00681,
+    "knowledge_quality": 0.5194,
+    "quality_per_validation": 0.004329
+  },
+  "smtr_receiver": {
+    "n_unique_memories": 133,
+    "n_receivers_validated": 3,
+    "n_validations": 399,
+    "n_expose_rollouts": 399,
+    "n_withhold_rollouts": 399,
+    "total_rollouts": 798,
+    "mean_team_reward": 0.8417,
+    "reward_per_validation": 0.00211,
+    "knowledge_quality": 1.0,
+    "quality_per_validation": 0.002506
+  }
+}

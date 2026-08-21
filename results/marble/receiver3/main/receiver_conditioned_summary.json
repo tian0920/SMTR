@@ -1,0 +1,19 @@
+{
+  "total_memories": 133,
+  "disagreement_count": 112,
+  "disagreement_rate": 0.5614315789473683,
+  "mean_delta_variance": 0.1871345029239766,
+  "selective_transfer": {
+    "0": 0,
+    "1": 90,
+    "2": 22,
+    "3": 21
+  },
+  "negative_transfer_prevented": {
+    "receiver_1": 0,
+    "receiver_2": 5,
+    "receiver_3": 5
+  },
+  "uniform_accuracy": 0.49373433583959897,
+  "receiver_accuracy": 1.0
+}

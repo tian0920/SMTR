@@ -1,0 +1,18 @@
+{
+  "receivers": [
+    "agent1"
+  ],
+  "per_receiver": {
+    "agent1": {
+      "n_records": 303,
+      "mean_tau": -0.006050605060506058,
+      "positive_rate": 0.06105610561056106,
+      "negative_rate": 0.0671067106710671
+    }
+  },
+  "disagreement": {
+    "disagreement_rate": 0.0,
+    "n_comparisons": 0,
+    "n_disagreements": 0
+  }
+}

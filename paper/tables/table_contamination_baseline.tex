@@ -1,0 +1,31 @@
+\begin{table}[t]
+\caption{Contamination resilience across baselines.}
+\label{tab:contamination_baseline}
+\centering
+\begin{tabular}{l c c c c c c c}
+\toprule
+Method & r=0.1 Reward & Drop & r=0.2 Reward & Drop & r=0.3 Reward & Drop & Harmful Ret. \\
+\midrule
+Full Memory & 1.000 & 1.000 & 0.960 & 1.000 & 0.860 & 1.000 & 1.000 \\
+Retrieval & 0.960 & 1.000 & 0.940 & 1.000 & 0.780 & 1.000 & 1.000 \\
+Reflexion & 0.940 & 1.000 & 0.940 & 1.000 & 0.840 & 1.000 & 1.000 \\
+Heuristic & 0.900 & 1.000 & 0.920 & 1.000 & 0.820 & 1.000 & 1.000 \\
+AgeMem-inspired & 0.840 & 0.491 & 0.880 & 0.517 & 0.780 & 0.468 & 0.492 \\
+SMTR-TCI & 0.980 & 0.216 & 1.000 & 0.188 & 0.980 & 0.200 & 0.201 \\
+\bottomrule
+\end{tabular}
+\vspace{4pt}
+\textbf{Outdated variant} (change at episode 60):
+\begin{tabular}{l c c c}
+\toprule
+Method & Final Reward & Perf. Drop & Recovery (ep) \\
+\midrule
+Full Memory & 0.640 & 0.103 & 29 \\
+Retrieval & 0.880 & -0.035 & 15 \\
+Reflexion & 0.880 & -0.025 & 15 \\
+Heuristic & 0.620 & 0.143 & 23 \\
+AgeMem-inspired & 0.620 & 0.157 & 32 \\
+SMTR-TCI & 0.960 & -0.078 & 16 \\
+\bottomrule
+\end{tabular}
+\end{table}

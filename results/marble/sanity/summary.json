@@ -1,0 +1,29 @@
+[
+  {
+    "method": "no_memory",
+    "n_groups": 20,
+    "mean_reward": 0.3,
+    "std_reward": 0.45825756949558394,
+    "mean_injected": 0.0,
+    "mean_positive": 0.0,
+    "mean_harmful": 0.0
+  },
+  {
+    "method": "full_memory",
+    "n_groups": 20,
+    "mean_reward": 0.40083333333333326,
+    "std_reward": 0.3950905311163225,
+    "mean_injected": 3.7,
+    "mean_positive": 0.5,
+    "mean_harmful": 0.2
+  },
+  {
+    "method": "smtr_tci",
+    "n_groups": 20,
+    "mean_reward": 0.37583333333333335,
+    "std_reward": 0.4009528581322802,
+    "mean_injected": 2.65,
+    "mean_positive": 0.35,
+    "mean_harmful": 0.15
+  }
+]
