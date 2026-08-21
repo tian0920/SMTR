@@ -1,5 +1,9 @@
 """Collect and resample intervention records from existing MARBLE paired data.
 
+Multi-receiver aware (Task 3): records are grouped by receiver_agent_id so
+that the receiver dimension genuinely varies; each receiver's pool is
+resampled independently to preserve per-receiver label balance.
+
 Supports two sampling strategies:
   - random:     keep all records as-is (control baseline)
   - informative: two-stage probe rollout → select |Δ|>0 samples,
@@ -10,6 +14,7 @@ Outputs:
   - data/balanced_train.jsonl        (resampled training set)
   - data/balanced_validation.jsonl   (original validation, unchanged)
   - data/signal_statistics.json
+  - data/receiver_statistics.json    (per-receiver counts, multi-receiver mode)
 """
 
 from __future__ import annotations
@@ -171,6 +176,20 @@ def _save_jsonl(records: list[dict], path: Path) -> None:
             f.write(json.dumps(record, default=str) + "\n")
 
 
+def _receiver_statistics(records: list[dict]) -> dict:
+    """Per-receiver signal statistics (multi-receiver sanity, Task 3)."""
+    by_receiver: dict[str, list[dict]] = {}
+    for r in records:
+        if not r.get("valid", False):
+            continue
+        recv = str(r.get("receiver_agent_id", r.get("receiver", "unknown")))
+        by_receiver.setdefault(recv, []).append(r)
+    out: dict = {}
+    for recv, recs in sorted(by_receiver.items()):
+        out[recv] = _compute_signal_statistics(recs)
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collect intervention records")
     parser.add_argument(
@@ -203,6 +222,13 @@ def main() -> None:
 
     print(f"\n  Total records across all splits: {len(all_records)}")
 
+    # ── Multi-receiver grouping (Task 3): receiver genuinely varies ──
+    receivers = sorted({
+        str(r.get("receiver_agent_id", "agent1"))
+        for r in all_records if r.get("valid", False)
+    })
+    print(f"  Receivers found: {receivers}")
+
     # ── Step 2: Extract raw intervention records ──
     intervention_records = [_extract_intervention_record(r) for r in all_records]
 
@@ -218,14 +244,27 @@ def main() -> None:
     print(f"\n  Applying '{strategy}' sampling strategy...")
 
     if strategy == "informative":
-        # Combine all valid records from all splits
-        balanced_train = _informative_sample(
-            all_records,
-            target_total=sampling_cfg["target_total"],
-            target_pos_pct=sampling_cfg["target_positive_pct"],
-            target_neg_pct=sampling_cfg["target_negative_pct"],
-            seed=sampling_cfg["upsample_seed"],
-        )
+        # Resample each receiver's pool independently so the receiver
+        # dimension genuinely varies and per-receiver balance is kept.
+        balanced_train = []
+        per_receiver_target = max(1, sampling_cfg["target_total"] // len(receivers))
+        for recv in receivers:
+            recv_pool = [
+                r for r in all_records
+                if r.get("valid", False)
+                and str(r.get("receiver_agent_id", "agent1")) == recv
+            ]
+            print(f"\n  Resampling receiver={recv} ({len(recv_pool)} records)...")
+            balanced_train.extend(_informative_sample(
+                recv_pool,
+                target_total=per_receiver_target,
+                target_pos_pct=sampling_cfg["target_positive_pct"],
+                target_neg_pct=sampling_cfg["target_negative_pct"],
+                seed=sampling_cfg["upsample_seed"],
+            ))
+        rng = np.random.RandomState(sampling_cfg["upsample_seed"])
+        order = rng.permutation(len(balanced_train))
+        balanced_train = [balanced_train[i] for i in order]
     else:
         # Random: keep all valid records as-is
         balanced_train = [r for r in all_records if r.get("valid", False)]
@@ -267,24 +306,35 @@ def main() -> None:
 
     stats_path = out_dir / "signal_statistics.json"
     stats["sampling_strategy"] = strategy
+    stats["receivers"] = receivers
     with open(stats_path, "w", encoding="utf-8") as f:
         json.dump(stats, f, indent=2)
     print(f"\n  Saved: {stats_path}")
 
-    # ── Step 8: Acceptance checks (legacy) ──
-    print("\n  Acceptance Criteria Check:")
-    acceptance = config["acceptance"]
+    # ── Step 7b: Per-receiver statistics (multi-receiver, Task 3) ──
+    recv_stats = _receiver_statistics(balanced_train)
+    recv_stats_path = out_dir / "receiver_statistics.json"
+    with open(recv_stats_path, "w", encoding="utf-8") as f:
+        json.dump(recv_stats, f, indent=2)
+    print(f"  Saved per-receiver stats: {recv_stats_path}")
+    for recv, s in recv_stats.items():
+        print(f"    {recv}: {s['valid_pairs']} pairs, "
+              f"informative={s['informative_ratio']:.1%}")
 
-    pos_pass = stats["positive_pct"] >= acceptance["positive_transfer_min"]
-    neg_pass = stats["negative_pct"] > acceptance["negative_transfer_min"]
-    info_pass = stats["informative_ratio"] >= acceptance["informative_ratio_min"]
+    # ── Step 8: Acceptance checks (legacy, optional) ──
+    acceptance = config.get("acceptance", {})
+    if "positive_transfer_min" in acceptance:
+        print("\n  Acceptance Criteria Check:")
+        pos_pass = stats["positive_pct"] >= acceptance["positive_transfer_min"]
+        neg_pass = stats["negative_pct"] > acceptance.get("negative_transfer_min", 0.0)
+        info_pass = stats["informative_ratio"] >= acceptance.get("informative_ratio_min", 0.0)
 
-    print(f"    Positive transfer >= {acceptance['positive_transfer_min']:.0%}: "
-          f"{'PASS' if pos_pass else 'FAIL'} ({stats['positive_pct']:.1%})")
-    print(f"    Negative transfer > {acceptance['negative_transfer_min']:.0%}: "
-          f"{'PASS' if neg_pass else 'FAIL'} ({stats['negative_pct']:.1%})")
-    print(f"    Informative ratio >= {acceptance['informative_ratio_min']:.0%}: "
-          f"{'PASS' if info_pass else 'FAIL'} ({stats['informative_ratio']:.1%})")
+        print(f"    Positive transfer >= {acceptance['positive_transfer_min']:.0%}: "
+              f"{'PASS' if pos_pass else 'FAIL'} ({stats['positive_pct']:.1%})")
+        print(f"    Negative transfer > {acceptance.get('negative_transfer_min', 0.0):.0%}: "
+              f"{'PASS' if neg_pass else 'FAIL'} ({stats['negative_pct']:.1%})")
+        print(f"    Informative ratio >= {acceptance.get('informative_ratio_min', 0.0):.0%}: "
+              f"{'PASS' if info_pass else 'FAIL'} ({stats['informative_ratio']:.1%})")
 
     print("\nDone.")
 

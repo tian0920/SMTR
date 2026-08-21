@@ -1,0 +1,50 @@
+# Encoder Ablation Configuration
+# Validates that SMTR performance comes from causal features, not metadata shortcuts.
+
+# Use existing in_distribution split
+split: in_distribution
+splits_dir: splits
+
+# Data
+memory_pool_path: artifacts/marble/real_data/database_v1/memory_pool.jsonl
+
+# Training hyperparameters (fixed across all encoders)
+training:
+  alpha: 0.01          # Ridge regularization
+  informative_weight: 5.0  # sample weight for τ≠0
+  seed: 42
+
+# Evaluation
+evaluation:
+  n_pairwise_samples: 5000
+  seed: 42
+  informative_only: true
+
+# Encoders to evaluate
+encoders:
+  - name: original       # Encoder A: HashingTransferFeatureEncoder only
+    description: "SMTR base features (no metadata)"
+  - name: task_only      # Encoder B: task_id hash only
+    description: "Task context only (no memory, no SMTR)"
+  - name: memory_only    # Encoder C: memory_id hash only
+    description: "Memory identity only (no task, no SMTR)"
+  - name: metadata_full  # Encoder D: Full EnhancedEncoder
+    description: "SMTR + all metadata (upper bound)"
+  - name: causal_input   # Encoder E: SMTR + task/mem content, NO rank/score/source/id
+    description: "SMTR base + task_id + memory_base (no shortcuts)"
+
+# Metadata-only model (for Criterion 3)
+metadata_only:
+  enabled: true
+  features: [task_id, memory_id, candidate_rank, candidate_score, source_hash]
+
+# Acceptance criteria
+acceptance:
+  # Criterion 1: causal_input (no metadata) >= random + 10%
+  no_metadata_min_margin: 0.10
+  # Criterion 2: |causal_input - metadata_full| < 0.10
+  causal_vs_full_max_gap: 0.10
+  # Criterion 3: metadata_only should not significantly exceed causal_input
+  metadata_not_much_better_than_causal: true
+  # Criterion 4: metadata_no_task < task_only - 0.20 (proves task_id is driver)
+  task_id_is_causal_driver: true

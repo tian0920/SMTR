@@ -1,0 +1,41 @@
+{
+  "verdict": "FAIL",
+  "checks": {
+    "multi_receiver_data_collected": {
+      "description": "Records span >= 2 receivers",
+      "value": "receivers=[]",
+      "passed": false
+    },
+    "receiver_effect_variance_positive": {
+      "description": "receiver_effect_variance > 0",
+      "value": "variance=0.0000",
+      "passed": false
+    },
+    "heterogeneity_exists": {
+      "description": "at least one memory shows tau(m,r1) != tau(m,r2)",
+      "value": "heterogeneous=0/0",
+      "passed": false
+    },
+    "smtr_beats_global": {
+      "description": "receiver-conditioned tau(m,r) MAE <= global tau(m) MAE",
+      "value": "skipped (insufficient data)",
+      "passed": false
+    }
+  },
+  "receiver_variance": {
+    "per_memory": {},
+    "receiver_effect_variance": 0.0,
+    "heterogeneous_memories": 0,
+    "n_comparable_memories": 0
+  },
+  "global_vs_receiver": {
+    "skip": true,
+    "reason": "only 0 valid records"
+  },
+  "data_summary": {
+    "n_records": 2,
+    "n_valid": 0,
+    "receivers": [],
+    "tasks": []
+  }
+}

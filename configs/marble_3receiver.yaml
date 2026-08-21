@@ -1,0 +1,54 @@
+# MARBLE Multi-Receiver Configuration (receiver_count=3)
+# Task 3 of the pre-main-experiment validation suite.
+#
+# Goal: extend the single-receiver (agent1) feasibility pipeline to
+# 3 receivers so that τ(m, r) is receiver-conditioned and receiver
+# heterogeneity can be measured before the formal ICLR experiments.
+
+agents:
+  - receiver_id: agent0
+    role: executor
+    memory_access: read_write
+  - receiver_id: agent1
+    role: executor
+    memory_access: read_write
+  - receiver_id: agent2
+    role: executor
+    memory_access: read_write
+
+environment:
+  marble_root: /home/ecs-user/MARBLE
+  scenario: database
+  receiver_count: 3
+
+# LLM runtime (inherited from scripts/run_full_q30b_experiment.sh)
+llm:
+  model: qwen3-30b-a3b
+  base_url: https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+  enable_thinking: false
+
+# Minimal validation scale — do NOT scale up before sanity checks pass.
+# Interpretation: memory POOL of 100 memories; only a small number of
+# candidate edges per (task, receiver, seed) group are executed so the
+# sanity run stays affordable.
+validation_scale:
+  n_tasks: 3
+  n_receivers: 3
+  memory_pool_size: 100
+  candidates_per_group: 2     # share branches per (task, receiver, seed)
+  seeds: [0, 1, 2]
+
+# Data paths
+data:
+  memory_pool_path: artifacts/marble/real_data/database_v1/memory_pool.jsonl
+  paired_records_path: artifacts/marble/paired/train/paired_records.jsonl
+  dataset_manifest_path: artifacts/marble/manifests/dataset.json
+  split_manifest_path: artifacts/marble/manifests/splits.json
+  output_dir: artifacts/marble/outputs/multi_receiver_v1
+
+# Multi-receiver sanity checks
+sanity:
+  # receiver_effect_variance must be > 0 (same memory, different receivers)
+  receiver_effect_variance_min: 0.0
+  # SMTR receiver-conditioned τ(m,r) should beat global τ(m) baseline
+  smtr_beats_global: true

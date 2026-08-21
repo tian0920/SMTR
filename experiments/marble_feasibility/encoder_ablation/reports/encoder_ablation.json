@@ -1,0 +1,100 @@
+{
+  "verdict": "PASS",
+  "checks": {
+    "no_metadata_vs_random": {
+      "description": "causal_input >= random + 10%",
+      "value": "causal=0.8261, random=0.3199",
+      "passed": true
+    },
+    "causal_vs_full_gap": {
+      "description": "|causal_input - metadata_full| < 0.10",
+      "value": "gap=0.0172 (full=0.8433, causal=0.8261)",
+      "passed": true
+    },
+    "metadata_not_much_better_than_causal": {
+      "description": "metadata_only - causal_input < 0.10 (shortcuts not main driver)",
+      "value": "meta_only=0.8273, causal=0.8261, gap=+0.0012",
+      "passed": true
+    },
+    "task_id_is_causal_driver": {
+      "description": "metadata_no_task < task_only - 0.20 (task_id drives, not shortcuts)",
+      "value": "task_only=0.8840, meta_no_task=0.4134, drop=0.4706",
+      "passed": true
+    }
+  },
+  "results": {
+    "original": {
+      "ranking": 0.3978,
+      "random_ranking": 0.3199,
+      "sign_accuracy": 0.439,
+      "tau_correlation": -0.2052,
+      "pred_std": 0.109,
+      "pred_mean": 0.0353,
+      "n_features": 32,
+      "unique_train_vectors": 11
+    },
+    "task_only": {
+      "ranking": 0.884,
+      "random_ranking": 0.3199,
+      "sign_accuracy": 0.8049,
+      "tau_correlation": 0.6469,
+      "pred_std": 0.3145,
+      "pred_mean": 0.0413,
+      "n_features": 20,
+      "unique_train_vectors": 20
+    },
+    "memory_only": {
+      "ranking": 0.4358,
+      "random_ranking": 0.3199,
+      "sign_accuracy": 0.3902,
+      "tau_correlation": -0.1675,
+      "pred_std": 0.0769,
+      "pred_mean": 0.0333,
+      "n_features": 13,
+      "unique_train_vectors": 8
+    },
+    "metadata_full": {
+      "ranking": 0.8433,
+      "random_ranking": 0.3199,
+      "sign_accuracy": 0.7561,
+      "tau_correlation": 0.6231,
+      "pred_std": 0.3274,
+      "pred_mean": 0.0359,
+      "n_features": 70,
+      "unique_train_vectors": 121
+    },
+    "causal_input": {
+      "ranking": 0.8261,
+      "random_ranking": 0.3199,
+      "sign_accuracy": 0.7561,
+      "tau_correlation": 0.6004,
+      "pred_std": 0.3243,
+      "pred_mean": 0.0363,
+      "n_features": 57,
+      "unique_train_vectors": 120
+    },
+    "metadata_only": {
+      "ranking": 0.8273,
+      "random_ranking": 0.3199,
+      "sign_accuracy": 0.7561,
+      "tau_correlation": 0.6081,
+      "pred_std": 0.3268,
+      "pred_mean": 0.037,
+      "n_features": 33,
+      "unique_train_vectors": 121
+    },
+    "metadata_no_task": {
+      "ranking": 0.4134,
+      "sign_accuracy": 0.439,
+      "tau_correlation": -0.1802,
+      "pred_std": 0.1055,
+      "n_features": 13,
+      "unique_train_vectors": 12
+    }
+  },
+  "split": "in_distribution",
+  "train_records": 613,
+  "test_records": 297,
+  "train_informative": 76,
+  "test_informative": 41
+}

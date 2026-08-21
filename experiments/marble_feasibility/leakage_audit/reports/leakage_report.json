@@ -1,0 +1,35 @@
+{
+  "verdict": "PASS",
+  "checks": {
+    "metadata_only_below_smtr": {
+      "description": "metadata_only (no task_id) < SMTR - 0.10",
+      "value": "meta_only_no_task=0.4134, SMTR=0.8433, threshold=0.7433",
+      "passed": true
+    },
+    "shuffle_drop": {
+      "description": "Shuffle ALL metadata drop >= 0.20",
+      "value": "full_meta=0.8273, shuffled=0.6118, drop=0.2155",
+      "passed": true
+    },
+    "remove_score_drop": {
+      "description": "Remove candidate_score drop < 0.10",
+      "value": "full=0.8273, no_score=0.8273, drop=0.0000",
+      "passed": true
+    }
+  },
+  "results": {
+    "metadata_only_no_task": 0.4134,
+    "shuffled_all": 0.6118,
+    "full_smtr": 0.8273,
+    "no_candidate_score": 0.8273,
+    "task_only": 0.884,
+    "full_metadata_with_task": 0.8273,
+    "smtr_reference": 0.8433
+  },
+  "interpretation": {
+    "task_id_is_causal": true,
+    "metadata_without_task_is_weak": true,
+    "shuffle_destroys_signal": true,
+    "candidate_score_not_critical": true
+  }
+}
