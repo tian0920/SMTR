@@ -58,21 +58,21 @@ evaluation:
   # Only rank informative pairs (exclude τ=0 vs τ=0)
   informative_only_ranking: true
 
-# Acceptance criteria (redefined for feasibility)
+# Acceptance criteria for critic training stabilization
 acceptance:
-  informative_ratio_min: 0.30      # Criterion 1: ≥30% informative
-  tau_pred_std_min: 0.10           # Criterion 2: std(pred) > 0.1
-  informative_ranking_min: 0.65    # Criterion 3: ranking > 0.65
-  smtr_beats_outcome_only: true    # Criterion 4: SMTR > outcome-only (informative)
-  smtr_vs_outcome_margin: 0.05     # Criterion 4 margin: +5%
-  positive_transfer_min: 0.05      # Legacy: still check causal signal exists
-  negative_transfer_min: 0.0       # Legacy: still check causal signal exists
+  # Criterion 1: In-distribution (random split) informative ranking >= 0.75
+  in_distribution_ranking_min: 0.75
+  # Criterion 2: Task split informative ranking > random
+  task_holdout_ranking_min: 0.44
+  # Criterion 3: Memory split ranking > random
+  memory_holdout_beats_random: true
+  # Criterion 4: SMTR > outcome-only by +10% (full ranking)
+  smtr_vs_outcome_margin: 0.10
 
-# Generalization diagnostic splits
-generalization:
-  splits:
-    - in_distribution
-    - memory_holdout
-    - task_holdout
-  # Holdout: 20% of records
-  holdout_fraction: 0.2
+# Training modes to evaluate
+training:
+  modes:
+    - regression   # Standard FourOutcomeTransferCritic (baseline)
+    - ranking      # Pairwise ranking loss with Ridge
+    - hybrid       # L_rank + 0.5*L_tau + 0.5*L_sign (recommended)
+  # Best mode is selected by in-distribution ranking

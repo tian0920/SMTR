@@ -1,46 +1,22 @@
 {
   "split_name": "memory_holdout",
-  "train_records": 500,
+  "training_mode": "hybrid",
+  "train_records": 670,
   "label_distribution": {
-    "neutral_failure": 183,
-    "negative_transfer": 125,
-    "positive_transfer": 125,
-    "neutral_success": 67
-  },
-  "class_weights": {
-    "positive_transfer": 2.0,
-    "negative_transfer": 2.0,
-    "neutral_success": 0.5,
-    "neutral_failure": 0.5
-  },
-  "sample_weights_stats": {
-    "min": 0.05,
-    "max": 2.0,
-    "mean": 0.3839
+    "positive_transfer": 46,
+    "neutral_failure": 432,
+    "neutral_success": 152,
+    "negative_transfer": 40
   },
   "n_features": 32,
   "feature_block": "full",
-  "critic_mode": "flat",
   "seed": 42,
-  "tci_distillation_n_examples": 0,
   "sign_classifier": {
-    "train_accuracy": 0.42,
-    "class_labels": [
-      "negative",
-      "neutral",
-      "positive"
-    ],
+    "train_accuracy": 0.5,
     "label_distribution": {
-      "negative": 125,
-      "neutral": 250,
-      "positive": 125
+      "negative": 40,
+      "neutral": 584,
+      "positive": 46
     }
-  },
-  "validation_records": 172,
-  "validation_accuracy": 0.2674,
-  "tau_pred_mean": 0.0675,
-  "tau_pred_std": 0.0378,
-  "tau_pred_min": -0.129,
-  "tau_pred_max": 0.0771,
-  "unique_tau_values": 5
+  }
 }

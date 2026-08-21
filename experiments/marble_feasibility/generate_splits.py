@@ -163,6 +163,7 @@ def main() -> None:
     _print_split_stats("A", train_a, test_a)
 
     split_a_dir = splits_dir / "in_distribution"
+    _save_jsonl(train_pool, split_a_dir / "train_raw.jsonl")
     _save_jsonl(train_a, split_a_dir / "train.jsonl")
     _save_jsonl(test_a, split_a_dir / "test.jsonl")
 
@@ -218,6 +219,7 @@ def main() -> None:
         _print_split_stats("B", train_b, test_b)
 
         split_b_dir = splits_dir / "memory_holdout"
+        _save_jsonl(train_pool_b, split_b_dir / "train_raw.jsonl")
         _save_jsonl(train_b, split_b_dir / "train.jsonl")
         _save_jsonl(test_b, split_b_dir / "test.jsonl")
 
@@ -300,6 +302,7 @@ def main() -> None:
     _print_split_stats("C", train_c, test_c)
 
     split_c_dir = splits_dir / "task_holdout"
+    _save_jsonl(train_pool_c, split_c_dir / "train_raw.jsonl")
     _save_jsonl(train_c, split_c_dir / "train.jsonl")
     _save_jsonl(test_c, split_c_dir / "test.jsonl")
 

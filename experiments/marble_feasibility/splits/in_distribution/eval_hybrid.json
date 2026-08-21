@@ -1,0 +1,49 @@
+{
+  "split_name": "in_distribution",
+  "test_records": 297,
+  "valid_records": 297,
+  "tau_distribution": {
+    "positive": 20,
+    "negative": 21,
+    "neutral": 256
+  },
+  "prediction_distribution": {
+    "mean": 0.0359,
+    "std": 0.3274,
+    "min": -0.8624,
+    "max": 1.0661,
+    "unique_values": 108
+  },
+  "label_distribution": {
+    "neutral_success": 66,
+    "neutral_failure": 190,
+    "negative_transfer": 21,
+    "positive_transfer": 20
+  },
+  "smtr_probe": {
+    "informative_ranking": 0.8425,
+    "full_ranking": 0.6991,
+    "identification_accuracy": 0.1044,
+    "tau_correlation": 0.6231,
+    "n_informative_pairs": 2501
+  },
+  "random_baseline": {
+    "pairwise_ranking": 0.5857
+  },
+  "outcome_only_baseline": {
+    "pairwise_ranking": 1.0,
+    "full_ranking": 0.5046
+  },
+  "sign_classifier": {
+    "accuracy": 0.4613,
+    "prediction_distribution": {
+      "negative": 73,
+      "neutral": 122,
+      "positive": 102
+    }
+  },
+  "improvement": {
+    "vs_random": 0.2568,
+    "vs_outcome_only": -0.1575
+  }
+}

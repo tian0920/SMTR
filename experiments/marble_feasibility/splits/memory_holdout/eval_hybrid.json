@@ -1,0 +1,49 @@
+{
+  "split_name": "memory_holdout",
+  "test_records": 172,
+  "valid_records": 172,
+  "tau_distribution": {
+    "positive": 12,
+    "negative": 8,
+    "neutral": 152
+  },
+  "prediction_distribution": {
+    "mean": -0.1004,
+    "std": 0.3266,
+    "min": -0.8834,
+    "max": 0.4851,
+    "unique_values": 24
+  },
+  "label_distribution": {
+    "neutral_failure": 106,
+    "positive_transfer": 12,
+    "neutral_success": 46,
+    "negative_transfer": 8
+  },
+  "smtr_probe": {
+    "informative_ranking": 0.778,
+    "full_ranking": 0.7006,
+    "identification_accuracy": 0.0814,
+    "tau_correlation": 0.4608,
+    "n_informative_pairs": 2378
+  },
+  "random_baseline": {
+    "pairwise_ranking": 0.6195
+  },
+  "outcome_only_baseline": {
+    "pairwise_ranking": 1.0,
+    "full_ranking": 0.5467
+  },
+  "sign_classifier": {
+    "accuracy": 0.8488,
+    "prediction_distribution": {
+      "negative": 11,
+      "neutral": 161,
+      "positive": 0
+    }
+  },
+  "improvement": {
+    "vs_random": 0.1584,
+    "vs_outcome_only": -0.222
+  }
+}

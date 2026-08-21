@@ -1,0 +1,219 @@
+{
+  "best_mode": "ranking",
+  "best_mode_results": {
+    "in_distribution": {
+      "split_name": "in_distribution",
+      "test_records": 297,
+      "valid_records": 297,
+      "tau_distribution": {
+        "positive": 20,
+        "negative": 21,
+        "neutral": 256
+      },
+      "prediction_distribution": {
+        "mean": 0.0359,
+        "std": 0.3274,
+        "min": -0.8624,
+        "max": 1.0661,
+        "unique_values": 108
+      },
+      "label_distribution": {
+        "neutral_success": 66,
+        "neutral_failure": 190,
+        "negative_transfer": 21,
+        "positive_transfer": 20
+      },
+      "smtr_probe": {
+        "informative_ranking": 0.8425,
+        "full_ranking": 0.6991,
+        "identification_accuracy": 0.1044,
+        "tau_correlation": 0.6231,
+        "n_informative_pairs": 2501
+      },
+      "random_baseline": {
+        "pairwise_ranking": 0.5857
+      },
+      "outcome_only_baseline": {
+        "pairwise_ranking": 1.0,
+        "full_ranking": 0.5046
+      },
+      "sign_classifier": {
+        "accuracy": 0.4613,
+        "prediction_distribution": {
+          "negative": 73,
+          "neutral": 122,
+          "positive": 102
+        }
+      },
+      "improvement": {
+        "vs_random": 0.2568,
+        "vs_outcome_only": -0.1575
+      }
+    },
+    "memory_holdout": {
+      "split_name": "memory_holdout",
+      "test_records": 172,
+      "valid_records": 172,
+      "tau_distribution": {
+        "positive": 12,
+        "negative": 8,
+        "neutral": 152
+      },
+      "prediction_distribution": {
+        "mean": -0.1004,
+        "std": 0.3266,
+        "min": -0.8834,
+        "max": 0.4851,
+        "unique_values": 24
+      },
+      "label_distribution": {
+        "neutral_failure": 106,
+        "positive_transfer": 12,
+        "neutral_success": 46,
+        "negative_transfer": 8
+      },
+      "smtr_probe": {
+        "informative_ranking": 0.778,
+        "full_ranking": 0.7006,
+        "identification_accuracy": 0.0814,
+        "tau_correlation": 0.4608,
+        "n_informative_pairs": 2378
+      },
+      "random_baseline": {
+        "pairwise_ranking": 0.6195
+      },
+      "outcome_only_baseline": {
+        "pairwise_ranking": 1.0,
+        "full_ranking": 0.5467
+      },
+      "sign_classifier": {
+        "accuracy": 0.8488,
+        "prediction_distribution": {
+          "negative": 11,
+          "neutral": 161,
+          "positive": 0
+        }
+      },
+      "improvement": {
+        "vs_random": 0.1584,
+        "vs_outcome_only": -0.222
+      }
+    },
+    "task_holdout": {
+      "split_name": "task_holdout",
+      "test_records": 109,
+      "valid_records": 109,
+      "tau_distribution": {
+        "positive": 18,
+        "negative": 31,
+        "neutral": 60
+      },
+      "prediction_distribution": {
+        "mean": 0.1783,
+        "std": 0.0982,
+        "min": 0.0242,
+        "max": 0.4393,
+        "unique_values": 36
+      },
+      "label_distribution": {
+        "neutral_failure": 35,
+        "positive_transfer": 18,
+        "negative_transfer": 31,
+        "neutral_success": 25
+      },
+      "smtr_probe": {
+        "informative_ranking": 0.449,
+        "full_ranking": 0.448,
+        "identification_accuracy": 0.1651,
+        "tau_correlation": -0.0298,
+        "n_informative_pairs": 2341
+      },
+      "random_baseline": {
+        "pairwise_ranking": 0.3785
+      },
+      "outcome_only_baseline": {
+        "pairwise_ranking": 1.0,
+        "full_ranking": 0.5637
+      },
+      "sign_classifier": {
+        "accuracy": 0.4312,
+        "prediction_distribution": {
+          "negative": 0,
+          "neutral": 75,
+          "positive": 34
+        }
+      },
+      "improvement": {
+        "vs_random": 0.0704,
+        "vs_outcome_only": -0.551
+      }
+    }
+  },
+  "all_modes_summary": {
+    "regression": {},
+    "ranking": {
+      "in_distribution": {
+        "ranking": 0.8425,
+        "tau_corr": 0.6231,
+        "sign_acc": 0.4613
+      },
+      "memory_holdout": {
+        "ranking": 0.778,
+        "tau_corr": 0.4608,
+        "sign_acc": 0.8488
+      },
+      "task_holdout": {
+        "ranking": 0.449,
+        "tau_corr": -0.0298,
+        "sign_acc": 0.4312
+      }
+    },
+    "hybrid": {
+      "in_distribution": {
+        "ranking": 0.8425,
+        "tau_corr": 0.6231,
+        "sign_acc": 0.4613
+      },
+      "memory_holdout": {
+        "ranking": 0.778,
+        "tau_corr": 0.4608,
+        "sign_acc": 0.8488
+      },
+      "task_holdout": {
+        "ranking": 0.449,
+        "tau_corr": -0.0298,
+        "sign_acc": 0.4312
+      }
+    }
+  },
+  "acceptance_criteria": {
+    "checks": {
+      "in_distribution_ranking": {
+        "description": "In-distribution ranking >= 0.75",
+        "passed": true,
+        "value": "0.8425",
+        "threshold": ">=0.75"
+      },
+      "task_holdout_ranking": {
+        "description": "Task split ranking >= 0.44",
+        "passed": true,
+        "value": "0.4490",
+        "threshold": ">=0.44"
+      },
+      "memory_holdout_vs_random": {
+        "description": "Memory split ranking > random",
+        "passed": true,
+        "value": "0.7780 (random=0.6195)",
+        "threshold": ">random"
+      },
+      "smtr_vs_outcome_only": {
+        "description": "SMTR > outcome-only by +10%",
+        "passed": true,
+        "value": "SMTR=0.6991, outcome_full=0.5046, diff=+0.1945",
+        "threshold": ">=+0.10"
+      }
+    },
+    "all_passed": true,
+    "verdict": "PASS"
+  }
+}

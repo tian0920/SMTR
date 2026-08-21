@@ -1,0 +1,49 @@
+{
+  "split_name": "task_holdout",
+  "test_records": 109,
+  "valid_records": 109,
+  "tau_distribution": {
+    "positive": 18,
+    "negative": 31,
+    "neutral": 60
+  },
+  "prediction_distribution": {
+    "mean": 0.1783,
+    "std": 0.0982,
+    "min": 0.0242,
+    "max": 0.4393,
+    "unique_values": 36
+  },
+  "label_distribution": {
+    "neutral_failure": 35,
+    "positive_transfer": 18,
+    "negative_transfer": 31,
+    "neutral_success": 25
+  },
+  "smtr_probe": {
+    "informative_ranking": 0.449,
+    "full_ranking": 0.448,
+    "identification_accuracy": 0.1651,
+    "tau_correlation": -0.0298,
+    "n_informative_pairs": 2341
+  },
+  "random_baseline": {
+    "pairwise_ranking": 0.3785
+  },
+  "outcome_only_baseline": {
+    "pairwise_ranking": 1.0,
+    "full_ranking": 0.5637
+  },
+  "sign_classifier": {
+    "accuracy": 0.4312,
+    "prediction_distribution": {
+      "negative": 0,
+      "neutral": 75,
+      "positive": 34
+    }
+  },
+  "improvement": {
+    "vs_random": 0.0704,
+    "vs_outcome_only": -0.551
+  }
+}

@@ -66,18 +66,26 @@ def _pairwise_ranking(
 ) -> tuple[float, int]:
     """Compute pairwise ranking accuracy.
 
-    If informative_only=True, only count pairs where τ(i) ≠ τ(j).
+    If informative_only=True, sample only from records where |τ|>0
+    and only count pairs where τ(i) ≠ τ(j).
     Returns (accuracy, n_informative_pairs).
     """
     n = len(predictions)
-    indices = rng.randint(0, n, size=(n_samples, 2))
+
+    if informative_only:
+        # Only sample from informative records (|τ| > 0)
+        info_idx = np.where(true_values != 0)[0]
+        if len(info_idx) < 2:
+            return 0.5, 0
+        pairs = rng.choice(info_idx, size=(n_samples, 2), replace=True)
+    else:
+        pairs = rng.randint(0, n, size=(n_samples, 2))
+
     correct = 0
     total = 0
 
-    for i, j in indices:
+    for i, j in pairs:
         if true_values[i] != true_values[j]:
-            if informative_only and true_values[i] == 0 and true_values[j] == 0:
-                continue
             total += 1
             if true_values[i] > true_values[j]:
                 if predictions[i] > predictions[j]:
@@ -98,6 +106,12 @@ def main() -> None:
              "If provided, reads from splits/<split>/test.jsonl and loads probe "
              "from splits/<split>/smtr_probe.joblib.",
     )
+    parser.add_argument(
+        "--mode",
+        default=None,
+        help="Training mode name. If provided, saves results to "
+             "splits/<split>/eval_<mode>.json instead of evaluation_results.json.",
+    )
     args = parser.parse_args()
 
     config = _load_config()
@@ -105,6 +119,7 @@ def main() -> None:
     eval_cfg = config["evaluation"]
 
     split_name = args.split
+    training_mode = args.mode
 
     print("=" * 60)
     if split_name:
@@ -119,7 +134,10 @@ def main() -> None:
         test_path = split_dir / "test.jsonl"
         probe_path = split_dir / "smtr_probe.joblib"
         sign_clf_path = split_dir / "sign_classifier.joblib"
-        results_path = split_dir / "evaluation_results.json"
+        if training_mode:
+            results_path = split_dir / f"eval_{training_mode}.json"
+        else:
+            results_path = split_dir / "evaluation_results.json"
     else:
         test_path = _PROJECT_ROOT / data_cfg["test_records_path"]
         probe_path = _THIS_DIR / "data" / "smtr_probe.joblib"
@@ -145,7 +163,57 @@ def main() -> None:
     from smtr.router.transfer_critic import FourOutcomeTransferCritic
     from smtr.router.transfer_features import build_training_data_from_records
 
-    smtr_probe = FourOutcomeTransferCritic.load(probe_path)
+    # Try RankingProbe first, fall back to FourOutcomeTransferCritic
+    # Import shared classes so joblib can unpickle them
+    from _probe_models import EnhancedEncoder, RankingProbe  # noqa: F401
+    probe_data = joblib.load(probe_path)
+    if isinstance(probe_data, dict) and probe_data.get('type') == 'ranking_probe':
+        # Load RankingProbe wrapper
+        _encoder = probe_data['encoder']
+        _tau_model = probe_data['tau_model']
+        _scaler = probe_data.get('scaler')
+
+        class _LoadedRankingProbe:
+            def __init__(self):
+                self.encoder = _encoder
+                self.tau_model = _tau_model
+                self.scaler = _scaler
+            def predict_batch(self, inputs, records=None):
+                X_sparse = self.encoder.encode_batch(inputs, records=records)
+                X = X_sparse.toarray() if hasattr(X_sparse, 'toarray') else np.asarray(X_sparse)
+                if self.scaler is not None:
+                    X = self.scaler.transform(X)
+                tau_hats = self.tau_model.predict(X)
+                predictions = []
+                for tau in tau_hats:
+                    if tau > 0:
+                        pred = type('P', (), {
+                            'q00_neutral_failure': 0.1, 'q01_negative_transfer': 0.05,
+                            'q10_positive_transfer': 0.7, 'q11_neutral_success': 0.15,
+                            'tau_hat': float(tau)
+                        })()
+                    elif tau < 0:
+                        pred = type('P', (), {
+                            'q00_neutral_failure': 0.15, 'q01_negative_transfer': 0.7,
+                            'q10_positive_transfer': 0.05, 'q11_neutral_success': 0.1,
+                            'tau_hat': float(tau)
+                        })()
+                    else:
+                        pred = type('P', (), {
+                            'q00_neutral_failure': 0.4, 'q01_negative_transfer': 0.1,
+                            'q10_positive_transfer': 0.1, 'q11_neutral_success': 0.4,
+                            'tau_hat': float(tau)
+                        })()
+                    predictions.append(pred)
+                return predictions
+
+        smtr_probe = _LoadedRankingProbe()
+        encoder = smtr_probe.encoder
+        _is_ranking_probe = True
+    else:
+        smtr_probe = FourOutcomeTransferCritic.load(probe_path)
+        encoder = smtr_probe.encoder
+        _is_ranking_probe = False
 
     # ── SMTR predictions ──
     print("  Computing SMTR probe predictions...")
@@ -154,7 +222,11 @@ def main() -> None:
     eval_records = [rec for _, _, rec in eval_data]
     tau_aligned = np.array([_get_tau_from_record(r) for r in eval_records])
 
-    predictions_raw = smtr_probe.predict_batch(eval_inputs)
+    # Pass records for EnhancedEncoder (ranking probe)
+    if _is_ranking_probe:
+        predictions_raw = smtr_probe.predict_batch(eval_inputs, records=eval_records)
+    else:
+        predictions_raw = smtr_probe.predict_batch(eval_inputs)
     smtr_preds = np.array([p.tau_hat for p in predictions_raw])
 
     # ── Diagnostic: prediction distribution ──
@@ -208,6 +280,13 @@ def main() -> None:
     )
     print(f"  Outcome-only ranking: {outcome_ranking:.4f}")
 
+    # Outcome-only full ranking (for SMTR comparison)
+    outcome_full_ranking, _ = _pairwise_ranking(
+        outcome_preds, tau_aligned, eval_cfg["n_pairwise_samples"], rng,
+        informative_only=False,
+    )
+    print(f"  Outcome-only full ranking: {outcome_full_ranking:.4f}")
+
     # ── Full ranking (for reference) ──
     print("\n  Computing full ranking (reference)...")
     smtr_full_ranking, n_full_pairs = _pairwise_ranking(
@@ -222,8 +301,10 @@ def main() -> None:
     if sign_clf_path.exists():
         print("\n  Evaluating sign classifier...")
         sign_clf = joblib.load(sign_clf_path)
-        encoder = smtr_probe.encoder
-        X_test_sparse = encoder.encode_batch(eval_inputs)
+        if _is_ranking_probe:
+            X_test_sparse = encoder.encode_batch(eval_inputs, records=eval_records)
+        else:
+            X_test_sparse = encoder.encode_batch(eval_inputs)
         X_test = X_test_sparse.toarray() if hasattr(X_test_sparse, 'toarray') else np.asarray(X_test_sparse)
         z_pred = sign_clf.predict(X_test)
         z_true = np.array([np.sign(t) + 1 for t in tau_aligned])  # {-1,0,1}→{0,1,2}
@@ -250,6 +331,17 @@ def main() -> None:
     smtr_identification_acc = correct / len(true_labels) if true_labels else 0.0
     print(f"  SMTR 4-class identification accuracy: {smtr_identification_acc:.4f}")
 
+    # ── Tau correlation (tertiary metric) ──
+    informative_mask = tau_aligned != 0
+    if informative_mask.sum() > 2:
+        tau_corr = float(np.corrcoef(
+            smtr_preds[informative_mask],
+            tau_aligned[informative_mask],
+        )[0, 1])
+    else:
+        tau_corr = 0.0
+    print(f"\n  Tau correlation (informative): {tau_corr:.4f}")
+
     results = {
         "split_name": split_name,
         "test_records": len(test_records),
@@ -271,6 +363,7 @@ def main() -> None:
             "informative_ranking": round(smtr_ranking, 4),
             "full_ranking": round(smtr_full_ranking, 4),
             "identification_accuracy": round(smtr_identification_acc, 4),
+            "tau_correlation": round(tau_corr, 4),
             "n_informative_pairs": n_info_pairs,
         },
         "random_baseline": {
@@ -278,6 +371,7 @@ def main() -> None:
         },
         "outcome_only_baseline": {
             "pairwise_ranking": round(outcome_ranking, 4),
+            "full_ranking": round(outcome_full_ranking, 4),
         },
         "sign_classifier": {
             "accuracy": round(sign_accuracy, 4) if sign_accuracy is not None else None,

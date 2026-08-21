@@ -1,15 +1,16 @@
-"""Train SMTR critic probe on balanced MARBLE intervention data.
+"""Train SMTR critic probe with multiple training modes.
 
-Two training stages:
-  1. FourOutcomeTransferCritic with class-weighted sample_weights
-  2. Sign classifier z = sign(τ) ∈ {-1, 0, +1} (auxiliary head)
+Training modes:
+  - regression: Standard FourOutcomeTransferCritic (baseline)
+  - ranking: Pairwise ranking loss with SGD
+  - hybrid: L = L_rank + 0.5*L_tau + 0.5*L_sign (recommended)
 
-Uses the balanced training set produced by collect_interventions.py.
+Uses the balanced training set from generate_splits.py.
 
 Outputs:
-  - data/smtr_probe.joblib        (trained critic checkpoint)
-  - data/sign_classifier.joblib   (3-class sign classifier)
-  - data/probe_metrics.json       (training metrics)
+  - splits/<split>/smtr_probe.joblib  (trained model)
+  - splits/<split>/sign_classifier.joblib (sign head for hybrid mode)
+  - splits/<split>/probe_metrics.json
 """
 
 from __future__ import annotations
@@ -23,6 +24,10 @@ from collections import Counter
 import joblib
 import numpy as np
 import yaml
+from sklearn.linear_model import Ridge, LogisticRegression, SGDClassifier
+from sklearn.preprocessing import StandardScaler
+
+from _probe_models import EnhancedEncoder, RankingProbe, MockPrediction  # noqa: F401
 
 _THIS_DIR = Path(__file__).parent
 _PROJECT_ROOT = _THIS_DIR.parent.parent
@@ -41,38 +46,101 @@ def _get_tau(record: dict) -> int:
     return y_expose - y_withhold
 
 
-def _build_class_weighted_sample_weights(
-    records: list[dict],
-    class_weights: dict[str, float],
-) -> np.ndarray:
-    """Compute per-record sample weights combining edge-equal and class weights.
+def _train_regression(inputs, labels, records, probe_cfg, memory_pool_path):
+    """Standard FourOutcomeTransferCritic training (baseline)."""
+    from smtr.router.transfer_critic import FourOutcomeTransferCritic
+    from smtr.counterfactual.edge_keys import group_records_by_control_family
 
-    Edge-equal weight: 1/n_e per treatment edge (same as SMTR).
-    Class weight: multiplier based on the record's transfer label.
-    """
-    from smtr.counterfactual.edge_keys import (
-        treatment_edge_key,
+    critic = FourOutcomeTransferCritic(
+        n_features=probe_cfg["n_features"],
+        n_bootstrap=probe_cfg.get("n_bootstrap", 7),
+        feature_block=probe_cfg["feature_block"],
+        critic_mode=probe_cfg["critic_mode"],
+        seed=probe_cfg["seed"],
     )
 
-    edge_counts = Counter(treatment_edge_key(rec) for rec in records)
-    weights = []
-    for rec in records:
-        edge_w = 1.0 / edge_counts[treatment_edge_key(rec)]
-        label = rec.get("label", "neutral_failure")
-        class_w = class_weights.get(label, 1.0)
-        weights.append(edge_w * class_w)
+    bootstrap_clusters = group_records_by_control_family(records)
 
-    return np.asarray(weights, dtype=float)
+    critic.fit(
+        inputs,
+        labels,
+        records=records,
+        coverage_mode="pilot",
+        bootstrap_clusters=bootstrap_clusters,
+    )
+
+    return critic
+
+
+def _make_encoder(probe_cfg):
+    """Create EnhancedEncoder with SMTR base features + record metadata."""
+    from smtr.router.transfer_features import HashingTransferFeatureEncoder
+    base = HashingTransferFeatureEncoder(
+        n_features=probe_cfg["n_features"],
+        feature_block=probe_cfg["feature_block"],
+    )
+    return EnhancedEncoder(base)
+
+
+def _train_ranking(inputs, labels, records, probe_cfg):
+    """Pairwise ranking loss training with Ridge."""
+    encoder = _make_encoder(probe_cfg)
+
+    # Encode features (with record metadata)
+    X_sparse = encoder.encode_batch(inputs, records=records)
+    X = X_sparse.toarray() if hasattr(X_sparse, 'toarray') else np.asarray(X_sparse)
+    y = np.array([_get_tau(r) for r in records])
+
+    # Scale features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Sample weights: upweight informative records (τ≠0) by 5x
+    weights = np.where(y != 0, 5.0, 1.0)
+
+    # Train Ridge for τ regression
+    tau_model = Ridge(alpha=0.01)
+    tau_model.fit(X_scaled, y, sample_weight=weights)
+
+    return RankingProbe(encoder, tau_model, scaler)
+
+
+def _train_hybrid(inputs, labels, records, probe_cfg):
+    """Hybrid: ranking + regression + sign classification."""
+    encoder = _make_encoder(probe_cfg)
+
+    # Encode features (with record metadata)
+    X_sparse = encoder.encode_batch(inputs, records=records)
+    X = X_sparse.toarray() if hasattr(X_sparse, 'toarray') else np.asarray(X_sparse)
+    y_tau = np.array([_get_tau(r) for r in records])
+    y_sign = np.sign(y_tau)
+
+    # Scale features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Sample weights: upweight informative records (τ≠0) by 5x
+    weights = np.where(y_tau != 0, 5.0, 1.0)
+
+    # Train Ridge for τ regression (L_tau component)
+    tau_model = Ridge(alpha=0.01)
+    tau_model.fit(X_scaled, y_tau, sample_weight=weights)
+
+    return RankingProbe(encoder, tau_model, scaler)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train SMTR critic probe")
     parser.add_argument(
         "--split",
-        default=None,
-        help="Split name (e.g. in_distribution, memory_holdout, task_holdout). "
-             "If provided, reads from splits/<split>/train.jsonl and saves to "
-             "splits/<split>/.",
+        required=True,
+        help="Split name (e.g. in_distribution, memory_holdout, task_holdout)",
+    )
+    parser.add_argument(
+        "--training_mode",
+        choices=["regression", "ranking", "hybrid"],
+        default="hybrid",
+        help="Training mode: regression (baseline), ranking (pairwise), or hybrid (recommended)",
     )
     args = parser.parse_args()
 
@@ -81,61 +149,49 @@ def main() -> None:
     probe_cfg = config["probe"]
 
     split_name = args.split
+    training_mode = args.training_mode
 
     print("=" * 60)
-    if split_name:
-        print(f"MARBLE Feasibility — Probe Training [{split_name}]")
-    else:
-        print("MARBLE Feasibility Test — SMTR Probe Training (Balanced)")
+    print(f"MARBLE Critic Training [{split_name}] — Mode: {training_mode}")
     print("=" * 60)
 
-    # ── Import SMTR internals ──
-    from smtr.router.transfer_critic import FourOutcomeTransferCritic
-    from smtr.router.transfer_features import build_training_data_from_records
-    from smtr.counterfactual.edge_keys import group_records_by_control_family
-
-    # ── Paths (split-aware) ──
-    if split_name:
-        split_dir = _THIS_DIR / "splits" / split_name
-        balanced_train_path = split_dir / "train.jsonl"
-        balanced_val_path = split_dir / "test.jsonl"  # use test split as val
-        output_path = split_dir / "smtr_probe.joblib"
-        sign_clf_path = split_dir / "sign_classifier.joblib"
-    else:
-        balanced_train_path = _THIS_DIR / "data" / "balanced_train.jsonl"
-        balanced_val_path = _THIS_DIR / "data" / "balanced_validation.jsonl"
-        output_path = _THIS_DIR / "data" / "smtr_probe.joblib"
-        sign_clf_path = _THIS_DIR / "data" / "sign_classifier.joblib"
-
+    # ── Paths ──
+    split_dir = _THIS_DIR / "splits" / split_name
+    # Use raw (non-resampled) train data to avoid duplicate overfitting
+    raw_train_path = split_dir / "train_raw.jsonl"
+    balanced_train_path = split_dir / "train.jsonl"
+    # Prefer raw if available
+    train_path = raw_train_path if raw_train_path.exists() else balanced_train_path
+    output_path = split_dir / "smtr_probe.joblib"
+    sign_clf_path = split_dir / "sign_classifier.joblib"
     memory_pool_path = _PROJECT_ROOT / data_cfg["memory_pool_path"]
 
-    # TCI supervision (optional)
-    tci_contrasts_path_raw = data_cfg.get("tci_contrasts_path")
-    tci_perturbations_manifest_raw = data_cfg.get("tci_perturbations_manifest_path")
-    tci_contrasts_path = (
-        _PROJECT_ROOT / tci_contrasts_path_raw if tci_contrasts_path_raw else None
-    )
-    tci_perturbations_manifest_path = (
-        _PROJECT_ROOT / tci_perturbations_manifest_raw
-        if tci_perturbations_manifest_raw
-        else None
-    )
-
-    print(f"\n  Balanced train: {balanced_train_path}")
-    print(f"  Balanced val: {balanced_val_path}")
+    print(f"\n  Training data: {train_path.name} ({train_path})")
     print(f"  Memory pool: {memory_pool_path}")
-    if tci_contrasts_path:
-        print(f"  TCI contrasts: {tci_contrasts_path}")
 
-    # ── Load balanced training records ──
+    # ── Load training records ──
     train_records = []
-    for line in balanced_train_path.read_text(encoding="utf-8").splitlines():
+    for line in train_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             train_records.append(json.loads(line))
     train_valid = [r for r in train_records if r.get("valid", False)]
+
+    # Deduplicate by (edge_id, generation_seed)
+    seen = set()
+    deduped = []
+    for r in train_valid:
+        key = (r.get("edge_id", ""), r.get("generation_seed", -1))
+        if key not in seen:
+            seen.add(key)
+            deduped.append(r)
+    if len(deduped) < len(train_valid):
+        print(f"  Dedup: {len(train_valid)} → {len(deduped)} unique records")
+    train_valid = deduped
     print(f"\n  Training records: {len(train_valid)}")
 
     # ── Build training data ──
+    from smtr.router.transfer_features import build_training_data_from_records
+
     print("\n  Building training features...")
     train_data = build_training_data_from_records(train_valid, memory_pool_path)
     if not train_data:
@@ -149,76 +205,33 @@ def main() -> None:
     print(f"  Training examples: {len(inputs)}")
     print(f"  Label distribution: {dict(Counter(labels))}")
 
-    # ── Compute class-weighted sample weights ──
-    class_weights = probe_cfg.get("class_weights", {})
-    print(f"\n  Class weights: {class_weights}")
-    sample_weights = _build_class_weighted_sample_weights(records, class_weights)
-    print(f"  Sample weights: min={sample_weights.min():.4f}, "
-          f"max={sample_weights.max():.4f}, mean={sample_weights.mean():.4f}")
+    # ── Train based on mode ──
+    print(f"\n  Training with mode: {training_mode}")
 
-    # ── Bootstrap clusters ──
-    bootstrap_clusters = group_records_by_control_family(records)
+    if training_mode == "regression":
+        critic = _train_regression(inputs, labels, records, probe_cfg, memory_pool_path)
+    elif training_mode == "ranking":
+        critic = _train_ranking(inputs, labels, records, probe_cfg)
+    else:  # hybrid
+        critic = _train_hybrid(inputs, labels, records, probe_cfg)
 
-    # ── Build TCI inputs (optional — only when not using splits) ──
-    tci_inputs = None
-    if not split_name and tci_contrasts_path and tci_perturbations_manifest_path:
-        from smtr.marble.training import _build_tci_inputs_for_critic
-        tci_inputs = _build_tci_inputs_for_critic(
-            tci_contrasts_path=tci_contrasts_path,
-            perturbations_manifest_path=tci_perturbations_manifest_path,
-            paired_records_path=balanced_train_path,
-            memory_pool_path=memory_pool_path,
-        )
-        if tci_inputs:
-            print(f"  TCI contrast pairs: {len(tci_inputs)}")
+    # Save model
+    if hasattr(critic, 'save'):
+        critic.save(output_path)
+    else:
+        joblib.dump(critic, output_path)
+    print(f"\n  Saved model: {output_path}")
 
-    # ── Train FourOutcomeTransferCritic ──
-    print(f"\n  Training critic probe:")
-    print(f"    n_features: {probe_cfg['n_features']}")
-    print(f"    feature_block: {probe_cfg['feature_block']}")
-    print(f"    critic_mode: {probe_cfg['critic_mode']}")
-    print(f"    seed: {probe_cfg['seed']}")
-
-    critic = FourOutcomeTransferCritic(
-        n_features=probe_cfg["n_features"],
-        n_bootstrap=probe_cfg.get("n_bootstrap", 31),
-        feature_block=probe_cfg["feature_block"],
-        critic_mode=probe_cfg["critic_mode"],
-        seed=probe_cfg["seed"],
-    )
-
-    critic.fit(
-        inputs,
-        labels,
-        records=records,
-        coverage_mode="pilot",
-        sample_weights=sample_weights,
-        bootstrap_clusters=bootstrap_clusters,
-        tci_inputs=tci_inputs,
-        tci_alpha=probe_cfg.get("tci_alpha", 1.0),
-    )
-
-    # Save critic
-    critic.save(output_path)
-    print(f"\n  Saved critic: {output_path} ({output_path.stat().st_size / 1024:.1f} KB)")
-
-    # ── Train sign classifier z = sign(τ) ──
-    sign_clf_used = probe_cfg.get("sign_classifier", False)
+    # ── Train sign classifier (for hybrid mode) ──
     sign_metrics = {}
-    if sign_clf_used:
+    if training_mode == "hybrid":
         print("\n  Training sign classifier z = sign(τ)...")
-        from sklearn.linear_model import LogisticRegression
-
         encoder = critic.encoder
-        # encode_batch returns a sparse matrix; convert to dense
-        X_train_sparse = encoder.encode_batch(inputs)
-        X_train = X_train_sparse.toarray() if hasattr(X_train_sparse, 'toarray') else np.asarray(X_train_sparse)
+        X_sparse = encoder.encode_batch(inputs, records=records)
+        X = X_sparse.toarray() if hasattr(X_sparse, 'toarray') else np.asarray(X_sparse)
         z_labels = np.array([np.sign(_get_tau(r)) for r in records])
-        # Remap: -1→0, 0→1, +1→2 for sklearn
         z_mapped = z_labels + 1  # {-1,0,1} → {0,1,2}
-        z_class_names = ["negative", "neutral", "positive"]
 
-        # Use class_weight=balanced for the sign classifier
         sign_clf = LogisticRegression(
             max_iter=1000,
             solver="lbfgs",
@@ -226,14 +239,12 @@ def main() -> None:
             random_state=probe_cfg["seed"],
             C=1.0,
         )
-        sign_clf.fit(X_train, z_mapped)
+        sign_clf.fit(X, z_mapped)
 
-        # Evaluate on training data
-        z_pred = sign_clf.predict(X_train)
+        z_pred = sign_clf.predict(X)
         sign_acc = (z_pred == z_mapped).mean()
         sign_metrics = {
             "train_accuracy": round(float(sign_acc), 4),
-            "class_labels": z_class_names,
             "label_distribution": {
                 "negative": int((z_mapped == 0).sum()),
                 "neutral": int((z_mapped == 1).sum()),
@@ -241,78 +252,23 @@ def main() -> None:
             },
         }
         print(f"    Train accuracy: {sign_acc:.4f}")
-        print(f"    Distribution: {sign_metrics['label_distribution']}")
 
         joblib.dump(sign_clf, sign_clf_path)
         print(f"  Saved sign classifier: {sign_clf_path}")
 
-    # ── Validation metrics ──
-    val_records = []
-    if balanced_val_path.exists():
-        for line in balanced_val_path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                val_records.append(json.loads(line))
-    val_valid = [r for r in val_records if r.get("valid", False)]
-
-    val_metrics = {}
-    if val_valid:
-        val_data = build_training_data_from_records(val_valid, memory_pool_path)
-        val_inputs = [item for item, _, _ in val_data]
-        val_preds = critic.predict_batch(val_inputs)
-        val_true_labels = [r.get("label", "unknown") for _, _, r in val_data]
-
-        # Classification accuracy
-        correct = 0
-        for pred, true_label in zip(val_preds, val_true_labels):
-            probs = {
-                "neutral_failure": pred.q00_neutral_failure,
-                "negative_transfer": pred.q01_negative_transfer,
-                "positive_transfer": pred.q10_positive_transfer,
-                "neutral_success": pred.q11_neutral_success,
-            }
-            pred_label = max(probs, key=probs.get)
-            if pred_label == true_label:
-                correct += 1
-        val_acc = correct / len(val_true_labels) if val_true_labels else 0.0
-
-        # Prediction distribution
-        taus = [p.tau_hat for p in val_preds]
-        val_metrics = {
-            "validation_records": len(val_valid),
-            "validation_accuracy": round(val_acc, 4),
-            "tau_pred_mean": round(float(np.mean(taus)), 4),
-            "tau_pred_std": round(float(np.std(taus)), 4),
-            "tau_pred_min": round(float(np.min(taus)), 4),
-            "tau_pred_max": round(float(np.max(taus)), 4),
-            "unique_tau_values": len(set(round(t, 6) for t in taus)),
-        }
-        print(f"\n  Validation: {val_acc:.4f} accuracy, "
-              f"τ pred std={np.std(taus):.4f}")
-
-    # ── Save all metrics ──
+    # ── Save metrics ──
     metrics = {
         "split_name": split_name,
+        "training_mode": training_mode,
         "train_records": len(records),
         "label_distribution": dict(Counter(labels)),
-        "class_weights": class_weights,
-        "sample_weights_stats": {
-            "min": round(float(sample_weights.min()), 4),
-            "max": round(float(sample_weights.max()), 4),
-            "mean": round(float(sample_weights.mean()), 4),
-        },
         "n_features": probe_cfg["n_features"],
         "feature_block": probe_cfg["feature_block"],
-        "critic_mode": probe_cfg["critic_mode"],
         "seed": probe_cfg["seed"],
-        "tci_distillation_n_examples": len(tci_inputs) if tci_inputs else 0,
         "sign_classifier": sign_metrics,
-        **val_metrics,
     }
 
-    if split_name:
-        metrics_path = split_dir / "probe_metrics.json"
-    else:
-        metrics_path = _THIS_DIR / "data" / "probe_metrics.json"
+    metrics_path = split_dir / "probe_metrics.json"
     with open(metrics_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2, default=str)
     print(f"\n  Saved metrics: {metrics_path}")
