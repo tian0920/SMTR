@@ -5,14 +5,16 @@
 # 3 receivers so that τ(m, r) is receiver-conditioned and receiver
 # heterogeneity can be measured before the formal ICLR experiments.
 
+# MARBLE database tasks use 1-based agent ids (agent1..agent5), confirmed
+# via the runtime visibility audit of a live engine run.
 agents:
-  - receiver_id: agent0
-    role: executor
-    memory_access: read_write
   - receiver_id: agent1
     role: executor
     memory_access: read_write
   - receiver_id: agent2
+    role: executor
+    memory_access: read_write
+  - receiver_id: agent3
     role: executor
     memory_access: read_write
 
