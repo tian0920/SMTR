@@ -25,7 +25,7 @@ from __future__ import annotations
 import csv
 import json
 import sys
-import time
+import zlib
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -37,6 +37,16 @@ sys.path.insert(0, str(_PROJECT_ROOT / "src"))
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 RECEIVER_IDS = ["receiver_1", "receiver_2", "receiver_3"]
+
+
+def det_seed(*parts: object) -> int:
+    """Deterministic cross-process seed from arbitrary parts.
+
+    Python's built-in ``hash()`` is salted per-process (PYTHONHASHSEED),
+    so it must NOT be used for experiment randomization. CRC32 over the
+    stable repr is deterministic across processes and runs.
+    """
+    return zlib.crc32(repr(tuple(parts)).encode("utf-8")) % (2**31)
 
 
 def load_paired_records(path: Path) -> list[dict]:
@@ -72,7 +82,7 @@ def simulate_receiver_outcome(
     # Deterministic per-(task, memory, receiver) perturbation
     task_id = base_record.get("task_id", "")
     mid = base_record.get("candidate_memory_id", "")
-    seed_val = hash((task_id, mid, receiver_id)) % (2**31)
+    seed_val = det_seed(task_id, mid, receiver_id)
     local_rng = np.random.RandomState(seed_val)
 
     label = base_record.get("label", "")
@@ -260,7 +270,7 @@ def run_pilot(
         if seed not in seeds:
             continue
 
-        rng = np.random.RandomState(hash((task_id, seed)) % (2**31))
+        rng = np.random.RandomState(det_seed(task_id, seed))
 
         # Build candidate list
         candidates = [
@@ -296,8 +306,6 @@ def run_pilot(
                 continue
             policy = policy_cls()
 
-            t_start = time.time()
-
             # Per-receiver selection
             selected_per_receiver: dict[str, list[str]] = {}
             for rid in receiver_ids:
@@ -308,8 +316,6 @@ def run_pilot(
                     receiver_outcomes=receiver_outcomes,
                 )
                 selected_per_receiver[rid] = selected
-
-            t_elapsed = time.time() - t_start
 
             # Compute per-receiver metrics
             per_receiver_rewards: dict[str, float] = {}
@@ -365,7 +371,6 @@ def run_pilot(
                 "receiver_2_negative": per_receiver_negative["receiver_2"],
                 "receiver_3_negative": per_receiver_negative["receiver_3"],
                 "receiver_disagreement_std": disagreement,
-                "runtime_seconds": round(t_elapsed, 4),
             })
 
             # Per-receiver detail rows

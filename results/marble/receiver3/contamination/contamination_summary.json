@@ -4,7 +4,7 @@
     "ratio": 0.1,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -13,7 +13,7 @@
     "ratio": 0.1,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
+    "mean_team_reward": 0.014710294117647061,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -22,7 +22,7 @@
     "ratio": 0.1,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.44852794117647066,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -31,7 +31,7 @@
     "ratio": 0.1,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.46813529411764715,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -40,7 +40,7 @@
     "ratio": 0.2,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.3602941176470588,
     "mean_propagation_depth": 0.3602941176470588
   },
@@ -49,34 +49,34 @@
     "ratio": 0.2,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
-    "mean_contamination_rate": 0.17647058823529413,
-    "mean_propagation_depth": 0.17647058823529413
+    "mean_team_reward": 0.014710294117647061,
+    "mean_contamination_rate": 0.19852941176470587,
+    "mean_propagation_depth": 0.19852941176470587
   },
   {
     "contamination_type": "false_procedural",
     "ratio": 0.2,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
-    "mean_contamination_rate": 0.051470588235294115,
-    "mean_propagation_depth": 0.051470588235294115
+    "mean_team_reward": 0.44852794117647066,
+    "mean_contamination_rate": 0.08088235294117647,
+    "mean_propagation_depth": 0.08088235294117647
   },
   {
     "contamination_type": "false_procedural",
     "ratio": 0.2,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
-    "mean_contamination_rate": 0.01715514705882353,
-    "mean_propagation_depth": 0.01715514705882353
+    "mean_team_reward": 0.46813529411764715,
+    "mean_contamination_rate": 0.029408823529411765,
+    "mean_propagation_depth": 0.029408823529411765
   },
   {
     "contamination_type": "false_procedural",
     "ratio": 0.3,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.4632352941176471,
     "mean_propagation_depth": 0.4632352941176471
   },
@@ -85,16 +85,16 @@
     "ratio": 0.3,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
-    "mean_contamination_rate": 0.20588235294117646,
-    "mean_propagation_depth": 0.20588235294117646
+    "mean_team_reward": 0.014710294117647061,
+    "mean_contamination_rate": 0.25735294117647056,
+    "mean_propagation_depth": 0.25735294117647056
   },
   {
     "contamination_type": "false_procedural",
     "ratio": 0.3,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.44852794117647066,
     "mean_contamination_rate": 0.09558823529411764,
     "mean_propagation_depth": 0.09558823529411764
   },
@@ -103,16 +103,16 @@
     "ratio": 0.3,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
-    "mean_contamination_rate": 0.034311029411764705,
-    "mean_propagation_depth": 0.034311029411764705
+    "mean_team_reward": 0.46813529411764715,
+    "mean_contamination_rate": 0.03431029411764706,
+    "mean_propagation_depth": 0.03431029411764706
   },
   {
     "contamination_type": "spurious_success",
     "ratio": 0.1,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -121,7 +121,7 @@
     "ratio": 0.1,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
+    "mean_team_reward": 0.014710294117647061,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -130,7 +130,7 @@
     "ratio": 0.1,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.44852794117647066,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -139,7 +139,7 @@
     "ratio": 0.1,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.46813529411764715,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -148,7 +148,7 @@
     "ratio": 0.2,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.14705882352941177,
     "mean_propagation_depth": 0.14705882352941177
   },
@@ -157,16 +157,16 @@
     "ratio": 0.2,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
-    "mean_contamination_rate": 0.08823529411764706,
-    "mean_propagation_depth": 0.08823529411764706
+    "mean_team_reward": 0.014710294117647061,
+    "mean_contamination_rate": 0.0661764705882353,
+    "mean_propagation_depth": 0.0661764705882353
   },
   {
     "contamination_type": "spurious_success",
     "ratio": 0.2,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.44852794117647066,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -175,7 +175,7 @@
     "ratio": 0.2,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.46813529411764715,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -184,7 +184,7 @@
     "ratio": 0.3,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.19117647058823528,
     "mean_propagation_depth": 0.19117647058823528
   },
@@ -193,16 +193,16 @@
     "ratio": 0.3,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
-    "mean_contamination_rate": 0.10294117647058823,
-    "mean_propagation_depth": 0.10294117647058823
+    "mean_team_reward": 0.014710294117647061,
+    "mean_contamination_rate": 0.13970588235294118,
+    "mean_propagation_depth": 0.13970588235294118
   },
   {
     "contamination_type": "spurious_success",
     "ratio": 0.3,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.44852794117647066,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -211,7 +211,7 @@
     "ratio": 0.3,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.46813529411764715,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -220,7 +220,7 @@
     "ratio": 0.1,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -229,7 +229,7 @@
     "ratio": 0.1,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
+    "mean_team_reward": 0.014710294117647061,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -238,7 +238,7 @@
     "ratio": 0.1,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.44852794117647066,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -247,7 +247,7 @@
     "ratio": 0.1,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.46813529411764715,
     "mean_contamination_rate": 0.0,
     "mean_propagation_depth": 0.0
   },
@@ -256,7 +256,7 @@
     "ratio": 0.2,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.5735294117647058,
     "mean_propagation_depth": 0.5735294117647058
   },
@@ -265,34 +265,34 @@
     "ratio": 0.2,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
-    "mean_contamination_rate": 0.27941176470588236,
-    "mean_propagation_depth": 0.27941176470588236
+    "mean_team_reward": 0.014710294117647061,
+    "mean_contamination_rate": 0.3088235294117647,
+    "mean_propagation_depth": 0.3088235294117647
   },
   {
     "contamination_type": "outdated",
     "ratio": 0.2,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
-    "mean_contamination_rate": 0.0661764705882353,
-    "mean_propagation_depth": 0.0661764705882353
+    "mean_team_reward": 0.44852794117647066,
+    "mean_contamination_rate": 0.04411764705882353,
+    "mean_propagation_depth": 0.04411764705882353
   },
   {
     "contamination_type": "outdated",
     "ratio": 0.2,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
-    "mean_contamination_rate": 0.022056617647058824,
-    "mean_propagation_depth": 0.022056617647058824
+    "mean_team_reward": 0.46813529411764715,
+    "mean_contamination_rate": 0.01960661764705882,
+    "mean_propagation_depth": 0.01960661764705882
   },
   {
     "contamination_type": "outdated",
     "ratio": 0.3,
     "method": "full_memory",
     "n_groups": 136,
-    "mean_team_reward": 0.02451838235294115,
+    "mean_team_reward": 0.007356617647058796,
     "mean_contamination_rate": 0.7205882352941176,
     "mean_propagation_depth": 0.7205882352941176
   },
@@ -301,16 +301,16 @@
     "ratio": 0.3,
     "method": "retrieval",
     "n_groups": 136,
-    "mean_team_reward": 0.06617720588235294,
-    "mean_contamination_rate": 0.4485294117647059,
-    "mean_propagation_depth": 0.4485294117647059
+    "mean_team_reward": 0.014710294117647061,
+    "mean_contamination_rate": 0.4117647058823529,
+    "mean_propagation_depth": 0.4117647058823529
   },
   {
     "contamination_type": "outdated",
     "ratio": 0.3,
     "method": "smtr_uniform",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
+    "mean_team_reward": 0.44852794117647066,
     "mean_contamination_rate": 0.07352941176470588,
     "mean_propagation_depth": 0.07352941176470588
   },
@@ -319,8 +319,8 @@
     "ratio": 0.3,
     "method": "smtr_receiver",
     "n_groups": 136,
-    "mean_team_reward": 0.44607720588235295,
-    "mean_contamination_rate": 0.02450735294117647,
-    "mean_propagation_depth": 0.02450735294117647
+    "mean_team_reward": 0.46813529411764715,
+    "mean_contamination_rate": 0.024507352941176473,
+    "mean_propagation_depth": 0.024507352941176473
   }
 ]

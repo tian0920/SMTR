@@ -151,29 +151,45 @@ def main() -> None:
         print(f"  {rid}: {count}")
     print()
 
-    # Key metric: fraction of memories that would be mis-classified by uniform TCI
+    # Key metric: per-(memory, receiver) alignment of uniform TCI decisions
+    # with the receiver-specific measured delta.
+    #
+    # NOTE on honesty of metrics:
+    #   - Receiver-conditioned decisions are computed FROM the measured
+    #     per-receiver delta, so "receiver alignment = 100%" is a
+    #     self-consistency check BY CONSTRUCTION, not independent accuracy.
+    #   - Uniform TCI alignment IS meaningful: it measures how often the
+    #     aggregate-delta decision is wrong for an individual receiver
+    #     (false accept = harmful injection risk; false reject = lost transfer).
     uniform_correct = 0
-    receiver_correct = 0
+    uniform_false_accept = 0
+    uniform_false_reject = 0
+    receiver_self_consistent = 0
     for row in analysis_rows:
         deltas = [row["delta_receiver_1"], row["delta_receiver_2"], row["delta_receiver_3"]]
         mean_delta = np.mean(deltas)
         uniform_decision = "validated" if mean_delta > 0 else "rejected"
 
-        # Per-receiver correct decisions
         for i, rid in enumerate(RECEIVER_IDS):
             actual_useful = deltas[i] > 0
-            # Uniform: same decision for all
-            if (uniform_decision == "validated") == actual_useful:
+            uniform_agrees = (uniform_decision == "validated") == actual_useful
+            if uniform_agrees:
                 uniform_correct += 1
-            # Receiver-conditioned: per-receiver decision
+            elif uniform_decision == "validated" and not actual_useful:
+                uniform_false_accept += 1
+            else:
+                uniform_false_reject += 1
+            # Self-consistency of receiver-conditioned decision (tautological)
             receiver_decision = row[f"decision_{rid}"]
             if (receiver_decision == "validated") == actual_useful:
-                receiver_correct += 1
+                receiver_self_consistent += 1
 
     total_decisions = total_memories * 3
-    print(f"Decision accuracy:")
-    print(f"  Uniform TCI:     {uniform_correct}/{total_decisions} ({uniform_correct/max(total_decisions,1)*100:.1f}%)")
-    print(f"  Receiver TCI:    {receiver_correct}/{total_decisions} ({receiver_correct/max(total_decisions,1)*100:.1f}%)")
+    print(f"Per-(memory, receiver) decision alignment:")
+    print(f"  Uniform TCI alignment:        {uniform_correct}/{total_decisions} ({uniform_correct/max(total_decisions,1)*100:.1f}%)")
+    print(f"  Uniform false accepts (harm): {uniform_false_accept} ({uniform_false_accept/max(total_decisions,1)*100:.1f}%)")
+    print(f"  Uniform false rejects (loss): {uniform_false_reject} ({uniform_false_reject/max(total_decisions,1)*100:.1f}%)")
+    print(f"  Receiver self-consistency:    {receiver_self_consistent}/{total_decisions} (100% by construction)")
 
     # Write summary JSON
     summary = {
@@ -183,8 +199,10 @@ def main() -> None:
         "mean_delta_variance": float(np.mean(delta_variances)),
         "selective_transfer": {str(k): v for k, v in useful_counts.items()},
         "negative_transfer_prevented": neg_prevented_per_receiver,
-        "uniform_accuracy": uniform_correct / max(total_decisions, 1),
-        "receiver_accuracy": receiver_correct / max(total_decisions, 1),
+        "uniform_per_receiver_alignment": uniform_correct / max(total_decisions, 1),
+        "uniform_false_accept": uniform_false_accept,
+        "uniform_false_reject": uniform_false_reject,
+        "receiver_self_consistency_by_construction": receiver_self_consistent / max(total_decisions, 1),
     }
     summary_path = output_dir / "receiver_conditioned_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))

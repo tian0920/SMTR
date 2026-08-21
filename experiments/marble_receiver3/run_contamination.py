@@ -39,6 +39,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from experiments.marble_receiver3.pilot.run_pilot import (
     RECEIVER_IDS,
+    det_seed,
     load_paired_records,
     simulate_receiver_outcome,
 )
@@ -67,7 +68,7 @@ def run_contamination(
                 if seed not in seeds:
                     continue
 
-                rng = np.random.RandomState(hash((task_id, seed, contam_type, ratio)) % (2**31))
+                rng = np.random.RandomState(det_seed(task_id, seed, contam_type, ratio))
 
                 # Identify contamination targets
                 if contam_type == "false_procedural":
