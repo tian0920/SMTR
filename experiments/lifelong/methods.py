@@ -152,6 +152,7 @@ class SMTRTCIPolicy(LifelongPolicy):
             candidate.memory_id,
             reward_expose=delta,
             reward_withhold=0.0,
+            episode_id=task.episode,
         )
         self._revalidate_topic(task)
         self._enforce_capacity()
@@ -179,6 +180,7 @@ class SMTRTCIPolicy(LifelongPolicy):
                     memory.memory_id,
                     reward_expose=delta,
                     reward_withhold=0.0,
+                    episode_id=task.episode,
                 )
                 continue
             streak = self._suspect_streak.get(memory.memory_id, 0) + 1
@@ -188,10 +190,17 @@ class SMTRTCIPolicy(LifelongPolicy):
                     memory.memory_id,
                     reward_expose=delta,
                     reward_withhold=0.0,
+                    episode_id=task.episode,
                 )  # delta <= 0 -> rejected by the gate rule
             else:
                 # suspect but not yet rejected: record the probe only
-                self.bank.validate_memory(memory.memory_id, delta)
+                self.bank.validate_memory(
+                    memory.memory_id, delta,
+                    episode_id=task.episode,
+                    expose_reward=delta,
+                    withhold_reward=0.0,
+                    decision="suspect",
+                )
 
 
 METHODS: dict[str, type[LifelongPolicy]] = {

@@ -1,0 +1,122 @@
+[
+  {
+    "scenario": "contamination_0.1",
+    "method": "rule1_single_negative",
+    "final_reward": "0.890\u00b10.037",
+    "contamination_rate": "0.103",
+    "memory_size": "100",
+    "harmful_retention": "0.000"
+  },
+  {
+    "scenario": "contamination_0.1",
+    "method": "rule2_double_negative",
+    "final_reward": "0.990\u00b10.020",
+    "contamination_rate": "0.229",
+    "memory_size": "100",
+    "harmful_retention": "0.040"
+  },
+  {
+    "scenario": "contamination_0.1",
+    "method": "rule3_always_retain",
+    "final_reward": "0.990\u00b10.020",
+    "contamination_rate": "0.154",
+    "memory_size": "100",
+    "harmful_retention": "0.000"
+  },
+  {
+    "scenario": "contamination_0.2",
+    "method": "rule1_single_negative",
+    "final_reward": "0.780\u00b10.160",
+    "contamination_rate": "0.115",
+    "memory_size": "100",
+    "harmful_retention": "0.014"
+  },
+  {
+    "scenario": "contamination_0.2",
+    "method": "rule2_double_negative",
+    "final_reward": "0.940\u00b10.058",
+    "contamination_rate": "0.173",
+    "memory_size": "100",
+    "harmful_retention": "0.032"
+  },
+  {
+    "scenario": "contamination_0.2",
+    "method": "rule3_always_retain",
+    "final_reward": "0.990\u00b10.020",
+    "contamination_rate": "0.173",
+    "memory_size": "100",
+    "harmful_retention": "0.020"
+  },
+  {
+    "scenario": "contamination_0.3",
+    "method": "rule1_single_negative",
+    "final_reward": "0.770\u00b10.117",
+    "contamination_rate": "0.193",
+    "memory_size": "100",
+    "harmful_retention": "0.029"
+  },
+  {
+    "scenario": "contamination_0.3",
+    "method": "rule2_double_negative",
+    "final_reward": "0.970\u00b10.024",
+    "contamination_rate": "0.220",
+    "memory_size": "100",
+    "harmful_retention": "0.013"
+  },
+  {
+    "scenario": "contamination_0.3",
+    "method": "rule3_always_retain",
+    "final_reward": "0.980\u00b10.040",
+    "contamination_rate": "0.179",
+    "memory_size": "100",
+    "harmful_retention": "0.032"
+  },
+  {
+    "scenario": "lifelong",
+    "method": "rule1_single_negative",
+    "final_reward": "0.780\u00b10.160",
+    "contamination_rate": "0.115",
+    "memory_size": "100",
+    "harmful_retention": "0.014"
+  },
+  {
+    "scenario": "lifelong",
+    "method": "rule2_double_negative",
+    "final_reward": "0.940\u00b10.058",
+    "contamination_rate": "0.173",
+    "memory_size": "100",
+    "harmful_retention": "0.032"
+  },
+  {
+    "scenario": "lifelong",
+    "method": "rule3_always_retain",
+    "final_reward": "0.990\u00b10.020",
+    "contamination_rate": "0.173",
+    "memory_size": "100",
+    "harmful_retention": "0.020"
+  },
+  {
+    "scenario": "outdated",
+    "method": "rule1_single_negative",
+    "final_reward": "0.850\u00b10.110",
+    "contamination_rate": "0.000",
+    "memory_size": "100",
+    "harmful_retention": "0.000"
+  },
+  {
+    "scenario": "outdated",
+    "method": "rule2_double_negative",
+    "final_reward": "0.960\u00b10.020",
+    "contamination_rate": "0.000",
+    "memory_size": "100",
+    "harmful_retention": "0.000"
+  },
+  {
+    "scenario": "outdated",
+    "method": "rule3_always_retain",
+    "final_reward": "0.880\u00b10.098",
+    "contamination_rate": "0.000",
+    "memory_size": "100",
+    "harmful_retention": "0.000"
+  }
+]

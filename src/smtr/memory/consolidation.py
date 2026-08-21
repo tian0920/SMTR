@@ -43,7 +43,8 @@ class MemoryAdmissionController:
         self._decisions: list[AdmissionDecision] = []
 
     def admit(
-        self, memory_id: str, *, reward_expose: float, reward_withhold: float
+        self, memory_id: str, *, reward_expose: float, reward_withhold: float,
+        episode_id: int = -1,
     ) -> AdmissionDecision:
         """Run the TCI gate for one candidate memory.
 
@@ -52,10 +53,22 @@ class MemoryAdmissionController:
         """
         delta = reward_expose - reward_withhold
         if delta > 0:
-            self._bank.validate_memory(memory_id, delta)
+            self._bank.validate_memory(
+                memory_id, delta,
+                episode_id=episode_id,
+                expose_reward=reward_expose,
+                withhold_reward=reward_withhold,
+                decision="validated",
+            )
             decision = "validated"
         else:
-            self._bank.reject_memory(memory_id, delta)
+            self._bank.reject_memory(
+                memory_id, delta,
+                episode_id=episode_id,
+                expose_reward=reward_expose,
+                withhold_reward=reward_withhold,
+                decision="rejected",
+            )
             decision = "rejected"
         record = AdmissionDecision(
             memory_id=memory_id,

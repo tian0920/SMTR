@@ -13,7 +13,7 @@ JSONL persistence so lifelong experiments can survive across episodes.
 import json
 from pathlib import Path
 
-from smtr.memory.memory_schema import PersistentMemoryEntry, utc_now
+from smtr.memory.memory_schema import PersistentMemoryEntry, ValidationRecord, utc_now
 
 
 class PersistentMemoryBank:
@@ -55,23 +55,52 @@ class PersistentMemoryBank:
         self._entries[memory_id] = entry
         return entry
 
-    def validate_memory(self, memory_id: str, tci_effect: float) -> PersistentMemoryEntry:
+    def validate_memory(self, memory_id: str, tci_effect: float,
+                        *, episode_id: int = -1,
+                        expose_reward: float | None = None,
+                        withhold_reward: float | None = None,
+                        decision: str = "validated") -> PersistentMemoryEntry:
         """Mark a memory validated after positive TCI evidence (delta > 0)."""
-        return self._transition(memory_id, "validated", tci_effect)
+        return self._transition(memory_id, "validated", tci_effect,
+                                episode_id=episode_id,
+                                expose_reward=expose_reward if expose_reward is not None else tci_effect,
+                                withhold_reward=withhold_reward if withhold_reward is not None else 0.0,
+                                audit_decision=decision)
 
-    def reject_memory(self, memory_id: str, tci_effect: float) -> PersistentMemoryEntry:
+    def reject_memory(self, memory_id: str, tci_effect: float,
+                      *, episode_id: int = -1,
+                      expose_reward: float | None = None,
+                      withhold_reward: float | None = None,
+                      decision: str = "rejected") -> PersistentMemoryEntry:
         """Mark a memory rejected after non-positive TCI evidence."""
-        return self._transition(memory_id, "rejected", tci_effect)
+        return self._transition(memory_id, "rejected", tci_effect,
+                                episode_id=episode_id,
+                                expose_reward=expose_reward if expose_reward is not None else tci_effect,
+                                withhold_reward=withhold_reward if withhold_reward is not None else 0.0,
+                                audit_decision=decision)
 
     def _transition(
-        self, memory_id: str, status: str, tci_effect: float
+        self, memory_id: str, status: str, tci_effect: float,
+        *, episode_id: int = -1,
+        expose_reward: float = 0.0,
+        withhold_reward: float = 0.0,
+        audit_decision: str | None = None,
     ) -> PersistentMemoryEntry:
         entry = self.get(memory_id)
+        # Build audit record (P0-3)
+        rec = ValidationRecord(
+            episode_id=episode_id,
+            expose_reward=expose_reward,
+            withhold_reward=withhold_reward,
+            delta=tci_effect,
+            decision=audit_decision or status,
+        )
         updated = entry.model_copy(
             update={
                 "status": status,
                 "tci_effect": tci_effect,
                 "validation_count": entry.validation_count + 1,
+                "validation_history": entry.validation_history + (rec,),
                 "updated_at": utc_now(),
             }
         )
@@ -111,6 +140,43 @@ class PersistentMemoryBank:
                 [float(e.validation_count) for e in self._entries.values()]
             ),
         }
+
+    # ------------------------------------------------------------------
+    # Audit export (P0-3)
+    # ------------------------------------------------------------------
+    def export_memory_audit(self) -> list[dict]:
+        """Export full audit trail for every memory (for paper case study).
+
+        Each entry contains:
+          - source: memory_id, content, source_episode, receiver
+          - validation_evidence: list of {episode_id, expose_reward,
+            withhold_reward, delta, decision}
+          - retention_decision: current status
+          - later_utility: latest tci_effect
+        """
+        audit: list[dict] = []
+        for entry in self.all_entries():
+            audit.append({
+                "memory_id": entry.memory_id,
+                "content": entry.content,
+                "source_episode": entry.source_episode,
+                "receiver": entry.receiver,
+                "created_step": entry.created_step,
+                "status": entry.status,
+                "tci_effect": entry.tci_effect,
+                "validation_count": entry.validation_count,
+                "validation_history": [
+                    {
+                        "episode_id": r.episode_id,
+                        "expose_reward": r.expose_reward,
+                        "withhold_reward": r.withhold_reward,
+                        "delta": r.delta,
+                        "decision": r.decision,
+                    }
+                    for r in entry.validation_history
+                ],
+            })
+        return audit
 
     # ------------------------------------------------------------------
     # Persistence

@@ -21,6 +21,18 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+class ValidationRecord(BaseModel):
+    """One TCI validation event (P0-3 audit trail)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    episode_id: int
+    expose_reward: float
+    withhold_reward: float
+    delta: float
+    decision: str  # "validated" | "rejected" | "suspect"
+
+
 class PersistentMemoryEntry(BaseModel):
     """One experience-derived memory with lifecycle state.
 
@@ -33,6 +45,7 @@ class PersistentMemoryEntry(BaseModel):
       - ``tci_effect``: latest TCI-estimated treatment effect (delta)
       - ``status``: candidate / validated / rejected
       - ``validation_count``: number of TCI validations performed
+      - ``validation_history``: full audit trail of every probe (P0-3)
     """
 
     model_config = ConfigDict(frozen=True)
@@ -45,5 +58,6 @@ class PersistentMemoryEntry(BaseModel):
     tci_effect: float | None = None
     status: MemoryLifecycleStatus = "candidate"
     validation_count: int = 0
+    validation_history: tuple[ValidationRecord, ...] = ()
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

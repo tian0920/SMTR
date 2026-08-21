@@ -164,6 +164,36 @@ def run_experiment(
     _write_jsonl(output_dir / "trajectory.jsonl", trajectory_rows)
     _write_jsonl(output_dir / "memory_history.jsonl", history_rows)
     _write_csv(output_dir / "performance.csv", performance_rows)
+
+    # Export memory audit for SMTR-TCI policies (P0-3)
+    audit_rows: list[dict] = []
+    for seed in seeds:
+        for method_name in methods:
+            if method_name != "smtr_tci":
+                continue
+            # Re-run to get the policy bank (lightweight: env is fast)
+            env = LifelongEnvironment(
+                seed=seed,
+                method_seed=zlib.crc32(method_name.encode()) % 100000,
+                change_episode=change_episode,
+                changed_topics=changed_topics,
+            )
+            policy = METHODS[method_name](env, capacity=capacity)
+            run_episode_sequence(
+                policy=policy, env=env, episodes=episodes,
+                topics=topics, topics_after_change=topics_after_change,
+                contamination_ratio=contamination_ratio, seed=seed,
+                trajectory_rows=[], history_rows=[], performance_rows=[],
+                after_episode=after_episode,
+            )
+            for entry in policy.bank.export_memory_audit():
+                entry["seed"] = seed
+                audit_rows.append(entry)
+    if audit_rows:
+        (output_dir / "memory_audit.json").write_text(
+            json.dumps(audit_rows, indent=2, default=str)
+        )
+
     config = {
         "experiment": experiment,
         "episodes": episodes,
