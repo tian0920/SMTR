@@ -1,0 +1,307 @@
+{"task_id": "10", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [1, 1, 0], "seeds": [2, 1, 0], "tau_mean": 0.6667, "tau_std": 0.4714, "stable": false}
+{"task_id": "10", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 1], "seeds": [2, 0], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "10", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 1], "seeds": [1, 0], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "100", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "100", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "11", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "11", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "16", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "16", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "16", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "16", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "16", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "17", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "17", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 1], "seeds": [0, 1], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "17", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "19", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 0], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "19", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 0], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "19", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, -1, 0], "seeds": [1, 0, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "19", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 0], "seeds": [1, 0], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "21", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "22", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "22", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "22", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "23", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [1, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "23", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 1, 1], "seeds": [0, 1, 2], "tau_mean": 0.6667, "tau_std": 0.4714, "stable": false}
+{"task_id": "23", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "23", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 1], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "23", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 0], "seeds": [1, 2], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "23", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "26", "memory_id": "dbproc-06c28b92d681-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "26", "memory_id": "dbproc-06c28b92d681-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "26", "memory_id": "dbproc-06c28b92d681-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "26", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "26", "memory_id": "dbproc-06c28b92d681-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, -1, 0], "seeds": [0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "26", "memory_id": "dbproc-0d97cd2103b4-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "27", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "27", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "27", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "27", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "27", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "29", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "29", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 0], "seeds": [0, 1], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "29", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "29", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "29", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "3", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 0], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "3", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 0], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "3", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 0], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "3", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 0], "seeds": [1, 0], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "3", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 0], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "31", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "31", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "31", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 2], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "32", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [-1, 0], "seeds": [0, 1], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "32", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [-1, 0], "seeds": [0, 1], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "32", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [-1, 1], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 1.0, "stable": false}
+{"task_id": "33", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "33", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 0], "seeds": [1, 2], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "33", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 0], "seeds": [1, 2], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "33", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "33", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "34", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "34", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 1], "seeds": [1, 0, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "34", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [1, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "34", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 1], "seeds": [1, 0, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "34", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [1, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "36", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "36", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "36", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "36", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "36", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "37", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "37", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, -1], "seeds": [0, 2, 1], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "37", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, -1, 0], "seeds": [0, 2, 1], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "37", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [-1, -1], "seeds": [0, 2], "tau_mean": -1.0, "tau_std": 0.0, "stable": true}
+{"task_id": "37", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "37", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "41", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 1, 0], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "41", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [-1, 1, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.8165, "stable": false}
+{"task_id": "41", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "41", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 1, 0], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "41", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "41", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 1, 0], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "42", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "42", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "42", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "42", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "42", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [0, 1], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "42", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "48", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "48", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "48", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "48", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "48", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "51", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 1, 0], "seeds": [0, 2, 1], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "51", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "51", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "51", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "51", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "51", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "57", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "57", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "57", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "57", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "57", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "57", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "60", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [-1, 0, -1], "seeds": [0, 1, 2], "tau_mean": -0.6667, "tau_std": 0.4714, "stable": false}
+{"task_id": "60", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "60", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [-1, 0, -1], "seeds": [0, 1, 2], "tau_mean": -0.6667, "tau_std": 0.4714, "stable": false}
+{"task_id": "60", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, -1], "seeds": [0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "60", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, -1], "seeds": [0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "60", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "61", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "61", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "61", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "61", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "61", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "61", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "63", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "63", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "63", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "63", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "63", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "63", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "64", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "64", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "64", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "64", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "64", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "64", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "65", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "68", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "68", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "68", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "68", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "68", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "68", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "69", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [-1, -1, 1], "seeds": [0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.9428, "stable": false}
+{"task_id": "69", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [-1, -1, 0], "seeds": [0, 1, 2], "tau_mean": -0.6667, "tau_std": 0.4714, "stable": false}
+{"task_id": "69", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, -1, 1], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.8165, "stable": false}
+{"task_id": "69", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 1], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "69", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, -1, 0], "seeds": [0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "69", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [-1, -1, 1], "seeds": [0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.9428, "stable": false}
+{"task_id": "70", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "70", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "70", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "70", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "70", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "72", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "72", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "72", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "73", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "73", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "73", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "75", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "75", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "75", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "77", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "77", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "79", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "79", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "79", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "80", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "80", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "80", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "80", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "82", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "82", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "82", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "84", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "84", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "84", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "85", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "85", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "85", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "85", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "85", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "87", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "87", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "87", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "88", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "88", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "88", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "88", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "89", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "89", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "89", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "89", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "89", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "9", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 0], "seeds": [0, 1], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "9", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [1, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "9", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [1, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "9", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [1, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "9", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, -1], "seeds": [1, 2], "tau_mean": -0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "90", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "90", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "90", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "90", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "90", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "90", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "92", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "92", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "92", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "92", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "92", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "92", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "93", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "93", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "93", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "93", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "93", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "93", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "94", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [2, 1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "94", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [2, 1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "94", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [2, 1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "94", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "94", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [2, 1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "94", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "95", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "95", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "95", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "95", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "95", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "95", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 1, 1], "seeds": [0, 1, 2], "tau_mean": 0.6667, "tau_std": 0.4714, "stable": false}
+{"task_id": "97", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "97", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "97", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "97", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "97", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 3, "taus": [0, 0, 0], "seeds": [0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "97", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "12", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "12", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "12", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "12", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "12", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "12", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "14", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 1], "seeds": [0, 0], "tau_mean": 1.0, "tau_std": 0.0, "stable": true}
+{"task_id": "14", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "24", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 1, 0, 0, 1, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "24", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "24", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "24", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 1, 0, 0, 1, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "24", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 2, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "24", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 6, "taus": [1, 0, 0, 1, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "25", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "25", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "25", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "25", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 6, "taus": [1, 0, 1, 1, 0, 1], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.6667, "tau_std": 0.4714, "stable": false}
+{"task_id": "25", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 1, 0, 1], "seeds": [0, 1, 0, 1], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "25", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [1, 2, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "28", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "28", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "28", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 2, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "28", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [1, 2, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "28", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [1, 2, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "28", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [1, 2, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "38", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "38", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "38", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "38", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "38", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "38", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "40", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [1, 0, 2, 1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "40", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 1, 0, 0, 1], "seeds": [1, 0, 2, 1, 0, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "40", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 1, 0, 0, 1, 0], "seeds": [1, 0, 2, 1, 0, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "40", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [1, 0, 2, 1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "40", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [1, 0, 2, 1, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "40", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [1, 0, 1, 0], "seeds": [0, 2, 0, 2], "tau_mean": 0.5, "tau_std": 0.5, "stable": false}
+{"task_id": "47", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 6, "taus": [1, 0, 0, 1, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "47", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "47", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "47", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "47", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 1, 0, 0, 1, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "47", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 2, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "52", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 6, "taus": [-1, 0, 0, -1, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "52", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 6, "taus": [-1, 0, 0, -1, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "52", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "52", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "52", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "52", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [-1, -1, -1, -1], "seeds": [0, 2, 0, 2], "tau_mean": -1.0, "tau_std": 0.0, "stable": true}
+{"task_id": "53", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 1], "seeds": [0, 0], "tau_mean": 1.0, "tau_std": 0.0, "stable": true}
+{"task_id": "53", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "53", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [1, 1], "seeds": [0, 0], "tau_mean": 1.0, "tau_std": 0.0, "stable": true}
+{"task_id": "6", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, -1, 0, 0, -1, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "6", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 6, "taus": [1, -1, 0, 1, -1, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.8165, "stable": false}
+{"task_id": "6", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "6", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 2, 0, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "6", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, -1, 0, 0, -1, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "6", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, -1, 0, 0, -1, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": -0.3333, "tau_std": 0.4714, "stable": false}
+{"task_id": "66", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "66", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "66", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "66", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "66", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [1, 2, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "66", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "71", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "71", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [0, 0], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "71", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "71", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [1, 2, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "71", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "71", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "83", "memory_id": "dbproc-01870edcc464-agent3", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "83", "memory_id": "dbproc-01870edcc464-agent4", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "83", "memory_id": "dbproc-06c28b92d681-agent1", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [0, 1, 0, 1], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "83", "memory_id": "dbproc-01870edcc464-agent1", "receiver_id": "agent1", "n_replicates": 6, "taus": [0, 0, 0, 0, 0, 0], "seeds": [0, 1, 2, 0, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "83", "memory_id": "dbproc-01870edcc464-agent5", "receiver_id": "agent1", "n_replicates": 4, "taus": [0, 0, 0, 0], "seeds": [1, 2, 1, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}
+{"task_id": "83", "memory_id": "dbproc-01870edcc464-agent2", "receiver_id": "agent1", "n_replicates": 2, "taus": [0, 0], "seeds": [2, 2], "tau_mean": 0.0, "tau_std": 0.0, "stable": true}

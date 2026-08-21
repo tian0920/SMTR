@@ -1,0 +1,69 @@
+{
+  "audit_version": "1.0",
+  "conclusion": "SIGNAL_EXISTS",
+  "explanation": "Oracle ranking = 1.0000 > 0.7, Current SMTR ranking = 0.6989 > 0.65. Both oracle and current representation succeed.",
+  "next_steps": [
+    "MARBLE is suitable for SMTR.",
+    "Proceed to scale experiments."
+  ],
+  "results": {
+    "stability": {
+      "icc": 0.1653,
+      "verdict": "BORDERLINE",
+      "exact_agreement_rate": 0.7752,
+      "n_groups": 307,
+      "n_unstable": 69
+    },
+    "oracle": {
+      "ranking": 1.0,
+      "pearson_r": 0.9711,
+      "sign_accuracy": 0.1275,
+      "verdict": "PASS"
+    },
+    "representation": {
+      "A_current_smtr": 0.6989,
+      "B_plus_memory_meta": 0.6955,
+      "C_plus_execution": 1.0,
+      "verdict": "REPRESENTATION_FAILURE"
+    },
+    "case_analysis": {
+      "positive_transfer": {
+        "n_cases": 10,
+        "prediction_change_rate": 1.0,
+        "tasks": [
+          "21",
+          "19",
+          "11",
+          "2",
+          "10"
+        ]
+      },
+      "negative_transfer": {
+        "n_cases": 10,
+        "prediction_change_rate": 1.0,
+        "tasks": [
+          "26",
+          "3",
+          "19"
+        ]
+      },
+      "neutral_success": {
+        "n_cases": 10,
+        "prediction_change_rate": 0.3,
+        "tasks": [
+          "16",
+          "13"
+        ]
+      },
+      "neutral_failure": {
+        "n_cases": 10,
+        "prediction_change_rate": 0.2,
+        "tasks": [
+          "10",
+          "100",
+          "11"
+        ]
+      }
+    }
+  }
+}

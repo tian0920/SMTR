@@ -1,0 +1,36 @@
+# MARBLE Causal Signal Audit Configuration
+#
+# This pipeline diagnoses whether MARBLE contains stable causal signal
+# for SMTR transfer prediction.  It does NOT modify SMTR itself.
+
+data:
+  all_paired_splits:
+    - artifacts/marble/paired/train/paired_records.jsonl
+    - artifacts/marble/paired/validation/paired_records.jsonl
+    - artifacts/marble/paired/test/paired_records.jsonl
+  memory_pool_path: artifacts/marble/real_data/database_v1/memory_pool.jsonl
+  output_base: artifacts/marble/outputs/q30b_full_resume
+
+audit:
+  # Audit 1: Intervention Stability
+  stability:
+    icc_pass_threshold: 0.3
+    icc_fail_threshold: 0.1
+
+  # Audit 2: Oracle Probe
+  oracle:
+    n_features: 64
+    hidden_size: 128
+    n_folds: 5
+    seed: 42
+    ranking_pass_threshold: 0.7
+
+  # Audit 3: Representation Probe
+  representation:
+    n_features: 32
+    n_folds: 5
+    seed: 42
+
+  # Audit 4: Case Analysis
+  case_analysis:
+    max_cases_per_class: 10

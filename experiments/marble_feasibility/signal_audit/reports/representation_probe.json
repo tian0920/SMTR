@@ -1,0 +1,55 @@
+{
+  "audit": "representation_probe",
+  "verdict": "REPRESENTATION_FAILURE",
+  "interpretation": "Execution features help \u2192 current SMTR representation is the bottleneck.  Need richer features.",
+  "feature_sets": {
+    "A_current_smtr": {
+      "name": "A_current_smtr",
+      "n_features": 43,
+      "ranking": 0.6989,
+      "ranking_std": 0.0694,
+      "pearson_r": 0.098,
+      "sign_accuracy": 0.083,
+      "tau_pred_std": 0.0815,
+      "fold_rankings": [
+        0.8308,
+        0.6677,
+        0.704,
+        0.6416,
+        0.6501
+      ]
+    },
+    "B_plus_memory_meta": {
+      "name": "B_plus_memory_meta",
+      "n_features": 63,
+      "ranking": 0.6955,
+      "ranking_std": 0.0893,
+      "pearson_r": 0.0979,
+      "sign_accuracy": 0.081,
+      "tau_pred_std": 0.0834,
+      "fold_rankings": [
+        0.817,
+        0.7299,
+        0.7103,
+        0.5424,
+        0.6778
+      ]
+    },
+    "C_plus_execution": {
+      "name": "C_plus_execution",
+      "n_features": 122,
+      "ranking": 1.0,
+      "ranking_std": 0.0,
+      "pearson_r": 1.0,
+      "sign_accuracy": 0.1275,
+      "tau_pred_std": 0.354,
+      "fold_rankings": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  }
+}

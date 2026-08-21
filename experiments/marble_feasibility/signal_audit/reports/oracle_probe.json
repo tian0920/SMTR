@@ -1,0 +1,37 @@
+{
+  "audit": "oracle_probe",
+  "verdict": "PASS",
+  "interpretation": "SIGNAL_EXISTS \u2014 MARBLE contains learnable transfer signal.  Problem is representation.",
+  "ranking": 1.0,
+  "pearson_r": 0.9711,
+  "sign_accuracy": 0.1275,
+  "n_features": 120,
+  "n_records": 988,
+  "tau_distribution": {
+    "positive": 70,
+    "negative": 56,
+    "neutral": 862
+  },
+  "fold_rankings": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "fold_pearsons": [
+    0.9569,
+    0.9734,
+    0.9471,
+    0.9927,
+    0.9857
+  ],
+  "fold_sign_accs": [
+    0.1263,
+    0.1465,
+    0.101,
+    0.1066,
+    0.1574
+  ],
+  "threshold": 0.7
+}

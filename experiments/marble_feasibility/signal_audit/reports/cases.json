@@ -1,0 +1,2370 @@
+{
+  "audit": "case_analysis",
+  "patterns": {
+    "positive_transfer": {
+      "n_cases": 10,
+      "task_ids": [
+        "21",
+        "19",
+        "11",
+        "2",
+        "10",
+        "17"
+      ],
+      "memory_bases": [
+        "dbproc-06c28b92d681",
+        "dbproc-01870edcc464"
+      ],
+      "source_agents": [
+        "agent5",
+        "agent1",
+        "agent3"
+      ],
+      "prediction_change_rate": 1.0
+    },
+    "negative_transfer": {
+      "n_cases": 10,
+      "task_ids": [
+        "26",
+        "3",
+        "19"
+      ],
+      "memory_bases": [
+        "dbproc-06c28b92d681",
+        "dbproc-01870edcc464"
+      ],
+      "source_agents": [
+        "agent4",
+        "agent1",
+        "agent3",
+        "agent2",
+        "agent5"
+      ],
+      "prediction_change_rate": 1.0
+    },
+    "neutral_success": {
+      "n_cases": 10,
+      "task_ids": [
+        "16",
+        "13"
+      ],
+      "memory_bases": [
+        "dbproc-06c28b92d681",
+        "dbproc-01870edcc464"
+      ],
+      "source_agents": [
+        "agent2",
+        "agent1",
+        "agent4",
+        "agent3"
+      ],
+      "prediction_change_rate": 0.3
+    },
+    "neutral_failure": {
+      "n_cases": 10,
+      "task_ids": [
+        "10",
+        "100",
+        "11"
+      ],
+      "memory_bases": [
+        "dbproc-06c28b92d681",
+        "dbproc-01870edcc464"
+      ],
+      "source_agents": [
+        "agent5",
+        "agent2",
+        "agent1",
+        "agent3"
+      ],
+      "prediction_change_rate": 0.2
+    }
+  },
+  "cases": {
+    "positive_transfer": [
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 2,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['INSERT_LARGE_DATA']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 1,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['INSERT_LARGE_DATA']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-01870edcc464-agent5",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 5,
+        "generation_seed": 0,
+        "memory_source_agent": "agent5",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['INSERT_LARGE_DATA']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 0,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['INSERT_LARGE_DATA']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-01870edcc464-agent3",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 3,
+        "generation_seed": 0,
+        "memory_source_agent": "agent3",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['INSERT_LARGE_DATA']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "11",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 2,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['VACUUM']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['VACUUM']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "17",
+        "memory_id": "dbproc-01870edcc464-agent5",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 5,
+        "generation_seed": 1,
+        "memory_source_agent": "agent5",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['INSERT_LARGE_DATA']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "19",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 1,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.2857,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "MISSING_INDEXES",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'MISSING_INDEXES', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.0, share=0.2857."
+      },
+      {
+        "task_id": "2",
+        "memory_id": "dbproc-01870edcc464-agent3",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 3,
+        "generation_seed": 2,
+        "memory_source_agent": "agent3",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "FETCH_LARGE_DATA"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['INSERT_LARGE_DATA']. Predictions diverged: control predicted ['LOCK_CONTENTION', 'REDUNDANT_INDEX'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.3333."
+      },
+      {
+        "task_id": "21",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": 1,
+        "label": "positive_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 2,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Positive transfer: memory helped. Same task: expected ['VACUUM']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['VACUUM']. F1: control=0.0, share=0.3333."
+      }
+    ],
+    "negative_transfer": [
+      {
+        "task_id": "19",
+        "memory_id": "dbproc-01870edcc464-agent2",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "receiver_incompatible_hard_negative",
+        "candidate_rank": 2,
+        "generation_seed": 0,
+        "memory_source_agent": "agent2",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "19",
+        "memory_id": "dbproc-01870edcc464-agent3",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 3,
+        "generation_seed": 0,
+        "memory_source_agent": "agent3",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "19",
+        "memory_id": "dbproc-01870edcc464-agent4",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 4,
+        "generation_seed": 0,
+        "memory_source_agent": "agent4",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "19",
+        "memory_id": "dbproc-01870edcc464-agent5",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 5,
+        "generation_seed": 0,
+        "memory_source_agent": "agent5",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES",
+          "VACUUM"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "VACUUM",
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [
+          "MISSING_INDEXES"
+        ],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION', 'MISSING_INDEXES', 'VACUUM']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "26",
+        "memory_id": "dbproc-06c28b92d681-agent4",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 4,
+        "generation_seed": 1,
+        "memory_source_agent": "agent4",
+        "memory_source_task": "14",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "FETCH_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "FETCH_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "FETCH_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION"
+        ],
+        "prediction_control_only": [
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_share_only": [
+          "MISSING_INDEXES"
+        ],
+        "description": "Negative transfer: memory hurt. Same task: expected ['FETCH_LARGE_DATA']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['LOCK_CONTENTION', 'MISSING_INDEXES']. Root causes: ['FETCH_LARGE_DATA']. F1: control=0.6667, share=0.0."
+      },
+      {
+        "task_id": "3",
+        "memory_id": "dbproc-01870edcc464-agent5",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 5,
+        "generation_seed": 0,
+        "memory_source_agent": "agent5",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_share_only": [
+          "MISSING_INDEXES"
+        ],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['LOCK_CONTENTION', 'MISSING_INDEXES']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "3",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 0,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "3",
+        "memory_id": "dbproc-01870edcc464-agent4",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 4,
+        "generation_seed": 0,
+        "memory_source_agent": "agent4",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "3",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 0,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      },
+      {
+        "task_id": "3",
+        "memory_id": "dbproc-01870edcc464-agent2",
+        "receiver_id": "agent1",
+        "tau": -1,
+        "label": "negative_transfer",
+        "candidate_source": "receiver_incompatible_hard_negative",
+        "candidate_rank": 2,
+        "generation_seed": 0,
+        "memory_source_agent": "agent2",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "control_f1": 0.3333,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "REDUNDANT_INDEX"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "REDUNDANT_INDEX"
+        ],
+        "share_predicted_labels": [
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION"
+        ],
+        "prediction_control_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_share_only": [
+          "MISSING_INDEXES"
+        ],
+        "description": "Negative transfer: memory hurt. Same task: expected ['REDUNDANT_INDEX']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM'], share predicted ['LOCK_CONTENTION', 'MISSING_INDEXES']. Root causes: ['REDUNDANT_INDEX']. F1: control=0.3333, share=0.0."
+      }
+    ],
+    "neutral_success": [
+      {
+        "task_id": "13",
+        "memory_id": "dbproc-01870edcc464-agent4",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 4,
+        "generation_seed": 2,
+        "memory_source_agent": "agent4",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.6667,
+        "share_failure_reason": null,
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.6667."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent3",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 3,
+        "generation_seed": 0,
+        "memory_source_agent": "agent3",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.6667,
+        "share_failure_reason": null,
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.6667."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 0,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.3333."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent2",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "receiver_incompatible_hard_negative",
+        "candidate_rank": 2,
+        "generation_seed": 0,
+        "memory_source_agent": "agent2",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.6667,
+        "share_failure_reason": null,
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.6667."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent4",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 4,
+        "generation_seed": 0,
+        "memory_source_agent": "agent4",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.3333."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 0,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "VACUUM"
+        ],
+        "share_f1": 0.3333,
+        "share_failure_reason": null,
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [
+          "VACUUM",
+          "INSERT_LARGE_DATA",
+          "REDUNDANT_INDEX"
+        ],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION'], share predicted ['FETCH_LARGE_DATA', 'INSERT_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX', 'VACUUM']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.3333."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent3",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 3,
+        "generation_seed": 1,
+        "memory_source_agent": "agent3",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.6667,
+        "share_failure_reason": null,
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.6667."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 1,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.6667,
+        "share_failure_reason": null,
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.6667."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent2",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "receiver_incompatible_hard_negative",
+        "candidate_rank": 2,
+        "generation_seed": 1,
+        "memory_source_agent": "agent2",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.6667,
+        "share_failure_reason": null,
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.6667."
+      },
+      {
+        "task_id": "16",
+        "memory_id": "dbproc-01870edcc464-agent4",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_success",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 4,
+        "generation_seed": 1,
+        "memory_source_agent": "agent4",
+        "memory_source_task": "26",
+        "control_success": true,
+        "control_score": 1.0,
+        "control_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.6667,
+        "control_failure_reason": null,
+        "task_root_causes": [
+          "LOCK_CONTENTION"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": true,
+        "share_score": 1.0,
+        "share_expected_labels": [
+          "LOCK_CONTENTION"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.6667,
+        "share_failure_reason": null,
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['LOCK_CONTENTION']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['LOCK_CONTENTION']. F1: control=0.6667, share=0.6667."
+      }
+    ],
+    "neutral_failure": [
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 2,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['INSERT_LARGE_DATA']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.0."
+      },
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-01870edcc464-agent3",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 3,
+        "generation_seed": 1,
+        "memory_source_agent": "agent3",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['INSERT_LARGE_DATA']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.0."
+      },
+      {
+        "task_id": "10",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 0,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "INSERT_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "INSERT_LARGE_DATA"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['INSERT_LARGE_DATA']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['INSERT_LARGE_DATA']. F1: control=0.0, share=0.0."
+      },
+      {
+        "task_id": "100",
+        "memory_id": "dbproc-01870edcc464-agent2",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "receiver_incompatible_hard_negative",
+        "candidate_rank": 2,
+        "generation_seed": 1,
+        "memory_source_agent": "agent2",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX"
+        ],
+        "control_f1": 0.4,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM",
+          "FETCH_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES"
+        ],
+        "share_f1": 0.4,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [
+          "MISSING_INDEXES"
+        ],
+        "description": "Neutral: no transfer effect. Same task: expected ['FETCH_LARGE_DATA', 'VACUUM']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION', 'MISSING_INDEXES']. Root causes: ['VACUUM', 'FETCH_LARGE_DATA']. F1: control=0.4, share=0.4."
+      },
+      {
+        "task_id": "100",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 1,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX"
+        ],
+        "control_f1": 0.4,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM",
+          "FETCH_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES"
+        ],
+        "share_f1": 0.4,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": true,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [
+          "REDUNDANT_INDEX"
+        ],
+        "prediction_share_only": [
+          "MISSING_INDEXES"
+        ],
+        "description": "Neutral: no transfer effect. Same task: expected ['FETCH_LARGE_DATA', 'VACUUM']. Predictions diverged: control predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX'], share predicted ['FETCH_LARGE_DATA', 'LOCK_CONTENTION', 'MISSING_INDEXES']. Root causes: ['VACUUM', 'FETCH_LARGE_DATA']. F1: control=0.4, share=0.4."
+      },
+      {
+        "task_id": "100",
+        "memory_id": "dbproc-01870edcc464-agent3",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 3,
+        "generation_seed": 1,
+        "memory_source_agent": "agent3",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX"
+        ],
+        "control_f1": 0.4,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM",
+          "FETCH_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX"
+        ],
+        "share_f1": 0.4,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['FETCH_LARGE_DATA', 'VACUUM']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION', 'REDUNDANT_INDEX']. Root causes: ['VACUUM', 'FETCH_LARGE_DATA']. F1: control=0.4, share=0.4."
+      },
+      {
+        "task_id": "11",
+        "memory_id": "dbproc-01870edcc464-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "cross_receiver_anchor",
+        "candidate_rank": 1,
+        "generation_seed": 1,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['VACUUM']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['VACUUM']. F1: control=0.0, share=0.0."
+      },
+      {
+        "task_id": "11",
+        "memory_id": "dbproc-01870edcc464-agent2",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "receiver_incompatible_hard_negative",
+        "candidate_rank": 2,
+        "generation_seed": 1,
+        "memory_source_agent": "agent2",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['VACUUM']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['VACUUM']. F1: control=0.0, share=0.0."
+      },
+      {
+        "task_id": "11",
+        "memory_id": "dbproc-01870edcc464-agent5",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 5,
+        "generation_seed": 1,
+        "memory_source_agent": "agent5",
+        "memory_source_task": "26",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "control_f1": 0.0,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION"
+        ],
+        "share_f1": 0.0,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['VACUUM']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION']. Root causes: ['VACUUM']. F1: control=0.0, share=0.0."
+      },
+      {
+        "task_id": "100",
+        "memory_id": "dbproc-06c28b92d681-agent1",
+        "receiver_id": "agent1",
+        "tau": 0,
+        "label": "neutral_failure",
+        "candidate_source": "semantic_top",
+        "candidate_rank": 6,
+        "generation_seed": 2,
+        "memory_source_agent": "agent1",
+        "memory_source_task": "14",
+        "control_success": false,
+        "control_score": 0.0,
+        "control_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "control_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES"
+        ],
+        "control_f1": 0.4,
+        "control_failure_reason": "root_cause_mismatch",
+        "task_root_causes": [
+          "VACUUM",
+          "FETCH_LARGE_DATA"
+        ],
+        "task_all_labels": [
+          "INSERT_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "VACUUM",
+          "REDUNDANT_INDEX",
+          "FETCH_LARGE_DATA"
+        ],
+        "share_success": false,
+        "share_score": 0.0,
+        "share_expected_labels": [
+          "FETCH_LARGE_DATA",
+          "VACUUM"
+        ],
+        "share_predicted_labels": [
+          "FETCH_LARGE_DATA",
+          "LOCK_CONTENTION",
+          "MISSING_INDEXES"
+        ],
+        "share_f1": 0.4,
+        "share_failure_reason": "root_cause_mismatch",
+        "prediction_changed": false,
+        "prediction_overlap": [
+          "MISSING_INDEXES",
+          "LOCK_CONTENTION",
+          "FETCH_LARGE_DATA"
+        ],
+        "prediction_control_only": [],
+        "prediction_share_only": [],
+        "description": "Neutral: no transfer effect. Same task: expected ['FETCH_LARGE_DATA', 'VACUUM']. Same predictions: ['FETCH_LARGE_DATA', 'LOCK_CONTENTION', 'MISSING_INDEXES']. Root causes: ['VACUUM', 'FETCH_LARGE_DATA']. F1: control=0.4, share=0.4."
+      }
+    ]
+  }
+}

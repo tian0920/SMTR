@@ -1,0 +1,165 @@
+{
+  "audit": "intervention_stability",
+  "icc": 0.1653,
+  "verdict": "BORDERLINE",
+  "interpretation": "Weak stability \u2014 signal may exist but is noisy.",
+  "thresholds": {
+    "pass": 0.3,
+    "fail": 0.1
+  },
+  "statistics": {
+    "icc": 0.1653,
+    "n_groups": 307,
+    "mean_group_size": 2.98,
+    "grand_mean_tau": 0.0175,
+    "msb": 0.1652,
+    "msw": 0.1039,
+    "exact_agreement": 238,
+    "exact_agreement_rate": 0.7752,
+    "mean_within_group_variance": 0.0632,
+    "median_within_group_variance": 0.0,
+    "n_stable": 238,
+    "n_unstable": 69
+  },
+  "n_unstable_examples": 69,
+  "unstable_examples_sample": [
+    {
+      "task_id": "10",
+      "memory_id": "dbproc-01870edcc464-agent1",
+      "receiver_id": "agent1",
+      "taus": [
+        1,
+        1,
+        0
+      ],
+      "seeds": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "task_id": "10",
+      "memory_id": "dbproc-06c28b92d681-agent1",
+      "receiver_id": "agent1",
+      "taus": [
+        0,
+        1
+      ],
+      "seeds": [
+        2,
+        0
+      ]
+    },
+    {
+      "task_id": "10",
+      "memory_id": "dbproc-01870edcc464-agent3",
+      "receiver_id": "agent1",
+      "taus": [
+        0,
+        1
+      ],
+      "seeds": [
+        1,
+        0
+      ]
+    },
+    {
+      "task_id": "17",
+      "memory_id": "dbproc-01870edcc464-agent5",
+      "receiver_id": "agent1",
+      "taus": [
+        0,
+        1
+      ],
+      "seeds": [
+        0,
+        1
+      ]
+    },
+    {
+      "task_id": "19",
+      "memory_id": "dbproc-01870edcc464-agent2",
+      "receiver_id": "agent1",
+      "taus": [
+        0,
+        -1
+      ],
+      "seeds": [
+        1,
+        0
+      ]
+    },
+    {
+      "task_id": "19",
+      "memory_id": "dbproc-01870edcc464-agent3",
+      "receiver_id": "agent1",
+      "taus": [
+        0,
+        -1
+      ],
+      "seeds": [
+        1,
+        0
+      ]
+    },
+    {
+      "task_id": "19",
+      "memory_id": "dbproc-01870edcc464-agent4",
+      "receiver_id": "agent1",
+      "taus": [
+        0,
+        -1,
+        0
+      ],
+      "seeds": [
+        1,
+        0,
+        2
+      ]
+    },
+    {
+      "task_id": "19",
+      "memory_id": "dbproc-01870edcc464-agent1",
+      "receiver_id": "agent1",
+      "taus": [
+        1,
+        0
+      ],
+      "seeds": [
+        1,
+        0
+      ]
+    },
+    {
+      "task_id": "23",
+      "memory_id": "dbproc-01870edcc464-agent5",
+      "receiver_id": "agent1",
+      "taus": [
+        1,
+        0,
+        0
+      ],
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "task_id": "23",
+      "memory_id": "dbproc-01870edcc464-agent4",
+      "receiver_id": "agent1",
+      "taus": [
+        0,
+        1,
+        1
+      ],
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    }
+  ]
+}
