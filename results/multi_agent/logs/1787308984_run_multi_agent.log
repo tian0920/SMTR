@@ -1,3 +1,0 @@
-Saved: results/multi_agent/multi_agent_knowledge_results.csv
-  naive  team=0.905±0.019 accuracy=0.786 contamination=0.214
-  smtr   team=0.893±0.021 accuracy=0.911 contamination=0.089
