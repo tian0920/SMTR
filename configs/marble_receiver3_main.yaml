@@ -1,0 +1,109 @@
+# MARBLE Receiver=3 Main Experiment Configuration
+# Frozen protocol for all receiver=3 experiments.
+#
+# Memory Flow:
+#   source agent → candidate memory → TCI validation
+#     → shared persistent memory → receiver_1, receiver_2, receiver_3
+#
+# This config is the DEFAULT for all MARBLE receiver=3 experiments.
+
+experiment:
+  name: marble_receiver3_main
+  version: "1.0"
+  description: >
+    Multi-receiver MARBLE experiment with receiver-conditioned TCI.
+    Source agent produces memories, validated by TCI per-receiver,
+    shared to 3 receivers.
+
+environment:
+  type: marble
+  marble_root: /home/ecs-user/MARBLE
+  scenarios:
+    - database
+    - coding
+    - research
+    - bargaining
+    - minecraft
+
+agents:
+  num_agents: 4  # 1 source + 3 receivers (varies by task)
+  roles:
+    source:
+      count: 1
+      role: executor
+      memory_access: read_write
+    receivers:
+      count: 3
+      ids:
+        - receiver_1
+        - receiver_2
+        - receiver_3
+      role: executor
+      memory_access: read_write
+
+memory:
+  sharing:
+    enabled: true
+    mode: source_to_receivers  # source → receivers only
+  receiver_conditioned: true
+  budget: null  # unlimited
+  retrieval_top_k: 3
+
+methods:
+  - no_memory
+  - full_memory
+  - retrieval
+  - reflexion
+  - heuristic
+  - agemem
+  - smtr_tci
+
+evaluation:
+  metrics:
+    - official_score
+    - late_stage_reward
+    - memory_quality
+    - receiver_transfer
+    - receiver_disagreement
+    - contamination_propagation
+  same_task_sequence: true
+  contamination_ratios: [0.1, 0.2, 0.3]
+
+scale:
+  pilot:
+    n_tasks: 5
+    seeds: [0]
+    methods: [no_memory, full_memory, retrieval, smtr_tci]
+    scenario: database
+  main:
+    n_tasks: 50
+    seeds: [0, 1, 2, 3, 4]
+    methods: [no_memory, full_memory, retrieval, reflexion, heuristic, agemem, smtr_tci]
+  contamination:
+    n_tasks: 50
+    seeds: [0, 1, 2, 3, 4]
+    methods: [full_memory, retrieval, smtr_tci]
+    ratios: [0.1, 0.2, 0.3]
+
+seeds: [0, 1, 2, 3, 4]
+
+# LLM runtime
+llm:
+  model: qwen3-30b-a3b
+  base_url: https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+  enable_thinking: false
+
+# Data paths
+data:
+  memory_pool_path: artifacts/marble/real_data/database_v1/memory_pool.jsonl
+  paired_records_path: artifacts/marble/paired/train/paired_records.jsonl
+  dataset_manifest_path: artifacts/marble/manifests/dataset.json
+  split_manifest_path: artifacts/marble/manifests/splits.json
+
+# Output
+output:
+  root: results/marble/receiver3
+  pilot: results/marble/receiver3/pilot
+  main: results/marble/receiver3/main
+  contamination: results/marble/receiver3/contamination
+  cost: results/marble/receiver3/cost
