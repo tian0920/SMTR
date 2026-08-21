@@ -16,10 +16,14 @@ modified.
 """
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
 from smtr.memory.persistent_memory import PersistentMemoryBank
+
+if TYPE_CHECKING:
+    from smtr.analysis.cost_tracker import TCICostTracker
 
 
 class AdmissionDecision(BaseModel):
@@ -38,9 +42,14 @@ class AdmissionDecision(BaseModel):
 class MemoryAdmissionController:
     """Applies the TCI gate to candidate memories in a persistent bank."""
 
-    def __init__(self, bank: PersistentMemoryBank) -> None:
+    def __init__(
+        self,
+        bank: PersistentMemoryBank,
+        cost_tracker: "TCICostTracker | None" = None,
+    ) -> None:
         self._bank = bank
         self._decisions: list[AdmissionDecision] = []
+        self._cost_tracker = cost_tracker
 
     def admit(
         self, memory_id: str, *, reward_expose: float, reward_withhold: float,
@@ -51,6 +60,15 @@ class MemoryAdmissionController:
         delta > 0 -> validate; otherwise reject. Every call is recorded
         in the decision log and updates the bank entry.
         """
+        # Record cost (intervention: expose + withhold pair)
+        if self._cost_tracker is not None:
+            self._cost_tracker.record_intervention(
+                memory_id=memory_id,
+                expose_reward=reward_expose,
+                withhold_reward=reward_withhold,
+                episode=episode_id,
+            )
+        
         delta = reward_expose - reward_withhold
         if delta > 0:
             self._bank.validate_memory(
@@ -70,6 +88,16 @@ class MemoryAdmissionController:
                 decision="rejected",
             )
             decision = "rejected"
+        
+        # Record cost (validation decision)
+        if self._cost_tracker is not None:
+            self._cost_tracker.record_validation(
+                memory_id=memory_id,
+                delta=delta,
+                decision=decision,
+                episode=episode_id,
+            )
+        
         record = AdmissionDecision(
             memory_id=memory_id,
             reward_expose=reward_expose,
