@@ -146,10 +146,7 @@ def run_experiment(
                 changed_topics=changed_topics,
             )
             policy_cls = METHODS[method_name]
-            if method_name == "smtr_tci":
-                policy = policy_cls(env, capacity=capacity)
-            else:
-                policy = policy_cls(env)
+            policy = policy_cls(env, capacity=capacity)
             run_episode_sequence(
                 policy=policy,
                 env=env,

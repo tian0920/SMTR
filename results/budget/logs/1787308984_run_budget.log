@@ -1,0 +1,10 @@
+Saved experiment artifacts to results/budget/budget_10
+Saved experiment artifacts to results/budget/budget_50
+Saved experiment artifacts to results/budget/budget_100
+Saved: results/budget/memory_budget_results.csv
+  budget=10   full_memory  cum=55.00±5.66 per_slot=5.500
+  budget=10   smtr_tci     cum=63.80±2.48 per_slot=6.380
+  budget=50   full_memory  cum=75.20±9.02 per_slot=1.504
+  budget=50   smtr_tci     cum=88.00±4.05 per_slot=1.760
+  budget=100  full_memory  cum=75.20±10.63 per_slot=0.752
+  budget=100  smtr_tci     cum=87.20±4.02 per_slot=0.872

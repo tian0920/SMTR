@@ -1,0 +1,36 @@
+{
+  "launcher": "scripts/run_all_longterm.py",
+  "requested": "all",
+  "runs": [
+    {
+      "experiment": "lifelong",
+      "started_at": "2026-08-21T10:43:01.653370+00:00",
+      "finished_at": "2026-08-21T10:43:02.621722+00:00",
+      "status": "PASS"
+    },
+    {
+      "experiment": "contamination",
+      "started_at": "2026-08-21T10:43:02.621741+00:00",
+      "finished_at": "2026-08-21T10:43:03.501123+00:00",
+      "status": "PASS"
+    },
+    {
+      "experiment": "transfer",
+      "started_at": "2026-08-21T10:43:03.501141+00:00",
+      "finished_at": "2026-08-21T10:43:04.260228+00:00",
+      "status": "PASS"
+    },
+    {
+      "experiment": "multi_agent",
+      "started_at": "2026-08-21T10:43:04.260245+00:00",
+      "finished_at": "2026-08-21T10:43:04.512153+00:00",
+      "status": "PASS"
+    },
+    {
+      "experiment": "budget",
+      "started_at": "2026-08-21T10:43:04.512175+00:00",
+      "finished_at": "2026-08-21T10:43:05.030446+00:00",
+      "status": "PASS"
+    }
+  ]
+}

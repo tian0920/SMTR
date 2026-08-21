@@ -1,0 +1,7 @@
+budget,method,cumulative_reward_mean,cumulative_reward_std,performance_per_memory_slot
+10,full_memory,55.0,5.656854249492381,5.5
+10,smtr_tci,63.8,2.481934729198171,6.38
+50,full_memory,75.2,9.019977827023745,1.504
+50,smtr_tci,88.0,4.049691346263317,1.76
+100,full_memory,75.2,10.628264204469138,0.752
+100,smtr_tci,87.2,4.019950248448357,0.872

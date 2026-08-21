@@ -1,0 +1,21 @@
+Saved experiment artifacts to results/contamination/false_spurious_r0.1
+Saved experiment artifacts to results/contamination/false_spurious_r0.2
+Saved experiment artifacts to results/contamination/false_spurious_r0.3
+Saved experiment artifacts to results/contamination/outdated
+Saved: results/contamination/contamination_results.csv
+  false_spurious_r0.1      no_memory    final=0.440 retention=0.00
+  false_spurious_r0.1      full_memory  final=1.000 retention=1.00
+  false_spurious_r0.1      retrieval    final=0.960 retention=1.00
+  false_spurious_r0.1      smtr_tci     final=0.980 retention=0.22
+  false_spurious_r0.2      no_memory    final=0.440 retention=0.00
+  false_spurious_r0.2      full_memory  final=0.960 retention=1.00
+  false_spurious_r0.2      retrieval    final=0.940 retention=1.00
+  false_spurious_r0.2      smtr_tci     final=1.000 retention=0.19
+  false_spurious_r0.3      no_memory    final=0.400 retention=0.00
+  false_spurious_r0.3      full_memory  final=0.860 retention=1.00
+  false_spurious_r0.3      retrieval    final=0.780 retention=1.00
+  false_spurious_r0.3      smtr_tci     final=0.980 retention=0.20
+  outdated                 no_memory    final=0.440 drop=-0.003 recover=12.4ep retention=0.00
+  outdated                 full_memory  final=0.640 drop=0.103 recover=28.6ep retention=1.00
+  outdated                 retrieval    final=0.880 drop=-0.035 recover=15.2ep retention=1.00
+  outdated                 smtr_tci     final=0.960 drop=-0.078 recover=16.2ep retention=0.18

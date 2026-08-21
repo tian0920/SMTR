@@ -1,0 +1,6 @@
+Saved table: results/table_lifelong.csv
+  no_memory    cum= 40.80±4.92  late=0.450  eff=40.800  stored=0
+  full_memory  cum= 75.20±10.63  late=0.890  eff=0.752  stored=100
+  retrieval    cum= 81.80±2.71  late=0.930  eff=0.818  stored=100
+  smtr_tci     cum= 87.20±4.02  late=0.990  eff=0.872  stored=100
+Saved figure: figures/lifelong_curve.png

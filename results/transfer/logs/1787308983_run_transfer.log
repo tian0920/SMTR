@@ -1,0 +1,7 @@
+Saved experiment artifacts to results/transfer
+Saved: results/transfer/transfer_results.csv
+  no_memory    B-reward=0.432±0.045  transfer_gain=+0.000
+  full_memory  B-reward=0.860±0.058  transfer_gain=+0.428
+  retrieval    B-reward=0.900±0.013  transfer_gain=+0.468
+  smtr_tci     B-reward=0.964±0.034  transfer_gain=+0.532
+Saved: figures/transfer_plot.png

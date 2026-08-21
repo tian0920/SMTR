@@ -29,9 +29,26 @@ HELPFUL_EFFECT = 0.35
 HARMFUL_EFFECT = -0.35
 DISTRACTION_PENALTY = 0.02
 EFFECT_CLAMP = 0.60
+# Topics t and t+5 share an underlying skill (distributions A/B overlap),
+# so validated knowledge can transfer across distributions at reduced
+# strength. This is what makes cross-task transfer measurable.
+CROSS_TOPIC_AFFINITY = 0.5
 # Fixed validation protocol (not a tuned hyperparameter): expose and
 # withhold branches each run this many fresh probe trials.
 VALIDATION_TRIALS = 3
+
+
+def topic_affinity(memory_topic: int, task_topic: int) -> float:
+    """Skill overlap between a memory's source topic and a task topic.
+
+    1.0 for the same topic, CROSS_TOPIC_AFFINITY for paired topics
+    (t <-> t+5), 0 otherwise.
+    """
+    if memory_topic == task_topic:
+        return 1.0
+    if memory_topic % 5 == task_topic % 5:
+        return CROSS_TOPIC_AFFINITY
+    return 0.0
 
 
 @dataclass(frozen=True)
@@ -121,8 +138,9 @@ class LifelongEnvironment:
     ) -> float:
         total = BASE_SUCCESS
         for mem in injected:
-            if mem.topic == topic:
-                total += self.memory_effect(mem, episode)
+            affinity = topic_affinity(mem.topic, topic)
+            if affinity > 0:
+                total += affinity * self.memory_effect(mem, episode)
             else:
                 total -= DISTRACTION_PENALTY
         return float(np.clip(total, 0.02, 0.98))

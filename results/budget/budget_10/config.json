@@ -1,0 +1,32 @@
+{
+  "experiment": "budget_10",
+  "episodes": 100,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "methods": [
+    "full_memory",
+    "smtr_tci"
+  ],
+  "contamination_ratio": 0.2,
+  "change_episode": null,
+  "changed_topics": [],
+  "topics": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "topics_after_change": null,
+  "capacity": 10
+}
