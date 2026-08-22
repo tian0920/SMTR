@@ -49,6 +49,7 @@ def det_seed(*parts: object) -> int:
     return zlib.crc32(repr(tuple(parts)).encode("utf-8")) % (2**31)
 
 
+# DEPRECATED: offline only — use MarbleTaskLoader for online experiments
 def load_paired_records(path: Path) -> list[dict]:
     return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
 
