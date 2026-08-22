@@ -206,7 +206,17 @@ def main() -> None:
                 reward_diffs.append(tr["team_reward"] - pr["team_reward"])
     reward_diffs = np.array(reward_diffs)
     t_stat = reward_diffs.mean() / (reward_diffs.std() / np.sqrt(len(reward_diffs))) if reward_diffs.std() > 0 else float("inf")
-    p_value = float(2 * stats.t.sf(abs(t_stat), df=len(reward_diffs) - 1))
+    raw_p = float(2 * stats.t.sf(abs(t_stat), df=len(reward_diffs) - 1))
+    # Handle numerical underflow: scipy may return 0.0 for extreme t-stats
+    if raw_p == 0.0 and abs(t_stat) > 38:
+        p_value_str = "<1e-300"
+        p_value = 0.0
+    elif raw_p < 1e-300:
+        p_value_str = "<1e-300"
+        p_value = raw_p
+    else:
+        p_value_str = f"{raw_p:.2e}"
+        p_value = raw_p
 
     results = {
         "smtr_receiver": true_agg,
@@ -221,6 +231,7 @@ def main() -> None:
         },
         "reward_drop": true_agg["team_reward"] - float(perm_reward.mean()),
         "reward_drop_p_value": p_value,
+        "reward_drop_p_value_str": p_value_str,
         "n_permutations": n_permutations,
     }
 
@@ -262,12 +273,12 @@ def main() -> None:
     )
     print("-" * 80)
     print(f"Reward drop under permutation: {results['reward_drop']:+.4f}")
-    print(f"Permutation test p-value:      {p_value:.2e}")
+    print(f"Permutation test p-value:      {p_value_str}")
     print(f"Negative transfer (permuted):  {perm_neg.mean():.1f} vs 0 (true)")
     print("=" * 80)
 
     # Generate LaTeX table
-    tex = _generate_table(true_agg, results, perm_reward, perm_align, perm_neg, p_value)
+    tex = _generate_table(true_agg, results, perm_reward, perm_align, perm_neg, p_value_str)
     tex_dir = _PROJECT_ROOT / "paper" / "tables" / "receiver3"
     tex_dir.mkdir(parents=True, exist_ok=True)
     tex_path = tex_dir / "table_receiver_permutation.tex"
@@ -275,7 +286,7 @@ def main() -> None:
     print(f"Written: {tex_path}")
 
 
-def _generate_table(true_agg, results, perm_reward, perm_align, perm_neg, p_value) -> str:
+def _generate_table(true_agg, results, perm_reward, perm_align, perm_neg, p_value_str) -> str:
     lines = [
         r"\begin{table}[t]",
         r"\caption{Receiver Permutation Test: receiver identity is causally necessary}",
@@ -294,7 +305,7 @@ def _generate_table(true_agg, results, perm_reward, perm_align, perm_neg, p_valu
         f"{perm_align.mean():.4f} $\\pm$ {perm_align.std():.4f} \\\\",
         r"\midrule",
         f"Reward drop & \\multicolumn{{4}}{{c}}{{{results['reward_drop']:+.4f} "
-        f"($p = {p_value:.1e}$, paired permutation test)}} \\\\",
+        f"($p = {p_value_str}$, paired permutation test)}} \\\\",
         r"\bottomrule",
         r"\end{tabular}",
         r"\end{table}",

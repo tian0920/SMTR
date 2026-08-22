@@ -1,0 +1,326 @@
+[
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.1,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.1,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.1,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.1,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.2,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.03428571428571429,
+    "mean_propagation_depth": 0.03428571428571429
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.2,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.01657142857142857,
+    "mean_propagation_depth": 0.01657142857142857
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.2,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.008571428571428572,
+    "mean_propagation_depth": 0.008571428571428572
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.2,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.005142628571428571,
+    "mean_propagation_depth": 0.005142628571428571
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.3,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.136,
+    "mean_propagation_depth": 0.136
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.3,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.06457142857142857,
+    "mean_propagation_depth": 0.06457142857142857
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.3,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.03314285714285714,
+    "mean_propagation_depth": 0.03314285714285714
+  },
+  {
+    "contamination_type": "false_procedural",
+    "ratio": 0.3,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.017142114285714286,
+    "mean_propagation_depth": 0.017142114285714286
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.1,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.1,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.1,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.1,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.2,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.014285714285714285,
+    "mean_propagation_depth": 0.014285714285714285
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.2,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.009142857142857144,
+    "mean_propagation_depth": 0.009142857142857144
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.2,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.2,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.3,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.08114285714285714,
+    "mean_propagation_depth": 0.08114285714285714
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.3,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.04171428571428572,
+    "mean_propagation_depth": 0.04171428571428572
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.3,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "spurious_success",
+    "ratio": 0.3,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.1,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.1,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.1,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.1,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.0,
+    "mean_propagation_depth": 0.0
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.2,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.6622857142857143,
+    "mean_propagation_depth": 0.6622857142857143
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.2,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.332,
+    "mean_propagation_depth": 0.332
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.2,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.072,
+    "mean_propagation_depth": 0.072
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.2,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.034664742857142855,
+    "mean_propagation_depth": 0.034664742857142855
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.3,
+    "method": "full_memory",
+    "n_groups": 1750,
+    "mean_team_reward": 0.31123839999999997,
+    "mean_contamination_rate": 0.904,
+    "mean_propagation_depth": 0.904
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.3,
+    "method": "retrieval",
+    "n_groups": 1750,
+    "mean_team_reward": 0.16400074285714286,
+    "mean_contamination_rate": 0.45714285714285713,
+    "mean_propagation_depth": 0.45714285714285713
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.3,
+    "method": "smtr_uniform",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1390484571428572,
+    "mean_contamination_rate": 0.10114285714285715,
+    "mean_propagation_depth": 0.10114285714285715
+  },
+  {
+    "contamination_type": "outdated",
+    "ratio": 0.3,
+    "method": "smtr_receiver",
+    "n_groups": 1750,
+    "mean_team_reward": 1.1546673142857145,
+    "mean_contamination_rate": 0.051235885714285716,
+    "mean_propagation_depth": 0.051235885714285716
+  }
+]
