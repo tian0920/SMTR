@@ -5,12 +5,53 @@ counterfactual rollouts for each receiver independently.
 
 The key insight: Δ(m, r) = expose(m, r) - withhold(m, r)
 can differ across receivers even for the same memory.
+
+Silent-zero policy: any failure to obtain a real counterfactual
+outcome raises ``MissingCounterfactualOutcomeError`` instead of
+falling back to (0.0, 0.0) which would silently map to rejection.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Callable
+
+
+class MissingCounterfactualOutcomeError(Exception):
+    """Raised when a counterfactual outcome cannot be obtained.
+
+    This prevents silent-zero rejection: missing data must never
+    be conflated with measured Δ ≤ 0.
+    """
+
+    def __init__(
+        self,
+        *,
+        memory_id: str,
+        receiver_id: str,
+        episode_id: int | str = "unknown",
+        reason: str = "unknown",
+    ) -> None:
+        self.memory_id = memory_id
+        self.receiver_id = receiver_id
+        self.episode_id = episode_id
+        self.reason = reason
+        super().__init__(
+            f"Missing counterfactual outcome: "
+            f"memory={memory_id} receiver={receiver_id} "
+            f"episode={episode_id} reason={reason}"
+        )
+
+
+def _validate_finite(value: Any, label: str) -> float:
+    """Ensure *value* is a finite float; raise TypeError/ValueError otherwise."""
+    if value is None:
+        raise ValueError(f"{label} is None")
+    f = float(value)
+    if not math.isfinite(f):
+        raise ValueError(f"{label} is not finite: {value!r}")
+    return f
 
 
 @dataclass(frozen=True)
@@ -93,6 +134,7 @@ class ReceiverInterventionEvaluator:
         receiver_ids: list[str],
         receiver_states: dict[str, Any] | None = None,
         paired_outcomes: dict[str, tuple[float, float]] | None = None,
+        episode_id: int | str = "unknown",
     ) -> MultiReceiverInterventionResult:
         """Evaluate one memory across multiple receivers.
 
@@ -107,21 +149,49 @@ class ReceiverInterventionEvaluator:
         paired_outcomes:
             Pre-computed (expose, withhold) per receiver_id.
             Used for offline evaluation when real rollouts are unavailable.
+        episode_id:
+            Episode identifier for error reporting.
 
         Returns
         -------
         MultiReceiverInterventionResult with per-receiver decisions.
+
+        Raises
+        ------
+        MissingCounterfactualOutcomeError
+            If a real counterfactual outcome cannot be obtained for
+            any (memory, receiver) pair.  Silent-zero is forbidden.
         """
         outcomes: list[ReceiverOutcome] = []
 
         for rid in receiver_ids:
-            if paired_outcomes and rid in paired_outcomes:
-                expose, withhold = paired_outcomes[rid]
+            raw: tuple[Any, Any] | None = None
+
+            if paired_outcomes is not None and rid in paired_outcomes:
+                raw = paired_outcomes[rid]
             elif self._outcome_fn is not None:
                 state = (receiver_states or {}).get(rid)
-                expose, withhold = self._outcome_fn(memory_id, rid, state)
-            else:
-                expose, withhold = 0.0, 0.0
+                raw = self._outcome_fn(memory_id, rid, state)
+
+            if raw is None:
+                raise MissingCounterfactualOutcomeError(
+                    memory_id=memory_id,
+                    receiver_id=rid,
+                    episode_id=episode_id,
+                    reason="no outcome source available "
+                           "(outcome_fn is None and receiver not in paired_outcomes)",
+                )
+
+            try:
+                expose = _validate_finite(raw[0], "expose_reward")
+                withhold = _validate_finite(raw[1], "withhold_reward")
+            except (ValueError, TypeError, IndexError) as exc:
+                raise MissingCounterfactualOutcomeError(
+                    memory_id=memory_id,
+                    receiver_id=rid,
+                    episode_id=episode_id,
+                    reason=f"malformed outcome: {exc}",
+                ) from exc
 
             delta = expose - withhold
             decision = "validated" if delta > 0 else "rejected"
@@ -153,6 +223,7 @@ class ReceiverInterventionEvaluator:
         memory_id: str,
         records: list[dict],
         receiver_ids: list[str],
+        episode_id: int | str = "unknown",
     ) -> MultiReceiverInterventionResult:
         """Evaluate using existing paired records (offline mode).
 
@@ -172,6 +243,7 @@ class ReceiverInterventionEvaluator:
             memory_id=memory_id,
             receiver_ids=receiver_ids,
             paired_outcomes=paired_outcomes,
+            episode_id=episode_id,
         )
 
     @property
