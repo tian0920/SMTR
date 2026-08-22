@@ -1,0 +1,6 @@
+metric,n_pairs,mean_diff,std_diff,t_stat,p_value,cohens_d,ci95_lo,ci95_hi,equivalent
+team_reward,680,0.0,0.0,0.0,1.0,0.0,0.0,0.0,True
+receiver_1_reward,680,0.0,0.0,0.0,1.0,0.0,0.0,0.0,True
+receiver_2_reward,680,0.0,0.0,0.0,1.0,0.0,0.0,0.0,True
+receiver_3_reward,680,0.0,0.0,0.0,1.0,0.0,0.0,0.0,True
+receiver_disagreement_std,680,0.0,0.0,0.0,1.0,0.0,0.0,0.0,True
