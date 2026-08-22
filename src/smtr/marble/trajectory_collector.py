@@ -159,10 +159,15 @@ class TrajectoryCollector:
         )
         materialize_bundle_workspace(bundle=bundle, workspace=workspace)
 
-        # Write task config for the engine
+        # Write full MARBLE engine config (task data + engine fields)
         config_path = workspace / "task_config.json"
+        full_config = _build_engine_config(
+            task=task,
+            raw_result_path=workspace / "marble_output.jsonl",
+            seed=seed,
+        )
         config_path.write_text(
-            json.dumps(task.raw_task, indent=2, sort_keys=True),
+            json.dumps(full_config, indent=2, sort_keys=True),
             encoding="utf-8",
         )
 
@@ -245,6 +250,95 @@ class TrajectoryCollector:
             real_engine_executed=result.real_engine_executed,
             raw_output=raw_output,
         )
+
+
+# Scenario-to-environment-type mapping
+_SCENARIO_ENV_TYPE = {
+    "bargaining": "Base",
+    "coding": "Coding",
+    "database": "DB",
+    "minecraft": "Minecraft",
+    "research": "Research",
+}
+
+
+def _configured_litellm_model() -> str:
+    """Return the LLM model name, matching the MARBLE environment adapters."""
+    import os as _os
+
+    model = (
+        _os.environ.get("MARBLE_LLM_MODEL")
+        or _os.environ.get("OPENAI_MODEL")
+        or _os.environ.get("DASHSCOPE_MODEL")
+    )
+    compat = bool(
+        _os.environ.get("DASHSCOPE_API_KEY")
+        or _os.environ.get("DASHSCOPE_BASE_URL")
+        or _os.environ.get("MARBLE_LLM_BASE_URL")
+    )
+    if not model and compat:
+        model = "qwen-plus"
+    if not model:
+        return "gpt-4o-mini"
+    if compat and "/" not in model:
+        return f"openai/{model}"
+    return model
+
+
+def _build_engine_config(
+    *,
+    task: "MarbleTask",
+    raw_result_path: Path,
+    seed: int,
+) -> dict[str, Any]:
+    """Build a full MARBLE engine config from a task.
+
+    Merges the task-specific JSONL data with the engine-level fields
+    (``llm``, ``coordinate_mode``, ``memory``, ``output``) that the
+    MARBLE Engine requires but which are absent from the JSONL.
+    """
+    config = dict(task.raw_task)
+
+    # LLM model (critical for agent execution)
+    config["llm"] = _configured_litellm_model()
+
+    # Coordinate mode: engine requires star/graph/chain/tree
+    if not config.get("coordinate_mode"):
+        config["coordinate_mode"] = "graph"
+
+    # Environment type: engine requires a known type string
+    env = config.get("environment")
+    if isinstance(env, dict):
+        if not env.get("type"):
+            env["type"] = _SCENARIO_ENV_TYPE.get(task.scenario, "Base")
+        if not env.get("max_iterations"):
+            env["max_iterations"] = 5
+        config["environment"] = env
+
+    # Memory config
+    mem = config.get("memory")
+    if not isinstance(mem, dict) or not mem.get("type"):
+        config["memory"] = {"type": "BaseMemory"}
+
+    # Output path for engine results
+    config["output"] = {"file_path": str(raw_result_path.resolve())}
+
+    # Relationships (required for graph/chain/tree modes)
+    if not config.get("relationships"):
+        agents = config.get("agents", [])
+        if isinstance(agents, list) and len(agents) > 1:
+            agent_ids = [
+                a.get("agent_id") or a.get("id") or f"agent{i+1}"
+                for i, a in enumerate(agents)
+            ]
+            rels = []
+            for i in range(len(agent_ids)):
+                for j in range(i + 1, len(agent_ids)):
+                    rels.append([agent_ids[i], agent_ids[j], "collaborate with"])
+            config["relationships"] = rels
+
+    config["smtr_generation_seed"] = seed
+    return config
 
 
 def _parse_raw_output(path: Path) -> dict[str, Any]:

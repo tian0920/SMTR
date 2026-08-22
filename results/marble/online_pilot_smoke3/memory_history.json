@@ -1,0 +1,14 @@
+[
+  {
+    "scenario": "database",
+    "task_id": "1",
+    "seed": 0,
+    "global_step": 0,
+    "total": 0,
+    "candidate": 0,
+    "validated": 0,
+    "rejected": 0,
+    "mean_tci_effect_validated": null,
+    "mean_validation_count": null
+  }
+]

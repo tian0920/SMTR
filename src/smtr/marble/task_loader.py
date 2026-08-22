@@ -130,6 +130,16 @@ class MarbleTaskLoader:
                 # Normalise scenario field (minecraft may be missing it)
                 raw_scenario = raw.get("scenario") or scenario
                 raw["scenario"] = raw_scenario
+                # Normalise environment.type — MARBLE engine requires
+                # "Base" or "Web"; database JSONL ships with "" (empty).
+                env = raw.get("environment")
+                if isinstance(env, dict):
+                    if not env.get("type"):
+                        env["type"] = "Base"
+                # Normalise coordinate_mode — MARBLE engine requires
+                # star/graph/chain/tree; most JSONL files ship with "".
+                if not raw.get("coordinate_mode"):
+                    raw["coordinate_mode"] = "star"
                 tasks.append(MarbleTask(
                     task_id=task_id,
                     scenario=raw_scenario,

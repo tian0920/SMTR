@@ -43,7 +43,7 @@ import numpy as np
 
 from smtr.baselines.base_memory_controller import CandidateMemory
 from smtr.marble.experience_extractor import ExperienceExtractor
-from smtr.marble.online_receiver_intervention import (
+from smtr.memory.online_receiver_intervention import (
     OnlineReceiverInterventionEvaluator,
     OnlineValidationRecord,
 )
@@ -166,6 +166,24 @@ def render_candidate_payload(candidate: CandidateMemory) -> str:
     return candidate.content
 
 
+def render_bank_entry_payload(entry) -> str:
+    """Render a PersistentMemoryEntry into injectable text.
+
+    Falls back to ``entry.content`` when no structured payload is
+    available.
+    """
+    from smtr.memory.render import render_procedure_payload
+
+    try:
+        import json as _json
+        parsed = _json.loads(entry.content)
+        if isinstance(parsed, dict) and "payload" in parsed:
+            return render_procedure_payload(parsed)
+    except (ValueError, TypeError, AttributeError):
+        pass
+    return entry.content
+
+
 # ---------------------------------------------------------------------------
 # Main experiment loop
 # ---------------------------------------------------------------------------
@@ -192,7 +210,8 @@ def run_online_experiment(
         Receiver agent IDs.
     skip_tci:
         When True, skip expensive TCI validation (for smoke testing).
-        smtr_uniform and smtr_receiver will behave like full_memory.
+        smtr_uniform and smtr_receiver will behave like no_memory
+        (no deltas available -> empty selection).
 
     Returns
     -------
@@ -270,9 +289,15 @@ def run_online_experiment(
                     except KeyError:
                         pass  # memory not in bank (should not happen)
 
+            # Pre-compute bank payload set for cross-episode tracking
+            _bank_payload_set: set[str] = set()
+            for be in bank.all_entries():
+                if be.status == "validated":
+                    _bank_payload_set.add(render_bank_entry_payload(be))
+
             # Step 4: For each method, select memories and run evaluation
             for method in methods:
-                # Per-receiver memory selection
+                # Per-receiver memory selection (current task candidates)
                 per_receiver_payloads: dict[str, list[str]] = {}
                 for rid in receiver_ids:
                     selected = select_memories_for_method(
@@ -281,9 +306,27 @@ def run_online_experiment(
                         task_validation_records,
                         rid,
                     )
-                    per_receiver_payloads[rid] = [
+                    task_payloads = [
                         render_candidate_payload(c) for c in selected
                     ]
+
+                    # Cross-episode retrieval: inject previously
+                    # validated memories from the persistent bank.
+                    # This is the mechanism that enables "lifelong
+                    # knowledge transfer" for TCI methods.
+                    if method in ("smtr_uniform", "smtr_receiver"):
+                        if method == "smtr_receiver":
+                            bank_entries = bank.get_receiver_validated_memories(rid)
+                        else:
+                            bank_entries = bank.retrieve_validated()
+                        seen = set(task_payloads)
+                        for be in bank_entries:
+                            bp = render_bank_entry_payload(be)
+                            if bp not in seen:
+                                task_payloads.append(bp)
+                                seen.add(bp)
+
+                    per_receiver_payloads[rid] = task_payloads
 
                 # For simplicity in the first implementation, use the
                 # union of all per-receiver payloads and let the engine
@@ -329,12 +372,12 @@ def run_online_experiment(
                 # Step 5: Record metrics
                 bank_stats = bank.get_statistics()
                 n_persistent_validated = bank_stats.get("validated", 0)
-                # Count cross-episode reuse: validated memories from
-                # earlier episodes that are still in the bank
+                # Count cross-episode reuse: bank memories actually
+                # injected that came from earlier episodes
                 n_cross_episode = sum(
-                    1 for e in bank.all_entries()
-                    if e.status == "validated" and e.source_episode < seed
-                )
+                    1 for p in per_receiver_payloads.get(receiver_ids[0], [])
+                    if p in _bank_payload_set
+                ) if method in ("smtr_uniform", "smtr_receiver") else 0
                 row = {
                     "scenario": task.scenario,
                     "task_id": task.task_id,

@@ -42,7 +42,7 @@ import numpy as np
 
 from smtr.baselines.base_memory_controller import CandidateMemory
 from smtr.marble.experience_extractor import ExperienceExtractor
-from smtr.marble.online_receiver_intervention import (
+from smtr.memory.online_receiver_intervention import (
     OnlineReceiverInterventionEvaluator,
     OnlineValidationRecord,
 )
