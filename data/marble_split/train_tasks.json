@@ -1,0 +1,1616 @@
+{
+  "bargaining": [
+    {
+      "scenario": "bargaining",
+      "task_id": "1"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "2"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "3"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "4"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "5"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "6"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "8"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "9"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "12"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "13"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "14"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "15"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "16"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "17"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "19"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "20"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "22"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "23"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "25"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "26"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "27"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "28"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "29"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "30"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "31"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "33"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "34"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "35"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "36"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "37"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "38"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "39"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "40"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "41"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "42"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "44"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "45"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "46"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "47"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "49"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "50"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "51"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "52"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "53"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "54"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "55"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "57"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "59"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "60"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "61"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "62"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "64"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "65"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "66"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "67"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "68"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "69"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "70"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "71"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "72"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "73"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "74"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "75"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "76"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "77"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "78"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "79"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "80"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "82"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "84"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "85"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "87"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "88"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "90"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "91"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "92"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "93"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "94"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "96"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "97"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "99"
+    },
+    {
+      "scenario": "bargaining",
+      "task_id": "100"
+    }
+  ],
+  "coding": [
+    {
+      "scenario": "coding",
+      "task_id": "1"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "3"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "4"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "5"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "6"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "7"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "8"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "10"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "11"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "12"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "13"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "14"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "16"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "17"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "18"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "19"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "20"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "21"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "22"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "23"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "26"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "27"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "29"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "30"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "31"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "33"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "34"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "35"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "36"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "37"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "38"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "39"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "40"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "41"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "43"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "44"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "45"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "46"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "48"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "49"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "50"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "51"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "52"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "53"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "55"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "56"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "57"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "58"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "59"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "60"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "61"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "62"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "63"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "64"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "66"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "68"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "69"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "70"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "71"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "72"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "73"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "76"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "77"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "79"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "80"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "81"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "82"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "83"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "84"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "85"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "86"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "88"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "89"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "90"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "91"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "92"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "93"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "94"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "96"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "97"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "98"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "99"
+    },
+    {
+      "scenario": "coding",
+      "task_id": "100"
+    }
+  ],
+  "database": [
+    {
+      "scenario": "database",
+      "task_id": "1"
+    },
+    {
+      "scenario": "database",
+      "task_id": "2"
+    },
+    {
+      "scenario": "database",
+      "task_id": "3"
+    },
+    {
+      "scenario": "database",
+      "task_id": "4"
+    },
+    {
+      "scenario": "database",
+      "task_id": "5"
+    },
+    {
+      "scenario": "database",
+      "task_id": "7"
+    },
+    {
+      "scenario": "database",
+      "task_id": "10"
+    },
+    {
+      "scenario": "database",
+      "task_id": "12"
+    },
+    {
+      "scenario": "database",
+      "task_id": "13"
+    },
+    {
+      "scenario": "database",
+      "task_id": "14"
+    },
+    {
+      "scenario": "database",
+      "task_id": "16"
+    },
+    {
+      "scenario": "database",
+      "task_id": "17"
+    },
+    {
+      "scenario": "database",
+      "task_id": "19"
+    },
+    {
+      "scenario": "database",
+      "task_id": "20"
+    },
+    {
+      "scenario": "database",
+      "task_id": "21"
+    },
+    {
+      "scenario": "database",
+      "task_id": "22"
+    },
+    {
+      "scenario": "database",
+      "task_id": "23"
+    },
+    {
+      "scenario": "database",
+      "task_id": "24"
+    },
+    {
+      "scenario": "database",
+      "task_id": "25"
+    },
+    {
+      "scenario": "database",
+      "task_id": "26"
+    },
+    {
+      "scenario": "database",
+      "task_id": "28"
+    },
+    {
+      "scenario": "database",
+      "task_id": "29"
+    },
+    {
+      "scenario": "database",
+      "task_id": "31"
+    },
+    {
+      "scenario": "database",
+      "task_id": "32"
+    },
+    {
+      "scenario": "database",
+      "task_id": "33"
+    },
+    {
+      "scenario": "database",
+      "task_id": "34"
+    },
+    {
+      "scenario": "database",
+      "task_id": "37"
+    },
+    {
+      "scenario": "database",
+      "task_id": "38"
+    },
+    {
+      "scenario": "database",
+      "task_id": "39"
+    },
+    {
+      "scenario": "database",
+      "task_id": "40"
+    },
+    {
+      "scenario": "database",
+      "task_id": "42"
+    },
+    {
+      "scenario": "database",
+      "task_id": "43"
+    },
+    {
+      "scenario": "database",
+      "task_id": "44"
+    },
+    {
+      "scenario": "database",
+      "task_id": "45"
+    },
+    {
+      "scenario": "database",
+      "task_id": "46"
+    },
+    {
+      "scenario": "database",
+      "task_id": "47"
+    },
+    {
+      "scenario": "database",
+      "task_id": "48"
+    },
+    {
+      "scenario": "database",
+      "task_id": "49"
+    },
+    {
+      "scenario": "database",
+      "task_id": "51"
+    },
+    {
+      "scenario": "database",
+      "task_id": "52"
+    },
+    {
+      "scenario": "database",
+      "task_id": "53"
+    },
+    {
+      "scenario": "database",
+      "task_id": "54"
+    },
+    {
+      "scenario": "database",
+      "task_id": "56"
+    },
+    {
+      "scenario": "database",
+      "task_id": "57"
+    },
+    {
+      "scenario": "database",
+      "task_id": "58"
+    },
+    {
+      "scenario": "database",
+      "task_id": "59"
+    },
+    {
+      "scenario": "database",
+      "task_id": "60"
+    },
+    {
+      "scenario": "database",
+      "task_id": "61"
+    },
+    {
+      "scenario": "database",
+      "task_id": "63"
+    },
+    {
+      "scenario": "database",
+      "task_id": "64"
+    },
+    {
+      "scenario": "database",
+      "task_id": "65"
+    },
+    {
+      "scenario": "database",
+      "task_id": "69"
+    },
+    {
+      "scenario": "database",
+      "task_id": "70"
+    },
+    {
+      "scenario": "database",
+      "task_id": "72"
+    },
+    {
+      "scenario": "database",
+      "task_id": "73"
+    },
+    {
+      "scenario": "database",
+      "task_id": "74"
+    },
+    {
+      "scenario": "database",
+      "task_id": "75"
+    },
+    {
+      "scenario": "database",
+      "task_id": "76"
+    },
+    {
+      "scenario": "database",
+      "task_id": "78"
+    },
+    {
+      "scenario": "database",
+      "task_id": "80"
+    },
+    {
+      "scenario": "database",
+      "task_id": "81"
+    },
+    {
+      "scenario": "database",
+      "task_id": "83"
+    },
+    {
+      "scenario": "database",
+      "task_id": "85"
+    },
+    {
+      "scenario": "database",
+      "task_id": "86"
+    },
+    {
+      "scenario": "database",
+      "task_id": "87"
+    },
+    {
+      "scenario": "database",
+      "task_id": "88"
+    },
+    {
+      "scenario": "database",
+      "task_id": "89"
+    },
+    {
+      "scenario": "database",
+      "task_id": "90"
+    },
+    {
+      "scenario": "database",
+      "task_id": "91"
+    },
+    {
+      "scenario": "database",
+      "task_id": "92"
+    },
+    {
+      "scenario": "database",
+      "task_id": "93"
+    },
+    {
+      "scenario": "database",
+      "task_id": "94"
+    },
+    {
+      "scenario": "database",
+      "task_id": "95"
+    },
+    {
+      "scenario": "database",
+      "task_id": "97"
+    },
+    {
+      "scenario": "database",
+      "task_id": "98"
+    },
+    {
+      "scenario": "database",
+      "task_id": "99"
+    },
+    {
+      "scenario": "database",
+      "task_id": "100"
+    }
+  ],
+  "minecraft": [
+    {
+      "scenario": "minecraft",
+      "task_id": "1"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "2"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "3"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "4"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "5"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "6"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "8"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "9"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "10"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "11"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "12"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "14"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "15"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "17"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "18"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "20"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "22"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "24"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "25"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "26"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "27"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "28"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "29"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "30"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "33"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "34"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "35"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "36"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "37"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "38"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "39"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "40"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "41"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "42"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "43"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "44"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "45"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "46"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "47"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "49"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "51"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "52"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "53"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "55"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "57"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "58"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "59"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "60"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "62"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "63"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "64"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "65"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "67"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "69"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "70"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "71"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "73"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "75"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "77"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "78"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "79"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "80"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "81"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "83"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "84"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "85"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "86"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "87"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "89"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "91"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "93"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "94"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "95"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "96"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "99"
+    },
+    {
+      "scenario": "minecraft",
+      "task_id": "100"
+    }
+  ],
+  "research": [
+    {
+      "scenario": "research",
+      "task_id": "1"
+    },
+    {
+      "scenario": "research",
+      "task_id": "2"
+    },
+    {
+      "scenario": "research",
+      "task_id": "3"
+    },
+    {
+      "scenario": "research",
+      "task_id": "4"
+    },
+    {
+      "scenario": "research",
+      "task_id": "5"
+    },
+    {
+      "scenario": "research",
+      "task_id": "6"
+    },
+    {
+      "scenario": "research",
+      "task_id": "7"
+    },
+    {
+      "scenario": "research",
+      "task_id": "8"
+    },
+    {
+      "scenario": "research",
+      "task_id": "10"
+    },
+    {
+      "scenario": "research",
+      "task_id": "11"
+    },
+    {
+      "scenario": "research",
+      "task_id": "12"
+    },
+    {
+      "scenario": "research",
+      "task_id": "13"
+    },
+    {
+      "scenario": "research",
+      "task_id": "14"
+    },
+    {
+      "scenario": "research",
+      "task_id": "15"
+    },
+    {
+      "scenario": "research",
+      "task_id": "16"
+    },
+    {
+      "scenario": "research",
+      "task_id": "18"
+    },
+    {
+      "scenario": "research",
+      "task_id": "19"
+    },
+    {
+      "scenario": "research",
+      "task_id": "21"
+    },
+    {
+      "scenario": "research",
+      "task_id": "22"
+    },
+    {
+      "scenario": "research",
+      "task_id": "23"
+    },
+    {
+      "scenario": "research",
+      "task_id": "24"
+    },
+    {
+      "scenario": "research",
+      "task_id": "25"
+    },
+    {
+      "scenario": "research",
+      "task_id": "26"
+    },
+    {
+      "scenario": "research",
+      "task_id": "27"
+    },
+    {
+      "scenario": "research",
+      "task_id": "28"
+    },
+    {
+      "scenario": "research",
+      "task_id": "30"
+    },
+    {
+      "scenario": "research",
+      "task_id": "31"
+    },
+    {
+      "scenario": "research",
+      "task_id": "32"
+    },
+    {
+      "scenario": "research",
+      "task_id": "33"
+    },
+    {
+      "scenario": "research",
+      "task_id": "35"
+    },
+    {
+      "scenario": "research",
+      "task_id": "37"
+    },
+    {
+      "scenario": "research",
+      "task_id": "38"
+    },
+    {
+      "scenario": "research",
+      "task_id": "39"
+    },
+    {
+      "scenario": "research",
+      "task_id": "40"
+    },
+    {
+      "scenario": "research",
+      "task_id": "41"
+    },
+    {
+      "scenario": "research",
+      "task_id": "42"
+    },
+    {
+      "scenario": "research",
+      "task_id": "43"
+    },
+    {
+      "scenario": "research",
+      "task_id": "45"
+    },
+    {
+      "scenario": "research",
+      "task_id": "46"
+    },
+    {
+      "scenario": "research",
+      "task_id": "47"
+    },
+    {
+      "scenario": "research",
+      "task_id": "48"
+    },
+    {
+      "scenario": "research",
+      "task_id": "49"
+    },
+    {
+      "scenario": "research",
+      "task_id": "50"
+    },
+    {
+      "scenario": "research",
+      "task_id": "51"
+    },
+    {
+      "scenario": "research",
+      "task_id": "52"
+    },
+    {
+      "scenario": "research",
+      "task_id": "53"
+    },
+    {
+      "scenario": "research",
+      "task_id": "54"
+    },
+    {
+      "scenario": "research",
+      "task_id": "55"
+    },
+    {
+      "scenario": "research",
+      "task_id": "56"
+    },
+    {
+      "scenario": "research",
+      "task_id": "57"
+    },
+    {
+      "scenario": "research",
+      "task_id": "58"
+    },
+    {
+      "scenario": "research",
+      "task_id": "59"
+    },
+    {
+      "scenario": "research",
+      "task_id": "61"
+    },
+    {
+      "scenario": "research",
+      "task_id": "62"
+    },
+    {
+      "scenario": "research",
+      "task_id": "63"
+    },
+    {
+      "scenario": "research",
+      "task_id": "64"
+    },
+    {
+      "scenario": "research",
+      "task_id": "65"
+    },
+    {
+      "scenario": "research",
+      "task_id": "66"
+    },
+    {
+      "scenario": "research",
+      "task_id": "67"
+    },
+    {
+      "scenario": "research",
+      "task_id": "69"
+    },
+    {
+      "scenario": "research",
+      "task_id": "70"
+    },
+    {
+      "scenario": "research",
+      "task_id": "71"
+    },
+    {
+      "scenario": "research",
+      "task_id": "72"
+    },
+    {
+      "scenario": "research",
+      "task_id": "73"
+    },
+    {
+      "scenario": "research",
+      "task_id": "75"
+    },
+    {
+      "scenario": "research",
+      "task_id": "77"
+    },
+    {
+      "scenario": "research",
+      "task_id": "78"
+    },
+    {
+      "scenario": "research",
+      "task_id": "80"
+    },
+    {
+      "scenario": "research",
+      "task_id": "81"
+    },
+    {
+      "scenario": "research",
+      "task_id": "82"
+    },
+    {
+      "scenario": "research",
+      "task_id": "83"
+    },
+    {
+      "scenario": "research",
+      "task_id": "84"
+    },
+    {
+      "scenario": "research",
+      "task_id": "85"
+    },
+    {
+      "scenario": "research",
+      "task_id": "86"
+    },
+    {
+      "scenario": "research",
+      "task_id": "88"
+    },
+    {
+      "scenario": "research",
+      "task_id": "90"
+    },
+    {
+      "scenario": "research",
+      "task_id": "91"
+    },
+    {
+      "scenario": "research",
+      "task_id": "92"
+    },
+    {
+      "scenario": "research",
+      "task_id": "93"
+    },
+    {
+      "scenario": "research",
+      "task_id": "95"
+    },
+    {
+      "scenario": "research",
+      "task_id": "97"
+    },
+    {
+      "scenario": "research",
+      "task_id": "99"
+    },
+    {
+      "scenario": "research",
+      "task_id": "100"
+    }
+  ]
+}

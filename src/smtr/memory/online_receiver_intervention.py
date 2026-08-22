@@ -272,6 +272,16 @@ class OnlineReceiverInterventionEvaluator:
         """All validation records collected so far."""
         return list(self._records)
 
+    def _extract_reward(self, trajectory: Trajectory) -> float:
+        """Extract reward signal from a trajectory.
+
+        Uses ``team_success`` (binary) by default, or ``score``
+        (continuous) when ``use_score=True``.
+        """
+        if self._use_score:
+            return trajectory.score
+        return float(trajectory.team_success)
+
     def summary(self) -> dict[str, Any]:
         """Aggregate statistics across all validations."""
         if not self._records:

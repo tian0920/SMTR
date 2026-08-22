@@ -1,0 +1,48 @@
+{
+  "overlap_detected": false,
+  "scenarios": {
+    "bargaining": {
+      "overlap": [],
+      "overlap_count": 0,
+      "scenario_hash": "e974b37f6fe5f375",
+      "test_count": 18,
+      "total_tasks": 100,
+      "train_count": 82
+    },
+    "coding": {
+      "overlap": [],
+      "overlap_count": 0,
+      "scenario_hash": "e974b37f6fe5f375",
+      "test_count": 17,
+      "total_tasks": 100,
+      "train_count": 83
+    },
+    "database": {
+      "overlap": [],
+      "overlap_count": 0,
+      "scenario_hash": "e974b37f6fe5f375",
+      "test_count": 23,
+      "total_tasks": 100,
+      "train_count": 77
+    },
+    "minecraft": {
+      "overlap": [],
+      "overlap_count": 0,
+      "scenario_hash": "e974b37f6fe5f375",
+      "test_count": 24,
+      "total_tasks": 100,
+      "train_count": 76
+    },
+    "research": {
+      "overlap": [],
+      "overlap_count": 0,
+      "scenario_hash": "e974b37f6fe5f375",
+      "test_count": 17,
+      "total_tasks": 100,
+      "train_count": 83
+    }
+  },
+  "total_test": 99,
+  "total_train": 401,
+  "train_ratio": 0.8
+}

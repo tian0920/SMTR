@@ -49,6 +49,8 @@ from smtr.marble.online_receiver_intervention import (
 )
 from smtr.marble.task_loader import MarbleTask, MarbleTaskLoader
 from smtr.marble.trajectory_collector import Trajectory, TrajectoryCollector
+from smtr.memory.consolidation import MemoryAdmissionController
+from smtr.memory.persistent_memory import PersistentMemoryBank
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +177,7 @@ def run_online_experiment(
     methods: list[str] = METHODS,
     receiver_ids: list[str] = RECEIVER_IDS,
     skip_tci: bool = False,
-) -> tuple[list[dict[str, Any]], list[OnlineValidationRecord]]:
+) -> tuple[list[dict[str, Any]], list[OnlineValidationRecord], list[dict[str, Any]], PersistentMemoryBank]:
     """Run the full online experiment.
 
     Parameters
@@ -200,8 +202,14 @@ def run_online_experiment(
     extractor = ExperienceExtractor()
     evaluator = OnlineReceiverInterventionEvaluator(collector=collector)
 
+    # Persistent memory bank for cross-episode knowledge accumulation
+    bank = PersistentMemoryBank()
+    admission = MemoryAdmissionController(bank)
+
     episode_rows: list[dict[str, Any]] = []
     all_validation_records: list[OnlineValidationRecord] = []
+    memory_history: list[dict[str, Any]] = []  # snapshot per (task, seed)
+    global_step = 0
 
     total = len(tasks) * len(seeds)
     progress = 0
@@ -224,9 +232,22 @@ def run_online_experiment(
             # Step 2: Extract candidates
             candidates = extractor.extract(discovery_traj)
 
+            # Step 2b: Register candidates in persistent memory bank
+            for c in candidates:
+                try:
+                    bank.add_candidate(
+                        memory_id=c.memory_id,
+                        content=c.content,
+                        source_episode=seed,
+                        receiver=receiver_ids[0] if receiver_ids else "unknown",
+                        created_step=global_step,
+                    )
+                except ValueError:
+                    pass  # duplicate memory_id (same task+seed)
+
             # Step 3: TCI validation (if not skipped)
             task_validation_records: list[OnlineValidationRecord] = []
-            if candidates and not skip_tci and "smtr_uniform" in methods or "smtr_receiver" in methods:
+            if candidates and not skip_tci and ("smtr_uniform" in methods or "smtr_receiver" in methods):
                 task_validation_records = evaluator.validate_batch(
                     candidates,
                     receiver_ids,
@@ -234,6 +255,20 @@ def run_online_experiment(
                     seed=seed,
                 )
                 all_validation_records.extend(task_validation_records)
+
+                # Step 3b: Update bank with TCI decisions
+                for rec in task_validation_records:
+                    try:
+                        admission.admit_for_receiver(
+                            rec.memory_id,
+                            receiver_id=rec.receiver_id,
+                            reward_expose=rec.expose_outcome,
+                            reward_withhold=rec.withhold_outcome,
+                            episode_id=seed,
+                            validation_source="online_counterfactual_rollout",
+                        )
+                    except KeyError:
+                        pass  # memory not in bank (should not happen)
 
             # Step 4: For each method, select memories and run evaluation
             for method in methods:
@@ -292,6 +327,14 @@ def run_online_experiment(
                     )
 
                 # Step 5: Record metrics
+                bank_stats = bank.get_statistics()
+                n_persistent_validated = bank_stats.get("validated", 0)
+                # Count cross-episode reuse: validated memories from
+                # earlier episodes that are still in the bank
+                n_cross_episode = sum(
+                    1 for e in bank.all_entries()
+                    if e.status == "validated" and e.source_episode < seed
+                )
                 row = {
                     "scenario": task.scenario,
                     "task_id": task.task_id,
@@ -301,6 +344,8 @@ def run_online_experiment(
                     "team_reward": eval_traj.score,
                     "n_candidates": len(candidates),
                     "n_injected": len(payloads) if method != "no_memory" else 0,
+                    "n_persistent_validated": n_persistent_validated,
+                    "n_cross_episode_reuse": n_cross_episode,
                     "discovery_success": discovery_traj.team_success,
                     "discovery_score": discovery_traj.score,
                     "real_engine_executed": eval_traj.real_engine_executed,
@@ -315,10 +360,20 @@ def run_online_experiment(
                 }
                 episode_rows.append(row)
 
+            # Snapshot memory pool state after this (task, seed)
+            memory_history.append({
+                "scenario": task.scenario,
+                "task_id": task.task_id,
+                "seed": seed,
+                "global_step": global_step,
+                **bank.get_statistics(),
+            })
+            global_step += 1
+
             elapsed = time.time() - t0
             print(f"  ({elapsed:.1f}s, {len(candidates)} candidates)")
 
-    return episode_rows, all_validation_records
+    return episode_rows, all_validation_records, memory_history, bank
 
 
 # ---------------------------------------------------------------------------
@@ -489,7 +544,7 @@ def main() -> None:
         return
 
     # Run experiment
-    episode_rows, validation_records = run_online_experiment(
+    episode_rows, validation_records, memory_history, bank = run_online_experiment(
         tasks=tasks,
         seeds=args.seeds,
         methods=args.methods,
@@ -503,6 +558,22 @@ def main() -> None:
         else _PROJECT_ROOT / "results" / "marble" / "receiver3" / "online"
     )
     write_results(episode_rows, validation_records, output_dir, methods=args.methods)
+
+    # Write memory history
+    if memory_history:
+        mh_path = output_dir / "memory_history.json"
+        mh_path.write_text(
+            json.dumps(memory_history, indent=2), encoding="utf-8"
+        )
+        print(f"Written: {mh_path} ({len(memory_history)} snapshots)")
+
+    # Print bank summary
+    bank_stats = bank.get_statistics()
+    print(f"\nMemory Bank Summary:")
+    print(f"  Total memories: {bank_stats.get('total', 0)}")
+    print(f"  Validated:      {bank_stats.get('validated', 0)}")
+    print(f"  Rejected:       {bank_stats.get('rejected', 0)}")
+    print(f"  Candidate:      {bank_stats.get('candidate', 0)}")
 
 
 if __name__ == "__main__":
