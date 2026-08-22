@@ -87,6 +87,10 @@ class PersistentMemoryEntry(BaseModel):
     receiver_context: str | None = None
     receiver_validation_history: tuple[ReceiverValidationRecord, ...] = ()
     receiver_decisions: dict[str, str] = Field(default_factory=dict)
+    # Authoritative per-receiver lifecycle state.
+    # Maps receiver_id → "validated" | "rejected" | "candidate".
+    # Legacy ``status`` field is kept for backward compatibility only.
+    receiver_status: dict[str, MemoryLifecycleStatus] = Field(default_factory=dict)
     validation_source: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)

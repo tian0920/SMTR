@@ -8,12 +8,24 @@ Lifecycle:
 The bank is an independent module: it never touches
 ``SharedMemoryPool`` / ``SQLiteSharedMemoryRepository`` and keeps its own
 JSONL persistence so lifelong experiments can survive across episodes.
+
+Receiver lifecycle state:
+    ``receiver_status`` on each entry is the authoritative lifecycle
+    state per receiver. The legacy ``status`` field is kept for
+    backward compatibility but is NOT the source of truth for
+    receiver-conditioned decisions.
 """
 
 import json
 from pathlib import Path
+from typing import Literal
 
-from smtr.memory.memory_schema import PersistentMemoryEntry, ValidationRecord, utc_now
+from smtr.memory.memory_schema import (
+    MemoryLifecycleStatus,
+    PersistentMemoryEntry,
+    ValidationRecord,
+    utc_now,
+)
 
 
 class PersistentMemoryBank:
@@ -124,6 +136,81 @@ class PersistentMemoryBank:
 
     def all_entries(self) -> list[PersistentMemoryEntry]:
         return sorted(self._entries.values(), key=lambda e: (e.created_step, e.memory_id))
+
+    # ------------------------------------------------------------------
+    # Receiver lifecycle state (authoritative per-receiver status)
+    # ------------------------------------------------------------------
+    def set_receiver_status(
+        self,
+        memory_id: str,
+        receiver_id: str,
+        status: MemoryLifecycleStatus,
+    ) -> PersistentMemoryEntry:
+        """Set the authoritative lifecycle state for one (memory, receiver).
+
+        This is the single source of truth for receiver-conditioned
+        retrieval. The legacy ``status`` field is NOT modified.
+        """
+        entry = self.get(memory_id)
+        new_status = dict(entry.receiver_status)
+        new_status[receiver_id] = status
+        updated = entry.model_copy(
+            update={"receiver_status": new_status, "updated_at": utc_now()}
+        )
+        self._entries[memory_id] = updated
+        return updated
+
+    def get_receiver_status(
+        self, memory_id: str, receiver_id: str
+    ) -> MemoryLifecycleStatus | None:
+        """Return lifecycle state for one (memory, receiver), or None if unset."""
+        entry = self.get(memory_id)
+        return entry.receiver_status.get(receiver_id)
+
+    def get_receiver_validated_memories(
+        self, receiver_id: str
+    ) -> list[PersistentMemoryEntry]:
+        """Memories whose ``receiver_status[receiver_id] == 'validated'``.
+
+        This is the authoritative retrieval path for receiver-conditioned
+        knowledge. Sorted oldest-first by created_step.
+        """
+        entries = [
+            e for e in self._entries.values()
+            if e.receiver_status.get(receiver_id) == "validated"
+        ]
+        return sorted(entries, key=lambda e: (e.created_step, e.memory_id))
+
+    def receiver_validation_summary(self) -> dict[str, dict[str, object]]:
+        """Per-receiver summary of lifecycle decisions.
+
+        Returns a dict keyed by receiver_id with:
+          - decision: latest receiver_status for each memory (validated/rejected/candidate)
+          - latest_delta: most recent delta from receiver_validation_history
+          - validation_count: number of receiver-conditioned validations
+        """
+        summary: dict[str, dict[str, object]] = {}
+        for entry in self._entries.values():
+            for rid, status in entry.receiver_status.items():
+                if rid not in summary:
+                    summary[rid] = {
+                        "validated": 0,
+                        "rejected": 0,
+                        "candidate": 0,
+                        "latest_deltas": [],
+                    }
+                s = summary[rid]
+                s[status] = s.get(status, 0) + 1  # type: ignore[arg-type]
+                # Collect latest delta from receiver_validation_history
+                for rec in entry.receiver_validation_history:
+                    if rec.receiver_id == rid:
+                        s["latest_deltas"].append(rec.delta)  # type: ignore[union-attr]
+        # Finalise: compute latest_delta and validation_count
+        for rid, s in summary.items():
+            deltas: list[float] = s.pop("latest_deltas")  # type: ignore[assignment]
+            s["latest_delta"] = deltas[-1] if deltas else None
+            s["validation_count"] = len(deltas)
+        return summary
 
     def get_statistics(self) -> dict[str, object]:
         statuses = [e.status for e in self._entries.values()]

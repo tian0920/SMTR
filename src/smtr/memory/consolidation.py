@@ -172,12 +172,16 @@ class MemoryAdmissionController:
         entry = self._bank.get(memory_id)
         new_decisions = dict(entry.receiver_decisions)
         new_decisions[receiver_id] = decision
+        # Update authoritative receiver lifecycle state
+        new_status = dict(entry.receiver_status)
+        new_status[receiver_id] = decision  # "validated" or "rejected"
         updated = entry.model_copy(
             update={
                 "receiver_id": receiver_id,
                 "validation_target": receiver_id,
                 "receiver_validation_history": entry.receiver_validation_history + (rec,),
                 "receiver_decisions": new_decisions,
+                "receiver_status": new_status,
                 "validation_source": validation_source,
                 "validation_count": entry.validation_count + 1,
                 "updated_at": datetime.now(UTC),
