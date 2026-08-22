@@ -1,26 +1,26 @@
 {
   "smtr_uniform": {
-    "n_unique_memories": 116,
+    "n_unique_memories": 2756,
     "n_receivers_validated": 1,
-    "n_validations": 116,
-    "n_expose_rollouts": 116,
-    "n_withhold_rollouts": 116,
-    "total_rollouts": 232,
-    "mean_team_reward": 0.7756,
-    "reward_per_validation": 0.006686,
-    "knowledge_quality": 0.4943,
-    "quality_per_validation": 0.004261
+    "n_validations": 2756,
+    "n_expose_rollouts": 2756,
+    "n_withhold_rollouts": 2756,
+    "total_rollouts": 5512,
+    "mean_team_reward": 1.5633,
+    "reward_per_validation": 0.000567,
+    "knowledge_quality": 0.7103,
+    "quality_per_validation": 0.000258
   },
   "smtr_receiver": {
-    "n_unique_memories": 133,
+    "n_unique_memories": 2883,
     "n_receivers_validated": 3,
-    "n_validations": 399,
-    "n_expose_rollouts": 399,
-    "n_withhold_rollouts": 399,
-    "total_rollouts": 798,
-    "mean_team_reward": 0.8099,
-    "reward_per_validation": 0.00203,
+    "n_validations": 8649,
+    "n_expose_rollouts": 8649,
+    "n_withhold_rollouts": 8649,
+    "total_rollouts": 17298,
+    "mean_team_reward": 1.5879,
+    "reward_per_validation": 0.000184,
     "knowledge_quality": 1.0,
-    "quality_per_validation": 0.002506
+    "quality_per_validation": 0.000116
   }
 }

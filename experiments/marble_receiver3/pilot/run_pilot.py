@@ -272,6 +272,9 @@ def run_pilot(
 
         rng = np.random.RandomState(det_seed(task_id, seed))
 
+        # Extract scenario from first record (fallback to task_id prefix)
+        scenario = records[0].get("scenario", task_id.split(":")[0] if ":" in task_id else "unknown")
+
         # Build candidate list
         candidates = [
             {
@@ -354,6 +357,7 @@ def run_pilot(
             disagreement = float(np.std(inj_counts))
 
             episode_rows.append({
+                "scenario": scenario,
                 "method": method_name,
                 "task_id": task_id,
                 "seed": seed,
@@ -381,6 +385,7 @@ def run_pilot(
                     if mid in r_outcomes:
                         exp, wh = r_outcomes[mid]
                         detail_rows.append({
+                            "scenario": scenario,
                             "method": method_name,
                             "task_id": task_id,
                             "seed": seed,

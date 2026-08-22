@@ -1,62 +1,226 @@
-[
-  {
-    "method": "no_memory",
-    "n_episodes": 136,
-    "mean_team_reward": 0.35400326797385623,
-    "std_team_reward": 0.44913562346822083,
-    "mean_receiver_1_reward": 0.3235294117647059,
-    "mean_receiver_2_reward": 0.3738970588235294,
-    "mean_receiver_3_reward": 0.3645833333333333,
-    "mean_disagreement_std": 0.0,
-    "total_positive_injected": 0,
-    "total_negative_injected": 0
-  },
-  {
-    "method": "full_memory",
-    "n_episodes": 136,
-    "mean_team_reward": 0.3613562091503268,
-    "std_team_reward": 1.006123875176416,
-    "mean_receiver_1_reward": 0.3235294117647059,
-    "mean_receiver_2_reward": 0.26360294117647054,
-    "mean_receiver_3_reward": 0.496936274509804,
-    "mean_disagreement_std": 0.0,
-    "total_positive_injected": 191,
-    "total_negative_injected": 188
-  },
-  {
-    "method": "retrieval",
-    "n_episodes": 136,
-    "mean_team_reward": 0.3687091503267974,
-    "std_team_reward": 0.6250925163274306,
-    "mean_receiver_1_reward": 0.3602941176470588,
-    "mean_receiver_2_reward": 0.3224264705882353,
-    "mean_receiver_3_reward": 0.423406862745098,
-    "mean_disagreement_std": 0.0,
-    "total_positive_injected": 114,
-    "total_negative_injected": 108
-  },
-  {
-    "method": "smtr_uniform",
-    "n_episodes": 136,
-    "mean_team_reward": 0.7755718954248365,
-    "std_team_reward": 0.591687102431673,
-    "mean_receiver_1_reward": 0.5955882352941176,
-    "mean_receiver_2_reward": 0.8297794117647058,
-    "mean_receiver_3_reward": 0.9013480392156863,
-    "mean_disagreement_std": 0.0,
-    "total_positive_injected": 172,
-    "total_negative_injected": 0
-  },
-  {
-    "method": "smtr_receiver",
-    "n_episodes": 136,
-    "mean_team_reward": 0.8098856209150327,
-    "std_team_reward": 0.607298598898939,
-    "mean_receiver_1_reward": 0.5955882352941176,
-    "mean_receiver_2_reward": 0.8738970588235295,
-    "mean_receiver_3_reward": 0.960171568627451,
-    "mean_disagreement_std": 0.28466023913136984,
-    "total_positive_injected": 186,
-    "total_negative_injected": 0
+{
+  "global": [
+    {
+      "method": "no_memory",
+      "n_episodes": 1750,
+      "mean_team_reward": 0.44920634920634916,
+      "std_team_reward": 0.20148103685869753,
+      "mean_receiver_1_reward": 0.43257142857142855,
+      "mean_receiver_2_reward": 0.4552380952380952,
+      "mean_receiver_3_reward": 0.4598095238095238,
+      "mean_disagreement_std": 0.0,
+      "total_positive_injected": 0,
+      "total_negative_injected": 0
+    },
+    {
+      "method": "full_memory",
+      "n_episodes": 1750,
+      "mean_team_reward": 0.7604444444444445,
+      "std_team_reward": 1.1648009632338983,
+      "mean_receiver_1_reward": 0.8828571428571429,
+      "mean_receiver_2_reward": 0.7495238095238096,
+      "mean_receiver_3_reward": 0.648952380952381,
+      "mean_disagreement_std": 0.0,
+      "total_positive_injected": 6062,
+      "total_negative_injected": 4428
+    },
+    {
+      "method": "retrieval",
+      "n_episodes": 1750,
+      "mean_team_reward": 0.6132063492063492,
+      "std_team_reward": 0.81685238235734,
+      "mean_receiver_1_reward": 0.6565714285714286,
+      "mean_receiver_2_reward": 0.620952380952381,
+      "mean_receiver_3_reward": 0.562095238095238,
+      "mean_disagreement_std": 0.0,
+      "total_positive_injected": 3061,
+      "total_negative_injected": 2200
+    },
+    {
+      "method": "smtr_uniform",
+      "n_episodes": 1750,
+      "mean_team_reward": 1.5633015873015874,
+      "std_team_reward": 0.711547459662374,
+      "mean_receiver_1_reward": 1.6331428571428572,
+      "mean_receiver_2_reward": 1.5403809523809522,
+      "mean_receiver_3_reward": 1.5163809523809524,
+      "mean_disagreement_std": 0.0,
+      "total_positive_injected": 5873,
+      "total_negative_injected": 24
+    },
+    {
+      "method": "smtr_receiver",
+      "n_episodes": 1750,
+      "mean_team_reward": 1.5878730158730159,
+      "std_team_reward": 0.7257056589635712,
+      "mean_receiver_1_reward": 1.6377142857142857,
+      "mean_receiver_2_reward": 1.5803809523809522,
+      "mean_receiver_3_reward": 1.5455238095238095,
+      "mean_disagreement_std": 0.3494831248995625,
+      "total_positive_injected": 5978,
+      "total_negative_injected": 0
+    }
+  ],
+  "per_scenario": {
+    "bargaining": [
+      {
+        "method": "no_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.4474603174603174,
+        "std_team_reward": 0.1998228618424088
+      },
+      {
+        "method": "full_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.5826984126984127,
+        "std_team_reward": 1.144473163015052
+      },
+      {
+        "method": "retrieval",
+        "n_episodes": 350,
+        "mean_team_reward": 0.5293650793650794,
+        "std_team_reward": 0.7395313729312021
+      },
+      {
+        "method": "smtr_uniform",
+        "n_episodes": 350,
+        "mean_team_reward": 1.421746031746032,
+        "std_team_reward": 0.6983387587123309
+      },
+      {
+        "method": "smtr_receiver",
+        "n_episodes": 350,
+        "mean_team_reward": 1.4465079365079367,
+        "std_team_reward": 0.7093014992089368
+      }
+    ],
+    "coding": [
+      {
+        "method": "no_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.4366666666666666,
+        "std_team_reward": 0.19345872598467093
+      },
+      {
+        "method": "full_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.9719047619047619,
+        "std_team_reward": 1.07762839977518
+      },
+      {
+        "method": "retrieval",
+        "n_episodes": 350,
+        "mean_team_reward": 0.7280952380952381,
+        "std_team_reward": 0.7721970337985679
+      },
+      {
+        "method": "smtr_uniform",
+        "n_episodes": 350,
+        "mean_team_reward": 1.6271428571428572,
+        "std_team_reward": 0.7167549735536424
+      },
+      {
+        "method": "smtr_receiver",
+        "n_episodes": 350,
+        "mean_team_reward": 1.6490476190476189,
+        "std_team_reward": 0.7273674909344167
+      }
+    ],
+    "database": [
+      {
+        "method": "no_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.4901587301587301,
+        "std_team_reward": 0.2098756065368217
+      },
+      {
+        "method": "full_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.39015873015873015,
+        "std_team_reward": 1.15434084943496
+      },
+      {
+        "method": "retrieval",
+        "n_episodes": 350,
+        "mean_team_reward": 0.4596825396825397,
+        "std_team_reward": 0.8072951581740018
+      },
+      {
+        "method": "smtr_uniform",
+        "n_episodes": 350,
+        "mean_team_reward": 1.373015873015873,
+        "std_team_reward": 0.660189624377765
+      },
+      {
+        "method": "smtr_receiver",
+        "n_episodes": 350,
+        "mean_team_reward": 1.3892063492063493,
+        "std_team_reward": 0.6755883749039547
+      }
+    ],
+    "minecraft": [
+      {
+        "method": "no_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.4847619047619047,
+        "std_team_reward": 0.18813267325556104
+      },
+      {
+        "method": "full_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.62,
+        "std_team_reward": 1.1270876768882259
+      },
+      {
+        "method": "retrieval",
+        "n_episodes": 350,
+        "mean_team_reward": 0.5361904761904762,
+        "std_team_reward": 0.8870192355370023
+      },
+      {
+        "method": "smtr_uniform",
+        "n_episodes": 350,
+        "mean_team_reward": 1.6571428571428573,
+        "std_team_reward": 0.6576621673238092
+      },
+      {
+        "method": "smtr_receiver",
+        "n_episodes": 350,
+        "mean_team_reward": 1.68,
+        "std_team_reward": 0.6717651601081266
+      }
+    ],
+    "research": [
+      {
+        "method": "no_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 0.38698412698412704,
+        "std_team_reward": 0.19799677039900265
+      },
+      {
+        "method": "full_memory",
+        "n_episodes": 350,
+        "mean_team_reward": 1.2374603174603174,
+        "std_team_reward": 1.1176698035965291
+      },
+      {
+        "method": "retrieval",
+        "n_episodes": 350,
+        "mean_team_reward": 0.8126984126984127,
+        "std_team_reward": 0.8154683697921823
+      },
+      {
+        "method": "smtr_uniform",
+        "n_episodes": 350,
+        "mean_team_reward": 1.7374603174603174,
+        "std_team_reward": 0.749836364109055
+      },
+      {
+        "method": "smtr_receiver",
+        "n_episodes": 350,
+        "mean_team_reward": 1.7746031746031745,
+        "std_team_reward": 0.7660502303402721
+      }
+    ]
   }
-]
+}

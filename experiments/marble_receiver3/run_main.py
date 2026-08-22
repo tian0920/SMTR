@@ -75,7 +75,7 @@ def main() -> None:
             writer.writerows(detail_rows)
         print(f"Written: {detail_path} ({len(detail_rows)} rows)")
 
-    # Summary JSON
+    # Summary JSON (global + per-scenario)
     import numpy as np
     summary: list[dict] = []
     for method_name in methods:
@@ -88,7 +88,6 @@ def main() -> None:
         r2_rewards = [r["receiver_2_reward"] for r in m_rows]
         r3_rewards = [r["receiver_3_reward"] for r in m_rows]
         disagreements = [r["receiver_disagreement_std"] for r in m_rows]
-        # Negative transfer count
         total_neg = sum(
             r["receiver_1_negative"] + r["receiver_2_negative"] + r["receiver_3_negative"]
             for r in m_rows
@@ -110,8 +109,29 @@ def main() -> None:
             "total_negative_injected": int(total_neg),
         })
 
+    # Per-scenario breakdown
+    scenarios = sorted(set(r.get("scenario", "unknown") for r in episode_rows))
+    per_scenario: dict[str, list[dict]] = {}
+    for scenario in scenarios:
+        sc_summary: list[dict] = []
+        for method_name in methods:
+            m_rows = [r for r in episode_rows
+                      if r["method"] == method_name and r.get("scenario") == scenario]
+            if not m_rows:
+                sc_summary.append({"method": method_name, "n_episodes": 0})
+                continue
+            rewards = [r["team_reward"] for r in m_rows]
+            sc_summary.append({
+                "method": method_name,
+                "n_episodes": len(m_rows),
+                "mean_team_reward": float(np.mean(rewards)),
+                "std_team_reward": float(np.std(rewards)),
+            })
+        per_scenario[scenario] = sc_summary
+
+    output_obj = {"global": summary, "per_scenario": per_scenario}
     summary_path = output_dir / "main_summary.json"
-    summary_path.write_text(json.dumps(summary, indent=2))
+    summary_path.write_text(json.dumps(output_obj, indent=2))
     print(f"Written: {summary_path}")
 
     # Print summary
@@ -144,6 +164,27 @@ def main() -> None:
         base = no_mem["mean_team_reward"]
         impr = (smtr_r["mean_team_reward"] - base) / max(abs(base), 1e-9) * 100
         print(f"\nSMTR-receiver improvement over no_memory: {impr:+.1f}%")
+
+    # Per-scenario breakdown
+    print()
+    print("=" * 90)
+    print("PER-SCENARIO BREAKDOWN")
+    print("=" * 90)
+    for scenario in sorted(per_scenario.keys()):
+        sc_sum = per_scenario[scenario]
+        print(f"\n--- {scenario} ---")
+        print(f"{'Method':<18} {'Eps':>5} {'Team':>8} {'Std':>8}")
+        print("-" * 45)
+        for s in sc_sum:
+            if s["n_episodes"] == 0:
+                print(f"{s['method']:<18} {'0':>5}")
+                continue
+            print(
+                f"{s['method']:<18} "
+                f"{s['n_episodes']:>5} "
+                f"{s['mean_team_reward']:>8.4f} "
+                f"{s.get('std_team_reward', 0):>8.4f}"
+            )
 
 
 if __name__ == "__main__":

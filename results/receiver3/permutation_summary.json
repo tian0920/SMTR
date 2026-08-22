@@ -1,20 +1,20 @@
 {
   "smtr_receiver": {
-    "team_reward": 0.822140522875817,
-    "n_positive": 191,
+    "team_reward": 1.6038730158730157,
+    "n_positive": 6062,
     "n_negative": 0,
     "decision_alignment": 1.0
   },
   "smtr_permuted_mean": {
-    "team_reward": 0.6207924836601308,
-    "n_negative": 2.85,
-    "decision_alignment": 0.9124264705882353
+    "team_reward": 1.3687015873015873,
+    "n_negative": 36.65,
+    "decision_alignment": 0.9239365079365081
   },
   "smtr_permuted_std": {
-    "team_reward": 0.017831198198132517,
-    "decision_alignment": 0.007614707803782795
+    "team_reward": 0.004376094615251448,
+    "decision_alignment": 0.0013812989895251176
   },
-  "reward_drop": 0.20134803921568611,
-  "reward_drop_p_value": 1.4603441184570854e-193,
+  "reward_drop": 0.23517142857142836,
+  "reward_drop_p_value": 0.0,
   "n_permutations": 20
 }
