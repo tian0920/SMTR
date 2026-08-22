@@ -30,6 +30,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import random
 import sys
 import time
 from pathlib import Path
@@ -195,6 +196,7 @@ def run_online_experiment(
     methods: list[str] = METHODS,
     receiver_ids: list[str] = RECEIVER_IDS,
     skip_tci: bool = False,
+    max_tci_candidates: int | None = None,
 ) -> tuple[list[dict[str, Any]], list[OnlineValidationRecord], list[dict[str, Any]], PersistentMemoryBank]:
     """Run the full online experiment.
 
@@ -212,6 +214,9 @@ def run_online_experiment(
         When True, skip expensive TCI validation (for smoke testing).
         smtr_uniform and smtr_receiver will behave like no_memory
         (no deltas available -> empty selection).
+    max_tci_candidates:
+        If set, subsample at most this many candidates for TCI validation
+        per task (to limit compute cost during smoke/pilot runs).
 
     Returns
     -------
@@ -267,8 +272,13 @@ def run_online_experiment(
             # Step 3: TCI validation (if not skipped)
             task_validation_records: list[OnlineValidationRecord] = []
             if candidates and not skip_tci and ("smtr_uniform" in methods or "smtr_receiver" in methods):
+                tci_candidates = candidates
+                if max_tci_candidates is not None and len(candidates) > max_tci_candidates:
+                    rng = random.Random(seed)
+                    tci_candidates = rng.sample(candidates, max_tci_candidates)
+                    print(f"  TCI subsample: {len(tci_candidates)}/{len(candidates)} candidates")
                 task_validation_records = evaluator.validate_batch(
-                    candidates,
+                    tci_candidates,
                     receiver_ids,
                     task,
                     seed=seed,
@@ -553,7 +563,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--skip-tci", action="store_true",
-        help="Skip TCI validation (smtr methods behave like full_memory)",
+        help="Skip TCI validation (smtr methods behave like no_memory; for smoke testing)",
+    )
+    parser.add_argument(
+        "--max-tci-candidates", type=int, default=None,
+        help="Max candidates to validate per task (subsample to limit compute cost)",
     )
     parser.add_argument(
         "--output-dir", type=str, default=None,
@@ -580,6 +594,7 @@ def main() -> None:
     print(f"  receivers: {args.receivers}")
     print(f"  tasks: {len(tasks)} total")
     print(f"  skip_tci: {args.skip_tci}")
+    print(f"  max_tci_candidates: {args.max_tci_candidates}")
     print()
 
     if not tasks:
@@ -593,6 +608,7 @@ def main() -> None:
         methods=args.methods,
         receiver_ids=args.receivers,
         skip_tci=args.skip_tci,
+        max_tci_candidates=args.max_tci_candidates,
     )
 
     # Write results

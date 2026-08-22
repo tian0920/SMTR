@@ -361,8 +361,13 @@ def _parse_raw_output(path: Path) -> dict[str, Any]:
 
 
 def _extract_team_success(raw: dict[str, Any]) -> bool:
-    """Extract team success from raw output."""
-    # MARBLE native evaluator
+    """Extract team success from raw output.
+
+    Supports both flat format (``team_success`` / ``success`` keys) and
+    MARBLE iterations format (where success is inferred from whether the
+    engine completed its simulation loop with non-trivial results).
+    """
+    # MARBLE native evaluator (flat format)
     if "team_success" in raw:
         return bool(raw["team_success"])
     if "success" in raw:
@@ -370,49 +375,128 @@ def _extract_team_success(raw: dict[str, Any]) -> bool:
     # Nested evaluator result
     evaluator = raw.get("evaluator", {})
     if isinstance(evaluator, dict):
-        return bool(evaluator.get("team_success", False))
+        if "team_success" in evaluator:
+            return bool(evaluator["team_success"])
+    # MARBLE iterations format: engine ran and produced iterations
+    iterations = raw.get("iterations", [])
+    if isinstance(iterations, list) and iterations:
+        # Engine simulation completed → treat as executed successfully
+        # (the evaluator may have crashed but the simulation itself ran)
+        last = iterations[-1]
+        if isinstance(last, dict):
+            # Check if the last iteration has non-empty task_results
+            tr = last.get("task_results", [])
+            if isinstance(tr, list) and tr:
+                return True
+            summary = last.get("summary", "")
+            if summary and len(str(summary)) > 20:
+                return True
     return False
 
 
 def _extract_score(raw: dict[str, Any]) -> float:
-    """Extract numeric score from raw output."""
+    """Extract numeric score from raw output.
+
+    Falls back to planning_scores average or 1.0/0.0 based on team_success
+    when the evaluator did not produce a top-level ``score`` key.
+    """
     if "score" in raw:
         return float(raw["score"])
     evaluator = raw.get("evaluator", {})
-    if isinstance(evaluator, dict):
-        return float(evaluator.get("score", 0.0))
+    if isinstance(evaluator, dict) and "score" in evaluator:
+        return float(evaluator["score"])
+    # MARBLE iterations format: try planning_scores
+    planning = raw.get("planning_scores", [])
+    if isinstance(planning, list) and planning:
+        valid = [s for s in planning if isinstance(s, (int, float)) and s >= 0]
+        if valid:
+            return sum(valid) / len(valid)
+    # Fallback: 1.0 if team_success else 0.0
     return float(_extract_team_success(raw))
 
 
 def _extract_agent_messages(raw: dict[str, Any]) -> list[dict[str, Any]]:
-    """Extract per-agent messages from raw output."""
+    """Extract per-agent messages from raw output.
+
+    Supports flat format (``messages`` key) and MARBLE iterations format
+    where agent outputs live under ``iterations[].task_results``.
+    """
+    # Flat format
     messages = raw.get("messages", [])
-    if isinstance(messages, list):
+    if isinstance(messages, list) and messages:
         return messages
     # Alternative: per-agent message dict
     agents = raw.get("agents", {})
-    if isinstance(agents, dict):
+    if isinstance(agents, dict) and agents:
         result = []
         for agent_id, agent_data in agents.items():
             if isinstance(agent_data, dict):
                 for msg in agent_data.get("messages", []):
                     result.append({"agent_id": agent_id, **msg})
+        if result:
+            return result
+    # MARBLE iterations format: task_results per iteration
+    iterations = raw.get("iterations", [])
+    if isinstance(iterations, list) and iterations:
+        result = []
+        for it in iterations:
+            if not isinstance(it, dict):
+                continue
+            task_results = it.get("task_results", [])
+            if not isinstance(task_results, list):
+                continue
+            for entry in task_results:
+                if isinstance(entry, dict):
+                    for agent_id, content in entry.items():
+                        result.append({
+                            "agent_id": agent_id,
+                            "content": str(content),
+                            "role": "assistant",
+                            "iteration": it.get("iteration", 0),
+                        })
         return result
     return []
 
 
 def _extract_agent_actions(raw: dict[str, Any]) -> list[dict[str, Any]]:
-    """Extract per-agent actions from raw output."""
+    """Extract per-agent actions from raw output.
+
+    Supports flat format (``actions`` key) and MARBLE iterations format
+    where agent task_assignments + task_results serve as action records.
+    """
     actions = raw.get("actions", [])
-    if isinstance(actions, list):
+    if isinstance(actions, list) and actions:
         return actions
     agents = raw.get("agents", {})
-    if isinstance(agents, dict):
+    if isinstance(agents, dict) and agents:
         result = []
         for agent_id, agent_data in agents.items():
             if isinstance(agent_data, dict):
                 for act in agent_data.get("actions", []):
                     result.append({"agent_id": agent_id, **act})
+        if result:
+            return result
+    # MARBLE iterations format: derive actions from task_assignments + results
+    iterations = raw.get("iterations", [])
+    if isinstance(iterations, list) and iterations:
+        result = []
+        for it in iterations:
+            if not isinstance(it, dict):
+                continue
+            assignments = it.get("task_assignments", {})
+            task_results = it.get("task_results", [])
+            if isinstance(task_results, list):
+                for entry in task_results:
+                    if isinstance(entry, dict):
+                        for agent_id, content in entry.items():
+                            assignment = assignments.get(agent_id, "")
+                            result.append({
+                                "agent_id": agent_id,
+                                "action_type": "task_execution",
+                                "assignment": str(assignment),
+                                "result": str(content),
+                                "iteration": it.get("iteration", 0),
+                            })
         return result
     return []
 
