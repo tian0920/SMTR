@@ -550,6 +550,10 @@ def main() -> None:
         help="Scenarios to run (default: all 5)",
     )
     parser.add_argument(
+        "--task-file", type=str, default=None,
+        help="JSON file with [{domain, task_id}, ...] to run specific tasks",
+    )
+    parser.add_argument(
         "--seeds", nargs="+", type=int, default=SEEDS,
         help="Generation seeds (default: 0-4)",
     )
@@ -583,12 +587,17 @@ def main() -> None:
 
     # Load tasks
     loader = MarbleTaskLoader()
-    tasks = loader.load_all(
-        scenarios=args.scenarios,
-        limit_per_scenario=args.limit_per_scenario,
-    )
+    if args.task_file:
+        tasks = loader.load_task_file(Path(args.task_file))
+        task_source = f"task-file={args.task_file}"
+    else:
+        tasks = loader.load_all(
+            scenarios=args.scenarios,
+            limit_per_scenario=args.limit_per_scenario,
+        )
+        task_source = f"scenarios={args.scenarios}"
     print("=== Online MARBLE Receiver=3 Main Experiment ===")
-    print(f"  scenarios: {args.scenarios}")
+    print(f"  source: {task_source}")
     print(f"  seeds: {args.seeds}")
     print(f"  methods: {args.methods}")
     print(f"  receivers: {args.receivers}")

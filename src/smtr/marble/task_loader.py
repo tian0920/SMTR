@@ -206,6 +206,47 @@ class MarbleTaskLoader:
                 available.append(scenario)
         return available
 
+    def load_task_file(
+        self,
+        path: Path,
+    ) -> list[MarbleTask]:
+        """Load specific tasks from a JSON task-file.
+
+        The file must be a JSON array of objects with ``domain`` and
+        ``task_id`` fields::
+
+            [
+                {"domain": "database", "task_id": "51"},
+                {"domain": "database", "task_id": "73"},
+                ...
+            ]
+
+        Returns:
+            List of ``MarbleTask`` instances matching the entries.
+        """
+        with path.open("r", encoding="utf-8") as f:
+            entries = json.load(f)
+
+        if not isinstance(entries, list):
+            raise ValueError(f"Task file must be a JSON array: {path}")
+
+        # Group by domain for efficient loading
+        by_domain: dict[str, list[str]] = {}
+        for entry in entries:
+            domain = str(entry.get("domain", entry.get("scenario", "")))
+            task_id = str(entry["task_id"])
+            by_domain.setdefault(domain, []).append(task_id)
+
+        tasks: list[MarbleTask] = []
+        for domain, task_ids in sorted(by_domain.items()):
+            all_domain_tasks = self.load_scenario(domain)
+            id_set = set(task_ids)
+            for t in all_domain_tasks:
+                if t.task_id in id_set:
+                    tasks.append(t)
+
+        return tasks
+
     def task_count(self, scenario: str) -> int:
         """Return the number of tasks in a scenario."""
         return len(self.load_scenario(scenario))
