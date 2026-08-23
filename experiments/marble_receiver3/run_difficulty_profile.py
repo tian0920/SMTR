@@ -79,10 +79,13 @@ def run_difficulty_profile(
 
             duration = time.time() - t0
 
+            # team_reward = float(team_success) for binary outcome
+            team_reward = float(traj.team_success)
+
             # Extract per-receiver rewards (approximated from team reward)
             # In MARBLE graph mode all agents share team success
             receiver_rewards = {
-                rid: traj.team_reward
+                rid: team_reward
                 for rid in receiver_ids
             }
 
@@ -91,7 +94,7 @@ def run_difficulty_profile(
                 "task_id": task.task_id,
                 "seed": seed,
                 "episode_id": traj.trajectory_id,
-                "team_reward": traj.team_reward,
+                "team_reward": team_reward,
                 "team_success": traj.team_success,
                 "receiver_rewards": json.dumps(receiver_rewards),
                 "success": traj.team_success,
@@ -103,7 +106,7 @@ def run_difficulty_profile(
             }
             episode_rows.append(row)
 
-            reward_str = f"reward={traj.team_reward:.2f}"
+            reward_str = f"reward={team_reward:.2f}"
             eng_str = f"eng={traj.engine_duration_seconds:.0f}s"
             print(f"  ({duration:.0f}s, {reward_str}, {eng_str})")
 

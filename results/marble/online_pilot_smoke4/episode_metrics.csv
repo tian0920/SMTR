@@ -1,0 +1,6 @@
+scenario,task_id,seed,method,team_success,team_reward,n_candidates,n_injected,n_persistent_validated,n_cross_episode_reuse,discovery_success,discovery_score,real_engine_executed,engine_duration_seconds,n_validations,n_validated,n_rejected
+database,1,0,no_memory,False,0.0,0,0,0,0,False,0.0,False,13.09,0,0,0
+database,1,0,full_memory,False,0.0,0,0,0,0,False,0.0,False,13.34,0,0,0
+database,1,0,retrieval,False,0.0,0,0,0,0,False,0.0,False,13.21,0,0,0
+database,1,0,smtr_uniform,False,0.0,0,0,0,0,False,0.0,False,14.34,0,0,0
+database,1,0,smtr_receiver,False,0.0,0,0,0,0,False,0.0,False,13.2,0,0,0

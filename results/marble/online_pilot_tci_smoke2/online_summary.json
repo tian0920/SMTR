@@ -1,0 +1,88 @@
+{
+  "global": [
+    {
+      "method": "no_memory",
+      "n_episodes": 1,
+      "mean_team_reward": 1.0,
+      "std_team_reward": 0.0,
+      "success_rate": 1.0,
+      "mean_n_injected": 0.0,
+      "n_real_engine": 1
+    },
+    {
+      "method": "full_memory",
+      "n_episodes": 1,
+      "mean_team_reward": 1.0,
+      "std_team_reward": 0.0,
+      "success_rate": 1.0,
+      "mean_n_injected": 50.0,
+      "n_real_engine": 1
+    },
+    {
+      "method": "retrieval",
+      "n_episodes": 1,
+      "mean_team_reward": 1.0,
+      "std_team_reward": 0.0,
+      "success_rate": 1.0,
+      "mean_n_injected": 3.0,
+      "n_real_engine": 1
+    },
+    {
+      "method": "smtr_uniform",
+      "n_episodes": 1,
+      "mean_team_reward": 1.0,
+      "std_team_reward": 0.0,
+      "success_rate": 1.0,
+      "mean_n_injected": 0.0,
+      "n_real_engine": 1
+    },
+    {
+      "method": "smtr_receiver",
+      "n_episodes": 1,
+      "mean_team_reward": 1.0,
+      "std_team_reward": 0.0,
+      "success_rate": 1.0,
+      "mean_n_injected": 0.0,
+      "n_real_engine": 1
+    }
+  ],
+  "per_scenario": {
+    "database": [
+      {
+        "method": "no_memory",
+        "n_episodes": 1,
+        "mean_team_reward": 1.0,
+        "std_team_reward": 0.0,
+        "success_rate": 1.0
+      },
+      {
+        "method": "full_memory",
+        "n_episodes": 1,
+        "mean_team_reward": 1.0,
+        "std_team_reward": 0.0,
+        "success_rate": 1.0
+      },
+      {
+        "method": "retrieval",
+        "n_episodes": 1,
+        "mean_team_reward": 1.0,
+        "std_team_reward": 0.0,
+        "success_rate": 1.0
+      },
+      {
+        "method": "smtr_uniform",
+        "n_episodes": 1,
+        "mean_team_reward": 1.0,
+        "std_team_reward": 0.0,
+        "success_rate": 1.0
+      },
+      {
+        "method": "smtr_receiver",
+        "n_episodes": 1,
+        "mean_team_reward": 1.0,
+        "std_team_reward": 0.0,
+        "success_rate": 1.0
+      }
+    ]
+  }
+}
