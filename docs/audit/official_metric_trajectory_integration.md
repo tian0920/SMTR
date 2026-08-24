@@ -64,14 +64,57 @@ Trajectory(official_metric_raw, official_metric_normalized, official_metric_vali
 | bargaining | `avg_negotiation_quality` | `{buyer:3d, seller:3d, each 1-5}` | (avg-1)/4 |
 
 
-## 3. Upstream Fix Required
+## 3. Engine Integration Fixes (Applied)
 
-The MARBLE engine's `environment.name` check fails for database and bargaining
-because the JSONL files have empty `environment.name`. This means `task_evaluation`
-will be `None` for these scenarios until the upstream is fixed.
+### Fix 1: Environment Type/Name Override (Critical)
+**Root cause**: Raw JSONL task configs have `environment.type="Base"` for 4/5
+scenarios (database, research, coding, bargaining). Only minecraft had the
+correct type. This caused the MARBLE engine to create `BaseEnvironment` instead
+of scenario-specific environments, preventing evaluators from running.
 
-**Workaround**: The `TrajectoryCollector._build_engine_config()` normalizes
-`environment.type` but does NOT set `environment.name`. The upstream MARBLE
-engine must be patched or the JSONL files updated.
+**Fix**: `_build_engine_config()` now ALWAYS overrides `env.type` and `env.name`
+from the `_SCENARIO_ENV_TYPE` and `_SCENARIO_ENV_NAME` mappings, regardless of
+the raw task config values.
 
-See: `docs/audit/multiagentbench_ceiling_root_cause.md` Section 3.
+### Fix 2: Evaluation LLM Configuration
+**Root cause**: Raw configs have `metrics.evaluate_llm=""` (empty string).
+The MARBLE evaluator uses this to call an LLM for rating research/bargaining/
+database tasks. With empty model name, `model_prompting()` returns None,
+causing beartype violations and missing task_evaluation.
+
+**Fix**: `_build_engine_config()` now sets `metrics.evaluate_llm.model` to the
+same model as the main LLM if it's missing or empty.
+
+### Fix 3: Coding `code_quality` Field
+**Root cause**: MARBLE engine stores coding scores in `code_quality` field,
+not `task_evaluation`. The engine's star_coordinate only sets `code_quality`.
+
+**Fix**: `OfficialMetricOutcomeEvaluator.evaluate()` now checks `code_quality`
+as fallback for coding scenario.
+
+### Fix 4: Empty Dict Detection
+**Root cause**: MARBLE evaluator sets `task_evaluation={}` when LLM rating
+parser fails (research). This is truthy but contains no valid data.
+
+**Fix**: Empty dicts now treated as missing/invalid.
+
+### Fix 5: Bargaining Sentinel Detection
+**Root cause**: MARBLE evaluator returns -1 for each dimension when LLM
+parsing fails. This caused normalized_score=-0.5 (outside [0,1] range).
+
+**Fix**: Dimensions with values < 1 now detected as sentinel failures.
+
+### Known Limitation: Coding `solution.py` Path
+The MARBLE engine reads `MARBLE/marble/workspace/solution.py` (relative path)
+but coding agents don't write to this location. All coding episodes will be
+evaluator failures. This is a MARBLE engine bug, not an SMTR issue.
+
+### Smoke Test Results (post-fix)
+
+| Scenario   | Status | Metric Valid | Score | Notes |
+|------------|--------|-------------|-------|-------|
+| database   | ✅ | True | 0.0 | Evaluator works; model got recall=0 |
+| research   | ✅ | True | 0.833 | Evaluator works |
+| minecraft  | ✅ | True | 0.0 | Evaluator works; no score.json |
+| coding     | ❌ | False | None | Engine path bug: solution.py not found |
+| bargaining | ⚠️ | varies | varies | LLM parser may fail → sentinel detected |
