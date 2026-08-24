@@ -42,6 +42,11 @@ data/simulations/
 data/tau3_*/
 policies/
 
+# MARBLE engine workspaces (large temporary files)
+results/marble/*/workspaces*/
+results/marble/*/workspaces_*
+results/marble/*/engine_logs/
+
 # Qoder / Codex local files
 .qoder/
 .codex/
