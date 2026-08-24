@@ -342,6 +342,14 @@ _SCENARIO_ENV_TYPE = {
     "research": "Research",
 }
 
+_SCENARIO_ENV_NAME = {
+    "bargaining": "World Simulation Environment",
+    "coding": "Coding Environment",
+    "database": "DB Environment",
+    "minecraft": "Minecraft Environment",
+    "research": "Research Environment",
+}
+
 
 def _configured_litellm_model() -> str:
     """Return the LLM model name, matching the MARBLE environment adapters."""
@@ -387,11 +395,13 @@ def _build_engine_config(
     if not config.get("coordinate_mode"):
         config["coordinate_mode"] = "graph"
 
-    # Environment type: engine requires a known type string
+    # Environment type: ALWAYS override from scenario mapping.
+    # Raw JSONL task configs often have type="Base" which creates the wrong
+    # environment and prevents scenario-specific evaluators from running.
     env = config.get("environment")
     if isinstance(env, dict):
-        if not env.get("type"):
-            env["type"] = _SCENARIO_ENV_TYPE.get(task.scenario, "Base")
+        env["type"] = _SCENARIO_ENV_TYPE.get(task.scenario, "Base")
+        env["name"] = _SCENARIO_ENV_NAME.get(task.scenario, "Base Environment")
         if not env.get("max_iterations"):
             env["max_iterations"] = 5
         config["environment"] = env
@@ -400,6 +410,18 @@ def _build_engine_config(
     mem = config.get("memory")
     if not isinstance(mem, dict) or not mem.get("type"):
         config["memory"] = {"type": "BaseMemory"}
+
+    # Evaluation LLM: MARBLE evaluator needs a valid model for task_evaluation.
+    # Raw task configs often have metrics.evaluate_llm="" which causes evaluator
+    # LLM calls to fail silently, leaving task_evaluation empty/missing.
+    llm_model = config["llm"]
+    metrics = config.get("metrics")
+    if not isinstance(metrics, dict):
+        metrics = {}
+    eval_llm = metrics.get("evaluate_llm")
+    if not eval_llm or not isinstance(eval_llm, dict) or not eval_llm.get("model"):
+        metrics["evaluate_llm"] = {"model": llm_model}
+    config["metrics"] = metrics
 
     # Output path for engine results
     config["output"] = {"file_path": str(raw_result_path.resolve())}

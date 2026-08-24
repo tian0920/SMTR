@@ -115,9 +115,15 @@ class OfficialMetricOutcomeEvaluator:
         """
         task_eval = run_result.get("task_evaluation")
 
-        if task_eval is None:
+        # Coding: MARBLE engine stores scores in code_quality, not task_evaluation
+        if self.scenario == "coding" and (task_eval is None or task_eval == {}):
+            code_quality = run_result.get("code_quality")
+            if code_quality and isinstance(code_quality, dict):
+                task_eval = code_quality
+
+        if task_eval is None or (isinstance(task_eval, dict) and not task_eval):
             logger.warning(
-                f"task_evaluation is None for scenario={self.scenario}, "
+                f"task_evaluation is missing/empty for scenario={self.scenario}, "
                 f"task_id={task.get('task_id', '?')}"
             )
             return OfficialMetricOutcome(
@@ -312,17 +318,26 @@ class OfficialMetricOutcomeEvaluator:
                 f"bargaining task_evaluation should have buyer/seller dicts: {task_eval}"
             )
 
-        buyer_eff = buyer.get("effectiveness")
-        buyer_prog = buyer.get("progress")
-        buyer_int = buyer.get("interaction")
-        seller_eff = seller.get("effectiveness")
-        seller_prog = seller.get("progress")
-        seller_int = seller.get("interaction")
+        # MARBLE engine uses long key names; support both long and short
+        buyer_eff = buyer.get("effectiveness_of_strategies") or buyer.get("effectiveness")
+        buyer_prog = buyer.get("progress_and_outcome") or buyer.get("progress")
+        buyer_int = buyer.get("interaction_dynamics") or buyer.get("interaction")
+        seller_eff = seller.get("effectiveness_of_strategies") or seller.get("effectiveness")
+        seller_prog = seller.get("progress_and_outcome") or seller.get("progress")
+        seller_int = seller.get("interaction_dynamics") or seller.get("interaction")
 
         dimensions = [buyer_eff, buyer_prog, buyer_int, seller_eff, seller_prog, seller_int]
         if not all(isinstance(v, (int, float)) for v in dimensions):
             raise ValueError(
                 f"bargaining ratings must be numeric: {task_eval}"
+            )
+
+        # MARBLE evaluator uses -1 as sentinel for parse failure.
+        # If any dimension is -1 (or negative), the evaluation LLM failed.
+        if any(v < 1 for v in dimensions):
+            raise ValueError(
+                f"bargaining ratings contain sentinel values (< 1): {task_eval}. "
+                f"Evaluation LLM likely failed to parse."
             )
 
         avg_rating = sum(dimensions) / 6.0
