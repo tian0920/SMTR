@@ -13,6 +13,7 @@ Usage::
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 import time
 from dataclasses import dataclass, field
@@ -30,12 +31,31 @@ from smtr.marble.environment.isolation import (
     bundle_from_manifest_task,
     materialize_bundle_workspace,
 )
+from smtr.marble.outcome.official_metric_outcome import (
+    OfficialMetricOutcome,
+    OfficialMetricOutcomeEvaluator,
+)
 from smtr.marble.task_loader import MarbleTask
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class Trajectory:
     """Structured record of one MARBLE episode execution.
+
+    Official metric fields (primary performance signal):
+        official_metric_name: Official MultiAgentBench metric name.
+        official_metric_raw: Raw score from official evaluator.
+        official_metric_normalized: Normalized score in [0, 1].
+        official_metric_valid: Whether the official metric was successfully computed.
+        official_metric_source: Source identifier for the metric.
+        official_metric_error: Error message if metric computation failed.
+
+    Legacy diagnostic fields:
+        team_success: Binary success heuristic — DIAGNOSTIC ONLY.
+            NOT used for reward / TCI delta.
+        score: Alias for official_metric_normalized (or None if invalid).
 
     Attributes:
         trajectory_id: Unique identifier for this trajectory.
@@ -43,8 +63,6 @@ class Trajectory:
         scenario: Domain name.
         seed: Generation seed used for this episode.
         method: Memory injection method name.
-        team_success: Whether the team completed the task successfully.
-        score: Numeric score from the MARBLE evaluator.
         agent_actions: Per-agent action sequences.
         env_transitions: Environment state transitions.
         rewards: Per-agent reward values.
@@ -62,8 +80,17 @@ class Trajectory:
     seed: int
     method: str
 
+    # --- Official metric (PRIMARY) ---
+    official_metric_name: str = "unknown"
+    official_metric_raw: float | None = None
+    official_metric_normalized: float | None = None
+    official_metric_valid: bool = False
+    official_metric_source: str = "official_evaluator"
+    official_metric_error: str | None = None
+
+    # --- Legacy diagnostic (SECONDARY) ---
     team_success: bool = False
-    score: float = 0.0
+    score: float | None = None
 
     agent_actions: tuple[dict[str, Any], ...] = ()
     env_transitions: tuple[dict[str, Any], ...] = ()
@@ -85,6 +112,12 @@ class Trajectory:
             "scenario": self.scenario,
             "seed": self.seed,
             "method": self.method,
+            "official_metric_name": self.official_metric_name,
+            "official_metric_raw": self.official_metric_raw,
+            "official_metric_normalized": self.official_metric_normalized,
+            "official_metric_valid": self.official_metric_valid,
+            "official_metric_source": self.official_metric_source,
+            "official_metric_error": self.official_metric_error,
             "team_success": self.team_success,
             "score": self.score,
             "agent_actions": list(self.agent_actions),
@@ -96,6 +129,15 @@ class Trajectory:
             "exit_code": self.exit_code,
             "real_engine_executed": self.real_engine_executed,
         }
+
+    @property
+    def evaluator_failure(self) -> bool:
+        """Whether this episode's official evaluator failed.
+
+        Episodes with evaluator_failure=True must NOT be used as valid
+        experimental samples in formal experiments.
+        """
+        return not self.official_metric_valid
 
 
 class TrajectoryCollector:
@@ -208,14 +250,22 @@ class TrajectoryCollector:
                 run_metadata=run_metadata,
             )
         except Exception as exc:
+            error_msg = f"engine_exception: {exc}"
+            metric_evaluator = OfficialMetricOutcomeEvaluator(scenario=task.scenario)
             return Trajectory(
                 trajectory_id=trajectory_id,
                 task_id=task.task_id,
                 scenario=task.scenario,
                 seed=seed,
                 method=method,
+                official_metric_name=metric_evaluator._get_metric_name(),
+                official_metric_raw=None,
+                official_metric_normalized=None,
+                official_metric_valid=False,
+                official_metric_source="multiagentbench_official_evaluator",
+                official_metric_error=error_msg,
                 team_success=False,
-                score=0.0,
+                score=None,
                 exit_code=-1,
                 real_engine_executed=False,
                 raw_output={"error": str(exc)},
@@ -224,9 +274,27 @@ class TrajectoryCollector:
         # Parse raw output
         raw_output = _parse_raw_output(raw_result_path)
 
-        # Extract structured data from raw output
+        # Extract legacy diagnostic data (for logging only)
         team_success = _extract_team_success(raw_output)
-        score = _extract_score(raw_output)
+
+        # Extract official MultiAgentBench metric (PRIMARY signal)
+        metric_evaluator = OfficialMetricOutcomeEvaluator(scenario=task.scenario)
+        metric_outcome = metric_evaluator.evaluate(
+            task=task.raw_task, run_result=raw_output,
+        )
+
+        # score = official normalized score (or None if invalid)
+        # NO fallback to team_success.
+        score = metric_outcome.normalized_score
+
+        if not metric_outcome.is_valid:
+            logger.warning(
+                "evaluator_failure: scenario=%s task_id=%s seed=%d method=%s "
+                "reason=%s — episode marked as INVALID",
+                task.scenario, task.task_id, seed, method,
+                metric_outcome.failure_reason,
+            )
+
         agent_messages = _extract_agent_messages(raw_output)
         agent_actions = _extract_agent_actions(raw_output)
         rewards = _extract_rewards(raw_output)
@@ -238,10 +306,16 @@ class TrajectoryCollector:
             scenario=task.scenario,
             seed=seed,
             method=method,
+            official_metric_name=metric_outcome.raw_metric_name,
+            official_metric_raw=metric_outcome.raw_score,
+            official_metric_normalized=metric_outcome.normalized_score,
+            official_metric_valid=metric_outcome.is_valid,
+            official_metric_source="multiagentbench_official_evaluator",
+            official_metric_error=metric_outcome.failure_reason,
             team_success=team_success,
             score=score,
             agent_actions=tuple(agent_actions),
-            env_transitions=(),  # Environment transitions from raw output
+            env_transitions=(),
             rewards=tuple(rewards),
             agent_messages=tuple(agent_messages),
             memory_events=tuple(memory_events),
@@ -253,8 +327,15 @@ class TrajectoryCollector:
 
 
 # Scenario-to-environment-type mapping
+# These must match the engine's _initialize_environment() dispatch:
+#   "Base"            -> BaseEnvironment
+#   "Research"        -> ResearchEnvironment  (isinstance check in graph mode)
+#   "Minecraft"       -> MinecraftEnvironment (isinstance check in graph mode)
+#   "DB"              -> DBEnvironment        (name="DB Environment")
+#   "WorldSimulation" -> WorldSimulationEnvironment (name="World Simulation Environment")
+#   "Coding"          -> CodingEnvironment    (star mode only, no graph evaluator)
 _SCENARIO_ENV_TYPE = {
-    "bargaining": "Base",
+    "bargaining": "WorldSimulation",
     "coding": "Coding",
     "database": "DB",
     "minecraft": "Minecraft",

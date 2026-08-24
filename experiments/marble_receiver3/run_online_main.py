@@ -291,8 +291,8 @@ def run_online_experiment(
                         admission.admit_for_receiver(
                             rec.memory_id,
                             receiver_id=rec.receiver_id,
-                            reward_expose=rec.expose_outcome,
-                            reward_withhold=rec.withhold_outcome,
+                            reward_expose=rec.normalized_expose_score or 0.0,
+                            reward_withhold=rec.normalized_withhold_score or 0.0,
                             episode_id=seed,
                             validation_source="online_counterfactual_rollout",
                         )

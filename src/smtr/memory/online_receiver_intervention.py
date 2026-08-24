@@ -9,12 +9,21 @@ For each (candidate memory, receiver agent) pair:
    run a MARBLE continuation episode, observe ``expose_outcome``.
 2. **Branch B (withhold)**: run the *same* continuation **without** the
    memory, observe ``withhold_outcome``.
-3. ``delta = expose_outcome - withhold_outcome``
+3. ``delta = expose_normalized_score - withhold_normalized_score``
+
+The outcome signal is the **official MultiAgentBench Task Score** (normalized
+to [0, 1]) — NOT binary team_success.
 
 Decision rule (threshold-free, identical to offline):
 
 * ``delta > 0``  -> ``"validated"`` for this receiver
 * ``delta <= 0`` -> ``"rejected"`` for this receiver
+
+If either branch has ``official_metric_valid=False``:
+
+* ``validation_status = "INVALID_OUTCOME"``
+* delta is undefined (NaN)
+* The record is NOT admitted or rejected — it is excluded.
 
 Safety constraint
 -----------------
@@ -24,8 +33,8 @@ The evaluator is forbidden from reading:
 * future trajectory data
 * any information that would not be available at the intervention point
 
-Only the MARBLE Engine interaction outcome (``team_success`` / ``score``)
-is used as the reward signal.
+Only the MARBLE Engine official evaluator output is used as the reward signal.
+``team_success`` is recorded for diagnostic logging only.
 
 Usage::
 
@@ -59,13 +68,31 @@ logger = logging.getLogger(__name__)
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+# Validation status constants
+VALIDATION_STATUS_VALIDATED = "validated"
+VALIDATION_STATUS_REJECTED = "rejected"
+VALIDATION_STATUS_INVALID = "INVALID_OUTCOME"
+
+
 @dataclass(frozen=True)
 class OnlineValidationRecord:
     """One online TCI validation for a (memory, receiver) pair.
 
-    Compatible with the existing ``ReceiverValidationRecord`` in
-    ``memory_schema.py`` — carries the same ``delta`` / ``decision``
-    semantics plus provenance fields for the online rollout.
+    Uses official MultiAgentBench normalized Task Score as the outcome.
+    ``team_success`` fields are kept for diagnostic logging only.
+
+    Attributes:
+        metric_name: Official metric name (e.g., "root_cause_recall").
+        raw_expose_score: Raw official score for expose branch.
+        raw_withhold_score: Raw official score for withhold branch.
+        normalized_expose_score: Normalized [0,1] expose score.
+        normalized_withhold_score: Normalized [0,1] withhold score.
+        delta: normalized_expose - normalized_withhold (NaN if invalid).
+        decision: "validated" | "rejected" | "INVALID_OUTCOME".
+        expose_metric_valid: Whether expose branch metric is valid.
+        withhold_metric_valid: Whether withhold branch metric is valid.
+        expose_success: DIAGNOSTIC ONLY — binary team_success for expose.
+        withhold_success: DIAGNOSTIC ONLY — binary team_success for withhold.
     """
 
     memory_id: str
@@ -74,11 +101,20 @@ class OnlineValidationRecord:
     scenario: str
     seed: int
 
-    expose_outcome: float
-    withhold_outcome: float
-    delta: float
-    decision: str  # "validated" | "rejected"
+    # Official metric fields
+    metric_name: str = "unknown"
+    raw_expose_score: float | None = None
+    raw_withhold_score: float | None = None
+    normalized_expose_score: float | None = None
+    normalized_withhold_score: float | None = None
+    delta: float = 0.0
+    decision: str = VALIDATION_STATUS_REJECTED
 
+    # Metric validity
+    expose_metric_valid: bool = False
+    withhold_metric_valid: bool = False
+
+    # Diagnostic (legacy)
     expose_success: bool = False
     withhold_success: bool = False
     expose_real_engine: bool = False
@@ -97,10 +133,15 @@ class OnlineValidationRecord:
             "task_id": self.task_id,
             "scenario": self.scenario,
             "seed": self.seed,
-            "expose_outcome": self.expose_outcome,
-            "withhold_outcome": self.withhold_outcome,
+            "metric_name": self.metric_name,
+            "raw_expose_score": self.raw_expose_score,
+            "raw_withhold_score": self.raw_withhold_score,
+            "normalized_expose_score": self.normalized_expose_score,
+            "normalized_withhold_score": self.normalized_withhold_score,
             "delta": self.delta,
             "decision": self.decision,
+            "expose_metric_valid": self.expose_metric_valid,
+            "withhold_metric_valid": self.withhold_metric_valid,
             "expose_success": self.expose_success,
             "withhold_success": self.withhold_success,
             "expose_real_engine": self.expose_real_engine,
@@ -119,25 +160,22 @@ class OnlineValidationRecord:
 class OnlineReceiverInterventionEvaluator:
     """Online TCI: real expose/withhold rollouts per (memory, receiver).
 
+    Uses **official MultiAgentBench normalized Task Score** as the outcome
+    signal. Binary ``team_success`` is recorded for diagnostic logging
+    only and is NOT used for delta computation.
+
     Parameters
     ----------
     collector:
         ``TrajectoryCollector`` used to execute both branches.
-    use_score:
-        When ``True``, use the MARBLE numeric ``score`` as the reward
-        signal.  When ``False`` (default), use the binary
-        ``team_success`` (0.0 or 1.0) which is more robust across
-        heterogeneous domains.
     """
 
     def __init__(
         self,
         *,
         collector: TrajectoryCollector | None = None,
-        use_score: bool = False,
     ) -> None:
         self._collector = collector or TrajectoryCollector()
-        self._use_score = use_score
         self._records: list[OnlineValidationRecord] = []
 
     # ------------------------------------------------------------------
@@ -201,11 +239,43 @@ class OnlineReceiverInterventionEvaluator:
             receiver_agent_ids=receiver_ids if withhold_payloads else None,
         )
 
-        # -- Compute delta --------------------------------------------------
-        expose_reward = self._extract_reward(expose_traj)
-        withhold_reward = self._extract_reward(withhold_traj)
-        delta = expose_reward - withhold_reward
-        decision = "validated" if delta > 0 else "rejected"
+        # -- Compute delta from official metric ----------------------------
+        expose_metric_valid = expose_traj.official_metric_valid
+        withhold_metric_valid = withhold_traj.official_metric_valid
+        metric_name = expose_traj.official_metric_name
+
+        both_valid = expose_metric_valid and withhold_metric_valid
+
+        if both_valid:
+            # Both branches have valid official metric → compute delta
+            expose_score = expose_traj.official_metric_normalized
+            withhold_score = withhold_traj.official_metric_normalized
+            assert expose_score is not None and withhold_score is not None
+            delta = expose_score - withhold_score
+            decision = (
+                VALIDATION_STATUS_VALIDATED
+                if delta > 0
+                else VALIDATION_STATUS_REJECTED
+            )
+            error_msg = None
+        else:
+            # At least one branch has invalid metric → INVALID_OUTCOME
+            expose_score = expose_traj.official_metric_normalized
+            withhold_score = withhold_traj.official_metric_normalized
+            delta = 0.0
+            decision = VALIDATION_STATUS_INVALID
+            reasons = []
+            if not expose_metric_valid:
+                reasons.append(f"expose: {expose_traj.official_metric_error}")
+            if not withhold_metric_valid:
+                reasons.append(f"withhold: {withhold_traj.official_metric_error}")
+            error_msg = "; ".join(reasons)
+            logger.warning(
+                "INVALID_OUTCOME: memory=%s receiver=%s task=%s seed=%d "
+                "reason=%s",
+                candidate.memory_id, receiver_id, task.task_id, seed,
+                error_msg,
+            )
 
         record = OnlineValidationRecord(
             memory_id=candidate.memory_id,
@@ -213,28 +283,36 @@ class OnlineReceiverInterventionEvaluator:
             task_id=task.task_id,
             scenario=task.scenario,
             seed=seed,
-            expose_outcome=expose_reward,
-            withhold_outcome=withhold_reward,
+            metric_name=metric_name,
+            raw_expose_score=expose_traj.official_metric_raw,
+            raw_withhold_score=withhold_traj.official_metric_raw,
+            normalized_expose_score=expose_score,
+            normalized_withhold_score=withhold_score,
             delta=delta,
             decision=decision,
+            expose_metric_valid=expose_metric_valid,
+            withhold_metric_valid=withhold_metric_valid,
+            # Diagnostic only — NOT used for delta
             expose_success=expose_traj.team_success,
             withhold_success=withhold_traj.team_success,
             expose_real_engine=expose_traj.real_engine_executed,
             withhold_real_engine=withhold_traj.real_engine_executed,
             expose_duration_seconds=expose_traj.engine_duration_seconds,
             withhold_duration_seconds=withhold_traj.engine_duration_seconds,
+            error=error_msg,
         )
         self._records.append(record)
 
         logger.info(
             "online_tci: memory=%s receiver=%s task=%s seed=%d "
-            "expose=%.2f withhold=%.2f delta=%.2f -> %s",
+            "metric=%s expose=%.3f withhold=%.3f delta=%.3f -> %s",
             candidate.memory_id,
             receiver_id,
             task.task_id,
             seed,
-            expose_reward,
-            withhold_reward,
+            metric_name,
+            expose_score if expose_score is not None else float("nan"),
+            withhold_score if withhold_score is not None else float("nan"),
             delta,
             decision,
         )
@@ -271,56 +349,6 @@ class OnlineReceiverInterventionEvaluator:
     def records(self) -> list[OnlineValidationRecord]:
         """All validation records collected so far."""
         return list(self._records)
-
-    def _extract_reward(self, trajectory: Trajectory) -> float:
-        """Extract reward signal from a trajectory.
-
-        Uses ``team_success`` (binary) by default, or ``score``
-        (continuous) when ``use_score=True``.
-        """
-        if self._use_score:
-            return trajectory.score
-        return float(trajectory.team_success)
-
-    def summary(self) -> dict[str, Any]:
-        """Aggregate statistics across all validations."""
-        if not self._records:
-            return {"total": 0}
-        total = len(self._records)
-        validated = sum(1 for r in self._records if r.decision == "validated")
-        rejected = total - validated
-        deltas = [r.delta for r in self._records]
-        mean_delta = sum(deltas) / len(deltas) if deltas else 0.0
-
-        # Per-receiver breakdown
-        per_receiver: dict[str, dict[str, int]] = {}
-        for r in self._records:
-            if r.receiver_id not in per_receiver:
-                per_receiver[r.receiver_id] = {"validated": 0, "rejected": 0, "total": 0}
-            per_receiver[r.receiver_id][r.decision] += 1  # type: ignore[operator]
-            per_receiver[r.receiver_id]["total"] += 1
-
-        # Engine execution stats
-        real_engine_count = sum(
-            1 for r in self._records
-            if r.expose_real_engine and r.withhold_real_engine
-        )
-        total_engine_time = sum(
-            r.expose_duration_seconds + r.withhold_duration_seconds
-            for r in self._records
-        )
-
-        return {
-            "total": total,
-            "validated": validated,
-            "rejected": rejected,
-            "validation_rate": validated / max(total, 1),
-            "mean_delta": round(mean_delta, 4),
-            "real_engine_executions": real_engine_count,
-            "total_engine_time_seconds": round(total_engine_time, 2),
-            "per_receiver": per_receiver,
-        }
-
 
 # ---------------------------------------------------------------------------
 # Private helpers
