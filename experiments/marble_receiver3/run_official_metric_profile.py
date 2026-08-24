@@ -121,7 +121,30 @@ def run_episode(
         }
 
 
+def _preflight_env_check() -> None:
+    """Fail fast if the LLM environment is not configured.
+
+    Prevents silently burning hours of API time producing invalid episodes
+    when DASHSCOPE/OPENAI env vars are missing (see 2026-08-24 bad run).
+    """
+    model = os.environ.get("MARBLE_LLM_MODEL", "")
+    api_key = os.environ.get("DASHSCOPE_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
+    missing = []
+    if not model:
+        missing.append("MARBLE_LLM_MODEL")
+    if not api_key:
+        missing.append("DASHSCOPE_API_KEY/OPENAI_API_KEY")
+    if missing:
+        logger.error(
+            "Missing required env vars: %s. "
+            "Source scripts/env_dashscope.sh before running.",
+            ", ".join(missing),
+        )
+        sys.exit(2)
+
+
 def main() -> None:
+    _preflight_env_check()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     collector = TrajectoryCollector(
         marble_root=Path("/home/ecs-user/MARBLE"),
@@ -135,7 +158,19 @@ def main() -> None:
     logger.info(f"Tasks per scenario: {TASKS_PER_SCENARIO}")
     logger.info(f"Seeds: {SEEDS}")
 
-    # Episode scores
+    # Episode scores — write header now, append each row so a crash/kill
+    # never loses completed episodes.
+    episode_path = OUTPUT_DIR / "episode_scores.csv"
+    fieldnames = [
+        "scenario", "task_id", "seed", "raw_task_score",
+        "normalized_task_score", "metric_name", "metric_valid",
+        "metric_error", "team_success", "coordination_score",
+        "runtime", "evaluator_status", "engine_status", "exit_code",
+    ]
+    with episode_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+
     episode_rows: list[dict[str, Any]] = []
 
     for scenario in SCENARIOS:
@@ -156,6 +191,9 @@ def main() -> None:
                 )
                 episode_rows.append(row)
 
+                with episode_path.open("a", newline="", encoding="utf-8") as f:
+                    csv.DictWriter(f, fieldnames=fieldnames).writerow(row)
+
                 status = "✅" if row["metric_valid"] else "❌"
                 score_str = (
                     f"{row['normalized_task_score']:.3f}"
@@ -168,19 +206,7 @@ def main() -> None:
                     f"runtime={row['runtime']:.1f}s"
                 )
 
-    # Write episode_scores.csv
-    episode_path = OUTPUT_DIR / "episode_scores.csv"
-    fieldnames = [
-        "scenario", "task_id", "seed", "raw_task_score",
-        "normalized_task_score", "metric_name", "metric_valid",
-        "metric_error", "team_success", "coordination_score",
-        "runtime", "evaluator_status", "engine_status", "exit_code",
-    ]
-    with episode_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(episode_rows)
-    logger.info(f"\nWrote {episode_path}")
+    logger.info(f"\nEpisode rows appended incrementally to {episode_path}")
 
     # Write task_summary.csv
     task_summary_path = OUTPUT_DIR / "task_summary.csv"
