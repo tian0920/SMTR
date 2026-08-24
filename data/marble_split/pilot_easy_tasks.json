@@ -1,0 +1,42 @@
+[
+  {
+    "domain": "bargaining",
+    "task_id": "12"
+  },
+  {
+    "domain": "bargaining",
+    "task_id": "14"
+  },
+  {
+    "domain": "coding",
+    "task_id": "1"
+  },
+  {
+    "domain": "coding",
+    "task_id": "12"
+  },
+  {
+    "domain": "database",
+    "task_id": "11"
+  },
+  {
+    "domain": "database",
+    "task_id": "13"
+  },
+  {
+    "domain": "minecraft",
+    "task_id": "11"
+  },
+  {
+    "domain": "minecraft",
+    "task_id": "13"
+  },
+  {
+    "domain": "research",
+    "task_id": "10"
+  },
+  {
+    "domain": "research",
+    "task_id": "100"
+  }
+]
