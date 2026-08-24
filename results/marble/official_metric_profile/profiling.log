@@ -1,0 +1,10 @@
+2026-08-24 15:26:32,497 [INFO] __main__: Official metric profiling: 200 episodes
+2026-08-24 15:26:32,497 [INFO] __main__: Model: openai/qwen3-30b-a3b
+2026-08-24 15:26:32,497 [INFO] __main__: Scenarios: ['bargaining', 'coding', 'database', 'minecraft', 'research']
+2026-08-24 15:26:32,497 [INFO] __main__: Tasks per scenario: 20
+2026-08-24 15:26:32,497 [INFO] __main__: Seeds: [0, 1]
+2026-08-24 15:26:32,497 [INFO] __main__: 
+============================================================
+Scenario: bargaining
+============================================================
+2026-08-24 15:26:32,500 [INFO] __main__: [1/200] bargaining/1 seed=0
