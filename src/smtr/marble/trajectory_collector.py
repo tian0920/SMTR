@@ -404,6 +404,10 @@ def _build_engine_config(
         env["name"] = _SCENARIO_ENV_NAME.get(task.scenario, "Base Environment")
         if not env.get("max_iterations"):
             env["max_iterations"] = 5
+        # Propagate LLM model to environment config so coding tools can
+        # use the correct model instead of the hardcoded gpt-3.5-turbo default.
+        llm_model = config["llm"]
+        env["llm"] = llm_model
         config["environment"] = env
 
     # Memory config
