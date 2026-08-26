@@ -52,6 +52,7 @@ from smtr.marble.task_loader import MarbleTask, MarbleTaskLoader
 from smtr.marble.trajectory_collector import Trajectory, TrajectoryCollector
 from smtr.memory.consolidation import MemoryAdmissionController
 from smtr.memory.persistent_memory import PersistentMemoryBank
+from smtr.memory.method_state import MethodStateContainer
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +205,7 @@ def run_online_experiment(
     skip_tci: bool = False,
     max_tci_candidates: int | None = None,
     validation_only: bool = False,
-) -> tuple[list[dict[str, Any]], list[OnlineValidationRecord], list[dict[str, Any]], PersistentMemoryBank]:
+) -> tuple[list[dict[str, Any]], list[OnlineValidationRecord], list[dict[str, Any]], MethodStateContainer]:
     """Run the full online experiment.
 
     Parameters
@@ -237,14 +238,18 @@ def run_online_experiment(
     extractor = ExperienceExtractor()
     evaluator = OnlineReceiverInterventionEvaluator(collector=collector)
 
-    # Persistent memory bank for cross-episode knowledge accumulation
-    bank = PersistentMemoryBank()
-    admission = MemoryAdmissionController(bank)
+    # P0-3: Method-specific isolated persistent state
+    # Each method has its OWN bank — no shared mutable state.
+    method_states = MethodStateContainer(methods)
 
     episode_rows: list[dict[str, Any]] = []
     all_validation_records: list[OnlineValidationRecord] = []
     memory_history: list[dict[str, Any]] = []  # snapshot per (task, seed)
     global_step = 0
+
+    # P0-4: Track scenario for boundary reset
+    current_scenario: str | None = None
+    task_position = 0
 
     total = len(tasks) * len(seeds)
     progress = 0
@@ -259,28 +264,91 @@ def run_online_experiment(
                 flush=True,
             )
 
-            # Step 1: Discovery episode (no memory)
+            # P0-4: Scenario boundary → reset all method states
+            if task.scenario != current_scenario:
+                if current_scenario is not None:
+                    logger.info("Scenario boundary: %s → %s, resetting all method states",
+                                current_scenario, task.scenario)
+                    method_states.reset_all()
+                current_scenario = task.scenario
+
+            # ---- STEP 1: EVALUATION (using K_{t-1} — accumulated memory) ----
+            # P0-4 invariant: task_t candidates MUST NOT affect task_t evaluation.
+            # Each method uses ONLY memories from previous tasks.
+            memory_size_before = {m: method_states.get(m).memory_size() for m in methods}
+
+            if not validation_only:
+                for method in methods:
+                    state = method_states.get(method)
+                    # Per-receiver memory selection from HISTORICAL bank (K_{t-1})
+                    per_receiver_payloads: dict[str, list[str]] = {}
+                    for rid in receiver_ids:
+                        task_payloads = state.get_injection_payloads(
+                            rid, render_fn=render_bank_entry_payload,
+                        )
+                        per_receiver_payloads[rid] = task_payloads
+
+                    # Run evaluation episode
+                    if method == "no_memory":
+                        eval_traj = run_task_episode(
+                            task, seed, method, collector,
+                            memory_payloads=[],
+                        )
+                    elif method == "smtr_receiver":
+                        eval_traj = run_task_episode(
+                            task, seed, method, collector,
+                            memory_payloads=[],
+                            receiver_memory_payloads=per_receiver_payloads,
+                        )
+                    else:
+                        first_receiver = receiver_ids[0]
+                        payloads = per_receiver_payloads[first_receiver]
+                        eval_receiver_ids = receiver_ids if payloads else None
+                        eval_traj = run_task_episode(
+                            task, seed, method, collector,
+                            memory_payloads=payloads,
+                            receiver_ids=eval_receiver_ids,
+                        )
+
+                    # Record metrics
+                    n_injected_count = sum(
+                        len(v) for v in per_receiver_payloads.values()
+                    ) // max(len(receiver_ids), 1)
+                    official_raw = eval_traj.official_metric_raw
+                    official_norm = eval_traj.official_metric_normalized
+                    official_valid = eval_traj.official_metric_valid
+
+                    row = {
+                        "scenario": task.scenario,
+                        "task_id": task.task_id,
+                        "seed": seed,
+                        "method": method,
+                        "task_position": task_position,
+                        # Official Task Score — primary paper metrics
+                        "official_task_score_raw": official_raw,
+                        "official_task_score": official_norm,
+                        "official_metric_valid": official_valid,
+                        "official_metric_name": eval_traj.official_metric_name,
+                        # Legacy / diagnostic fields
+                        "team_success": eval_traj.team_success,
+                        "team_reward": eval_traj.score,
+                        "n_injected": n_injected_count if method != "no_memory" else 0,
+                        "memory_size_before": memory_size_before.get(method, 0),
+                        "real_engine_executed": eval_traj.real_engine_executed,
+                        "engine_duration_seconds": round(eval_traj.engine_duration_seconds, 2),
+                    }
+                    episode_rows.append(row)
+
+            # ---- STEP 2: SHARED DISCOVERY ----
             discovery_traj = collector.collect(
                 task, seed=seed, method="discovery"
             )
-
-            # Step 2: Extract candidates
             candidates = extractor.extract(discovery_traj)
 
-            # Step 2b: Register candidates in persistent memory bank
-            for c in candidates:
-                try:
-                    bank.add_candidate(
-                        memory_id=c.memory_id,
-                        content=c.content,
-                        source_episode=seed,
-                        receiver=receiver_ids[0] if receiver_ids else "unknown",
-                        created_step=global_step,
-                    )
-                except ValueError:
-                    pass  # duplicate memory_id (same task+seed)
+            # Register candidates in ALL methods' banks (shared discovery)
+            method_states.register_candidates_all(candidates, receiver_ids)
 
-            # Step 3: TCI validation (if not skipped)
+            # ---- STEP 3: TCI VALIDATION ----
             task_validation_records: list[OnlineValidationRecord] = []
             if candidates and not skip_tci and ("smtr_uniform" in methods or "smtr_receiver" in methods):
                 tci_candidates = candidates
@@ -296,178 +364,45 @@ def run_online_experiment(
                 )
                 all_validation_records.extend(task_validation_records)
 
-                # Step 3b: Update bank with TCI decisions.
-                # Only admit for records with a real decision (validated/rejected).
-                # Invalid records (either branch metric invalid) must NOT
-                # modify memory lifecycle.
-                for rec in task_validation_records:
-                    if rec.decision not in ("validated", "rejected"):
-                        logger.debug(
-                            "Skipping admission for invalid record: "
-                            "memory=%s receiver=%s decision=%s",
-                            rec.memory_id, rec.receiver_id, rec.decision,
-                        )
-                        continue
-                    try:
-                        admission.admit_for_receiver(
-                            rec.memory_id,
-                            receiver_id=rec.receiver_id,
-                            reward_expose=rec.normalized_expose_score or 0.0,
-                            reward_withhold=rec.normalized_withhold_score or 0.0,
-                            episode_id=seed,
-                            validation_source="online_counterfactual_rollout",
-                        )
-                    except KeyError:
-                        pass  # memory not in bank (should not happen)
-
-            # Pre-compute bank payload set for cross-episode tracking
-            _bank_payload_set: set[str] = set()
-            for be in bank.all_entries():
-                if be.status == "validated":
-                    _bank_payload_set.add(render_bank_entry_payload(be))
-
-            # In validation-only mode, skip method-specific evaluation episodes.
-            # Only TCI validation records are collected.
-            if validation_only:
-                # Snapshot memory pool state after this (task, seed)
-                memory_history.append({
-                    "scenario": task.scenario,
-                    "task_id": task.task_id,
-                    "seed": seed,
-                    "global_step": global_step,
-                    **bank.get_statistics(),
-                })
-                global_step += 1
-                elapsed = time.time() - t0
-                print(f"  ({elapsed:.1f}s, {len(candidates)} candidates, validation-only)")
-                continue
-
-            # Step 4: For each method, select memories and run evaluation
+            # ---- STEP 4: MEMORY UPDATE (method-specific) ----
+            # Each method updates its OWN bank based on TCI results.
             for method in methods:
-                # Per-receiver memory selection (current task candidates)
-                per_receiver_payloads: dict[str, list[str]] = {}
-                for rid in receiver_ids:
-                    selected = select_memories_for_method(
-                        method,
-                        candidates,
-                        task_validation_records,
-                        rid,
-                    )
-                    task_payloads = [
-                        render_candidate_payload(c) for c in selected
-                    ]
+                state = method_states.get(method)
+                state.update_after_tci(candidates, task_validation_records, receiver_ids)
+                state.advance_step()
 
-                    # Cross-episode retrieval: inject previously
-                    # validated memories from the persistent bank.
-                    # This is the mechanism that enables "lifelong
-                    # knowledge transfer" for TCI methods.
-                    if method in ("smtr_uniform", "smtr_receiver"):
-                        if method == "smtr_receiver":
-                            bank_entries = bank.get_receiver_validated_memories(rid)
-                        else:
-                            bank_entries = bank.retrieve_validated()
-                        seen = set(task_payloads)
-                        for be in bank_entries:
-                            bp = render_bank_entry_payload(be)
-                            if bp not in seen:
-                                task_payloads.append(bp)
-                                seen.add(bp)
+            # Record memory_size_after
+            memory_size_after = {m: method_states.get(m).memory_size() for m in methods}
+            for method in methods:
+                # Find the corresponding episode row and add memory_size_after
+                for row in episode_rows:
+                    if (row["method"] == method
+                            and row["task_id"] == task.task_id
+                            and row["seed"] == seed
+                            and row["scenario"] == task.scenario):
+                        row["memory_size_after"] = memory_size_after.get(method, 0)
+                        row["n_current_task_candidates"] = len(candidates)
+                        row["n_new_memories_admitted"] = (
+                            memory_size_after.get(method, 0) - memory_size_before.get(method, 0)
+                        )
+                        break
 
-                    per_receiver_payloads[rid] = task_payloads
-
-                # Run evaluation episode with method-specific memory injection.
-                # smtr_receiver uses per-receiver API (no broadcast).
-                # Other methods use broadcast (same payloads for all receivers).
-                if method == "no_memory":
-                    eval_traj = run_task_episode(
-                        task, seed, method, collector,
-                        memory_payloads=[],
-                    )
-                elif method == "smtr_receiver":
-                    # Per-receiver injection: each agent gets ONLY its own payloads.
-                    # No union, no broadcast, no cross-contamination.
-                    eval_traj = run_task_episode(
-                        task, seed, method, collector,
-                        memory_payloads=[],
-                        receiver_memory_payloads=per_receiver_payloads,
-                    )
-                else:
-                    # For methods that select the same memories for all
-                    # receivers (full_memory, retrieval, smtr_uniform),
-                    # use the first receiver's payloads as representative.
-                    first_receiver = receiver_ids[0]
-                    payloads = per_receiver_payloads[first_receiver]
-                    eval_receiver_ids = receiver_ids if payloads else None
-
-                    eval_traj = run_task_episode(
-                        task, seed, method, collector,
-                        memory_payloads=payloads,
-                        receiver_ids=eval_receiver_ids,
-                    )
-
-                # Step 5: Record metrics
-                bank_stats = bank.get_statistics()
-                n_persistent_validated = bank_stats.get("validated", 0)
-                # Count cross-episode reuse: bank memories actually
-                # injected that came from earlier episodes
-                n_cross_episode = sum(
-                    1 for p in per_receiver_payloads.get(receiver_ids[0], [])
-                    if p in _bank_payload_set
-                ) if method in ("smtr_uniform", "smtr_receiver") else 0
-                # Official metric fields — primary paper metrics
-                official_raw = eval_traj.official_metric_raw
-                official_norm = eval_traj.official_metric_normalized
-                official_valid = eval_traj.official_metric_valid
-
-                row = {
-                    "scenario": task.scenario,
-                    "task_id": task.task_id,
-                    "seed": seed,
-                    "method": method,
-                    # Official Task Score — primary paper metrics
-                    "official_task_score_raw": official_raw,
-                    "official_task_score": official_norm,
-                    "official_metric_valid": official_valid,
-                    "official_metric_name": eval_traj.official_metric_name,
-                    # Legacy / diagnostic fields (retained for debugging)
-                    "team_success": eval_traj.team_success,
-                    "team_reward": eval_traj.score,
-                    "n_candidates": len(candidates),
-                    "n_injected": len(payloads) if method != "no_memory" else 0,
-                    "n_persistent_validated": n_persistent_validated,
-                    "n_cross_episode_reuse": n_cross_episode,
-                    "discovery_success": discovery_traj.team_success,
-                    "discovery_score": discovery_traj.score,
-                    "discovery_official_score": discovery_traj.official_metric_normalized,
-                    "real_engine_executed": eval_traj.real_engine_executed,
-                    "engine_duration_seconds": round(eval_traj.engine_duration_seconds, 2),
-                    "n_validations": len(task_validation_records),
-                    "n_validated": sum(
-                        1 for r in task_validation_records if r.decision == "validated"
-                    ),
-                    "n_rejected": sum(
-                        1 for r in task_validation_records if r.decision == "rejected"
-                    ),
-                    "n_invalid": sum(
-                        1 for r in task_validation_records if r.decision == "invalid"
-                    ),
-                }
-                episode_rows.append(row)
-
-            # Snapshot memory pool state after this (task, seed)
+            # Snapshot memory pool state
             memory_history.append({
                 "scenario": task.scenario,
                 "task_id": task.task_id,
                 "seed": seed,
                 "global_step": global_step,
-                **bank.get_statistics(),
+                "task_position": task_position,
+                **method_states.all_statistics(),
             })
             global_step += 1
+            task_position += 1
 
             elapsed = time.time() - t0
             print(f"  ({elapsed:.1f}s, {len(candidates)} candidates)")
 
-    return episode_rows, all_validation_records, memory_history, bank
+    return episode_rows, all_validation_records, memory_history, method_states
 
 
 # ---------------------------------------------------------------------------
@@ -675,7 +610,7 @@ def main() -> None:
         return
 
     # Run experiment
-    episode_rows, validation_records, memory_history, bank = run_online_experiment(
+    episode_rows, validation_records, memory_history, method_states = run_online_experiment(
         tasks=tasks,
         seeds=args.seeds,
         methods=args.methods,
@@ -700,13 +635,13 @@ def main() -> None:
         )
         print(f"Written: {mh_path} ({len(memory_history)} snapshots)")
 
-    # Print bank summary
-    bank_stats = bank.get_statistics()
-    print(f"\nMemory Bank Summary:")
-    print(f"  Total memories: {bank_stats.get('total', 0)}")
-    print(f"  Validated:      {bank_stats.get('validated', 0)}")
-    print(f"  Rejected:       {bank_stats.get('rejected', 0)}")
-    print(f"  Candidate:      {bank_stats.get('candidate', 0)}")
+    # Print bank summary (per-method)
+    all_stats = method_states.all_statistics()
+    print(f"\nMemory Bank Summary (per-method):")
+    for method, stats in all_stats.items():
+        print(f"  {method}: total={stats.get('total', 0)} "
+              f"validated={stats.get('validated', 0)} "
+              f"rejected={stats.get('rejected', 0)}")
 
 
 if __name__ == "__main__":
