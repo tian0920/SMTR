@@ -3,7 +3,7 @@
 These tests ensure:
 1. Delta comes from the official MultiAgentBench metric (not team_success)
 2. team_success is diagnostic-only (never used for delta)
-3. Invalid metrics produce INVALID_OUTCOME (no fallback)
+3. Invalid metrics produce "invalid" decision (no fallback, delta=None)
 4. Expose/withhold matching invariants hold
 
 Tests cover all 5 scenarios: database, research, minecraft, coding, bargaining.
@@ -237,7 +237,7 @@ def test_team_success_different_official_score_same():
 
 
 # ---------------------------------------------------------------------------
-# Test 8: Missing official metric → INVALID_OUTCOME (no fallback)
+# Test 8: Missing official metric → invalid decision (no fallback, delta=None)
 # ---------------------------------------------------------------------------
 
 def test_missing_official_metric_invalid_outcome():
@@ -267,7 +267,7 @@ def test_missing_official_metric_invalid_outcome():
         receiver_id="agent1",
     )
     assert not delta_outcome.is_valid
-    assert delta_outcome.oriented_delta == 0.0  # Undefined → 0
+    assert delta_outcome.oriented_delta is None  # Undefined → None (NOT silent zero)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,418 @@
+2026-08-25 13:21:30,766 [INFO] __main__: Official metric profiling: 200 episodes
+2026-08-25 13:21:30,766 [INFO] __main__: Model: openai/qwen3-30b-a3b
+2026-08-25 13:21:30,766 [INFO] __main__: Scenarios: ['bargaining', 'coding', 'database', 'minecraft', 'research']
+2026-08-25 13:21:30,766 [INFO] __main__: Tasks per scenario: 20
+2026-08-25 13:21:30,766 [INFO] __main__: Seeds: [0, 1]
+2026-08-25 13:21:30,767 [INFO] __main__: 
+============================================================
+Scenario: bargaining
+============================================================
+2026-08-25 13:21:30,782 [INFO] __main__: [1/200] bargaining/1 seed=0
+2026-08-25 13:27:39,964 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=369.2s
+2026-08-25 13:27:39,964 [INFO] __main__: [2/200] bargaining/1 seed=1
+2026-08-25 13:34:44,175 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=424.2s
+2026-08-25 13:34:44,175 [INFO] __main__: [3/200] bargaining/2 seed=0
+2026-08-25 13:40:43,947 [INFO] __main__:   ✅ score=0.708 team_success=True runtime=359.8s
+2026-08-25 13:40:43,947 [INFO] __main__: [4/200] bargaining/2 seed=1
+2026-08-25 13:46:45,109 [INFO] __main__:   ✅ score=0.792 team_success=True runtime=361.2s
+2026-08-25 13:46:45,109 [INFO] __main__: [5/200] bargaining/3 seed=0
+2026-08-25 13:51:37,065 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=292.0s
+2026-08-25 13:51:37,065 [INFO] __main__: [6/200] bargaining/3 seed=1
+2026-08-25 13:53:03,180 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=86.1s
+2026-08-25 13:53:03,180 [INFO] __main__: [7/200] bargaining/4 seed=0
+2026-08-25 13:55:30,450 [INFO] __main__:   ✅ score=0.625 team_success=True runtime=147.3s
+2026-08-25 13:55:30,450 [INFO] __main__: [8/200] bargaining/4 seed=1
+2026-08-25 13:57:59,661 [INFO] __main__:   ✅ score=0.708 team_success=True runtime=149.2s
+2026-08-25 13:57:59,661 [INFO] __main__: [9/200] bargaining/5 seed=0
+2026-08-25 13:59:24,938 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=85.3s
+2026-08-25 13:59:24,938 [INFO] __main__: [10/200] bargaining/5 seed=1
+2026-08-25 14:00:51,163 [INFO] __main__:   ✅ score=0.958 team_success=True runtime=86.2s
+2026-08-25 14:00:51,163 [INFO] __main__: [11/200] bargaining/6 seed=0
+2026-08-25 14:03:20,859 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=149.7s
+2026-08-25 14:03:20,859 [INFO] __main__: [12/200] bargaining/6 seed=1
+2026-08-25 14:04:48,179 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=87.3s
+2026-08-25 14:04:48,180 [INFO] __main__: [13/200] bargaining/7 seed=0
+2026-08-25 14:06:13,044 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=84.9s
+2026-08-25 14:06:13,044 [INFO] __main__: [14/200] bargaining/7 seed=1
+2026-08-25 14:07:38,017 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=85.0s
+2026-08-25 14:07:38,017 [INFO] __main__: [15/200] bargaining/8 seed=0
+2026-08-25 14:16:44,802 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=546.8s
+2026-08-25 14:16:44,802 [INFO] __main__: [16/200] bargaining/8 seed=1
+2026-08-25 14:24:48,728 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=483.9s
+2026-08-25 14:24:48,728 [INFO] __main__: [17/200] bargaining/9 seed=0
+2026-08-25 14:26:12,745 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=84.0s
+2026-08-25 14:26:12,745 [INFO] __main__: [18/200] bargaining/9 seed=1
+2026-08-25 14:27:38,424 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=85.7s
+2026-08-25 14:27:38,424 [INFO] __main__: [19/200] bargaining/10 seed=0
+2026-08-25 14:30:06,122 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=147.7s
+2026-08-25 14:30:06,122 [INFO] __main__: [20/200] bargaining/10 seed=1
+2026-08-25 14:31:31,792 [INFO] __main__:   ✅ score=0.625 team_success=True runtime=85.7s
+2026-08-25 14:31:31,792 [INFO] __main__: [21/200] bargaining/11 seed=0
+2026-08-25 14:37:27,453 [INFO] __main__:   ✅ score=0.625 team_success=True runtime=355.7s
+2026-08-25 14:37:27,453 [INFO] __main__: [22/200] bargaining/11 seed=1
+2026-08-25 14:38:51,192 [INFO] __main__:   ✅ score=0.583 team_success=True runtime=83.7s
+2026-08-25 14:38:51,192 [INFO] __main__: [23/200] bargaining/12 seed=0
+2026-08-25 14:47:01,317 [INFO] __main__:   ✅ score=0.792 team_success=True runtime=490.1s
+2026-08-25 14:47:01,317 [INFO] __main__: [24/200] bargaining/12 seed=1
+2026-08-25 14:55:11,380 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=490.1s
+2026-08-25 14:55:11,380 [INFO] __main__: [25/200] bargaining/13 seed=0
+2026-08-25 14:57:45,775 [INFO] __main__:   ✅ score=0.583 team_success=True runtime=154.4s
+2026-08-25 14:57:45,775 [INFO] __main__: [26/200] bargaining/13 seed=1
+2026-08-25 14:59:12,495 [INFO] __main__:   ✅ score=0.708 team_success=True runtime=86.7s
+2026-08-25 14:59:12,495 [INFO] __main__: [27/200] bargaining/14 seed=0
+2026-08-25 15:00:37,505 [INFO] __main__:   ✅ score=0.583 team_success=True runtime=85.0s
+2026-08-25 15:00:37,505 [INFO] __main__: [28/200] bargaining/14 seed=1
+2026-08-25 15:02:03,678 [INFO] __main__:   ✅ score=0.625 team_success=True runtime=86.2s
+2026-08-25 15:02:03,678 [INFO] __main__: [29/200] bargaining/15 seed=0
+2026-08-25 15:03:30,708 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=87.0s
+2026-08-25 15:03:30,708 [INFO] __main__: [30/200] bargaining/15 seed=1
+2026-08-25 15:04:53,465 [INFO] __main__:   ✅ score=0.750 team_success=True runtime=82.8s
+2026-08-25 15:04:53,465 [INFO] __main__: [31/200] bargaining/16 seed=0
+2026-08-25 15:06:17,506 [INFO] __main__:   ✅ score=0.625 team_success=True runtime=84.0s
+2026-08-25 15:06:17,506 [INFO] __main__: [32/200] bargaining/16 seed=1
+2026-08-25 15:08:45,527 [INFO] __main__:   ✅ score=0.625 team_success=True runtime=148.0s
+2026-08-25 15:08:45,527 [INFO] __main__: [33/200] bargaining/17 seed=0
+2026-08-25 15:11:15,426 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=149.9s
+2026-08-25 15:11:15,426 [INFO] __main__: [34/200] bargaining/17 seed=1
+2026-08-25 15:12:42,881 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=87.5s
+2026-08-25 15:12:42,881 [INFO] __main__: [35/200] bargaining/18 seed=0
+2026-08-25 15:20:50,371 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=487.5s
+2026-08-25 15:20:50,371 [INFO] __main__: [36/200] bargaining/18 seed=1
+2026-08-25 15:23:25,833 [INFO] __main__:   ✅ score=0.708 team_success=True runtime=155.5s
+2026-08-25 15:23:25,833 [INFO] __main__: [37/200] bargaining/19 seed=0
+2026-08-25 15:25:53,445 [INFO] __main__:   ✅ score=0.792 team_success=True runtime=147.6s
+2026-08-25 15:25:53,445 [INFO] __main__: [38/200] bargaining/19 seed=1
+2026-08-25 15:28:21,008 [INFO] __main__:   ✅ score=0.792 team_success=True runtime=147.6s
+2026-08-25 15:28:21,008 [INFO] __main__: [39/200] bargaining/20 seed=0
+2026-08-25 15:34:23,783 [INFO] __main__:   ✅ score=0.958 team_success=True runtime=362.8s
+2026-08-25 15:34:23,783 [INFO] __main__: [40/200] bargaining/20 seed=1
+2026-08-25 15:39:16,428 [INFO] __main__:   ✅ score=0.792 team_success=True runtime=292.6s
+2026-08-25 15:39:16,428 [INFO] __main__: 
+============================================================
+Scenario: coding
+============================================================
+2026-08-25 15:39:16,430 [INFO] __main__: [41/200] coding/1 seed=0
+2026-08-25 15:40:24,322 [INFO] __main__:   ✅ score=0.500 team_success=True runtime=67.9s
+2026-08-25 15:40:24,322 [INFO] __main__: [42/200] coding/1 seed=1
+2026-08-25 15:42:12,825 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=108.5s
+2026-08-25 15:42:12,826 [INFO] __main__: [43/200] coding/2 seed=0
+2026-08-25 15:42:49,629 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=36.8s
+2026-08-25 15:42:49,630 [INFO] __main__: [44/200] coding/2 seed=1
+2026-08-25 15:43:50,121 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=60.5s
+2026-08-25 15:43:50,121 [INFO] __main__: [45/200] coding/3 seed=0
+2026-08-25 15:44:02,265 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=12.1s
+2026-08-25 15:44:02,265 [INFO] __main__: [46/200] coding/3 seed=1
+2026-08-25 15:45:01,120 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=58.9s
+2026-08-25 15:45:01,120 [INFO] __main__: [47/200] coding/4 seed=0
+2026-08-25 15:45:33,536 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=32.4s
+2026-08-25 15:45:33,536 [INFO] __main__: [48/200] coding/4 seed=1
+2026-08-25 15:47:27,920 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=114.4s
+2026-08-25 15:47:27,920 [INFO] __main__: [49/200] coding/5 seed=0
+2026-08-25 15:48:03,769 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=35.8s
+2026-08-25 15:48:03,769 [INFO] __main__: [50/200] coding/5 seed=1
+2026-08-25 15:49:02,805 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=59.0s
+2026-08-25 15:49:02,805 [INFO] __main__: [51/200] coding/6 seed=0
+2026-08-25 15:50:11,818 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=69.0s
+2026-08-25 15:50:11,818 [INFO] __main__: [52/200] coding/6 seed=1
+2026-08-25 15:51:56,428 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=104.6s
+2026-08-25 15:51:56,428 [INFO] __main__: [53/200] coding/7 seed=0
+2026-08-25 15:52:51,006 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=54.6s
+2026-08-25 15:52:51,006 [INFO] __main__: [54/200] coding/7 seed=1
+2026-08-25 15:53:59,146 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=68.1s
+2026-08-25 15:53:59,146 [INFO] __main__: [55/200] coding/8 seed=0
+2026-08-25 15:54:51,190 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=52.0s
+2026-08-25 15:54:51,190 [INFO] __main__: [56/200] coding/8 seed=1
+2026-08-25 15:55:05,620 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=14.4s
+2026-08-25 15:55:05,620 [INFO] __main__: [57/200] coding/9 seed=0
+2026-08-25 15:55:22,339 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=16.7s
+2026-08-25 15:55:22,339 [INFO] __main__: [58/200] coding/9 seed=1
+2026-08-25 15:55:38,957 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=16.6s
+2026-08-25 15:55:38,957 [INFO] __main__: [59/200] coding/10 seed=0
+2026-08-25 15:56:52,081 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=73.1s
+2026-08-25 15:56:52,081 [INFO] __main__: [60/200] coding/10 seed=1
+2026-08-25 15:58:05,016 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=72.9s
+2026-08-25 15:58:05,016 [INFO] __main__: [61/200] coding/11 seed=0
+2026-08-25 15:59:01,987 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=57.0s
+2026-08-25 15:59:01,987 [INFO] __main__: [62/200] coding/11 seed=1
+2026-08-25 16:00:13,350 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=71.4s
+2026-08-25 16:00:13,351 [INFO] __main__: [63/200] coding/12 seed=0
+2026-08-25 16:00:27,871 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=14.5s
+2026-08-25 16:00:27,871 [INFO] __main__: [64/200] coding/12 seed=1
+2026-08-25 16:00:42,253 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=14.4s
+2026-08-25 16:00:42,253 [INFO] __main__: [65/200] coding/13 seed=0
+2026-08-25 16:00:59,170 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=16.9s
+2026-08-25 16:00:59,170 [INFO] __main__: [66/200] coding/13 seed=1
+2026-08-25 16:02:10,173 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=71.0s
+2026-08-25 16:02:10,173 [INFO] __main__: [67/200] coding/14 seed=0
+2026-08-25 16:03:18,597 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=68.4s
+2026-08-25 16:03:18,597 [INFO] __main__: [68/200] coding/14 seed=1
+2026-08-25 16:04:18,664 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=60.1s
+2026-08-25 16:04:18,664 [INFO] __main__: [69/200] coding/15 seed=0
+2026-08-25 16:04:54,693 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=36.0s
+2026-08-25 16:04:54,694 [INFO] __main__: [70/200] coding/15 seed=1
+2026-08-25 16:05:41,437 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=46.7s
+2026-08-25 16:05:41,437 [INFO] __main__: [71/200] coding/16 seed=0
+2026-08-25 16:06:43,491 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=62.1s
+2026-08-25 16:06:43,491 [INFO] __main__: [72/200] coding/16 seed=1
+2026-08-25 16:06:57,778 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=14.3s
+2026-08-25 16:06:57,778 [INFO] __main__: [73/200] coding/17 seed=0
+2026-08-25 16:08:17,464 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=79.7s
+2026-08-25 16:08:17,464 [INFO] __main__: [74/200] coding/17 seed=1
+2026-08-25 16:09:17,275 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=59.8s
+2026-08-25 16:09:17,275 [INFO] __main__: [75/200] coding/18 seed=0
+2026-08-25 16:10:42,303 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=85.0s
+2026-08-25 16:10:42,303 [INFO] __main__: [76/200] coding/18 seed=1
+2026-08-25 16:12:20,418 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=98.1s
+2026-08-25 16:12:20,418 [INFO] __main__: [77/200] coding/19 seed=0
+2026-08-25 16:13:22,649 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=62.2s
+2026-08-25 16:13:22,649 [INFO] __main__: [78/200] coding/19 seed=1
+2026-08-25 16:15:01,527 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=98.9s
+2026-08-25 16:15:01,527 [INFO] __main__: [79/200] coding/20 seed=0
+2026-08-25 16:15:16,522 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=15.0s
+2026-08-25 16:15:16,522 [INFO] __main__: [80/200] coding/20 seed=1
+2026-08-25 16:15:34,964 [INFO] __main__:   ✅ score=0.312 team_success=True runtime=18.4s
+2026-08-25 16:15:34,964 [INFO] __main__: 
+============================================================
+Scenario: database
+============================================================
+2026-08-25 16:15:34,966 [INFO] __main__: [81/200] database/1 seed=0
+2026-08-25 16:19:02,602 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=207.6s
+2026-08-25 16:19:02,602 [INFO] __main__: [82/200] database/1 seed=1
+2026-08-25 16:22:19,953 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=197.4s
+2026-08-25 16:22:19,953 [INFO] __main__: [83/200] database/2 seed=0
+2026-08-25 16:25:40,640 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=200.7s
+2026-08-25 16:25:40,640 [INFO] __main__: [84/200] database/2 seed=1
+2026-08-25 16:28:58,044 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=197.4s
+2026-08-25 16:28:58,044 [INFO] __main__: [85/200] database/3 seed=0
+2026-08-25 16:32:07,201 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=189.2s
+2026-08-25 16:32:07,201 [INFO] __main__: [86/200] database/3 seed=1
+2026-08-25 16:35:18,033 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=190.8s
+2026-08-25 16:35:18,033 [INFO] __main__: [87/200] database/4 seed=0
+2026-08-25 16:38:37,242 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=199.2s
+2026-08-25 16:38:37,242 [INFO] __main__: [88/200] database/4 seed=1
+2026-08-25 16:41:54,208 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=197.0s
+2026-08-25 16:41:54,208 [INFO] __main__: [89/200] database/5 seed=0
+2026-08-25 16:44:54,998 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=180.8s
+2026-08-25 16:44:54,998 [INFO] __main__: [90/200] database/5 seed=1
+2026-08-25 16:47:45,887 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=170.9s
+2026-08-25 16:47:45,887 [INFO] __main__: [91/200] database/6 seed=0
+2026-08-25 16:50:22,409 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=156.5s
+2026-08-25 16:50:22,409 [INFO] __main__: [92/200] database/6 seed=1
+2026-08-25 16:52:41,877 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=139.5s
+2026-08-25 16:52:41,877 [INFO] __main__: [93/200] database/7 seed=0
+2026-08-25 16:54:47,937 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=126.1s
+2026-08-25 16:54:47,937 [INFO] __main__: [94/200] database/7 seed=1
+2026-08-25 16:57:13,485 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=145.5s
+2026-08-25 16:57:13,485 [INFO] __main__: [95/200] database/8 seed=0
+2026-08-25 17:00:31,103 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=197.6s
+2026-08-25 17:00:31,103 [INFO] __main__: [96/200] database/8 seed=1
+2026-08-25 17:03:25,529 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=174.4s
+2026-08-25 17:03:25,529 [INFO] __main__: [97/200] database/9 seed=0
+2026-08-25 17:05:21,019 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=115.5s
+2026-08-25 17:05:21,019 [INFO] __main__: [98/200] database/9 seed=1
+2026-08-25 17:07:40,870 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=139.9s
+2026-08-25 17:07:40,870 [INFO] __main__: [99/200] database/10 seed=0
+2026-08-25 17:10:51,142 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=190.3s
+2026-08-25 17:10:51,142 [INFO] __main__: [100/200] database/10 seed=1
+2026-08-25 17:14:04,558 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=193.4s
+2026-08-25 17:14:04,558 [INFO] __main__: [101/200] database/11 seed=0
+2026-08-25 17:16:23,334 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=138.8s
+2026-08-25 17:16:23,334 [INFO] __main__: [102/200] database/11 seed=1
+2026-08-25 17:19:00,199 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=156.9s
+2026-08-25 17:19:00,199 [INFO] __main__: [103/200] database/12 seed=0
+2026-08-25 17:22:08,867 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=188.7s
+2026-08-25 17:22:08,867 [INFO] __main__: [104/200] database/12 seed=1
+2026-08-25 17:25:17,577 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=188.7s
+2026-08-25 17:25:17,577 [INFO] __main__: [105/200] database/13 seed=0
+2026-08-25 17:28:22,666 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=185.1s
+2026-08-25 17:28:22,666 [INFO] __main__: [106/200] database/13 seed=1
+2026-08-25 17:31:33,343 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=190.7s
+2026-08-25 17:31:33,343 [INFO] __main__: [107/200] database/14 seed=0
+2026-08-25 17:34:18,021 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=164.7s
+2026-08-25 17:34:18,021 [INFO] __main__: [108/200] database/14 seed=1
+2026-08-25 17:36:59,401 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=161.4s
+2026-08-25 17:36:59,401 [INFO] __main__: [109/200] database/15 seed=0
+2026-08-25 17:39:52,480 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=173.1s
+2026-08-25 17:39:52,480 [INFO] __main__: [110/200] database/15 seed=1
+2026-08-25 17:42:58,301 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=185.8s
+2026-08-25 17:42:58,301 [INFO] __main__: [111/200] database/16 seed=0
+2026-08-25 17:45:43,209 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=164.9s
+2026-08-25 17:45:43,209 [INFO] __main__: [112/200] database/16 seed=1
+2026-08-25 17:48:54,715 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=191.5s
+2026-08-25 17:48:54,715 [INFO] __main__: [113/200] database/17 seed=0
+2026-08-25 17:52:12,130 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=197.4s
+2026-08-25 17:52:12,130 [INFO] __main__: [114/200] database/17 seed=1
+2026-08-25 17:55:24,188 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=192.1s
+2026-08-25 17:55:24,188 [INFO] __main__: [115/200] database/18 seed=0
+2026-08-25 17:58:28,710 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=184.5s
+2026-08-25 17:58:28,710 [INFO] __main__: [116/200] database/18 seed=1
+2026-08-25 18:01:33,135 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=184.4s
+2026-08-25 18:01:33,135 [INFO] __main__: [117/200] database/19 seed=0
+2026-08-25 18:04:42,299 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=189.2s
+2026-08-25 18:04:42,299 [INFO] __main__: [118/200] database/19 seed=1
+2026-08-25 18:08:08,247 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=205.9s
+2026-08-25 18:08:08,247 [INFO] __main__: [119/200] database/20 seed=0
+2026-08-25 18:11:23,345 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=195.1s
+2026-08-25 18:11:23,345 [INFO] __main__: [120/200] database/20 seed=1
+2026-08-25 18:14:54,910 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=211.6s
+2026-08-25 18:14:54,910 [INFO] __main__: 
+============================================================
+Scenario: minecraft
+============================================================
+2026-08-25 18:14:54,911 [INFO] __main__: [121/200] minecraft/1 seed=0
+2026-08-25 18:21:28,852 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=393.9s
+2026-08-25 18:21:28,852 [INFO] __main__: [122/200] minecraft/1 seed=1
+2026-08-25 18:27:21,015 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=352.2s
+2026-08-25 18:27:21,016 [INFO] __main__: [123/200] minecraft/2 seed=0
+2026-08-25 18:34:32,235 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=431.2s
+2026-08-25 18:34:32,235 [INFO] __main__: [124/200] minecraft/2 seed=1
+2026-08-25 18:40:39,805 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=367.6s
+2026-08-25 18:40:39,805 [INFO] __main__: [125/200] minecraft/3 seed=0
+2026-08-25 18:47:24,130 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=404.3s
+2026-08-25 18:47:24,130 [INFO] __main__: [126/200] minecraft/3 seed=1
+2026-08-25 18:54:28,113 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=424.0s
+2026-08-25 18:54:28,113 [INFO] __main__: [127/200] minecraft/4 seed=0
+2026-08-25 19:03:43,983 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=555.9s
+2026-08-25 19:03:43,983 [INFO] __main__: [128/200] minecraft/4 seed=1
+2026-08-25 19:09:38,602 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=354.6s
+2026-08-25 19:09:38,602 [INFO] __main__: [129/200] minecraft/5 seed=0
+2026-08-25 19:16:27,789 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=409.2s
+2026-08-25 19:16:27,789 [INFO] __main__: [130/200] minecraft/5 seed=1
+2026-08-25 19:22:19,841 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=352.1s
+2026-08-25 19:22:19,841 [INFO] __main__: [131/200] minecraft/6 seed=0
+2026-08-25 19:27:42,500 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=322.7s
+2026-08-25 19:27:42,501 [INFO] __main__: [132/200] minecraft/6 seed=1
+2026-08-25 19:33:43,834 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=361.3s
+2026-08-25 19:33:43,834 [INFO] __main__: [133/200] minecraft/7 seed=0
+2026-08-25 19:40:42,874 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=419.0s
+2026-08-25 19:40:42,874 [INFO] __main__: [134/200] minecraft/7 seed=1
+2026-08-25 19:48:27,511 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=464.6s
+2026-08-25 19:48:27,511 [INFO] __main__: [135/200] minecraft/8 seed=0
+2026-08-25 19:55:04,409 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=396.9s
+2026-08-25 19:55:04,409 [INFO] __main__: [136/200] minecraft/8 seed=1
+2026-08-25 20:00:15,328 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=310.9s
+2026-08-25 20:00:15,328 [INFO] __main__: [137/200] minecraft/9 seed=0
+2026-08-25 20:06:12,509 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=357.2s
+2026-08-25 20:06:12,509 [INFO] __main__: [138/200] minecraft/9 seed=1
+2026-08-25 20:11:17,565 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=305.1s
+2026-08-25 20:11:17,565 [INFO] __main__: [139/200] minecraft/10 seed=0
+2026-08-25 20:17:22,806 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=365.2s
+2026-08-25 20:17:22,806 [INFO] __main__: [140/200] minecraft/10 seed=1
+2026-08-25 20:26:40,735 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=557.9s
+2026-08-25 20:26:40,735 [INFO] __main__: [141/200] minecraft/11 seed=0
+2026-08-25 20:36:49,777 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=609.0s
+2026-08-25 20:36:49,777 [INFO] __main__: [142/200] minecraft/11 seed=1
+2026-08-25 20:41:51,450 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=301.7s
+2026-08-25 20:41:51,450 [INFO] __main__: [143/200] minecraft/12 seed=0
+2026-08-25 20:50:08,373 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=496.9s
+2026-08-25 20:50:08,373 [INFO] __main__: [144/200] minecraft/12 seed=1
+2026-08-25 20:57:35,420 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=447.0s
+2026-08-25 20:57:35,420 [INFO] __main__: [145/200] minecraft/13 seed=0
+2026-08-25 21:07:15,822 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=580.4s
+2026-08-25 21:07:15,822 [INFO] __main__: [146/200] minecraft/13 seed=1
+2026-08-25 21:13:13,062 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=357.2s
+2026-08-25 21:13:13,062 [INFO] __main__: [147/200] minecraft/14 seed=0
+2026-08-25 21:19:25,282 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=372.2s
+2026-08-25 21:19:25,282 [INFO] __main__: [148/200] minecraft/14 seed=1
+2026-08-25 21:28:23,054 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=537.8s
+2026-08-25 21:28:23,054 [INFO] __main__: [149/200] minecraft/15 seed=0
+2026-08-25 21:35:00,396 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=397.3s
+2026-08-25 21:35:00,397 [INFO] __main__: [150/200] minecraft/15 seed=1
+2026-08-25 21:40:38,116 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=337.7s
+2026-08-25 21:40:38,116 [INFO] __main__: [151/200] minecraft/16 seed=0
+2026-08-25 21:46:44,198 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=366.1s
+2026-08-25 21:46:44,198 [INFO] __main__: [152/200] minecraft/16 seed=1
+2026-08-25 21:54:09,286 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=445.1s
+2026-08-25 21:54:09,286 [INFO] __main__: [153/200] minecraft/17 seed=0
+2026-08-25 22:00:08,852 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=359.6s
+2026-08-25 22:00:08,852 [INFO] __main__: [154/200] minecraft/17 seed=1
+2026-08-25 22:07:36,646 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=447.8s
+2026-08-25 22:07:36,647 [INFO] __main__: [155/200] minecraft/18 seed=0
+2026-08-25 22:13:23,823 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=347.2s
+2026-08-25 22:13:23,823 [INFO] __main__: [156/200] minecraft/18 seed=1
+2026-08-25 22:22:22,138 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=538.3s
+2026-08-25 22:22:22,138 [INFO] __main__: [157/200] minecraft/19 seed=0
+2026-08-25 22:28:46,244 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=384.1s
+2026-08-25 22:28:46,244 [INFO] __main__: [158/200] minecraft/19 seed=1
+2026-08-25 22:34:27,472 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=341.2s
+2026-08-25 22:34:27,472 [INFO] __main__: [159/200] minecraft/20 seed=0
+2026-08-25 22:44:28,519 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=601.0s
+2026-08-25 22:44:28,519 [INFO] __main__: [160/200] minecraft/20 seed=1
+2026-08-25 22:52:00,421 [INFO] __main__:   ✅ score=0.000 team_success=True runtime=451.9s
+2026-08-25 22:52:00,421 [INFO] __main__: 
+============================================================
+Scenario: research
+============================================================
+2026-08-25 22:52:00,423 [INFO] __main__: [161/200] research/1 seed=0
+2026-08-25 22:52:49,689 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=49.3s
+2026-08-25 22:52:49,689 [INFO] __main__: [162/200] research/1 seed=1
+2026-08-25 22:56:55,922 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=246.2s
+2026-08-25 22:56:55,922 [INFO] __main__: [163/200] research/2 seed=0
+2026-08-25 22:57:46,203 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=50.3s
+2026-08-25 22:57:46,203 [INFO] __main__: [164/200] research/2 seed=1
+2026-08-25 22:59:03,101 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=76.9s
+2026-08-25 22:59:03,101 [INFO] __main__: [165/200] research/3 seed=0
+2026-08-25 23:01:07,394 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=124.3s
+2026-08-25 23:01:07,394 [INFO] __main__: [166/200] research/3 seed=1
+2026-08-25 23:03:22,853 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=135.5s
+2026-08-25 23:03:22,853 [INFO] __main__: [167/200] research/4 seed=0
+2026-08-25 23:04:01,654 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=4
+2026-08-25 23:04:01,654 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=4 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-25 23:04:01,655 [INFO] __main__:   ❌ score=None team_success=False runtime=38.8s
+2026-08-25 23:04:01,655 [INFO] __main__: [168/200] research/4 seed=1
+2026-08-25 23:04:40,514 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=4
+2026-08-25 23:04:40,514 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=4 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-25 23:04:40,514 [INFO] __main__:   ❌ score=None team_success=False runtime=38.9s
+2026-08-25 23:04:40,514 [INFO] __main__: [169/200] research/5 seed=0
+2026-08-25 23:06:32,755 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=112.2s
+2026-08-25 23:06:32,755 [INFO] __main__: [170/200] research/5 seed=1
+2026-08-25 23:08:30,992 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=118.2s
+2026-08-25 23:08:30,993 [INFO] __main__: [171/200] research/6 seed=0
+2026-08-25 23:09:09,772 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=38.8s
+2026-08-25 23:09:09,772 [INFO] __main__: [172/200] research/6 seed=1
+2026-08-25 23:09:48,990 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=39.2s
+2026-08-25 23:09:48,990 [INFO] __main__: [173/200] research/7 seed=0
+2026-08-25 23:12:31,375 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=162.4s
+2026-08-25 23:12:31,375 [INFO] __main__: [174/200] research/7 seed=1
+2026-08-25 23:13:08,279 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=36.9s
+2026-08-25 23:13:08,279 [INFO] __main__: [175/200] research/8 seed=0
+2026-08-25 23:15:04,392 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=116.1s
+2026-08-25 23:15:04,392 [INFO] __main__: [176/200] research/8 seed=1
+2026-08-25 23:16:46,611 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=102.2s
+2026-08-25 23:16:46,611 [INFO] __main__: [177/200] research/9 seed=0
+2026-08-25 23:21:41,610 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=295.0s
+2026-08-25 23:21:41,610 [INFO] __main__: [178/200] research/9 seed=1
+2026-08-25 23:24:33,090 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=171.5s
+2026-08-25 23:24:33,090 [INFO] __main__: [179/200] research/10 seed=0
+2026-08-25 23:35:56,047 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=683.0s
+2026-08-25 23:35:56,047 [INFO] __main__: [180/200] research/10 seed=1
+2026-08-25 23:47:12,744 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=676.7s
+2026-08-25 23:47:12,745 [INFO] __main__: [181/200] research/11 seed=0
+2026-08-25 23:52:06,454 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=293.7s
+2026-08-25 23:52:06,454 [INFO] __main__: [182/200] research/11 seed=1
+2026-08-25 23:56:00,639 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=234.2s
+2026-08-25 23:56:00,639 [INFO] __main__: [183/200] research/12 seed=0
+2026-08-26 00:04:17,926 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=497.3s
+2026-08-26 00:04:17,926 [INFO] __main__: [184/200] research/12 seed=1
+2026-08-26 00:07:47,195 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=209.3s
+2026-08-26 00:07:47,195 [INFO] __main__: [185/200] research/13 seed=0
+2026-08-26 00:10:32,315 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=165.1s
+2026-08-26 00:10:32,315 [INFO] __main__: [186/200] research/13 seed=1
+2026-08-26 00:13:52,404 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=200.1s
+2026-08-26 00:13:52,404 [INFO] __main__: [187/200] research/14 seed=0
+2026-08-26 00:15:38,556 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=106.2s
+2026-08-26 00:15:38,556 [INFO] __main__: [188/200] research/14 seed=1
+2026-08-26 00:17:23,870 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=105.3s
+2026-08-26 00:17:23,870 [INFO] __main__: [189/200] research/15 seed=0
+2026-08-26 00:20:29,856 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=186.0s
+2026-08-26 00:20:29,856 [INFO] __main__: [190/200] research/15 seed=1
+2026-08-26 00:22:40,224 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=130.4s
+2026-08-26 00:22:40,224 [INFO] __main__: [191/200] research/16 seed=0
+2026-08-26 00:24:48,160 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=127.9s
+2026-08-26 00:24:48,160 [INFO] __main__: [192/200] research/16 seed=1
+2026-08-26 00:27:08,226 [INFO] __main__:   ✅ score=0.833 team_success=True runtime=140.1s
+2026-08-26 00:27:08,226 [INFO] __main__: [193/200] research/17 seed=0
+2026-08-26 00:28:05,248 [INFO] __main__:   ✅ score=0.667 team_success=True runtime=57.0s
+2026-08-26 00:28:05,248 [INFO] __main__: [194/200] research/17 seed=1
+2026-08-26 00:28:29,514 [INFO] __main__:   ✅ score=0.917 team_success=True runtime=24.3s
+2026-08-26 00:28:29,514 [INFO] __main__: [195/200] research/18 seed=0

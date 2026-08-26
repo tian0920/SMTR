@@ -1,0 +1,13 @@
+Running 3 tasks x 2 seeds = 6 episodes
+  research/18 seed=0... task_evaluation is missing/empty for scenario=research, task_id=18
+evaluator_failure: scenario=research task_id=18 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+❌ score=None runtime=42s
+  research/18 seed=1... task_evaluation is missing/empty for scenario=research, task_id=18
+evaluator_failure: scenario=research task_id=18 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+❌ score=None runtime=41s
+  research/19 seed=0... ✅ score=0.917 runtime=130s
+  research/19 seed=1... ✅ score=0.917 runtime=69s
+  research/20 seed=0... ✅ score=0.833 runtime=87s
+  research/20 seed=1... ✅ score=0.833 runtime=77s
+DONE
+ALL_DONE2

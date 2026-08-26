@@ -21,8 +21,8 @@ Decision rule (threshold-free, identical to offline):
 
 If either branch has ``official_metric_valid=False``:
 
-* ``validation_status = "INVALID_OUTCOME"``
-* delta is undefined (NaN)
+* ``validation_status = "invalid"``
+* delta is None (undefined)
 * The record is NOT admitted or rejected — it is excluded.
 
 Safety constraint
@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 # Validation status constants
 VALIDATION_STATUS_VALIDATED = "validated"
 VALIDATION_STATUS_REJECTED = "rejected"
-VALIDATION_STATUS_INVALID = "INVALID_OUTCOME"
+VALIDATION_STATUS_INVALID = "invalid"
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,7 @@ class OnlineValidationRecord:
         normalized_expose_score: Normalized [0,1] expose score.
         normalized_withhold_score: Normalized [0,1] withhold score.
         delta: normalized_expose - normalized_withhold (NaN if invalid).
-        decision: "validated" | "rejected" | "INVALID_OUTCOME".
+        decision: "validated" | "rejected" | "invalid".
         expose_metric_valid: Whether expose branch metric is valid.
         withhold_metric_valid: Whether withhold branch metric is valid.
         expose_success: DIAGNOSTIC ONLY — binary team_success for expose.
@@ -107,8 +107,8 @@ class OnlineValidationRecord:
     raw_withhold_score: float | None = None
     normalized_expose_score: float | None = None
     normalized_withhold_score: float | None = None
-    delta: float = 0.0
-    decision: str = VALIDATION_STATUS_REJECTED
+    delta: float | None = None
+    decision: str = VALIDATION_STATUS_REJECTED  # "validated" | "rejected" | "invalid"
 
     # Metric validity
     expose_metric_valid: bool = False
@@ -251,7 +251,7 @@ class OnlineReceiverInterventionEvaluator:
             expose_score = expose_traj.official_metric_normalized
             withhold_score = withhold_traj.official_metric_normalized
             assert expose_score is not None and withhold_score is not None
-            delta = expose_score - withhold_score
+            delta: float | None = expose_score - withhold_score
             decision = (
                 VALIDATION_STATUS_VALIDATED
                 if delta > 0
@@ -260,9 +260,11 @@ class OnlineReceiverInterventionEvaluator:
             error_msg = None
         else:
             # At least one branch has invalid metric → INVALID_OUTCOME
+            # delta is UNDEFINED (None), NOT silent zero.
+            # This prevents invalid → delta=0 → rejected confusion.
             expose_score = expose_traj.official_metric_normalized
             withhold_score = withhold_traj.official_metric_normalized
-            delta = 0.0
+            delta = None
             decision = VALIDATION_STATUS_INVALID
             reasons = []
             if not expose_metric_valid:

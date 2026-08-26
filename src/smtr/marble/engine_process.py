@@ -591,11 +591,13 @@ def _smtr_inject_memories():
     except Exception:
         return
     receiver_ids = set(payload.get("receiver_agent_ids", []))
+    intervention_id = payload.get("intervention_id", "unknown")
+    if not receiver_ids:
+        return
+    # Determine injection mode: per-receiver map or legacy broadcast
+    receiver_payload_map = payload.get("receiver_payload_map")
     memory_payloads = payload.get("memory_payloads", [])
     memory_ids = payload.get("memory_ids", [])
-    intervention_id = payload.get("intervention_id", "unknown")
-    if not receiver_ids or not memory_payloads:
-        return
     try:
         from marble.engine.engine import Engine
     except ImportError:
@@ -603,7 +605,21 @@ def _smtr_inject_memories():
     _original_start = Engine.start
     def _patched_start(self):
         for agent in self.agents:
-            if agent.agent_id in receiver_ids:
+            if agent.agent_id not in receiver_ids:
+                continue
+            if receiver_payload_map is not None:
+                # Per-receiver mode: each agent gets ONLY its own payloads
+                agent_payloads = receiver_payload_map.get(agent.agent_id, [])
+                for idx, mem_payload in enumerate(agent_payloads):
+                    mem_id = f"mem_{{agent.agent_id}}_{{idx}}"
+                    wrapped = (
+                        f"[SMTR_PROCEDURAL_MEMORY:id={{mem_id}}:intervention={{intervention_id}}]"
+                        f"\\n{{mem_payload}}"
+                        f"\\n[/SMTR_PROCEDURAL_MEMORY]"
+                    )
+                    agent.memory.update("smtr_procedural", wrapped)
+            else:
+                # Legacy broadcast mode: all payloads to all receivers
                 for idx, mem_payload in enumerate(memory_payloads):
                     mem_id = memory_ids[idx] if idx < len(memory_ids) else f"mem_{{idx}}"
                     wrapped = (

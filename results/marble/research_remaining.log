@@ -1,0 +1,13 @@
+Remaining: 3 tasks x 2 seeds = 6 episodes
+  research/18 seed=0... task_evaluation is missing/empty for scenario=research, task_id=18
+evaluator_failure: scenario=research task_id=18 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+ERROR: OfficialMetricOutcomeEvaluator.evaluate() takes 1 positional argument but 2 were given
+  research/18 seed=1... task_evaluation is missing/empty for scenario=research, task_id=18
+evaluator_failure: scenario=research task_id=18 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+ERROR: OfficialMetricOutcomeEvaluator.evaluate() takes 1 positional argument but 2 were given
+  research/19 seed=0... ERROR: OfficialMetricOutcomeEvaluator.evaluate() takes 1 positional argument but 2 were given
+  research/19 seed=1... ERROR: OfficialMetricOutcomeEvaluator.evaluate() takes 1 positional argument but 2 were given
+  research/20 seed=0... ERROR: OfficialMetricOutcomeEvaluator.evaluate() takes 1 positional argument but 2 were given
+  research/20 seed=1... ERROR: OfficialMetricOutcomeEvaluator.evaluate() takes 1 positional argument but 2 were given
+DONE
+ALL_DONE

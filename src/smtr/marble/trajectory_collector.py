@@ -170,6 +170,7 @@ class TrajectoryCollector:
         method: str = "no_memory",
         memory_payloads: list[str] | None = None,
         receiver_agent_ids: list[str] | None = None,
+        receiver_memory_payloads: dict[str, list[str]] | None = None,
     ) -> Trajectory:
         """Run one MARBLE episode and collect the trajectory.
 
@@ -177,12 +178,27 @@ class TrajectoryCollector:
             task: The MARBLE task to execute.
             seed: Generation seed for reproducibility.
             method: Name of the memory injection method.
-            memory_payloads: Rendered memory strings to inject.
-            receiver_agent_ids: Agent IDs that receive memory injection.
+            memory_payloads: (Legacy broadcast) Rendered memory strings to inject
+                into ALL receivers. Mutually exclusive with
+                ``receiver_memory_payloads``.
+            receiver_agent_ids: (Legacy broadcast) Agent IDs that receive memory.
+                Used with ``memory_payloads``.
+            receiver_memory_payloads: (New per-receiver API) Mapping of
+                ``agent_id -> [payload_strings]``. Each receiver only gets
+                its own payloads — no cross-contamination.
+                Mutually exclusive with ``memory_payloads``.
 
         Returns:
             A ``Trajectory`` with all collected data.
         """
+        # Validate mutually exclusive APIs
+        if receiver_memory_payloads is not None:
+            if memory_payloads is not None or receiver_agent_ids is not None:
+                raise ValueError(
+                    "receiver_memory_payloads is mutually exclusive with "
+                    "memory_payloads/receiver_agent_ids"
+                )
+
         trajectory_id = canonical_digest({
             "task_id": task.task_id,
             "scenario": task.scenario,
@@ -215,7 +231,16 @@ class TrajectoryCollector:
 
         # Build memory injection payload
         memory_injection: dict[str, Any] | None = None
-        if memory_payloads and receiver_agent_ids:
+        if receiver_memory_payloads is not None:
+            # New per-receiver API: each agent gets only its own payloads
+            all_receiver_ids = list(receiver_memory_payloads.keys())
+            memory_injection = {
+                "receiver_agent_ids": all_receiver_ids,
+                "receiver_payload_map": receiver_memory_payloads,
+                "intervention_id": trajectory_id,
+            }
+        elif memory_payloads and receiver_agent_ids:
+            # Legacy broadcast API: all payloads to all receivers
             memory_injection = {
                 "receiver_agent_ids": receiver_agent_ids,
                 "memory_payloads": memory_payloads,

@@ -1,0 +1,7 @@
+task_evaluation is missing/empty for scenario=coding, task_id=1
+evaluator_failure: scenario=coding task_id=1 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+RESULT metric_valid: False
+RESULT normalized: None
+RESULT raw: None
+RESULT error: task_evaluation_not_available
+CODING3_DONE

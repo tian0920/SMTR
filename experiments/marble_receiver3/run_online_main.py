@@ -96,10 +96,14 @@ def select_memories_for_method(
         return list(candidates)
 
     if method == "retrieval":
-        # Top-k by metadata score (team_success + score from origin)
+        # Top-k by official metric normalized score (primary), fallback to legacy score
         scored = sorted(
             candidates,
-            key=lambda c: float(c.metadata.get("score", 0.0)),
+            key=lambda c: float(
+                c.metadata.get("official_metric_normalized")
+                if c.metadata.get("official_metric_normalized") is not None
+                else c.metadata.get("score", 0.0)
+            ),
             reverse=True,
         )
         return scored[:RETRIEVAL_TOP_K]
@@ -143,6 +147,7 @@ def run_task_episode(
     collector: TrajectoryCollector,
     memory_payloads: list[str],
     receiver_ids: list[str] | None = None,
+    receiver_memory_payloads: dict[str, list[str]] | None = None,
 ) -> Trajectory:
     """Run one MARBLE episode with the given method and memory payloads."""
     return collector.collect(
@@ -151,6 +156,7 @@ def run_task_episode(
         method=method,
         memory_payloads=memory_payloads if memory_payloads else None,
         receiver_agent_ids=receiver_ids if memory_payloads else None,
+        receiver_memory_payloads=receiver_memory_payloads,
     )
 
 
@@ -197,6 +203,7 @@ def run_online_experiment(
     receiver_ids: list[str] = RECEIVER_IDS,
     skip_tci: bool = False,
     max_tci_candidates: int | None = None,
+    validation_only: bool = False,
 ) -> tuple[list[dict[str, Any]], list[OnlineValidationRecord], list[dict[str, Any]], PersistentMemoryBank]:
     """Run the full online experiment.
 
@@ -217,6 +224,10 @@ def run_online_experiment(
     max_tci_candidates:
         If set, subsample at most this many candidates for TCI validation
         per task (to limit compute cost during smoke/pilot runs).
+    validation_only:
+        When True, only run TCI validation (no method-specific evaluation
+        episodes). Used for mechanism pilot to verify candidate → delta
+        → receiver disagreement without running full baseline comparison.
 
     Returns
     -------
@@ -285,8 +296,18 @@ def run_online_experiment(
                 )
                 all_validation_records.extend(task_validation_records)
 
-                # Step 3b: Update bank with TCI decisions
+                # Step 3b: Update bank with TCI decisions.
+                # Only admit for records with a real decision (validated/rejected).
+                # Invalid records (either branch metric invalid) must NOT
+                # modify memory lifecycle.
                 for rec in task_validation_records:
+                    if rec.decision not in ("validated", "rejected"):
+                        logger.debug(
+                            "Skipping admission for invalid record: "
+                            "memory=%s receiver=%s decision=%s",
+                            rec.memory_id, rec.receiver_id, rec.decision,
+                        )
+                        continue
                     try:
                         admission.admit_for_receiver(
                             rec.memory_id,
@@ -304,6 +325,22 @@ def run_online_experiment(
             for be in bank.all_entries():
                 if be.status == "validated":
                     _bank_payload_set.add(render_bank_entry_payload(be))
+
+            # In validation-only mode, skip method-specific evaluation episodes.
+            # Only TCI validation records are collected.
+            if validation_only:
+                # Snapshot memory pool state after this (task, seed)
+                memory_history.append({
+                    "scenario": task.scenario,
+                    "task_id": task.task_id,
+                    "seed": seed,
+                    "global_step": global_step,
+                    **bank.get_statistics(),
+                })
+                global_step += 1
+                elapsed = time.time() - t0
+                print(f"  ({elapsed:.1f}s, {len(candidates)} candidates, validation-only)")
+                continue
 
             # Step 4: For each method, select memories and run evaluation
             for method in methods:
@@ -338,40 +375,29 @@ def run_online_experiment(
 
                     per_receiver_payloads[rid] = task_payloads
 
-                # For simplicity in the first implementation, use the
-                # union of all per-receiver payloads and let the engine
-                # route to the correct receiver via receiver_agent_ids.
-                # For methods that select the same memories for all
-                # receivers (no_memory, full_memory, retrieval), this is
-                # straightforward.
+                # Run evaluation episode with method-specific memory injection.
+                # smtr_receiver uses per-receiver API (no broadcast).
+                # Other methods use broadcast (same payloads for all receivers).
                 if method == "no_memory":
                     eval_traj = run_task_episode(
                         task, seed, method, collector,
                         memory_payloads=[],
                     )
+                elif method == "smtr_receiver":
+                    # Per-receiver injection: each agent gets ONLY its own payloads.
+                    # No union, no broadcast, no cross-contamination.
+                    eval_traj = run_task_episode(
+                        task, seed, method, collector,
+                        memory_payloads=[],
+                        receiver_memory_payloads=per_receiver_payloads,
+                    )
                 else:
-                    # Use first receiver's selection as representative
-                    # (for smtr_receiver, different receivers get
-                    # different payloads — handled by the engine's
-                    # memory injection mechanism)
+                    # For methods that select the same memories for all
+                    # receivers (full_memory, retrieval, smtr_uniform),
+                    # use the first receiver's payloads as representative.
                     first_receiver = receiver_ids[0]
                     payloads = per_receiver_payloads[first_receiver]
-
-                    # For smtr_receiver, collect all unique payloads
-                    if method == "smtr_receiver":
-                        seen_payloads: set[str] = set()
-                        all_payloads: list[str] = []
-                        active_receivers: list[str] = []
-                        for rid in receiver_ids:
-                            for p in per_receiver_payloads[rid]:
-                                if p not in seen_payloads:
-                                    seen_payloads.add(p)
-                                    all_payloads.append(p)
-                                    active_receivers.append(rid)
-                        payloads = all_payloads
-                        eval_receiver_ids = active_receivers if all_payloads else None
-                    else:
-                        eval_receiver_ids = receiver_ids if payloads else None
+                    eval_receiver_ids = receiver_ids if payloads else None
 
                     eval_traj = run_task_episode(
                         task, seed, method, collector,
@@ -388,11 +414,22 @@ def run_online_experiment(
                     1 for p in per_receiver_payloads.get(receiver_ids[0], [])
                     if p in _bank_payload_set
                 ) if method in ("smtr_uniform", "smtr_receiver") else 0
+                # Official metric fields — primary paper metrics
+                official_raw = eval_traj.official_metric_raw
+                official_norm = eval_traj.official_metric_normalized
+                official_valid = eval_traj.official_metric_valid
+
                 row = {
                     "scenario": task.scenario,
                     "task_id": task.task_id,
                     "seed": seed,
                     "method": method,
+                    # Official Task Score — primary paper metrics
+                    "official_task_score_raw": official_raw,
+                    "official_task_score": official_norm,
+                    "official_metric_valid": official_valid,
+                    "official_metric_name": eval_traj.official_metric_name,
+                    # Legacy / diagnostic fields (retained for debugging)
                     "team_success": eval_traj.team_success,
                     "team_reward": eval_traj.score,
                     "n_candidates": len(candidates),
@@ -401,6 +438,7 @@ def run_online_experiment(
                     "n_cross_episode_reuse": n_cross_episode,
                     "discovery_success": discovery_traj.team_success,
                     "discovery_score": discovery_traj.score,
+                    "discovery_official_score": discovery_traj.official_metric_normalized,
                     "real_engine_executed": eval_traj.real_engine_executed,
                     "engine_duration_seconds": round(eval_traj.engine_duration_seconds, 2),
                     "n_validations": len(task_validation_records),
@@ -409,6 +447,9 @@ def run_online_experiment(
                     ),
                     "n_rejected": sum(
                         1 for r in task_validation_records if r.decision == "rejected"
+                    ),
+                    "n_invalid": sum(
+                        1 for r in task_validation_records if r.decision == "invalid"
                     ),
                 }
                 episode_rows.append(row)
@@ -458,19 +499,29 @@ def write_results(
     val_path.write_text(json.dumps(val_dicts, indent=2), encoding="utf-8")
     print(f"Written: {val_path} ({len(validation_records)} records)")
 
-    # Summary JSON
+    # Summary JSON — use official task score as primary metric
     summary: list[dict[str, Any]] = []
     for method in methods:
         m_rows = [r for r in episode_rows if r["method"] == method]
         if not m_rows:
             summary.append({"method": method, "n_episodes": 0})
             continue
+        # Official task score — primary paper metric
+        official_scores = [
+            r["official_task_score"] for r in m_rows
+            if r.get("official_task_score") is not None and r.get("official_metric_valid", False)
+        ]
         rewards = [r["team_reward"] for r in m_rows]
         successes = [r["team_success"] for r in m_rows]
         n_injected = [r["n_injected"] for r in m_rows]
         summary.append({
             "method": method,
             "n_episodes": len(m_rows),
+            # Official task score (primary)
+            "mean_official_task_score": float(np.mean(official_scores)) if official_scores else None,
+            "std_official_task_score": float(np.std(official_scores)) if official_scores else None,
+            "n_official_valid": len(official_scores),
+            # Legacy team reward (diagnostic)
             "mean_team_reward": float(np.mean(rewards)),
             "std_team_reward": float(np.std(rewards)),
             "success_rate": float(np.mean(successes)),
@@ -508,33 +559,41 @@ def write_results(
     )
     print(f"Written: {summary_path}")
 
-    # Print summary table
+    # Print summary table — official task score as primary metric
     print()
-    print("=" * 80)
-    print(f"{'Method':<18} {'Eps':>5} {'Reward':>8} {'Std':>8} {'Succ%':>8} {'Inj':>5} {'Engine':>7}")
-    print("-" * 80)
+    print("=" * 96)
+    print(f"{'Method':<18} {'Eps':>5} {'OffTS':>8} {'OffStd':>8} {'Valid':>6} {'Reward':>8} {'Succ%':>8} {'Inj':>5}")
+    print("-" * 96)
     for s in summary:
         if s["n_episodes"] == 0:
             print(f"{s['method']:<18} {'0':>5}")
             continue
+        off_mean = f"{s['mean_official_task_score']:.4f}" if s.get('mean_official_task_score') is not None else "N/A"
+        off_std = f"{s['std_official_task_score']:.4f}" if s.get('std_official_task_score') is not None else "N/A"
         print(
             f"{s['method']:<18} "
             f"{s['n_episodes']:>5} "
+            f"{off_mean:>8} "
+            f"{off_std:>8} "
+            f"{s.get('n_official_valid', 0):>6} "
             f"{s['mean_team_reward']:>8.4f} "
-            f"{s['std_team_reward']:>8.4f} "
             f"{s['success_rate']:>7.1%} "
-            f"{s['mean_n_injected']:>5.1f} "
-            f"{s['n_real_engine']:>7}"
+            f"{s['mean_n_injected']:>5.1f}"
         )
-    print("=" * 80)
+    print("=" * 96)
 
-    # Improvement
+    # Improvement — based on official task score (primary metric)
     no_mem = next((s for s in summary if s["method"] == "no_memory"), None)
     smtr_r = next((s for s in summary if s["method"] == "smtr_receiver"), None)
     if no_mem and smtr_r and no_mem["n_episodes"] > 0 and smtr_r["n_episodes"] > 0:
+        base_off = no_mem.get("mean_official_task_score")
+        smtr_off = smtr_r.get("mean_official_task_score")
+        if base_off is not None and smtr_off is not None:
+            impr = (smtr_off - base_off) / max(abs(base_off), 1e-9) * 100
+            print(f"\nSMTR-receiver official TS improvement over no_memory: {impr:+.1f}%")
         base = no_mem["mean_team_reward"]
         impr = (smtr_r["mean_team_reward"] - base) / max(abs(base), 1e-9) * 100
-        print(f"\nSMTR-receiver improvement over no_memory: {impr:+.1f}%")
+        print(f"SMTR-receiver legacy reward improvement over no_memory: {impr:+.1f}%")
 
 
 # ---------------------------------------------------------------------------
@@ -574,6 +633,10 @@ def main() -> None:
         help="Max candidates to validate per task (subsample to limit compute cost)",
     )
     parser.add_argument(
+        "--validation-only", action="store_true",
+        help="Only run TCI validation (no method evaluation episodes). For mechanism pilot.",
+    )
+    parser.add_argument(
         "--output-dir", type=str, default=None,
         help="Override output directory",
     )
@@ -604,6 +667,7 @@ def main() -> None:
     print(f"  tasks: {len(tasks)} total")
     print(f"  skip_tci: {args.skip_tci}")
     print(f"  max_tci_candidates: {args.max_tci_candidates}")
+    print(f"  validation_only: {args.validation_only}")
     print()
 
     if not tasks:
@@ -618,6 +682,7 @@ def main() -> None:
         receiver_ids=args.receivers,
         skip_tci=args.skip_tci,
         max_tci_candidates=args.max_tci_candidates,
+        validation_only=args.validation_only,
     )
 
     # Write results

@@ -1,10 +1,839 @@
-2026-08-24 15:26:32,497 [INFO] __main__: Official metric profiling: 200 episodes
-2026-08-24 15:26:32,497 [INFO] __main__: Model: openai/qwen3-30b-a3b
-2026-08-24 15:26:32,497 [INFO] __main__: Scenarios: ['bargaining', 'coding', 'database', 'minecraft', 'research']
-2026-08-24 15:26:32,497 [INFO] __main__: Tasks per scenario: 20
-2026-08-24 15:26:32,497 [INFO] __main__: Seeds: [0, 1]
-2026-08-24 15:26:32,497 [INFO] __main__: 
+2026-08-24 17:26:41,999 [INFO] __main__: Official metric profiling: 200 episodes
+2026-08-24 17:26:41,999 [INFO] __main__: Model: not set
+2026-08-24 17:26:41,999 [INFO] __main__: Scenarios: ['bargaining', 'coding', 'database', 'minecraft', 'research']
+2026-08-24 17:26:41,999 [INFO] __main__: Tasks per scenario: 20
+2026-08-24 17:26:41,999 [INFO] __main__: Seeds: [0, 1]
+2026-08-24 17:26:41,999 [INFO] __main__: 
 ============================================================
 Scenario: bargaining
 ============================================================
-2026-08-24 15:26:32,500 [INFO] __main__: [1/200] bargaining/1 seed=0
+2026-08-24 17:26:42,002 [INFO] __main__: [1/200] bargaining/1 seed=0
+2026-08-24 17:27:20,900 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=1
+2026-08-24 17:27:20,900 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=1 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:27:20,900 [INFO] __main__:   ❌ score=None team_success=False runtime=38.9s
+2026-08-24 17:27:20,900 [INFO] __main__: [2/200] bargaining/1 seed=1
+2026-08-24 17:27:59,345 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=1
+2026-08-24 17:27:59,345 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=1 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:27:59,345 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:27:59,346 [INFO] __main__: [3/200] bargaining/2 seed=0
+2026-08-24 17:28:37,779 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=2
+2026-08-24 17:28:37,779 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=2 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:28:37,779 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:28:37,779 [INFO] __main__: [4/200] bargaining/2 seed=1
+2026-08-24 17:29:16,283 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=2
+2026-08-24 17:29:16,283 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=2 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:29:16,283 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:29:16,283 [INFO] __main__: [5/200] bargaining/3 seed=0
+2026-08-24 17:29:54,769 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=3
+2026-08-24 17:29:54,769 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=3 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:29:54,769 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:29:54,770 [INFO] __main__: [6/200] bargaining/3 seed=1
+2026-08-24 17:30:33,303 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=3
+2026-08-24 17:30:33,303 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=3 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:30:33,303 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:30:33,303 [INFO] __main__: [7/200] bargaining/4 seed=0
+2026-08-24 17:31:11,825 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=4
+2026-08-24 17:31:11,825 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=4 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:31:11,825 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:31:11,825 [INFO] __main__: [8/200] bargaining/4 seed=1
+2026-08-24 17:31:50,284 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=4
+2026-08-24 17:31:50,284 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=4 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:31:50,284 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:31:50,284 [INFO] __main__: [9/200] bargaining/5 seed=0
+2026-08-24 17:32:28,730 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=5
+2026-08-24 17:32:28,730 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=5 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:32:28,730 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:32:28,730 [INFO] __main__: [10/200] bargaining/5 seed=1
+2026-08-24 17:33:07,194 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=5
+2026-08-24 17:33:07,194 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=5 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:33:07,194 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:33:07,194 [INFO] __main__: [11/200] bargaining/6 seed=0
+2026-08-24 17:33:45,588 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=6
+2026-08-24 17:33:45,588 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=6 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:33:45,589 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:33:45,589 [INFO] __main__: [12/200] bargaining/6 seed=1
+2026-08-24 17:34:24,025 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=6
+2026-08-24 17:34:24,025 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=6 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:34:24,025 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:34:24,025 [INFO] __main__: [13/200] bargaining/7 seed=0
+2026-08-24 17:35:02,454 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=7
+2026-08-24 17:35:02,454 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=7 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:35:02,454 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:35:02,454 [INFO] __main__: [14/200] bargaining/7 seed=1
+2026-08-24 17:35:40,949 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=7
+2026-08-24 17:35:40,949 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=7 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:35:40,949 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:35:40,949 [INFO] __main__: [15/200] bargaining/8 seed=0
+2026-08-24 17:36:19,422 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=8
+2026-08-24 17:36:19,423 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=8 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:36:19,423 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:36:19,423 [INFO] __main__: [16/200] bargaining/8 seed=1
+2026-08-24 17:36:58,301 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=8
+2026-08-24 17:36:58,301 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=8 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:36:58,301 [INFO] __main__:   ❌ score=None team_success=False runtime=38.9s
+2026-08-24 17:36:58,301 [INFO] __main__: [17/200] bargaining/9 seed=0
+2026-08-24 17:37:36,765 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=9
+2026-08-24 17:37:36,765 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=9 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:37:36,765 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:37:36,765 [INFO] __main__: [18/200] bargaining/9 seed=1
+2026-08-24 17:38:15,263 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=9
+2026-08-24 17:38:15,263 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=9 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:38:15,263 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:38:15,263 [INFO] __main__: [19/200] bargaining/10 seed=0
+2026-08-24 17:38:53,741 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=10
+2026-08-24 17:38:53,741 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=10 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:38:53,742 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:38:53,742 [INFO] __main__: [20/200] bargaining/10 seed=1
+2026-08-24 17:39:32,188 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=10
+2026-08-24 17:39:32,188 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=10 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:39:32,188 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:39:32,188 [INFO] __main__: [21/200] bargaining/11 seed=0
+2026-08-24 17:40:10,649 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=11
+2026-08-24 17:40:10,649 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=11 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:40:10,649 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:40:10,649 [INFO] __main__: [22/200] bargaining/11 seed=1
+2026-08-24 17:40:49,073 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=11
+2026-08-24 17:40:49,073 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=11 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:40:49,073 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:40:49,073 [INFO] __main__: [23/200] bargaining/12 seed=0
+2026-08-24 17:41:27,548 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=12
+2026-08-24 17:41:27,548 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=12 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:41:27,548 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:41:27,548 [INFO] __main__: [24/200] bargaining/12 seed=1
+2026-08-24 17:42:05,990 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=12
+2026-08-24 17:42:05,990 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=12 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:42:05,990 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:42:05,990 [INFO] __main__: [25/200] bargaining/13 seed=0
+2026-08-24 17:42:44,410 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=13
+2026-08-24 17:42:44,410 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=13 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:42:44,410 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:42:44,410 [INFO] __main__: [26/200] bargaining/13 seed=1
+2026-08-24 17:43:22,863 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=13
+2026-08-24 17:43:22,863 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=13 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:43:22,863 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:43:22,863 [INFO] __main__: [27/200] bargaining/14 seed=0
+2026-08-24 17:44:01,333 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=14
+2026-08-24 17:44:01,333 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=14 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:44:01,333 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:44:01,333 [INFO] __main__: [28/200] bargaining/14 seed=1
+2026-08-24 17:44:39,791 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=14
+2026-08-24 17:44:39,791 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=14 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:44:39,791 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:44:39,791 [INFO] __main__: [29/200] bargaining/15 seed=0
+2026-08-24 17:45:19,221 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=15
+2026-08-24 17:45:19,221 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=15 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:45:19,221 [INFO] __main__:   ❌ score=None team_success=False runtime=39.4s
+2026-08-24 17:45:19,221 [INFO] __main__: [30/200] bargaining/15 seed=1
+2026-08-24 17:45:57,700 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=15
+2026-08-24 17:45:57,700 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=15 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:45:57,700 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:45:57,700 [INFO] __main__: [31/200] bargaining/16 seed=0
+2026-08-24 17:46:36,136 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=16
+2026-08-24 17:46:36,136 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=16 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:46:36,137 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:46:36,137 [INFO] __main__: [32/200] bargaining/16 seed=1
+2026-08-24 17:47:14,556 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=16
+2026-08-24 17:47:14,556 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=16 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:47:14,556 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:47:14,556 [INFO] __main__: [33/200] bargaining/17 seed=0
+2026-08-24 17:47:53,014 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=17
+2026-08-24 17:47:53,014 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=17 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:47:53,014 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:47:53,014 [INFO] __main__: [34/200] bargaining/17 seed=1
+2026-08-24 17:48:31,444 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=17
+2026-08-24 17:48:31,444 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=17 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:48:31,444 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:48:31,444 [INFO] __main__: [35/200] bargaining/18 seed=0
+2026-08-24 17:49:09,962 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=18
+2026-08-24 17:49:09,962 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=18 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:49:09,963 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:49:09,963 [INFO] __main__: [36/200] bargaining/18 seed=1
+2026-08-24 17:49:48,400 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=18
+2026-08-24 17:49:48,400 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=18 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:49:48,400 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:49:48,400 [INFO] __main__: [37/200] bargaining/19 seed=0
+2026-08-24 17:50:26,836 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=19
+2026-08-24 17:50:26,836 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=19 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:50:26,836 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:50:26,836 [INFO] __main__: [38/200] bargaining/19 seed=1
+2026-08-24 17:51:05,280 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=19
+2026-08-24 17:51:05,280 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=19 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:51:05,280 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:51:05,280 [INFO] __main__: [39/200] bargaining/20 seed=0
+2026-08-24 17:51:43,682 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=20
+2026-08-24 17:51:43,682 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=20 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:51:43,682 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:51:43,682 [INFO] __main__: [40/200] bargaining/20 seed=1
+2026-08-24 17:52:22,128 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=bargaining, task_id=20
+2026-08-24 17:52:22,128 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=bargaining task_id=20 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:52:22,128 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:52:22,128 [INFO] __main__: 
+============================================================
+Scenario: coding
+============================================================
+2026-08-24 17:52:22,129 [INFO] __main__: [41/200] coding/1 seed=0
+2026-08-24 17:53:00,547 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=1
+2026-08-24 17:53:00,548 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=1 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:53:00,548 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:53:00,548 [INFO] __main__: [42/200] coding/1 seed=1
+2026-08-24 17:53:38,974 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=1
+2026-08-24 17:53:38,974 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=1 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:53:38,975 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:53:38,975 [INFO] __main__: [43/200] coding/2 seed=0
+2026-08-24 17:54:17,376 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=2
+2026-08-24 17:54:17,376 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=2 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:54:17,376 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:54:17,376 [INFO] __main__: [44/200] coding/2 seed=1
+2026-08-24 17:54:55,862 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=2
+2026-08-24 17:54:55,862 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=2 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:54:55,862 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:54:55,862 [INFO] __main__: [45/200] coding/3 seed=0
+2026-08-24 17:55:34,332 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=3
+2026-08-24 17:55:34,332 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=3 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:55:34,332 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:55:34,332 [INFO] __main__: [46/200] coding/3 seed=1
+2026-08-24 17:56:12,785 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=3
+2026-08-24 17:56:12,785 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=3 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:56:12,785 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:56:12,785 [INFO] __main__: [47/200] coding/4 seed=0
+2026-08-24 17:56:51,192 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=4
+2026-08-24 17:56:51,192 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=4 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:56:51,192 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:56:51,192 [INFO] __main__: [48/200] coding/4 seed=1
+2026-08-24 17:57:29,666 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=4
+2026-08-24 17:57:29,666 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=4 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:57:29,666 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 17:57:29,666 [INFO] __main__: [49/200] coding/5 seed=0
+2026-08-24 17:58:08,105 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=5
+2026-08-24 17:58:08,105 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=5 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:58:08,105 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:58:08,105 [INFO] __main__: [50/200] coding/5 seed=1
+2026-08-24 17:58:46,542 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=5
+2026-08-24 17:58:46,542 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=5 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:58:46,542 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:58:46,542 [INFO] __main__: [51/200] coding/6 seed=0
+2026-08-24 17:59:24,946 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=6
+2026-08-24 17:59:24,946 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=6 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 17:59:24,946 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 17:59:24,946 [INFO] __main__: [52/200] coding/6 seed=1
+2026-08-24 18:00:03,404 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=6
+2026-08-24 18:00:03,404 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=6 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:00:03,404 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:00:03,404 [INFO] __main__: [53/200] coding/7 seed=0
+2026-08-24 18:00:41,873 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=7
+2026-08-24 18:00:41,873 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=7 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:00:41,873 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:00:41,873 [INFO] __main__: [54/200] coding/7 seed=1
+2026-08-24 18:01:20,297 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=7
+2026-08-24 18:01:20,297 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=7 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:01:20,297 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:01:20,297 [INFO] __main__: [55/200] coding/8 seed=0
+2026-08-24 18:01:58,747 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=8
+2026-08-24 18:01:58,747 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=8 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:01:58,747 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:01:58,747 [INFO] __main__: [56/200] coding/8 seed=1
+2026-08-24 18:02:37,178 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=8
+2026-08-24 18:02:37,178 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=8 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:02:37,178 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:02:37,178 [INFO] __main__: [57/200] coding/9 seed=0
+2026-08-24 18:03:15,664 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=9
+2026-08-24 18:03:15,664 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=9 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:03:15,664 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:03:15,664 [INFO] __main__: [58/200] coding/9 seed=1
+2026-08-24 18:03:54,087 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=9
+2026-08-24 18:03:54,087 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=9 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:03:54,087 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:03:54,087 [INFO] __main__: [59/200] coding/10 seed=0
+2026-08-24 18:04:32,554 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=10
+2026-08-24 18:04:32,554 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=10 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:04:32,554 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:04:32,554 [INFO] __main__: [60/200] coding/10 seed=1
+2026-08-24 18:05:11,013 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=10
+2026-08-24 18:05:11,013 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=10 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:05:11,013 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:05:11,013 [INFO] __main__: [61/200] coding/11 seed=0
+2026-08-24 18:05:49,467 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=11
+2026-08-24 18:05:49,467 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=11 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:05:49,467 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:05:49,467 [INFO] __main__: [62/200] coding/11 seed=1
+2026-08-24 18:06:27,895 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=11
+2026-08-24 18:06:27,895 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=11 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:06:27,895 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:06:27,895 [INFO] __main__: [63/200] coding/12 seed=0
+2026-08-24 18:07:06,356 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=12
+2026-08-24 18:07:06,356 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=12 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:07:06,356 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:07:06,356 [INFO] __main__: [64/200] coding/12 seed=1
+2026-08-24 18:07:44,755 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=12
+2026-08-24 18:07:44,755 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=12 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:07:44,755 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:07:44,755 [INFO] __main__: [65/200] coding/13 seed=0
+2026-08-24 18:08:23,204 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=13
+2026-08-24 18:08:23,204 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=13 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:08:23,204 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:08:23,204 [INFO] __main__: [66/200] coding/13 seed=1
+2026-08-24 18:09:01,666 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=13
+2026-08-24 18:09:01,666 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=13 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:09:01,666 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:09:01,667 [INFO] __main__: [67/200] coding/14 seed=0
+2026-08-24 18:09:40,094 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=14
+2026-08-24 18:09:40,094 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=14 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:09:40,095 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:09:40,095 [INFO] __main__: [68/200] coding/14 seed=1
+2026-08-24 18:10:18,485 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=14
+2026-08-24 18:10:18,485 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=14 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:10:18,485 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:10:18,485 [INFO] __main__: [69/200] coding/15 seed=0
+2026-08-24 18:10:56,911 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=15
+2026-08-24 18:10:56,911 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=15 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:10:56,912 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:10:56,912 [INFO] __main__: [70/200] coding/15 seed=1
+2026-08-24 18:11:35,567 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=15
+2026-08-24 18:11:35,567 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=15 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:11:35,567 [INFO] __main__:   ❌ score=None team_success=False runtime=38.7s
+2026-08-24 18:11:35,567 [INFO] __main__: [71/200] coding/16 seed=0
+2026-08-24 18:12:14,130 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=16
+2026-08-24 18:12:14,130 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=16 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:12:14,130 [INFO] __main__:   ❌ score=None team_success=False runtime=38.6s
+2026-08-24 18:12:14,130 [INFO] __main__: [72/200] coding/16 seed=1
+2026-08-24 18:12:52,559 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=16
+2026-08-24 18:12:52,559 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=16 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:12:52,560 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:12:52,560 [INFO] __main__: [73/200] coding/17 seed=0
+2026-08-24 18:13:31,006 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=17
+2026-08-24 18:13:31,006 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=17 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:13:31,006 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:13:31,006 [INFO] __main__: [74/200] coding/17 seed=1
+2026-08-24 18:14:09,459 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=17
+2026-08-24 18:14:09,459 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=17 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:14:09,459 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:14:09,459 [INFO] __main__: [75/200] coding/18 seed=0
+2026-08-24 18:14:47,849 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=18
+2026-08-24 18:14:47,849 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=18 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:14:47,849 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:14:47,849 [INFO] __main__: [76/200] coding/18 seed=1
+2026-08-24 18:15:26,288 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=18
+2026-08-24 18:15:26,288 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=18 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:15:26,288 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:15:26,288 [INFO] __main__: [77/200] coding/19 seed=0
+2026-08-24 18:16:04,688 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=19
+2026-08-24 18:16:04,688 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=19 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:16:04,689 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:16:04,689 [INFO] __main__: [78/200] coding/19 seed=1
+2026-08-24 18:16:43,169 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=19
+2026-08-24 18:16:43,169 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=19 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:16:43,169 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 18:16:43,169 [INFO] __main__: [79/200] coding/20 seed=0
+2026-08-24 18:17:21,586 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=20
+2026-08-24 18:17:21,586 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=20 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:17:21,586 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:17:21,586 [INFO] __main__: [80/200] coding/20 seed=1
+2026-08-24 18:17:59,989 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=coding, task_id=20
+2026-08-24 18:17:59,989 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=coding task_id=20 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:17:59,989 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 18:17:59,990 [INFO] __main__: 
+============================================================
+Scenario: database
+============================================================
+2026-08-24 18:17:59,990 [INFO] __main__: [81/200] database/1 seed=0
+2026-08-24 18:20:19,963 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=1
+2026-08-24 18:20:19,963 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=1 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:20:19,963 [INFO] __main__:   ❌ score=None team_success=False runtime=140.0s
+2026-08-24 18:20:19,963 [INFO] __main__: [82/200] database/1 seed=1
+2026-08-24 18:22:40,120 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=1
+2026-08-24 18:22:40,120 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=1 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:22:40,120 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 18:22:40,120 [INFO] __main__: [83/200] database/2 seed=0
+2026-08-24 18:25:00,197 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=2
+2026-08-24 18:25:00,197 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=2 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:25:00,197 [INFO] __main__:   ❌ score=None team_success=False runtime=140.1s
+2026-08-24 18:25:00,197 [INFO] __main__: [84/200] database/2 seed=1
+2026-08-24 18:27:20,219 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=2
+2026-08-24 18:27:20,219 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=2 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:27:20,219 [INFO] __main__:   ❌ score=None team_success=False runtime=140.0s
+2026-08-24 18:27:20,219 [INFO] __main__: [85/200] database/3 seed=0
+2026-08-24 18:29:40,608 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=3
+2026-08-24 18:29:40,608 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=3 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:29:40,608 [INFO] __main__:   ❌ score=None team_success=False runtime=140.4s
+2026-08-24 18:29:40,608 [INFO] __main__: [86/200] database/3 seed=1
+2026-08-24 18:32:00,917 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=3
+2026-08-24 18:32:00,917 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=3 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:32:00,917 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 18:32:00,917 [INFO] __main__: [87/200] database/4 seed=0
+2026-08-24 18:34:20,694 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=4
+2026-08-24 18:34:20,694 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=4 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:34:20,694 [INFO] __main__:   ❌ score=None team_success=False runtime=139.8s
+2026-08-24 18:34:20,694 [INFO] __main__: [88/200] database/4 seed=1
+2026-08-24 18:36:40,477 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=4
+2026-08-24 18:36:40,477 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=4 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:36:40,478 [INFO] __main__:   ❌ score=None team_success=False runtime=139.8s
+2026-08-24 18:36:40,478 [INFO] __main__: [89/200] database/5 seed=0
+2026-08-24 18:39:00,759 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=5
+2026-08-24 18:39:00,759 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=5 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:39:00,759 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 18:39:00,759 [INFO] __main__: [90/200] database/5 seed=1
+2026-08-24 18:41:21,004 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=5
+2026-08-24 18:41:21,004 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=5 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:41:21,004 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 18:41:21,004 [INFO] __main__: [91/200] database/6 seed=0
+2026-08-24 18:43:09,740 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=6
+2026-08-24 18:43:09,740 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=6 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:43:09,740 [INFO] __main__:   ❌ score=None team_success=False runtime=108.7s
+2026-08-24 18:43:09,740 [INFO] __main__: [92/200] database/6 seed=1
+2026-08-24 18:44:58,271 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=6
+2026-08-24 18:44:58,271 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=6 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:44:58,271 [INFO] __main__:   ❌ score=None team_success=False runtime=108.5s
+2026-08-24 18:44:58,271 [INFO] __main__: [93/200] database/7 seed=0
+2026-08-24 18:46:25,849 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=7
+2026-08-24 18:46:25,849 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=7 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:46:25,849 [INFO] __main__:   ❌ score=None team_success=False runtime=87.6s
+2026-08-24 18:46:25,849 [INFO] __main__: [94/200] database/7 seed=1
+2026-08-24 18:47:53,471 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=7
+2026-08-24 18:47:53,471 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=7 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:47:53,471 [INFO] __main__:   ❌ score=None team_success=False runtime=87.6s
+2026-08-24 18:47:53,471 [INFO] __main__: [95/200] database/8 seed=0
+2026-08-24 18:50:13,188 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=8
+2026-08-24 18:50:13,188 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=8 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:50:13,188 [INFO] __main__:   ❌ score=None team_success=False runtime=139.7s
+2026-08-24 18:50:13,188 [INFO] __main__: [96/200] database/8 seed=1
+2026-08-24 18:52:33,030 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=8
+2026-08-24 18:52:33,030 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=8 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:52:33,030 [INFO] __main__:   ❌ score=None team_success=False runtime=139.8s
+2026-08-24 18:52:33,030 [INFO] __main__: [97/200] database/9 seed=0
+2026-08-24 18:54:00,783 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=9
+2026-08-24 18:54:00,783 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=9 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:54:00,783 [INFO] __main__:   ❌ score=None team_success=False runtime=87.8s
+2026-08-24 18:54:00,783 [INFO] __main__: [98/200] database/9 seed=1
+2026-08-24 18:55:28,746 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=9
+2026-08-24 18:55:28,746 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=9 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:55:28,746 [INFO] __main__:   ❌ score=None team_success=False runtime=88.0s
+2026-08-24 18:55:28,746 [INFO] __main__: [99/200] database/10 seed=0
+2026-08-24 18:57:48,983 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=10
+2026-08-24 18:57:48,983 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=10 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 18:57:48,983 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 18:57:48,983 [INFO] __main__: [100/200] database/10 seed=1
+2026-08-24 19:00:09,387 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=10
+2026-08-24 19:00:09,387 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=10 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:00:09,387 [INFO] __main__:   ❌ score=None team_success=False runtime=140.4s
+2026-08-24 19:00:09,387 [INFO] __main__: [101/200] database/11 seed=0
+2026-08-24 19:01:58,426 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=11
+2026-08-24 19:01:58,426 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=11 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:01:58,426 [INFO] __main__:   ❌ score=None team_success=False runtime=109.0s
+2026-08-24 19:01:58,426 [INFO] __main__: [102/200] database/11 seed=1
+2026-08-24 19:03:47,309 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=11
+2026-08-24 19:03:47,309 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=11 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:03:47,309 [INFO] __main__:   ❌ score=None team_success=False runtime=108.9s
+2026-08-24 19:03:47,309 [INFO] __main__: [103/200] database/12 seed=0
+2026-08-24 19:06:07,539 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=12
+2026-08-24 19:06:07,539 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=12 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:06:07,539 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 19:06:07,539 [INFO] __main__: [104/200] database/12 seed=1
+2026-08-24 19:08:27,815 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=12
+2026-08-24 19:08:27,815 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=12 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:08:27,815 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 19:08:27,815 [INFO] __main__: [105/200] database/13 seed=0
+2026-08-24 19:10:48,089 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=13
+2026-08-24 19:10:48,089 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=13 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:10:48,089 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 19:10:48,089 [INFO] __main__: [106/200] database/13 seed=1
+2026-08-24 19:13:08,332 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=13
+2026-08-24 19:13:08,332 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=13 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:13:08,332 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 19:13:08,332 [INFO] __main__: [107/200] database/14 seed=0
+2026-08-24 19:14:57,790 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=14
+2026-08-24 19:14:57,790 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=14 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:14:57,790 [INFO] __main__:   ❌ score=None team_success=False runtime=109.5s
+2026-08-24 19:14:57,790 [INFO] __main__: [108/200] database/14 seed=1
+2026-08-24 19:16:48,179 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=14
+2026-08-24 19:16:48,179 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=14 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:16:48,179 [INFO] __main__:   ❌ score=None team_success=False runtime=110.4s
+2026-08-24 19:16:48,179 [INFO] __main__: [109/200] database/15 seed=0
+2026-08-24 19:19:08,346 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=15
+2026-08-24 19:19:08,347 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=15 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:19:08,347 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 19:19:08,347 [INFO] __main__: [110/200] database/15 seed=1
+2026-08-24 19:21:28,634 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=15
+2026-08-24 19:21:28,634 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=15 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:21:28,634 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 19:21:28,634 [INFO] __main__: [111/200] database/16 seed=0
+2026-08-24 19:23:48,882 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=16
+2026-08-24 19:23:48,882 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=16 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:23:48,882 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 19:23:48,882 [INFO] __main__: [112/200] database/16 seed=1
+2026-08-24 19:26:09,048 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=16
+2026-08-24 19:26:09,048 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=16 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:26:09,048 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 19:26:09,048 [INFO] __main__: [113/200] database/17 seed=0
+2026-08-24 19:28:29,038 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=17
+2026-08-24 19:28:29,038 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=17 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:28:29,038 [INFO] __main__:   ❌ score=None team_success=False runtime=140.0s
+2026-08-24 19:28:29,038 [INFO] __main__: [114/200] database/17 seed=1
+2026-08-24 19:30:49,241 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=17
+2026-08-24 19:30:49,241 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=17 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:30:49,241 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 19:30:49,241 [INFO] __main__: [115/200] database/18 seed=0
+2026-08-24 19:33:09,553 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=18
+2026-08-24 19:33:09,553 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=18 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:33:09,553 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 19:33:09,553 [INFO] __main__: [116/200] database/18 seed=1
+2026-08-24 19:35:29,873 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=18
+2026-08-24 19:35:29,873 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=18 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:35:29,873 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 19:35:29,873 [INFO] __main__: [117/200] database/19 seed=0
+2026-08-24 19:37:50,097 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=19
+2026-08-24 19:37:50,097 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=19 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:37:50,097 [INFO] __main__:   ❌ score=None team_success=False runtime=140.2s
+2026-08-24 19:37:50,098 [INFO] __main__: [118/200] database/19 seed=1
+2026-08-24 19:40:10,503 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=19
+2026-08-24 19:40:10,503 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=19 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:40:10,503 [INFO] __main__:   ❌ score=None team_success=False runtime=140.4s
+2026-08-24 19:40:10,503 [INFO] __main__: [119/200] database/20 seed=0
+2026-08-24 19:42:30,761 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=20
+2026-08-24 19:42:30,761 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=20 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:42:30,761 [INFO] __main__:   ❌ score=None team_success=False runtime=140.3s
+2026-08-24 19:42:30,761 [INFO] __main__: [120/200] database/20 seed=1
+2026-08-24 19:44:51,271 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=database, task_id=20
+2026-08-24 19:44:51,272 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=database task_id=20 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:44:51,272 [INFO] __main__:   ❌ score=None team_success=False runtime=140.5s
+2026-08-24 19:44:51,272 [INFO] __main__: 
+============================================================
+Scenario: minecraft
+============================================================
+2026-08-24 19:44:51,272 [INFO] __main__: [121/200] minecraft/1 seed=0
+2026-08-24 19:47:51,843 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 19:47:51,843 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=1 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:47:51,843 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 19:47:51,843 [INFO] __main__: [122/200] minecraft/1 seed=1
+2026-08-24 19:50:52,485 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 19:50:52,486 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=1 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:50:52,486 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 19:50:52,486 [INFO] __main__: [123/200] minecraft/2 seed=0
+2026-08-24 19:53:53,095 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 19:53:53,096 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=2 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:53:53,096 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 19:53:53,096 [INFO] __main__: [124/200] minecraft/2 seed=1
+2026-08-24 19:56:53,711 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 19:56:53,711 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=2 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:56:53,711 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 19:56:53,711 [INFO] __main__: [125/200] minecraft/3 seed=0
+2026-08-24 19:59:54,322 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 19:59:54,322 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=3 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 19:59:54,322 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 19:59:54,322 [INFO] __main__: [126/200] minecraft/3 seed=1
+2026-08-24 20:02:54,953 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:02:54,954 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=3 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:02:54,954 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:02:54,954 [INFO] __main__: [127/200] minecraft/4 seed=0
+2026-08-24 20:05:55,605 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:05:55,605 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=4 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:05:55,605 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:05:55,605 [INFO] __main__: [128/200] minecraft/4 seed=1
+2026-08-24 20:08:56,243 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:08:56,243 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=4 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:08:56,243 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:08:56,243 [INFO] __main__: [129/200] minecraft/5 seed=0
+2026-08-24 20:11:56,865 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:11:56,865 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=5 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:11:56,865 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:11:56,865 [INFO] __main__: [130/200] minecraft/5 seed=1
+2026-08-24 20:14:57,519 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:14:57,519 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=5 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:14:57,519 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:14:57,519 [INFO] __main__: [131/200] minecraft/6 seed=0
+2026-08-24 20:17:58,149 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:17:58,149 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=6 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:17:58,149 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:17:58,149 [INFO] __main__: [132/200] minecraft/6 seed=1
+2026-08-24 20:20:58,808 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:20:58,808 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=6 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:20:58,808 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:20:58,808 [INFO] __main__: [133/200] minecraft/7 seed=0
+2026-08-24 20:23:59,448 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:23:59,449 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=7 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:23:59,449 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:23:59,449 [INFO] __main__: [134/200] minecraft/7 seed=1
+2026-08-24 20:27:00,187 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:27:00,187 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=7 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:27:00,187 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:27:00,187 [INFO] __main__: [135/200] minecraft/8 seed=0
+2026-08-24 20:30:00,821 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:30:00,821 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=8 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:30:00,821 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:30:00,821 [INFO] __main__: [136/200] minecraft/8 seed=1
+2026-08-24 20:33:01,464 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:33:01,464 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=8 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:33:01,464 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:33:01,464 [INFO] __main__: [137/200] minecraft/9 seed=0
+2026-08-24 20:36:02,115 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:36:02,115 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=9 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:36:02,115 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:36:02,116 [INFO] __main__: [138/200] minecraft/9 seed=1
+2026-08-24 20:39:02,754 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:39:02,754 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=9 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:39:02,754 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:39:02,754 [INFO] __main__: [139/200] minecraft/10 seed=0
+2026-08-24 20:42:03,374 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:42:03,374 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=10 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:42:03,374 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:42:03,374 [INFO] __main__: [140/200] minecraft/10 seed=1
+2026-08-24 20:45:03,973 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:45:03,973 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=10 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:45:03,973 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 20:45:03,973 [INFO] __main__: [141/200] minecraft/11 seed=0
+2026-08-24 20:48:04,646 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:48:04,646 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=11 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:48:04,646 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:48:04,646 [INFO] __main__: [142/200] minecraft/11 seed=1
+2026-08-24 20:51:05,302 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:51:05,302 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=11 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:51:05,302 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:51:05,302 [INFO] __main__: [143/200] minecraft/12 seed=0
+2026-08-24 20:54:05,962 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:54:05,962 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=12 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:54:05,962 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:54:05,962 [INFO] __main__: [144/200] minecraft/12 seed=1
+2026-08-24 20:57:06,617 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 20:57:06,617 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=12 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 20:57:06,618 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 20:57:06,618 [INFO] __main__: [145/200] minecraft/13 seed=0
+2026-08-24 21:00:07,280 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:00:07,280 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=13 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:00:07,280 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:00:07,280 [INFO] __main__: [146/200] minecraft/13 seed=1
+2026-08-24 21:03:08,483 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:03:08,483 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=13 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:03:08,483 [INFO] __main__:   ❌ score=None team_success=False runtime=181.2s
+2026-08-24 21:03:08,484 [INFO] __main__: [147/200] minecraft/14 seed=0
+2026-08-24 21:06:09,170 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:06:09,170 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=14 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:06:09,170 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:06:09,170 [INFO] __main__: [148/200] minecraft/14 seed=1
+2026-08-24 21:09:09,918 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:09:09,918 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=14 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:09:09,918 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:09:09,918 [INFO] __main__: [149/200] minecraft/15 seed=0
+2026-08-24 21:12:10,600 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:12:10,600 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=15 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:12:10,600 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:12:10,600 [INFO] __main__: [150/200] minecraft/15 seed=1
+2026-08-24 21:15:11,270 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:15:11,270 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=15 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:15:11,270 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:15:11,270 [INFO] __main__: [151/200] minecraft/16 seed=0
+2026-08-24 21:18:11,951 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:18:11,951 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=16 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:18:11,951 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:18:11,951 [INFO] __main__: [152/200] minecraft/16 seed=1
+2026-08-24 21:21:12,617 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:21:12,617 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=16 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:21:12,617 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:21:12,617 [INFO] __main__: [153/200] minecraft/17 seed=0
+2026-08-24 21:24:13,214 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:24:13,214 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=17 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:24:13,214 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 21:24:13,214 [INFO] __main__: [154/200] minecraft/17 seed=1
+2026-08-24 21:27:13,851 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:27:13,851 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=17 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:27:13,851 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 21:27:13,851 [INFO] __main__: [155/200] minecraft/18 seed=0
+2026-08-24 21:30:14,536 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:30:14,536 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=18 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:30:14,536 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:30:14,536 [INFO] __main__: [156/200] minecraft/18 seed=1
+2026-08-24 21:33:15,170 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:33:15,170 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=18 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:33:15,170 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 21:33:15,170 [INFO] __main__: [157/200] minecraft/19 seed=0
+2026-08-24 21:36:15,811 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:36:15,812 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=19 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:36:15,812 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 21:36:15,812 [INFO] __main__: [158/200] minecraft/19 seed=1
+2026-08-24 21:39:16,418 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:39:16,418 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=19 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:39:16,418 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 21:39:16,418 [INFO] __main__: [159/200] minecraft/20 seed=0
+2026-08-24 21:42:17,026 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:42:17,026 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=20 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:42:17,026 [INFO] __main__:   ❌ score=None team_success=False runtime=180.6s
+2026-08-24 21:42:17,026 [INFO] __main__: [160/200] minecraft/20 seed=1
+2026-08-24 21:45:17,683 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=minecraft, task_id=?
+2026-08-24 21:45:17,683 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=minecraft task_id=20 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:45:17,683 [INFO] __main__:   ❌ score=None team_success=False runtime=180.7s
+2026-08-24 21:45:17,683 [INFO] __main__: 
+============================================================
+Scenario: research
+============================================================
+2026-08-24 21:45:17,685 [INFO] __main__: [161/200] research/1 seed=0
+2026-08-24 21:45:56,121 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=1
+2026-08-24 21:45:56,121 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=1 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:45:56,121 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 21:45:56,121 [INFO] __main__: [162/200] research/1 seed=1
+2026-08-24 21:46:34,609 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=1
+2026-08-24 21:46:34,609 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=1 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:46:34,609 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:46:34,609 [INFO] __main__: [163/200] research/2 seed=0
+2026-08-24 21:47:13,035 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=2
+2026-08-24 21:47:13,035 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=2 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:47:13,035 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 21:47:13,036 [INFO] __main__: [164/200] research/2 seed=1
+2026-08-24 21:47:51,492 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=2
+2026-08-24 21:47:51,492 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=2 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:47:51,492 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:47:51,492 [INFO] __main__: [165/200] research/3 seed=0
+2026-08-24 21:48:29,970 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=3
+2026-08-24 21:48:29,970 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=3 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:48:29,970 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:48:29,970 [INFO] __main__: [166/200] research/3 seed=1
+2026-08-24 21:49:08,448 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=3
+2026-08-24 21:49:08,448 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=3 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:49:08,448 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:49:08,448 [INFO] __main__: [167/200] research/4 seed=0
+2026-08-24 21:49:46,947 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=4
+2026-08-24 21:49:46,947 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=4 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:49:46,947 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:49:46,947 [INFO] __main__: [168/200] research/4 seed=1
+2026-08-24 21:50:25,383 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=4
+2026-08-24 21:50:25,383 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=4 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:50:25,383 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 21:50:25,383 [INFO] __main__: [169/200] research/5 seed=0
+2026-08-24 21:51:03,949 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=5
+2026-08-24 21:51:03,950 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=5 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:51:03,950 [INFO] __main__:   ❌ score=None team_success=False runtime=38.6s
+2026-08-24 21:51:03,950 [INFO] __main__: [170/200] research/5 seed=1
+2026-08-24 21:51:42,417 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=5
+2026-08-24 21:51:42,417 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=5 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:51:42,417 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:51:42,417 [INFO] __main__: [171/200] research/6 seed=0
+2026-08-24 21:52:20,906 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=6
+2026-08-24 21:52:20,906 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=6 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:52:20,906 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:52:20,906 [INFO] __main__: [172/200] research/6 seed=1
+2026-08-24 21:52:59,386 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=6
+2026-08-24 21:52:59,386 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=6 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:52:59,386 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:52:59,386 [INFO] __main__: [173/200] research/7 seed=0
+2026-08-24 21:53:37,842 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=7
+2026-08-24 21:53:37,842 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=7 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:53:37,842 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:53:37,842 [INFO] __main__: [174/200] research/7 seed=1
+2026-08-24 21:54:16,266 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=7
+2026-08-24 21:54:16,266 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=7 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:54:16,266 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 21:54:16,266 [INFO] __main__: [175/200] research/8 seed=0
+2026-08-24 21:54:54,724 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=8
+2026-08-24 21:54:54,724 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=8 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:54:54,724 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:54:54,724 [INFO] __main__: [176/200] research/8 seed=1
+2026-08-24 21:55:33,154 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=8
+2026-08-24 21:55:33,154 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=8 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:55:33,154 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 21:55:33,154 [INFO] __main__: [177/200] research/9 seed=0
+2026-08-24 21:56:11,654 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=9
+2026-08-24 21:56:11,654 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=9 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:56:11,655 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:56:11,655 [INFO] __main__: [178/200] research/9 seed=1
+2026-08-24 21:56:50,108 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=9
+2026-08-24 21:56:50,108 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=9 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:56:50,109 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:56:50,109 [INFO] __main__: [179/200] research/10 seed=0
+2026-08-24 21:57:28,566 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=10
+2026-08-24 21:57:28,566 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=10 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:57:28,566 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:57:28,566 [INFO] __main__: [180/200] research/10 seed=1
+2026-08-24 21:58:06,957 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=10
+2026-08-24 21:58:06,958 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=10 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:58:06,958 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 21:58:06,958 [INFO] __main__: [181/200] research/11 seed=0
+2026-08-24 21:58:45,432 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=11
+2026-08-24 21:58:45,432 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=11 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:58:45,432 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:58:45,432 [INFO] __main__: [182/200] research/11 seed=1
+2026-08-24 21:59:23,917 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=11
+2026-08-24 21:59:23,917 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=11 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 21:59:23,918 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 21:59:23,918 [INFO] __main__: [183/200] research/12 seed=0
+2026-08-24 22:00:02,427 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=12
+2026-08-24 22:00:02,427 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=12 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:00:02,427 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:00:02,427 [INFO] __main__: [184/200] research/12 seed=1
+2026-08-24 22:00:40,865 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=12
+2026-08-24 22:00:40,865 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=12 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:00:40,865 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 22:00:40,865 [INFO] __main__: [185/200] research/13 seed=0
+2026-08-24 22:01:19,341 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=13
+2026-08-24 22:01:19,341 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=13 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:01:19,341 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:01:19,341 [INFO] __main__: [186/200] research/13 seed=1
+2026-08-24 22:01:57,775 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=13
+2026-08-24 22:01:57,775 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=13 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:01:57,775 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 22:01:57,775 [INFO] __main__: [187/200] research/14 seed=0
+2026-08-24 22:02:36,199 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=14
+2026-08-24 22:02:36,199 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=14 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:02:36,199 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 22:02:36,199 [INFO] __main__: [188/200] research/14 seed=1
+2026-08-24 22:03:14,715 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=14
+2026-08-24 22:03:14,715 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=14 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:03:14,715 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:03:14,715 [INFO] __main__: [189/200] research/15 seed=0
+2026-08-24 22:03:53,134 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=15
+2026-08-24 22:03:53,134 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=15 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:03:53,134 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 22:03:53,134 [INFO] __main__: [190/200] research/15 seed=1
+2026-08-24 22:04:31,613 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=15
+2026-08-24 22:04:31,613 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=15 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:04:31,613 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:04:31,613 [INFO] __main__: [191/200] research/16 seed=0
+2026-08-24 22:05:10,065 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=16
+2026-08-24 22:05:10,065 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=16 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:05:10,065 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:05:10,065 [INFO] __main__: [192/200] research/16 seed=1
+2026-08-24 22:05:48,533 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=16
+2026-08-24 22:05:48,533 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=16 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:05:48,533 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:05:48,533 [INFO] __main__: [193/200] research/17 seed=0
+2026-08-24 22:06:27,862 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=17
+2026-08-24 22:06:27,862 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=17 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:06:27,862 [INFO] __main__:   ❌ score=None team_success=False runtime=39.3s
+2026-08-24 22:06:27,862 [INFO] __main__: [194/200] research/17 seed=1
+2026-08-24 22:07:06,297 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=17
+2026-08-24 22:07:06,297 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=17 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:07:06,297 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 22:07:06,297 [INFO] __main__: [195/200] research/18 seed=0
+2026-08-24 22:07:44,757 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=18
+2026-08-24 22:07:44,757 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=18 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:07:44,758 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:07:44,758 [INFO] __main__: [196/200] research/18 seed=1
+2026-08-24 22:08:23,260 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=18
+2026-08-24 22:08:23,260 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=18 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:08:23,260 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:08:23,260 [INFO] __main__: [197/200] research/19 seed=0
+2026-08-24 22:09:01,703 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=19
+2026-08-24 22:09:01,703 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=19 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:09:01,703 [INFO] __main__:   ❌ score=None team_success=False runtime=38.4s
+2026-08-24 22:09:01,703 [INFO] __main__: [198/200] research/19 seed=1
+2026-08-24 22:09:40,182 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=19
+2026-08-24 22:09:40,182 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=19 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:09:40,182 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:09:40,182 [INFO] __main__: [199/200] research/20 seed=0
+2026-08-24 22:10:18,673 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=20
+2026-08-24 22:10:18,673 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=20 seed=0 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:10:18,674 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:10:18,674 [INFO] __main__: [200/200] research/20 seed=1
+2026-08-24 22:10:57,124 [WARNING] smtr.marble.outcome.official_metric_outcome: task_evaluation is missing/empty for scenario=research, task_id=20
+2026-08-24 22:10:57,125 [WARNING] smtr.marble.trajectory_collector: evaluator_failure: scenario=research task_id=20 seed=1 method=no_memory reason=task_evaluation_not_available — episode marked as INVALID
+2026-08-24 22:10:57,125 [INFO] __main__:   ❌ score=None team_success=False runtime=38.5s
+2026-08-24 22:10:57,126 [INFO] __main__: 
+Wrote results/marble/official_metric_profile/episode_scores.csv
+2026-08-24 22:10:57,126 [INFO] __main__: Wrote results/marble/official_metric_profile/task_summary.csv
+2026-08-24 22:10:57,126 [INFO] __main__: Wrote results/marble/official_metric_profile/scenario_summary.csv
+2026-08-24 22:10:57,127 [INFO] __main__: Wrote results/marble/official_metric_profile/evaluator_failures.csv (200 failures)
+2026-08-24 22:10:57,127 [INFO] __main__: 
+============================================================
+2026-08-24 22:10:57,127 [INFO] __main__: PROFILING COMPLETE
+2026-08-24 22:10:57,127 [INFO] __main__: ============================================================
+2026-08-24 22:10:57,127 [INFO] __main__:   bargaining  : valid=0/40 mean_score=N/A team_success_rate=0.0%
+2026-08-24 22:10:57,127 [INFO] __main__:   coding      : valid=0/40 mean_score=N/A team_success_rate=0.0%
+2026-08-24 22:10:57,127 [INFO] __main__:   database    : valid=0/40 mean_score=N/A team_success_rate=0.0%
+2026-08-24 22:10:57,127 [INFO] __main__:   minecraft   : valid=0/40 mean_score=N/A team_success_rate=0.0%
+2026-08-24 22:10:57,127 [INFO] __main__:   research    : valid=0/40 mean_score=N/A team_success_rate=0.0%

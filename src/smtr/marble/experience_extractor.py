@@ -137,6 +137,10 @@ class ExperienceExtractor:
                 "trajectory_id": trajectory.trajectory_id,
                 "origin_task": trajectory.task_id,
                 "receiver_candidates": [],  # filled by online evaluator
+                # Official metric fields — for retrieval ranking and audit
+                "official_metric_name": trajectory.official_metric_name,
+                "official_metric_raw": trajectory.official_metric_raw,
+                "official_metric_normalized": trajectory.official_metric_normalized,
             },
         )
 
@@ -178,6 +182,9 @@ class ExperienceExtractor:
                 "trajectory_id": trajectory.trajectory_id,
                 "origin_task": trajectory.task_id,
                 "receiver_candidates": [],
+                "official_metric_name": trajectory.official_metric_name,
+                "official_metric_raw": trajectory.official_metric_raw,
+                "official_metric_normalized": trajectory.official_metric_normalized,
             },
         )
 
@@ -223,5 +230,8 @@ class ExperienceExtractor:
                 "trajectory_id": trajectory.trajectory_id,
                 "origin_task": trajectory.task_id,
                 "receiver_candidates": [],
+                "official_metric_name": trajectory.official_metric_name,
+                "official_metric_raw": trajectory.official_metric_raw,
+                "official_metric_normalized": trajectory.official_metric_normalized,
             },
         )

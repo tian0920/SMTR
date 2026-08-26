@@ -1,0 +1,6 @@
+scenario,n_episodes,n_valid_evaluator,valid_evaluator_rate,mean_score,team_success_rate
+bargaining,40,0,0.0,,0.0
+coding,40,0,0.0,,0.0
+database,40,0,0.0,,0.0
+minecraft,40,0,0.0,,0.0
+research,40,0,0.0,,0.0

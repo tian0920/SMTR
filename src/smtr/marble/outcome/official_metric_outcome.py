@@ -50,7 +50,7 @@ class ReceiverTCIOutcome:
     raw_metric_name: str
     raw_expose_score: float | None
     raw_withhold_score: float | None
-    oriented_delta: float
+    oriented_delta: float | None
     receiver_id: str
     metric_type: str = "maximize"
 
@@ -65,12 +65,12 @@ class ReceiverTCIOutcome:
     @property
     def has_positive_delta(self) -> bool:
         """Check if expose > withhold."""
-        return self.is_valid and self.oriented_delta > 0
+        return self.is_valid and self.oriented_delta is not None and self.oriented_delta > 0
 
     @property
     def has_negative_delta(self) -> bool:
         """Check if expose < withhold."""
-        return self.is_valid and self.oriented_delta < 0
+        return self.is_valid and self.oriented_delta is not None and self.oriented_delta < 0
 
 
 class OfficialMetricOutcomeEvaluator:
@@ -369,11 +369,13 @@ class OfficialMetricOutcomeEvaluator:
         withhold_outcome = self.evaluate(task={}, run_result=withhold_result)
 
         if not expose_outcome.is_valid or not withhold_outcome.is_valid:
+            # Invalid outcome: delta is undefined (None), NOT silent zero.
+            # This prevents invalid → delta=0 → rejected confusion.
             return ReceiverTCIOutcome(
                 raw_metric_name=self._get_metric_name(),
                 raw_expose_score=expose_outcome.raw_score,
                 raw_withhold_score=withhold_outcome.raw_score,
-                oriented_delta=0.0,
+                oriented_delta=None,
                 receiver_id=receiver_id,
                 metric_type="maximize",
             )
