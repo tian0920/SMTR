@@ -28,6 +28,8 @@ dist/
 # Local environment files
 .env
 .env.*
+credentials.*
+*.credentials
 
 # Experiment results / artifacts
 artifacts/

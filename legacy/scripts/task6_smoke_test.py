@@ -25,8 +25,15 @@ from typing import Any
 # ---------------------------------------------------------------------------
 # LLM API setup — must happen before any MARBLE imports
 # ---------------------------------------------------------------------------
-LLM_API_BASE = "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-LLM_API_KEY = "sk-8692d980a9e148d3843a64135ae0b0f2"
+LLM_API_BASE = os.environ.get(
+    "DASHSCOPE_BASE_URL",
+    os.environ.get("OPENAI_BASE_URL", "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"),
+)
+LLM_API_KEY = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("OPENAI_API_KEY")
+if not LLM_API_KEY:
+    raise RuntimeError(
+        "Missing LLM API credential. Set DASHSCOPE_API_KEY or OPENAI_API_KEY before running."
+    )
 LLM_MODEL = "openai/qwen3.5-plus"
 
 os.environ["OPENAI_API_BASE"] = LLM_API_BASE

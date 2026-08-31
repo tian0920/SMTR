@@ -1,0 +1,143 @@
+[
+  {
+    "scenario": "bargaining",
+    "task_id": "1",
+    "seed": 0,
+    "global_step": 0,
+    "task_position": 0,
+    "no_memory": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "full_memory": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "retrieval": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "smtr_uniform": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "smtr_receiver": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    }
+  },
+  {
+    "scenario": "bargaining",
+    "task_id": "2",
+    "seed": 0,
+    "global_step": 1,
+    "task_position": 1,
+    "no_memory": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "full_memory": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "retrieval": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "smtr_uniform": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "smtr_receiver": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    }
+  },
+  {
+    "scenario": "bargaining",
+    "task_id": "3",
+    "seed": 0,
+    "global_step": 2,
+    "task_position": 2,
+    "no_memory": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "full_memory": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "retrieval": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "smtr_uniform": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    },
+    "smtr_receiver": {
+      "total": 0,
+      "candidate": 0,
+      "validated": 0,
+      "rejected": 0,
+      "mean_tci_effect_validated": null,
+      "mean_validation_count": null
+    }
+  }
+]

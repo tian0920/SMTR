@@ -6,7 +6,12 @@ from pathlib import Path
 
 # Simulate the CLI's environment
 cli_env = dict(os.environ)
-cli_env["DASHSCOPE_API_KEY"] = "sk-74ff95e05f294cb384ff1f693ea0198d"
+_api_key = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("OPENAI_API_KEY")
+if not _api_key:
+    raise RuntimeError(
+        "Missing LLM API credential. Set DASHSCOPE_API_KEY or OPENAI_API_KEY before running."
+    )
+cli_env["DASHSCOPE_API_KEY"] = _api_key
 cli_env["MARBLE_LLM_MODEL"] = "qwen3.6-35b-a3b"
 
 # Run a minimal version of what the CLI does

@@ -4,10 +4,14 @@ set -euo pipefail
 
 export MARBLE_ROOT="/home/ecs-user/MARBLE"
 export MARBLE_LLM_MODEL="qwen3-30b-a3b"
-export DASHSCOPE_API_KEY="sk-74ff95e05f294cb384ff1f693ea0198d"
-export DASHSCOPE_BASE_URL="https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-export OPENAI_API_KEY="$DASHSCOPE_API_KEY"
-export OPENAI_BASE_URL="$DASHSCOPE_BASE_URL"
+# API key MUST come from environment (never hardcode).
+if [ -z "${DASHSCOPE_API_KEY:-}" ]; then
+  echo "ERROR: Missing LLM API credential. Export DASHSCOPE_API_KEY before running." >&2
+  exit 1
+fi
+export DASHSCOPE_BASE_URL="${DASHSCOPE_BASE_URL:-https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1}"
+export OPENAI_API_KEY="${OPENAI_API_KEY:-$DASHSCOPE_API_KEY}"
+export OPENAI_BASE_URL="${OPENAI_BASE_URL:-$DASHSCOPE_BASE_URL}"
 export SMTR_LLM_ENABLE_THINKING="false"
 
 cd /home/ecs-user/SMTR

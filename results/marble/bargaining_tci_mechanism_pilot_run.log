@@ -1,0 +1,28 @@
+=== Online MARBLE Receiver=3 Main Experiment ===
+  source: scenarios=['bargaining']
+  seeds: [0, 1]
+  methods: ['no_memory', 'full_memory', 'retrieval', 'smtr_uniform', 'smtr_receiver']
+  receivers: ['agent1', 'agent2', 'agent3']
+  tasks: 10 total
+  skip_tci: False
+  max_tci_candidates: 5
+  validation_only: True
+
+[1/20] task=bargaining/1 seed=0INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent3-4b079de3 receiver=agent1 task=1 seed=0 metric=avg_negotiation_quality expose=0.625 withhold=0.708 delta=-0.083 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent3-4b079de3 receiver=agent2 task=1 seed=0 metric=avg_negotiation_quality expose=0.750 withhold=0.708 delta=0.042 -> validated
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent3-4b079de3 receiver=agent3 task=1 seed=0 metric=avg_negotiation_quality expose=0.625 withhold=0.750 delta=-0.125 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent4-055ab6c3 receiver=agent1 task=1 seed=0 metric=avg_negotiation_quality expose=0.792 withhold=0.708 delta=0.083 -> validated
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent4-055ab6c3 receiver=agent2 task=1 seed=0 metric=avg_negotiation_quality expose=0.708 withhold=0.667 delta=0.042 -> validated
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent4-055ab6c3 receiver=agent3 task=1 seed=0 metric=avg_negotiation_quality expose=0.750 withhold=0.708 delta=0.042 -> validated
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent2-10b0e34c receiver=agent1 task=1 seed=0 metric=avg_negotiation_quality expose=0.667 withhold=0.625 delta=0.042 -> validated
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent2-10b0e34c receiver=agent2 task=1 seed=0 metric=avg_negotiation_quality expose=0.750 withhold=0.750 delta=0.000 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent2-10b0e34c receiver=agent3 task=1 seed=0 metric=avg_negotiation_quality expose=0.708 withhold=0.750 delta=-0.042 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-summary-0e715334 receiver=agent1 task=1 seed=0 metric=avg_negotiation_quality expose=0.625 withhold=0.708 delta=-0.083 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-summary-0e715334 receiver=agent2 task=1 seed=0 metric=avg_negotiation_quality expose=0.667 withhold=0.625 delta=0.042 -> validated
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-summary-0e715334 receiver=agent3 task=1 seed=0 metric=avg_negotiation_quality expose=0.750 withhold=0.750 delta=0.000 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent1-90c525d5 receiver=agent1 task=1 seed=0 metric=avg_negotiation_quality expose=0.708 withhold=0.708 delta=0.000 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent1-90c525d5 receiver=agent2 task=1 seed=0 metric=avg_negotiation_quality expose=0.708 withhold=0.708 delta=0.000 -> rejected
+INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-agent1-90c525d5 receiver=agent3 task=1 seed=0 metric=avg_negotiation_quality expose=0.708 withhold=0.667 delta=0.042 -> validated
+  TCI subsample: 5/8 candidates
+  (6456.4s, 8 candidates)
+[2/20] task=bargaining/1 seed=1INFO smtr.memory.online_receiver_intervention: online_tci: memory=marble-bargaining-1-summary-e79f35a7 receiver=agent1 task=1 seed=1 metric=avg_negotiation_quality expose=0.750 withhold=0.750 delta=0.000 -> rejected

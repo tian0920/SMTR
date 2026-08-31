@@ -52,7 +52,12 @@ def run_single_task(
         "--save-to", str(output_dir),
     ]
     
-    env = {"OPENAI_API_KEY": "sk-8692d980a9e148d3843a64135ae0b0f2", "PATH": "/usr/bin:/bin"}
+    _api_key = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    if not _api_key:
+        raise RuntimeError(
+            "Missing LLM API credential. Set DASHSCOPE_API_KEY or OPENAI_API_KEY before running."
+        )
+    env = {"OPENAI_API_KEY": _api_key, "PATH": "/usr/bin:/bin"}
     
     try:
         result = subprocess.run(

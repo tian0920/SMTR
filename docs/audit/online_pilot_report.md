@@ -2,7 +2,7 @@
 
 **Date**: 2026-08-23
 **Model**: qwen3-30b-a3b (via DashScope MAAS)
-**API**: sk-c6b050c412864c7ba3936e928121cf4b
+**API**: <redacted>
 
 ## 1. Summary
 

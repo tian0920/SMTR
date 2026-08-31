@@ -30,6 +30,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import os
 import random
 import sys
 import time
@@ -582,6 +583,29 @@ def main() -> None:
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+
+    # Pre-flight credential check — fail loudly BEFORE any engine work
+    _api_key = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    if not _api_key:
+        print(
+            "FATAL: Missing LLM API credential.\n"
+            "Set DASHSCOPE_API_KEY (preferred) or OPENAI_API_KEY before running.\n"
+            "Example:  export DASHSCOPE_API_KEY=\"<your-key>\"",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    # base URL pre-flight
+    _base_url = (
+        os.environ.get("DASHSCOPE_BASE_URL")
+        or os.environ.get("OPENAI_BASE_URL")
+        or os.environ.get("OPENAI_API_BASE")
+    )
+    if not _base_url:
+        print(
+            "WARNING: No DASHSCOPE_BASE_URL / OPENAI_BASE_URL set. "
+            "Engine will rely on provider defaults.",
+            file=sys.stderr,
+        )
 
     # Load tasks
     loader = MarbleTaskLoader()

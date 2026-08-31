@@ -575,18 +575,31 @@ def _extract_agent_messages(raw: dict[str, Any]) -> list[dict[str, Any]]:
             if not isinstance(it, dict):
                 continue
             task_results = it.get("task_results", [])
-            if not isinstance(task_results, list):
-                continue
-            for entry in task_results:
-                if isinstance(entry, dict):
-                    for agent_id, content in entry.items():
-                        result.append({
-                            "agent_id": agent_id,
-                            "content": str(content),
-                            "role": "assistant",
-                            "iteration": it.get("iteration", 0),
-                        })
-        return result
+            if isinstance(task_results, list):
+                for entry in task_results:
+                    if isinstance(entry, dict):
+                        for agent_id, content in entry.items():
+                            result.append({
+                                "agent_id": agent_id,
+                                "content": str(content),
+                                "role": "assistant",
+                                "iteration": it.get("iteration", 0),
+                            })
+        # Fallback: if task_results was empty, extract iteration summaries
+        if not result:
+            for it in iterations:
+                if not isinstance(it, dict):
+                    continue
+                summary = it.get("summary", "")
+                if isinstance(summary, str) and len(summary) >= 10:
+                    result.append({
+                        "agent_id": "summary",
+                        "content": summary,
+                        "role": "assistant",
+                        "iteration": it.get("iteration", 0),
+                    })
+        if result:
+            return result
     return []
 
 
@@ -629,7 +642,24 @@ def _extract_agent_actions(raw: dict[str, Any]) -> list[dict[str, Any]]:
                                 "result": str(content),
                                 "iteration": it.get("iteration", 0),
                             })
-        return result
+        # Fallback: if task_results was empty, derive actions from task_assignments
+        if not result:
+            for it in iterations:
+                if not isinstance(it, dict):
+                    continue
+                assignments = it.get("task_assignments", {})
+                if isinstance(assignments, dict):
+                    for agent_id, assignment in assignments.items():
+                        if isinstance(assignment, str) and len(assignment) >= 10:
+                            result.append({
+                                "agent_id": agent_id,
+                                "action_type": "task_assignment",
+                                "assignment": assignment,
+                                "result": it.get("summary", ""),
+                                "iteration": it.get("iteration", 0),
+                            })
+        if result:
+            return result
     return []
 
 

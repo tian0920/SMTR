@@ -1,0 +1,25 @@
+{
+  "global": [
+    {
+      "method": "no_memory",
+      "n_episodes": 0
+    },
+    {
+      "method": "full_memory",
+      "n_episodes": 0
+    },
+    {
+      "method": "retrieval",
+      "n_episodes": 0
+    },
+    {
+      "method": "smtr_uniform",
+      "n_episodes": 0
+    },
+    {
+      "method": "smtr_receiver",
+      "n_episodes": 0
+    }
+  ],
+  "per_scenario": {}
+}

@@ -16,8 +16,12 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────────
 MARBLE_ROOT = Path("/home/ecs-user/MARBLE")
-API_KEY = "sk-74ff95e05f294cb384ff1f693ea0198d"
-BASE_URL = "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+API_KEY = os.environ.get("DASHSCOPE_API_KEY") or os.environ.get("OPENAI_API_KEY")
+if not API_KEY:
+    raise RuntimeError(
+        "Missing LLM API credential. Set DASHSCOPE_API_KEY or OPENAI_API_KEY before running."
+    )
+BASE_URL = os.environ.get("DASHSCOPE_BASE_URL") or os.environ.get("OPENAI_BASE_URL", "https://llm-jhxtd03gjg0gd2o2.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1")
 MODEL = "qwen3-30b-a3b"
 TIMEOUT = 600
 
