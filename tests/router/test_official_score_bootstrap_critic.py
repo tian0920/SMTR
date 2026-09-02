@@ -146,13 +146,14 @@ def test_point_prediction_matches_distribution_mean():
 
 
 def test_cluster_bootstrap_uses_task_ids():
-    """Training stats must report bootstrap_cluster_unit == 'task_id'."""
+    """Training stats must report dependency-compatible cluster unit (§16.4)."""
     examples = _make_training_set(n_tasks=5, n_per_task=2)
     critic = _fit_critic(examples, n_bootstrap=3)
 
     stats = critic._training_stats
-    assert stats["bootstrap_cluster_unit"] == "task_id"
-    assert stats["n_unique_tasks"] == 5
+    assert stats["bootstrap_cluster_unit"] == "(task_id, receiver_id)"
+    # 5 tasks × 2 receivers = 10 families
+    assert stats["n_unique_families"] == 10
     assert stats["n_bootstrap"] == 3
 
 

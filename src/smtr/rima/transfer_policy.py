@@ -7,8 +7,11 @@ continual transfer controller:
 * gamma: Q75 of positive observed train tau
 * delta: minimum LCB threshold for exploitation
 
+β = 1.64 is the **conservative uncertainty coefficient** (§16.1).
+We do NOT claim "95% confidence" unless empirical coverage supports it.
+
 gamma must be computed ONLY from TRAIN split observed tau — never from
-validation, test, or predicted tau.
+validation, test, or predicted tau. gamma is NOT updated online (§16.5).
 """
 
 from __future__ import annotations
@@ -34,7 +37,7 @@ class TransferPolicy:
     """Frozen routing policy parameters.
 
     Attributes:
-        beta: LCB uncertainty penalty coefficient (default 1.64).
+        beta: conservative uncertainty coefficient (default 1.64, §16.1).
         delta: minimum LCB threshold for exploitation (default 0.0).
         gamma: Q75 of positive observed train tau.
         gamma_quantile: quantile used to compute gamma (default 0.75).

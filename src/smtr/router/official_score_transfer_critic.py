@@ -207,8 +207,11 @@ class BootstrapOfficialScoreTransferCritic:
     def fit(self, examples: list[MatchedInterventionExample]) -> dict[str, Any]:
         """Train bootstrap ensemble on matched interventions.
 
-        Cluster bootstrap: sample task_ids with replacement, then include
-        all examples from each sampled task.
+        Cluster bootstrap: sample ``(task_id, receiver_id)`` families
+        with replacement, then include all examples from each sampled
+        family (§16.4 — dependency-compatible family). This ensures
+        shared-control treatment edges within the same (task, receiver)
+        are kept together and not treated as independent samples.
 
         Returns:
             Training statistics dict.
@@ -235,22 +238,25 @@ class BootstrapOfficialScoreTransferCritic:
                 f"(invalid={invalid_count}, self_transfer={self_transfer_count})."
             )
 
-        # Group by task_id for cluster bootstrap.
-        by_task: dict[str, list[MatchedInterventionExample]] = {}
+        # Group by (task_id, receiver_id) for cluster bootstrap (§16.4).
+        by_family: dict[tuple[str, str], list[MatchedInterventionExample]] = {}
         for ex in usable:
-            by_task.setdefault(ex.task_id, []).append(ex)
-        task_ids = sorted(by_task.keys())
+            key = (ex.task_id, ex.receiver_id)
+            by_family.setdefault(key, []).append(ex)
+        family_keys = sorted(by_family.keys())
 
         rng = np.random.RandomState(self.seed)
         self.members = []
 
         for _b in range(self.n_bootstrap):
-            # Sample task_ids with replacement.
-            sampled_ids = rng.choice(task_ids, size=len(task_ids), replace=True)
-            # Collect all examples from sampled tasks (with duplicates).
+            # Sample (task_id, receiver_id) families with replacement.
+            sampled_indices = rng.choice(
+                len(family_keys), size=len(family_keys), replace=True
+            )
+            # Collect all examples from sampled families (with duplicates).
             sample_examples: list[MatchedInterventionExample] = []
-            for tid in sampled_ids:
-                sample_examples.extend(by_task[tid])
+            for idx in sampled_indices:
+                sample_examples.extend(by_family[family_keys[idx]])
 
             X = self.encoder.encode_batch([ex.features for ex in sample_examples])
             y1 = np.array(
@@ -275,8 +281,8 @@ class BootstrapOfficialScoreTransferCritic:
             "receiver_conditioned": self.receiver_conditioned,
             "n_bootstrap": self.n_bootstrap,
             "seed": self.seed,
-            "bootstrap_cluster_unit": "task_id",
-            "n_unique_tasks": len(task_ids),
+            "bootstrap_cluster_unit": "(task_id, receiver_id)",
+            "n_unique_families": len(family_keys),
         }
         return dict(self._training_stats)
 
