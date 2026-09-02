@@ -1,0 +1,335 @@
+"""Transfer-Aware Memory Controller for RIMA-Transfer (§17-25).
+
+Three routing modes:
+
+* ``EXPLOIT_ONLY``   — best known LCB >= gamma  → no global retrieval
+* ``EXPLOIT_EXPLORE`` — delta < best LCB < gamma → known + global
+* ``EXPLORE_ONLY``   — best LCB <= delta or no valid known → global only
+
+Key invariant: context_budget = 1 (one memory per receiver per task).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Callable
+
+from smtr.memory.shared_memory_pool import SharedMemory, SharedMemoryPool
+from smtr.rima.features import ReceiverConditionedTransferFeatures
+from smtr.rima.transfer_policy import TransferPolicy, lower_confidence_bound
+from smtr.rima.transfer_state import (
+    ReceiverTransferState,
+    ReceiverTransferStateContainer,
+)
+from smtr.router.official_score_transfer_critic import (
+    BootstrapOfficialScoreTransferCritic,
+    MatchedInterventionExample,
+)
+
+__all__ = [
+    "RoutingMode",
+    "TransferCandidateDecision",
+    "TransferRoutingPlan",
+    "TransferAwareMemoryController",
+]
+
+
+class RoutingMode:
+    EXPLOIT_ONLY = "exploit_only"
+    EXPLOIT_EXPLORE = "exploit_explore"
+    EXPLORE_ONLY = "explore_only"
+
+
+@dataclass
+class TransferCandidateDecision:
+    memory_id: str
+    receiver_id: str
+    task_id: str
+
+    candidate_source: str  # known | global
+
+    mu_tau: float | None
+    sigma_tau: float | None
+    lcb: float | None
+
+    eligible_for_context: bool
+    selected_for_context: bool
+
+    status: str  # positive | negative | self_transfer_excluded
+
+
+@dataclass
+class TransferRoutingPlan:
+    receiver_id: str
+    task_id: str
+
+    routing_mode: str
+
+    best_known_lcb: float | None
+
+    known_candidates: list[TransferCandidateDecision] = field(default_factory=list)
+    global_candidates: list[TransferCandidateDecision] = field(default_factory=list)
+
+    selected_memory_ids: list[str] = field(default_factory=list)
+
+    global_retrieval_triggered: bool = False
+
+
+# Type alias for the feature builder callable.
+# Signature: (memory, receiver_id, task, task_id) -> features
+FeatureBuilder = Callable[
+    [SharedMemory, str, dict[str, Any], str],
+    ReceiverConditionedTransferFeatures,
+]
+
+
+class TransferAwareMemoryController:
+    """Continual transfer-aware memory controller (§17-25).
+
+    For each task and each receiver the controller:
+
+    1. Recalls known candidates from the receiver transfer state.
+    2. Re-predicts transfer effect (mu, sigma) with the frozen critic.
+    3. Decides routing mode based on best known LCB vs delta / gamma.
+    4. Optionally retrieves unseen global memories.
+    5. Selects at most ``context_budget`` memories for injection.
+    """
+
+    def __init__(
+        self,
+        *,
+        critic: BootstrapOfficialScoreTransferCritic,
+        pool: SharedMemoryPool,
+        transfer_states: ReceiverTransferStateContainer,
+        policy: TransferPolicy,
+        feature_builder: FeatureBuilder,
+        known_probe_top_k: int = 20,
+        global_explore_top_k: int = 5,
+        context_budget: int = 1,
+    ) -> None:
+        self.critic = critic
+        self.pool = pool
+        self.transfer_states = transfer_states
+        self.policy = policy
+        self.feature_builder = feature_builder
+        self.known_probe_top_k = known_probe_top_k
+        self.global_explore_top_k = global_explore_top_k
+        self.context_budget = context_budget
+
+    # ------------------------------------------------------------------
+    # Core algorithm (§18-25)
+    # ------------------------------------------------------------------
+
+    def plan_for_task(
+        self,
+        *,
+        task: dict[str, Any],
+        task_id: str,
+        task_position: int,
+        receiver_id: str,
+    ) -> TransferRoutingPlan:
+        """Execute the full routing plan for one (task, receiver) pair."""
+        state = self.transfer_states.ensure(receiver_id)
+
+        # --- Step A: recall known candidates from K_r ---
+        known_mems = self._recall_known(state, task, receiver_id, task_position)
+
+        # --- Step B: predict transfer effect for each known candidate ---
+        known_decisions = self._predict_candidates(
+            known_mems,
+            task=task,
+            task_id=task_id,
+            task_position=task_position,
+            receiver_id=receiver_id,
+            candidate_source="known",
+            state=state,
+        )
+
+        # --- Step C: determine routing mode ---
+        valid_lcbs = [d.lcb for d in known_decisions if d.lcb is not None]
+        best_known_lcb = max(valid_lcbs) if valid_lcbs else None
+        mode = self._decide_mode(best_known_lcb)
+
+        # --- Step D: optional global exploration ---
+        global_decisions: list[TransferCandidateDecision] = []
+        global_triggered = mode != RoutingMode.EXPLOIT_ONLY
+
+        if global_triggered:
+            global_mems = self.pool.retrieve_unseen(
+                task,
+                receiver_id,
+                self.global_explore_top_k,
+                current_task_position=task_position,
+                exclude_memory_ids=set(state.known_memory_ids()),
+            )
+            # Filter self-transfer before prediction
+            for mem in global_mems:
+                if mem.source_agent_id == receiver_id:
+                    global_decisions.append(
+                        TransferCandidateDecision(
+                            memory_id=mem.memory_id,
+                            receiver_id=receiver_id,
+                            task_id=task_id,
+                            candidate_source="global",
+                            mu_tau=None,
+                            sigma_tau=None,
+                            lcb=None,
+                            eligible_for_context=False,
+                            selected_for_context=False,
+                            status="self_transfer_excluded",
+                        )
+                    )
+                    continue
+
+                # Register in K_r (even if negative)
+                state.register_memory(
+                    memory_id=mem.memory_id,
+                    source_agent_id=mem.source_agent_id,
+                    task_id=task_id,
+                    task_position=task_position,
+                )
+
+            # Predict for non-self-transfer global candidates
+            non_self_mems = [
+                m for m in global_mems if m.source_agent_id != receiver_id
+            ]
+            global_predicted = self._predict_candidates(
+                non_self_mems,
+                task=task,
+                task_id=task_id,
+                task_position=task_position,
+                receiver_id=receiver_id,
+                candidate_source="global",
+                state=state,
+            )
+            # Merge: self-transfer decisions first, then predicted
+            self_transfer_decisions = [
+                d for d in global_decisions if d.status == "self_transfer_excluded"
+            ]
+            global_decisions = self_transfer_decisions + global_predicted
+
+        # --- Step E: select top eligible candidates ---
+        all_decisions = known_decisions + global_decisions
+        eligible = [d for d in all_decisions if d.eligible_for_context]
+        eligible.sort(key=lambda d: (-( d.lcb or 0.0), -(d.mu_tau or 0.0), d.memory_id))
+        selected = eligible[: self.context_budget]
+        for d in selected:
+            d.selected_for_context = True
+            state.mark_selected(d.memory_id)
+
+        return TransferRoutingPlan(
+            receiver_id=receiver_id,
+            task_id=task_id,
+            routing_mode=mode,
+            best_known_lcb=best_known_lcb,
+            known_candidates=known_decisions,
+            global_candidates=global_decisions,
+            selected_memory_ids=[d.memory_id for d in selected],
+            global_retrieval_triggered=global_triggered,
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _recall_known(
+        self,
+        state: ReceiverTransferState,
+        task: dict[str, Any],
+        receiver_id: str,
+        task_position: int,
+    ) -> list[SharedMemory]:
+        if len(state) == 0:
+            return []
+        return self.pool.rank_subset(
+            memory_ids=state.known_memory_ids(),
+            task=task,
+            receiver_id=receiver_id,
+            current_task_position=task_position,
+            top_k=self.known_probe_top_k,
+        )
+
+    def _predict_candidates(
+        self,
+        memories: list[SharedMemory],
+        *,
+        task: dict[str, Any],
+        task_id: str,
+        task_position: int,
+        receiver_id: str,
+        candidate_source: str,
+        state: ReceiverTransferState,
+    ) -> list[TransferCandidateDecision]:
+        decisions: list[TransferCandidateDecision] = []
+        for mem in memories:
+            features = self.feature_builder(mem, receiver_id, task, task_id)
+            example = MatchedInterventionExample(
+                task_id=task_id,
+                memory_id=mem.memory_id,
+                receiver_id=receiver_id,
+                source_agent_id=mem.source_agent_id,
+                official_expose_score=None,
+                official_withhold_score=None,
+                features=features,
+            )
+            dist = self.critic.predict_distribution(example)
+
+            if dist.mu_tau is None or dist.sigma_tau is None:
+                # Self-transfer or invalid
+                decisions.append(
+                    TransferCandidateDecision(
+                        memory_id=mem.memory_id,
+                        receiver_id=receiver_id,
+                        task_id=task_id,
+                        candidate_source=candidate_source,
+                        mu_tau=None,
+                        sigma_tau=None,
+                        lcb=None,
+                        eligible_for_context=False,
+                        selected_for_context=False,
+                        status="self_transfer_excluded",
+                    )
+                )
+                continue
+
+            lcb = lower_confidence_bound(dist.mu_tau, dist.sigma_tau, self.policy.beta)
+            eligible = lcb > self.policy.delta
+
+            status = "positive" if eligible else "negative"
+
+            # Record prediction in transfer state
+            state.record_prediction(
+                memory_id=mem.memory_id,
+                task_id=task_id,
+                task_position=task_position,
+                mu_tau=dist.mu_tau,
+                sigma_tau=dist.sigma_tau,
+                lcb=lcb,
+                status=status,
+                candidate_source=candidate_source,
+            )
+
+            decisions.append(
+                TransferCandidateDecision(
+                    memory_id=mem.memory_id,
+                    receiver_id=receiver_id,
+                    task_id=task_id,
+                    candidate_source=candidate_source,
+                    mu_tau=dist.mu_tau,
+                    sigma_tau=dist.sigma_tau,
+                    lcb=lcb,
+                    eligible_for_context=eligible,
+                    selected_for_context=False,
+                    status=status,
+                )
+            )
+        return decisions
+
+    def _decide_mode(self, best_known_lcb: float | None) -> str:
+        if best_known_lcb is None:
+            return RoutingMode.EXPLORE_ONLY
+        if best_known_lcb <= self.policy.delta:
+            return RoutingMode.EXPLORE_ONLY
+        if best_known_lcb >= self.policy.gamma:
+            return RoutingMode.EXPLOIT_ONLY
+        return RoutingMode.EXPLOIT_EXPLORE
