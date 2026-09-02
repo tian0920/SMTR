@@ -14,6 +14,7 @@ from typing import Any, Iterable, Sequence
 __all__ = [
     "compute_transfer_routing_metrics",
     "compute_transfer_cost",
+    "build_curve_records",
 ]
 
 
@@ -106,6 +107,65 @@ def compute_transfer_routing_metrics(
         "distinct_global_memories_explored": len(distinct_global),
         "known_memory_reuse_rate": known_reuse_rate,
     }
+
+
+def build_curve_records(
+    routing_diagnostics: Iterable[dict[str, Any]],
+    task_records: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build per-task-position curve-ready records (§34, §35).
+
+    Produces one record per task position with aggregated routing
+    information across receivers, joined with the task score.
+
+    Output fields per record::
+
+        task_position
+        global_retrieval_triggered   (any receiver triggered)
+        selected_from_known          (any receiver selected known)
+        transfer_state_size          (sum across receivers)
+        task_score
+
+    These records feed two key continual curves:
+
+    * Global Retrieval Rate over Task Position  (expected ↓)
+    * Known Transfer Reuse Rate over Task Position  (expected ↑)
+    """
+    diags = list(routing_diagnostics)
+    records = list(task_records)
+
+    # Index task scores by position
+    score_by_pos: dict[int, float | None] = {}
+    for r in records:
+        pos = r.get("task_position")
+        if pos is not None:
+            score_by_pos[pos] = r.get("task_score")
+
+    # Group diagnostics by task_position
+    by_pos: dict[int, list[dict[str, Any]]] = {}
+    for d in diags:
+        pos = d.get("task_position", -1)
+        by_pos.setdefault(pos, []).append(d)
+
+    curve: list[dict[str, Any]] = []
+    for pos in sorted(by_pos):
+        group = by_pos[pos]
+        triggered = any(d.get("global_retrieval_triggered") for d in group)
+        from_known = any(
+            d.get("selected_source") == "known" for d in group
+        )
+        state_size = sum(
+            d.get("transfer_state_size_after", 0) for d in group
+        )
+        curve.append({
+            "task_position": pos,
+            "global_retrieval_triggered": triggered,
+            "selected_from_known": from_known,
+            "transfer_state_size": state_size,
+            "task_score": score_by_pos.get(pos),
+        })
+
+    return curve
 
 
 def compute_transfer_cost(

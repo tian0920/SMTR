@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from smtr.rima.transfer_metrics import (
+    build_curve_records,
     compute_transfer_cost,
     compute_transfer_routing_metrics,
 )
@@ -177,3 +178,94 @@ class TestTransferCost:
         diags = [_make_diag() for _ in range(100)]
         result = compute_transfer_cost(diags)
         assert result["online_transfer_cost"]["online_intervention_episodes"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Curve records (§34, §35)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildCurveRecords:
+    def test_empty_input(self):
+        assert build_curve_records([], []) == []
+
+    def test_basic_curve_record(self):
+        diags = [
+            _make_diag(
+                global_triggered=True,
+                selected_source="known",
+                state_after=5,
+                receiver_id="r1",
+            ),
+        ]
+        # Inject task_position into the diag
+        diags[0]["task_position"] = 0
+        records = [{"task_position": 0, "task_score": 0.75}]
+        curve = build_curve_records(diags, records)
+        assert len(curve) == 1
+        c = curve[0]
+        assert c["task_position"] == 0
+        assert c["global_retrieval_triggered"] is True
+        assert c["selected_from_known"] is True
+        assert c["transfer_state_size"] == 5
+        assert c["task_score"] == 0.75
+
+    def test_multi_receiver_aggregation(self):
+        """Multiple receivers per position are merged."""
+        diags = [
+            {
+                **_make_diag(
+                    global_triggered=False,
+                    selected_source="known",
+                    state_after=3,
+                    receiver_id="r1",
+                ),
+                "task_position": 2,
+            },
+            {
+                **_make_diag(
+                    global_triggered=True,
+                    selected_source="global",
+                    state_after=7,
+                    receiver_id="r2",
+                ),
+                "task_position": 2,
+            },
+        ]
+        records = [{"task_position": 2, "task_score": 0.6}]
+        curve = build_curve_records(diags, records)
+        assert len(curve) == 1
+        c = curve[0]
+        # any receiver triggered -> True
+        assert c["global_retrieval_triggered"] is True
+        # any receiver selected known -> True
+        assert c["selected_from_known"] is True
+        # sum of state sizes
+        assert c["transfer_state_size"] == 10
+
+    def test_multiple_positions_sorted(self):
+        diags = []
+        for pos in [3, 0, 1]:
+            d = _make_diag(
+                global_triggered=(pos == 0),
+                selected_source="known" if pos > 0 else "none",
+                state_after=pos + 1,
+            )
+            d["task_position"] = pos
+            diags.append(d)
+        records = [
+            {"task_position": 0, "task_score": 0.5},
+            {"task_position": 1, "task_score": 0.6},
+            {"task_position": 3, "task_score": 0.8},
+        ]
+        curve = build_curve_records(diags, records)
+        positions = [c["task_position"] for c in curve]
+        assert positions == [0, 1, 3]
+        assert curve[0]["global_retrieval_triggered"] is True
+        assert curve[1]["selected_from_known"] is True
+        assert curve[2]["task_score"] == 0.8
+
+    def test_missing_task_score(self):
+        diags = [{**_make_diag(), "task_position": 0}]
+        curve = build_curve_records(diags, [])
+        assert curve[0]["task_score"] is None

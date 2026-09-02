@@ -47,6 +47,7 @@ from smtr.rima.outcome import RimaOutcomeEvaluator  # noqa: E402
 from smtr.rima.receiver_topology import ReceiverExclusionPolicy, select_receivers  # noqa: E402
 from smtr.rima.transfer_controller import TransferAwareMemoryController  # noqa: E402
 from smtr.rima.transfer_metrics import (  # noqa: E402
+    build_curve_records,
     compute_transfer_cost,
     compute_transfer_routing_metrics,
 )
@@ -488,6 +489,9 @@ class TransferContinualProtocol:
             )
             summary["transfer_cost"] = compute_transfer_cost(
                 self.routing_diagnostics
+            )
+            summary["curve_records"] = build_curve_records(
+                self.routing_diagnostics, self.records
             )
 
         if self.engine is not None:
