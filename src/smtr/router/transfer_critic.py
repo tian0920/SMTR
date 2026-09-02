@@ -450,6 +450,29 @@ class FourOutcomeTransferCritic:
         self.coverage_report = report
 
         required_classes = set(unique_classes.tolist())
+
+        # Validate that bootstrap clusters partition every usable row.
+        if bootstrap_clusters is not None:
+            n_rows = len(inputs)
+            flat = [
+                idx
+                for cluster in bootstrap_clusters.values()
+                for idx in cluster
+            ]
+            if any(idx < 0 or idx >= n_rows for idx in flat):
+                raise ValueError(
+                    "bootstrap clusters contain row indices out of range"
+                )
+            if len(set(flat)) != len(flat):
+                raise ValueError(
+                    "bootstrap clusters overlap (duplicate row indices)"
+                )
+            if set(flat) != set(range(n_rows)):
+                raise ValueError(
+                    "bootstrap clusters must partition every training "
+                    "record row"
+                )
+
         rng = np.random.default_rng(self.seed)
         self.members = []
         for _ in range(self.n_bootstrap):

@@ -97,3 +97,60 @@ def test_fit_requires_clusters_to_partition_every_row():
             labels=["positive_transfer", "negative_transfer"],
             bootstrap_clusters={("t1", "r1"): [0]},
         )
+
+
+def test_cluster_partition_missing_row_fails():
+    """Clusters that omit at least one row must raise."""
+    critic = FourOutcomeTransferCritic()
+    with pytest.raises(
+        ValueError, match="must partition every training record row"
+    ):
+        critic.fit(
+            inputs=[_exposure("m1"), _exposure("m2"), _exposure("m3")],
+            labels=["positive_transfer", "negative_transfer", "positive_transfer"],
+            bootstrap_clusters={("t1", "r1"): [0, 1]},  # row 2 missing
+        )
+
+
+def test_cluster_partition_duplicate_row_fails():
+    """Clusters that contain the same row index twice must raise."""
+    critic = FourOutcomeTransferCritic()
+    with pytest.raises(ValueError, match="overlap"):
+        critic.fit(
+            inputs=[_exposure("m1"), _exposure("m2")],
+            labels=["positive_transfer", "negative_transfer"],
+            bootstrap_clusters={("t1", "r1"): [0, 1], ("t2", "r2"): [1]},
+        )
+
+
+def test_cluster_partition_out_of_range_fails():
+    """Clusters with an index >= n_rows (or < 0) must raise."""
+    critic = FourOutcomeTransferCritic()
+    with pytest.raises(ValueError, match="out of range"):
+        critic.fit(
+            inputs=[_exposure("m1"), _exposure("m2")],
+            labels=["positive_transfer", "negative_transfer"],
+            bootstrap_clusters={("t1", "r1"): [0, 1, 5]},
+        )
+
+
+def test_cluster_partition_complete_passes():
+    """A valid partition of all rows must not raise a partition error."""
+    critic = FourOutcomeTransferCritic(seed=42)
+    # 4 rows split into two clusters covering every row exactly once.
+    critic.fit(
+        inputs=[
+            _exposure("m1"),
+            _exposure("m2"),
+            _exposure("m3"),
+            _exposure("m4"),
+        ],
+        labels=[
+            "positive_transfer",
+            "negative_transfer",
+            "positive_transfer",
+            "negative_transfer",
+        ],
+        bootstrap_clusters={("t1", "r1"): [0, 1], ("t2", "r2"): [2, 3]},
+    )
+    assert critic._fitted
