@@ -22,11 +22,26 @@ from datetime import datetime, timezone
 from typing import Any
 
 __all__ = [
+    "TransferEvidenceType",
     "TransferPredictionRecord",
     "TransferStateEntry",
     "ReceiverTransferState",
     "ReceiverTransferStateContainer",
 ]
+
+
+class TransferEvidenceType:
+    """Evidence type for transfer state entries (§13).
+
+    PREDICTED_ONLY: memory was predicted by critic but never causally probed.
+    CAUSAL_OBSERVED: memory has at least one matched expose/withhold observation.
+
+    IMPORTANT: Do NOT use terms like 'validated', 'verified', or 'causal knowledge'
+    for PREDICTED_ONLY entries in logs or documentation.
+    """
+
+    PREDICTED_ONLY = "predicted_only"
+    CAUSAL_OBSERVED = "causal_observed"
 
 
 @dataclass
@@ -61,19 +76,27 @@ class TransferPredictionRecord:
 
 @dataclass
 class TransferStateEntry:
-    """One entry in the receiver's transfer state.
+    """One entry in the receiver's transfer state (§13).
+
+    Tracks both predicted-only and causal-observed evidence for a memory.
 
     Attributes:
         memory_id: the memory being tracked.
         source_agent_id: agent that produced this memory.
         first_seen_task_id: task when this memory was first explored.
         first_seen_task_position: position in the continual stream.
-        times_considered: how many times this memory was evaluated.
+        evidence_type: "predicted_only" or "causal_observed".
+        times_predicted: how many times this memory was evaluated by critic.
         times_selected: how many times this memory was selected for injection.
+        times_causally_probed: how many times a matched probe was collected.
         last_mu_tau: most recent predicted mu_tau.
         last_sigma_tau: most recent predicted sigma_tau.
         last_lcb: most recent LCB.
         last_task_id: most recent task at which this was evaluated.
+        observed_tau_mean: mean of observed causal transfer effects.
+        observed_tau_std: std of observed causal transfer effects.
+        observed_tau_n: number of causal observations.
+        last_observed_task_id: task of most recent causal observation.
         prediction_history: full history of predictions.
     """
 
@@ -83,13 +106,21 @@ class TransferStateEntry:
     first_seen_task_id: str
     first_seen_task_position: int
 
-    times_considered: int = 0
+    evidence_type: str = TransferEvidenceType.PREDICTED_ONLY
+
+    times_predicted: int = 0
     times_selected: int = 0
+    times_causally_probed: int = 0
 
     last_mu_tau: float | None = None
     last_sigma_tau: float | None = None
     last_lcb: float | None = None
     last_task_id: str | None = None
+
+    observed_tau_mean: float | None = None
+    observed_tau_std: float | None = None
+    observed_tau_n: int = 0
+    last_observed_task_id: str | None = None
 
     prediction_history: list[TransferPredictionRecord] = field(
         default_factory=list
@@ -161,7 +192,7 @@ class ReceiverTransferState:
         """Record a prediction for a known memory.
 
         Updates last_* fields and appends to prediction_history.
-        Increments times_considered.
+        Increments times_predicted.
 
         Raises:
             KeyError: if memory_id not registered.
@@ -182,7 +213,7 @@ class ReceiverTransferState:
             candidate_source=candidate_source,
         )
         entry.prediction_history.append(record)
-        entry.times_considered += 1
+        entry.times_predicted += 1
         entry.last_mu_tau = mu_tau
         entry.last_sigma_tau = sigma_tau
         entry.last_lcb = lcb
@@ -199,6 +230,63 @@ class ReceiverTransferState:
             )
         entry.times_selected += 1
 
+    def record_causal_observation(
+        self,
+        memory_id: str,
+        task_id: str,
+        observed_tau: float,
+    ) -> None:
+        """Record a matched causal observation for a memory (§13).
+
+        Updates evidence_type to CAUSAL_OBSERVED and accumulates
+        running mean/std of observed transfer effects.
+
+        Raises:
+            KeyError: if memory_id not registered.
+        """
+        entry = self._entries.get(memory_id)
+        if entry is None:
+            raise KeyError(
+                f"memory_id={memory_id!r} not in transfer state for "
+                f"receiver={self.receiver_id!r}."
+            )
+        entry.times_causally_probed += 1
+        entry.last_observed_task_id = task_id
+        entry.evidence_type = TransferEvidenceType.CAUSAL_OBSERVED
+
+        # Online mean/std update (Welford's algorithm)
+        n = entry.observed_tau_n
+        if n == 0:
+            entry.observed_tau_mean = observed_tau
+            entry.observed_tau_std = 0.0
+        else:
+            old_mean = entry.observed_tau_mean or 0.0
+            new_mean = old_mean + (observed_tau - old_mean) / (n + 1)
+            # Update variance using parallel algorithm
+            if entry.observed_tau_std is not None and n > 1:
+                old_var = entry.observed_tau_std**2
+            else:
+                old_var = 0.0
+            delta = observed_tau - old_mean
+            new_var = old_var + delta * (observed_tau - new_mean)
+            entry.observed_tau_mean = new_mean
+            entry.observed_tau_std = (new_var / (n + 1)) ** 0.5 if n > 0 else 0.0
+        entry.observed_tau_n += 1
+
+    def predicted_only_entries(self) -> list[TransferStateEntry]:
+        """Return all entries with PREDICTED_ONLY evidence."""
+        return [
+            e for e in self._entries.values()
+            if e.evidence_type == TransferEvidenceType.PREDICTED_ONLY
+        ]
+
+    def causal_observed_entries(self) -> list[TransferStateEntry]:
+        """Return all entries with CAUSAL_OBSERVED evidence."""
+        return [
+            e for e in self._entries.values()
+            if e.evidence_type == TransferEvidenceType.CAUSAL_OBSERVED
+        ]
+
     def __len__(self) -> int:
         return len(self._entries)
 
@@ -211,17 +299,25 @@ class ReceiverTransferState:
                 "source_agent_id": entry.source_agent_id,
                 "first_seen_task_id": entry.first_seen_task_id,
                 "first_seen_task_position": entry.first_seen_task_position,
-                "times_considered": entry.times_considered,
+                "evidence_type": entry.evidence_type,
+                "times_predicted": entry.times_predicted,
                 "times_selected": entry.times_selected,
+                "times_causally_probed": entry.times_causally_probed,
                 "last_mu_tau": entry.last_mu_tau,
                 "last_sigma_tau": entry.last_sigma_tau,
                 "last_lcb": entry.last_lcb,
                 "last_task_id": entry.last_task_id,
+                "observed_tau_mean": entry.observed_tau_mean,
+                "observed_tau_std": entry.observed_tau_std,
+                "observed_tau_n": entry.observed_tau_n,
+                "last_observed_task_id": entry.last_observed_task_id,
                 "n_prediction_records": len(entry.prediction_history),
             }
         return {
             "receiver_id": self.receiver_id,
             "n_entries": len(self._entries),
+            "n_predicted_only": len(self.predicted_only_entries()),
+            "n_causal_observed": len(self.causal_observed_entries()),
             "entries": entries,
         }
 

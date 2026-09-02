@@ -17,6 +17,7 @@ import pytest
 from smtr.rima.transfer_state import (
     ReceiverTransferState,
     ReceiverTransferStateContainer,
+    TransferEvidenceType,
     TransferPredictionRecord,
     TransferStateEntry,
 )
@@ -99,7 +100,7 @@ def test_same_memory_can_be_negative_then_positive_across_tasks():
     assert entry is not None
     assert entry.last_lcb > 0
     assert entry.last_task_id == "t2"
-    assert entry.times_considered == 2
+    assert entry.times_predicted == 2
     assert len(entry.prediction_history) == 2
 
 
@@ -216,7 +217,7 @@ def test_to_dict_serialization():
     assert d["receiver_id"] == "r1"
     assert d["n_entries"] == 1
     assert "m1" in d["entries"]
-    assert d["entries"]["m1"]["times_considered"] == 1
+    assert d["entries"]["m1"]["times_predicted"] == 1
 
 
 def test_container_ensure_creates_once():
@@ -230,3 +231,111 @@ def test_container_ensure_creates_once():
 def test_container_get_returns_none_for_unknown():
     container = ReceiverTransferStateContainer()
     assert container.get("unknown") is None
+
+
+# ---------------------------------------------------------------------------
+# Commit 13: Evidence type tests
+# ---------------------------------------------------------------------------
+
+
+def test_new_entry_has_predicted_only_evidence():
+    """Newly registered entry must have PREDICTED_ONLY evidence type."""
+    state = _make_state()
+    entry = state.register_memory("m1", "src1", "t1", 0)
+    assert entry.evidence_type == TransferEvidenceType.PREDICTED_ONLY
+    assert entry.times_causally_probed == 0
+    assert entry.observed_tau_n == 0
+
+
+def test_record_causal_observation_updates_evidence_type():
+    """Recording causal observation must change evidence to CAUSAL_OBSERVED."""
+    state = _make_state()
+    state.register_memory("m1", "src1", "t1", 0)
+
+    state.record_causal_observation("m1", "t1", observed_tau=0.35)
+
+    entry = state.get_entry("m1")
+    assert entry is not None
+    assert entry.evidence_type == TransferEvidenceType.CAUSAL_OBSERVED
+    assert entry.times_causally_probed == 1
+    assert entry.observed_tau_n == 1
+    assert entry.observed_tau_mean == pytest.approx(0.35)
+    assert entry.last_observed_task_id == "t1"
+
+
+def test_causal_observation_accumulates_mean_std():
+    """Multiple causal observations must accumulate running mean and std."""
+    state = _make_state()
+    state.register_memory("m1", "src1", "t1", 0)
+
+    # First observation: mean = 0.3, std = 0
+    state.record_causal_observation("m1", "t1", observed_tau=0.3)
+    entry = state.get_entry("m1")
+    assert entry is not None
+    assert entry.observed_tau_mean == pytest.approx(0.3)
+    assert entry.observed_tau_std == pytest.approx(0.0)
+
+    # Second observation: mean = (0.3 + 0.5) / 2 = 0.4
+    state.record_causal_observation("m1", "t2", observed_tau=0.5)
+    assert entry.observed_tau_n == 2
+    assert entry.observed_tau_mean == pytest.approx(0.4)
+    assert entry.observed_tau_std > 0  # std > 0 after 2 observations
+
+
+def test_predicted_only_and_causal_observed_entries():
+    """State must distinguish predicted-only from causal-observed entries."""
+    state = _make_state()
+    state.register_memory("m1", "src1", "t1", 0)
+    state.register_memory("m2", "src1", "t1", 0)
+    state.register_memory("m3", "src1", "t1", 0)
+
+    # m1: predicted only
+    state.record_prediction(
+        "m1", "t1", 0,
+        mu_tau=0.3, sigma_tau=0.1, lcb=0.136,
+        status="positive", candidate_source="global",
+    )
+
+    # m2: causal observed
+    state.record_causal_observation("m2", "t1", observed_tau=0.4)
+
+    # m3: predicted then causal observed
+    state.record_prediction(
+        "m3", "t1", 0,
+        mu_tau=0.2, sigma_tau=0.1, lcb=0.036,
+        status="positive", candidate_source="global",
+    )
+    state.record_causal_observation("m3", "t2", observed_tau=0.25)
+
+    predicted_only = state.predicted_only_entries()
+    causal_observed = state.causal_observed_entries()
+
+    assert len(predicted_only) == 1
+    assert predicted_only[0].memory_id == "m1"
+
+    assert len(causal_observed) == 2
+    causal_ids = {e.memory_id for e in causal_observed}
+    assert causal_ids == {"m2", "m3"}
+
+
+def test_to_dict_includes_evidence_counts():
+    """Serialized dict must include predicted-only and causal-observed counts."""
+    state = _make_state()
+    state.register_memory("m1", "src1", "t1", 0)
+    state.register_memory("m2", "src1", "t1", 0)
+    state.record_causal_observation("m2", "t1", observed_tau=0.3)
+
+    d = state.to_dict()
+    assert "n_predicted_only" in d
+    assert "n_causal_observed" in d
+    assert d["n_predicted_only"] == 1
+    assert d["n_causal_observed"] == 1
+    assert d["entries"]["m1"]["evidence_type"] == "predicted_only"
+    assert d["entries"]["m2"]["evidence_type"] == "causal_observed"
+
+
+def test_record_causal_observation_unknown_memory_raises():
+    """Recording causal observation for unregistered memory must raise KeyError."""
+    state = _make_state()
+    with pytest.raises(KeyError, match="not in transfer state"):
+        state.record_causal_observation("m_unknown", "t1", observed_tau=0.3)
