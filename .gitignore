@@ -49,6 +49,12 @@ results/marble/*/workspaces*/
 results/marble/*/workspaces_*
 results/marble/*/engine_logs/
 
+# RIMA experiment results (regenerable)
+results/rima/
+
+# Temporary scripts
+scripts/_tmp_*.py
+
 # Qoder / Codex local files
 .qoder/
 .codex/

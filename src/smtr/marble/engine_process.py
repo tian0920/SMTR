@@ -19,7 +19,7 @@ from smtr.counterfactual.decision_points import canonical_digest
 from smtr.marble.environment.docker_slot_pool import DockerSlot
 from smtr.marble.runtime_preflight import DEFAULT_DASHSCOPE_BASE_URL
 
-DEFAULT_ENGINE_TIMEOUT_SECONDS = 900
+DEFAULT_ENGINE_TIMEOUT_SECONDS = 1800
 DEFAULT_TERMINATION_GRACE_SECONDS = 5.0
 
 _LITELLM_SHIM_TEMPLATE = """
@@ -180,6 +180,60 @@ def _smtr_patch_evaluator():
                 original = getattr(Evaluator, method_name)
                 setattr(Evaluator, method_name,
                         _smtr_safe_evaluator_method(original, method_name))
+
+        # --- evaluate_task_world: retry on sentinel (-1) ratings ---
+        # LLM judges occasionally emit unparseable JSON for one role;
+        # a single retry with the same deterministic prompt usually
+        # recovers the rating instead of silently dropping the episode.
+        def _all_sentinel(role_ratings):
+            return isinstance(role_ratings, dict) and all(
+                v == -1 for v in role_ratings.values()
+            )
+
+        if hasattr(Evaluator, 'evaluate_task_world'):
+            _orig_world = Evaluator.evaluate_task_world
+
+            def _smtr_world_with_retry(self, task, result, _retries=2):
+                best = {}
+                for attempt in range(_retries + 1):
+                    try:
+                        _orig_world(self, task, result)
+                    except Exception as exc:
+                        _logging.getLogger("SMTR.patch").warning(
+                            f"Evaluator.evaluate_task_world failed (tolerated): "
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                    te = self.metrics.get("task_evaluation") or {}
+                    # Keep the best (non-sentinel) rating per role across
+                    # attempts so a retry never regresses an already-parsed
+                    # role back to -1.
+                    for role in ("buyer", "seller"):
+                        cur = te.get(role)
+                        if not _all_sentinel(cur):
+                            best[role] = cur
+                    buyer_bad = "buyer" not in best
+                    seller_bad = "seller" not in best
+                    if not buyer_bad and not seller_bad:
+                        break
+                    if attempt < _retries:
+                        _logging.getLogger("SMTR.patch").warning(
+                            f"Evaluator.evaluate_task_world sentinel ratings "
+                            f"(buyer_bad={buyer_bad}, seller_bad={seller_bad}); "
+                            f"retry {attempt + 1}/{_retries}"
+                        )
+                if best:
+                    default = {
+                        "buyer": {"effectiveness_of_strategies": -1,
+                                  "progress_and_outcome": -1,
+                                  "interaction_dynamics": -1},
+                        "seller": {"effectiveness_of_strategies": -1,
+                                   "progress_and_outcome": -1,
+                                   "interaction_dynamics": -1},
+                    }
+                    default.update(best)
+                    self.metrics["task_evaluation"] = default
+
+            Evaluator.evaluate_task_world = _smtr_world_with_retry
         _logging.getLogger("SMTR.patch").info("Evaluator crash tolerance patch applied.")
     except ImportError:
         pass
@@ -446,8 +500,11 @@ def _engine_environment(
         env["OPENAI_BASE_URL"] = base_url
         env["OPENAI_API_BASE"] = base_url
         env["SMTR_OPENAI_COMPAT_BASE_URL"] = base_url
+    # Thinking mode is OFF by default: non-qwen3 backbones (e.g. qwen-plus)
+    # may reject enable_thinking, and structured-JSON evaluator calls get
+    # truncated by thinking output. Override via SMTR_LLM_ENABLE_THINKING.
     if env.get("DASHSCOPE_API_KEY") and "SMTR_LLM_ENABLE_THINKING" not in env:
-        env["SMTR_LLM_ENABLE_THINKING"] = "true"
+        env["SMTR_LLM_ENABLE_THINKING"] = "false"
     # --- Parallel slot overrides ---
     if docker_slot is not None:
         for key, value in docker_slot.engine_env.items():

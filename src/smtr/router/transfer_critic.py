@@ -140,6 +140,15 @@ class TCIValueHead:
 class FourOutcomeTransferCritic:
     """TCI-SMTR: Transfer-Critical Intervention-guided critic.
 
+    .. deprecated:: RIMA canonical refactor (2026-08-31)
+        Demoted to **controlled ablation only** (experiment name
+        ``RIMA-Binary``). The binary four-outcome critic with team_success
+        outcome is NOT the formal MultiAgentBench method. The formal
+        method is :class:`smtr.router.official_score_transfer_critic.
+        OfficialScoreTransferCritic` (continuous potential-outcome critic
+        on official Task Score). See
+        ``docs/experiment_lineage/rima_canonical_migration.md``.
+
     Ensemble of logistic regression critics predicting four transfer
     outcomes. The critic output ``s_θ(m) = q10(m) - q01(m)`` is the
     **transfer utility score** estimating E[Y_m - Y_0].
@@ -1178,3 +1187,18 @@ def _binary_prob(model: Any, X: Any) -> float:
         # Model only saw one class; return 0 or 1.
         return float(classes[0] == 1)
     return float(p[idx1])
+
+
+# ---------------------------------------------------------------------------
+# RIMA canonical refactor (2026-08-31): semantic alias.
+#
+# Phase 3 renames the four-outcome binary critic to ``RIMA-Binary`` semantics
+# (controlled ablation only). The original class name is kept so that legacy
+# imports and historical experiments do not break; the formal method is
+# ``OfficialScoreTransferCritic``.
+# ---------------------------------------------------------------------------
+BinaryFourOutcomeTransferCritic = FourOutcomeTransferCritic
+"""Semantic alias (Phase 3): binary four-outcome critic = ``RIMA-Binary``.
+
+Controlled-ablation only; NOT the MultiAgentBench main method.
+"""

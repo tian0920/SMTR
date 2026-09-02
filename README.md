@@ -1,382 +1,112 @@
-# SMTR: Cross-Agent Shared Procedural Memory Exposure
+# SMTR — RIMA: Receiver-conditioned Intervention-based Memory Admission
 
-Research codebase for studying cross-agent shared procedural memory exposure using the MARBLE multi-agent environment.
+Research codebase for **RIMA**, a canonical method for cross-agent
+procedural memory transfer in multi-agent systems, evaluated on the
+[MARBLE](https://github.com/sakanaai/MARBLE) multi-agent benchmark.
 
-## SMTR-v1 Research Scope (fixed method boundary)
+The repository package name stays `smtr` for continuity; the formal
+method, experiments, configs, results and docs live under the unified
+`rima/` namespace (`experiments/rima/`, `configs/rima/`,
+`results/rima/`, `docs/rima/`, `src/smtr/rima/`).
 
-The current version studies exactly one routing problem:
-
-```text
-pre-execution routing
-+ single receiver
-+ single memory exposure
-+ S = ∅ (no selected-memory prefix)
-+ team-level outcome
-```
-
-Concretely:
-
-1. Routing happens **before** the team episode starts; there is no in-episode dynamic routing.
-2. The receiver context is **pre-execution context** (task, receiver profile, environment signature), not an online dynamic state.
-3. Each routing decision targets exactly **one receiver**.
-4. Each receiver is exposed to **at most one** procedural memory.
-5. The selected-memory prefix is fixed to **S = ∅**; multi-memory combinations are not studied.
-6. Routing different memories to multiple receivers within one episode is not studied.
-7. The outcome is the **whole team's success**, not the receiver's local result.
-8. The source (writer) agent identity is **not** part of the estimand, the features, or any routing decision; it is retained only as provenance for split auditing and reproducibility (see *Method: Receiver-Conditioned Memory Exposure* below).
-
-### Explicitly Out of Scope in v1
-
-The following are **not** implemented and are deliberately deferred:
-
-- non-empty selected-memory sets (S ≠ ∅);
-- multi-memory combination effects and memory–memory interactions;
-- joint routing to multiple receivers in one episode;
-- dynamic mid-episode routing;
-- online checkpointing / forking of running episodes;
-- complex policy iteration over learned routing policies;
-- production-grade resource cleanup, CI polish, report cosmetics, plugin compatibility.
-
-## Pipeline Overview
+## The RIMA Pipeline
 
 ```text
-MARBLE train trajectories
-→ procedural memory extraction (source identity kept as provenance only)
-→ validation/test receiver-conditioned candidate generation
-→ candidate-level paired MARBLE interventions
-→ four-outcome critic training
-→ paired decision evaluation
-→ end-to-end MARBLE evaluation
-→ integrity audit
+Historical experience
+  → Shared Memory Pool  M^t            (memories from tasks < t only)
+  → Receiver-conditioned retrieval  C_r^t
+  → Frozen transfer critic  tau_hat(m, r | x_t)
+  → Receiver-specific admission  A_r^t(m) = I[tau_hat > 0]
+  → Receiver knowledge state  K_r      (per-receiver, never broadcast)
+  → Future task reuse
 ```
 
-## Method: Receiver-Conditioned Memory Exposure
+Key properties:
 
-SMTR decides whether a specific procedural memory should be exposed
-to a particular receiver, conditioned on the task, the receiver's
-pre-execution state, the memory's routing card, and explicit
-memory–receiver compatibility.
+- **Official continuous outcome.** The estimand is defined on the
+  normalized official MARBLE Task Score per scenario
+  (`src/smtr/rima/outcome.py`). Team success is diagnostic metadata
+  only and never affects admission.
+- **Two-potential-outcome transfer critic.** The critic estimates
+  `tau(m, r | x) = E[Y(1) - Y(0) | m, r, x]` with separate
+  expose/withhold heads, is trained on matched offline interventions
+  with a task-level split, and is **frozen** before any continual
+  evaluation (`src/smtr/router/official_score_transfer_critic.py`).
+- **Admission is exactly `tau_hat > 0`** (Eq. 8). No risk gate, no
+  epsilon/eta thresholds in the formal path.
+- **Multi-memory admission.** All positive-tau memories are admitted;
+  there is no top-1 restriction.
+- **Multi-receiver simultaneous execution** with receiver-specific
+  knowledge; memory unions are never broadcast.
+- **Self-transfer excluded** (`source(m) == receiver`), counted
+  separately, and never admitted.
+- **Temporal invariant.** A memory can only influence tasks strictly
+  after its origin task; current-task memories never affect the
+  current task.
+- **Fail-closed everywhere.** Invalid outcomes yield `delta = None`
+  (never `0`), are excluded from training and counted, and the formal
+  decision source is hard-checked to be `frozen_transfer_critic`.
 
-The identity of the source agent is retained only as provenance and
-is never used by the candidate proposer, transfer critic, calibration
-procedure, or exposure router. This is memory–receiver transfer
-routing: the estimand, features, cohorts and decisions are defined
-over the treatment edge `(task_id, receiver_agent_id, candidate_memory_id)`,
-and the source agent appears nowhere in the decision path. Source
-provenance is consulted only by the split audit (train-only memory
-sources, no self-transfer) and for debugging/reproducibility.
+## Repository Layout (formal path)
 
-Method assumption (explicitly stated):
+| Path | Purpose |
+|---|---|
+| `src/smtr/rima/` | outcome, features, admission, split, critic validation, metrics |
+| `src/smtr/memory/` | shared memory pool, receiver knowledge, sanitizer |
+| `src/smtr/router/official_score_transfer_critic.py` | canonical critic |
+| `experiments/rima/train_critic.py` | Stage B–C: split audit + train + freeze |
+| `experiments/rima/run_mechanism_eval.py` | matched expose/withhold mechanism evidence |
+| `experiments/rima/run_continual_main.py` | canonical continual runner (6 methods) |
+| `configs/rima/continual_protocol.yaml` | single canonical protocol config |
+| `tests/rima/` | canonical integrity test suite (20 invariants) |
+| `docs/rima/` | metric system and protocol documentation |
+| `docs/experiment_lineage/rima_canonical_migration.md` | generation lineage (v1 → prototype → canonical) |
 
-```text
-Y^team ⊥ source agent identity | t, o_r, m, r
-```
+Methods compared by the canonical runner (same backbone, task order,
+retrieval budget, candidate pool, context budget and seeds):
+`no_memory`, `full_memory`, `retrieval`, `reflexion`,
+`rima_uniform` (receiver-agnostic critic ablation),
+`rima_receiver` (full RIMA).
 
-Source identity may correlate with outcomes, but SMTR deliberately
-avoids using it as a shortcut. Execution-relevant assumptions must be
-represented explicitly in the memory routing card. What the method
-estimates is the receiver-specific procedural memory effect: the same
-memory can help one receiver and harm another, and that difference is
-attributed to the memory–receiver match, not to who wrote the memory.
-
-### Estimands
-
-```text
-τ(t, o_r, m, r) = P(Y_1 = 1 | t, o_r, m, r) − P(Y_0 = 1 | t, o_r, m, r)
-η(t, o_r, m, r) = P(Y_1 = 0, Y_0 = 1 | t, o_r, m, r)
-```
-
-where:
-
-- `Y_1`: team outcome when receiver `r` is exposed memory `m`;
-- `Y_0`: team outcome when `m` is withheld;
-- `t`: target task; `o_r`: receiver pre-execution context (receiver profile, environment signature) available before the episode begins.
-
-τ is the team-level transfer effect; η is the negative-transfer risk. The critic predicts the full four-outcome distribution `q = (q00, q01, q10, q11)` over `(Y_1, Y_0)` with `τ̂ = q10 − q01` and `η̂ = q01`. The exposure rule is `τ̂ > 0 ∧ η̂_cal ≤ ε★`; the treatment edge is `(task_id, receiver_agent_id, candidate_memory_id)` and the outcome is always whole-team success.
-
-## Shared No-Memory Control
-
-For each target task, receiver, and generation seed, SMTR executes one shared no-memory control. Candidate-specific share executions under the same context are paired with this common control. This removes redundant control executions without changing the four-outcome transfer estimand.
-
-- Controls are never shared across receivers or across generation seeds; the control group key is `(task_id, receiver_agent_id, generation_seed)`.
-- Each candidate still runs its own independent share branch.
-- Every paired record (`schema_version: marble_candidate_pair_v4`) carries `control_group_id` plus the control provenance digests of the shared control.
-- The control execution never sees any candidate memory of its group, and its metadata contains no candidate/source identity, score or provenance.
-- An invalid control invalidates the whole group (`invalid_reason` starts with `shared_control_invalid:`); an invalid share branch invalidates only that candidate's record.
-- Paired-record generation reports actual share/control/total episode counts, the legacy-equivalent episode count and the saving fraction.
-
-Because candidates within the same task–receiver family share control outcomes, critic bootstrap members resample complete task–receiver control families. Loss weighting remains equal across treatment edges.
-
-## Intervention-Budget Analysis
-
-B is an intervention-budget axis rather than a tuned hyperparameter. We report fixed nested budgets of 25%, 50%, 75%, and 100%, subsampling train treatment edges before observing outcomes while keeping validation and test support fixed.
-
-> A budget candidate manifest is applied before feature construction and critic fitting. Budgeting removes complete treatment edges and never removes individual generation seeds.
->
-> Budget analysis modifies train treatment-edge support only. Validation and test paired records remain complete and identical across all budget conditions.
->
-> B is a resource condition, not a validation-tuned hyperparameter. All four values are reported.
+## Quick Start
 
 ```bash
-python -m smtr.marble.cli build-budgeted-candidates \
-  --candidate-manifest artifacts/marble/candidates/train_candidates.json \
-  --budget-fraction 0.5 \
-  --output artifacts/marble/candidates/train_candidates_budget50.json
+# 0. integrity suite (no LLM calls): RIMA_CANONICAL_INTEGRITY = PASS
+python -m pytest tests/rima/ tests/marble/test_procedural_memory_sanitization.py -q
 
-python -m smtr.marble.cli train-critic \
-  --train-records artifacts/marble/paired/train/paired_records.jsonl \
-  --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget50.json \
-  --output artifacts/marble/checkpoints/smtr_full_budget50.joblib
+# 1. train + freeze critics (requires intervention records + LLM creds)
+python experiments/rima/train_critic.py --records <records.json> --out artifacts/rima/critics/
+
+# 2. mechanism evaluation (offline interventions only)
+python experiments/rima/run_mechanism_eval.py ...
+
+# 3. canonical continual experiment
+python experiments/rima/run_continual_main.py \
+    --scenario bargaining --method rima_receiver \
+    --critic-receiver artifacts/rima/critics/receiver_critic.joblib
 ```
 
-Training accepts only a budget **candidate manifest**, never a bare fraction: the manifest is verified (target split, budget metadata, edge existence, full seed support per kept edge) and its selected treatment edges filter the train paired records *before* features, labels, sample weights, bootstrap clusters and the critic fit are constructed. Materialized budgeted record files (`materialize-budgeted-records`, trained with `--train-records-already-budgeted`) are re-validated against the same manifest edge set. The checkpoint stores the parent/effective training-record digests, the budget manifest digest and structured `budget_policy` / `training_support` / `artifact_digests` provenance blocks.
+Outputs land in `results/rima/`.
 
-Budget selection is deterministic, stratified and nested (`B25 ⊆ B50 ⊆ B75 ⊆ B100`); it only applies to train candidate manifests, never reads outcomes or critic predictions, and keeps cross-receiver anchor groups atomic. Budget checkpoints record the requested/realized fractions and manifest digests. B never enters the router or validation-time tuning.
+## Metric System
 
-Every budget level — including B=100% — uses an explicit frozen `train_B100` candidate manifest. No budget level is treated as "no manifest"; all four follow the same pipeline: manifest → selected edges → effective records → digest → checkpoint → audit.
+Primary metric: **Official Task Score**. Memory quantities
+(`memory_bank_size`, `validated_memory_count`, `candidate_count`) are
+diagnostic-only. Intervention cost is reported separately from online
+inference cost. See [`docs/rima/metrics.md`](docs/rima/metrics.md).
 
-The formal split audit independently reconstructs the effective train subset from the full paired training records and the frozen train budget candidate manifest. Checkpoint-declared effective-training metadata (digest, edge count, seed support) is never trusted without independent recomputation. The audit verifies full seed support per kept edge, cross-checkpoint support equality, and agreement between each checkpoint's declared support and the audit-reconstructed truth.
+## Legacy Generations
 
-## Data Splits
+Earlier research generations are preserved, not deleted:
 
-Tasks are split **by group** (database tasks by normalized schema family; other scenarios by scenario + task-id bucket), so that structurally similar tasks never cross splits.
+- **SMTR-v1** (single receiver / single exposure / binary team
+  outcome) — code under `src/smtr/router/transfer_critic.py`,
+  `src/smtr/marble/` and legacy tests; original README archived at
+  [`docs/archive/smtr_v1_method.md`](docs/archive/smtr_v1_method.md);
+  retained only for controlled ablations and historical reproducibility.
+- **Online receiver-3 prototype** (observed-delta oracle admission) —
+  remains as an oracle upper bound; `observed_delta` is hard-blocked
+  from the formal admission path.
 
-**Target identity never crosses splits**: `task_id` (target task), `target_trajectory_id` (the receiver's execution trajectory under evaluation), treatment edges `(task_id, receiver_agent_id, candidate_memory_id)` and `edge_id` are each disjoint across train/validation/test. **Memory provenance may legitimately recur**: every memory is extracted from a train trajectory (`memory_source_split == "train"`), so the same train-derived memory — and its `memory_source_trajectory_id` — may serve candidates in both validation and test. The split audit (`smtr.evaluation.split_audit.audit_split_leakage`) treats target/edge overlap, non-train memory sources and self-transfer (target task == memory source task) as fatal, and reports legal provenance reuse (`shared_train_memory_provenance_count`, `memory_source_trajectory_reuse`) as statistics. `split_integrity_passed` is computed from those results, never assumed.
-
-The audit artifact (`schema_version: smtr_split_audit_v4`) additionally binds every audited file by SHA-256 digest — dataset manifest, split manifest, memory pool, the three per-split paired-record files, the per-role checkpoint digest map with training provenance and budget support verification, and the test candidate manifest — and records `calibration_split` / `epsilon_selection_split`. Cross-checkpoint support equality is enforced in formal mode: all critic checkpoints must share the same effective training support (same digest, manifest digest, edge count). A formal end-to-end evaluation must bind such an artifact (`--split-audit`); the evaluation re-verifies that the audit passed, that calibration and ε selection used only the validation split, and that every digest still matches the file actually consumed — otherwise it aborts before any MARBLE episode runs. The risk budget ε is selected **only on the validation split**; the test split is read-only with respect to all hyperparameters. Confidence intervals are cluster bootstraps over `target_task_id` (or `target_task_id + receiver_agent_id`) — never per-record bootstraps — and are at least 95%.
-
-## Stage A: Training Data
-
-```bash
-python -m smtr.marble.cli inspect-dataset \
-  --marble-root /path/to/MARBLE \
-  --output artifacts/marble/manifests/dataset.json
-
-python -m smtr.marble.cli create-splits \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --output artifacts/marble/manifests/splits.json
-
-python -m smtr.marble.cli collect-database-trajectories \
-  --marble-root /path/to/MARBLE \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split train \
-  --output artifacts/marble/trajectories/train
-
-python -m smtr.marble.cli extract-database-memories \
-  --trajectory-index artifacts/marble/trajectories/train/trajectory_index.jsonl \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --output artifacts/marble/memory/database_memories.jsonl
-
-python -m smtr.marble.cli build-database-candidates \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split train \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --output artifacts/marble/candidates/train_candidates.json
-
-python -m smtr.marble.cli generate-database-paired-records \
-  --marble-root /path/to/MARBLE \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split train \
-  --candidate-manifest artifacts/marble/candidates/train_candidates.json \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --generation-seeds 0 1 2 3 4 \
-  --experiment-mode formal \
-  --output artifacts/marble/paired/train
-```
-
-## Stage B: Validation & Critic Training
-
-```bash
-python -m smtr.marble.cli build-database-candidates \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split validation \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --output artifacts/marble/candidates/validation_candidates.json
-
-python -m smtr.marble.cli generate-database-paired-records \
-  --marble-root /path/to/MARBLE \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split validation \
-  --candidate-manifest artifacts/marble/candidates/validation_candidates.json \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --generation-seeds 0 1 2 3 4 \
-  --experiment-mode formal \
-  --output artifacts/marble/paired/validation
-
-python -m smtr.marble.cli build-budgeted-candidates \
-  --candidate-manifest artifacts/marble/candidates/train_candidates.json \
-  --budget-fraction 1.0 \
-  --output artifacts/marble/candidates/train_candidates_budget100.json
-
-# Formal critic training fails closed without an explicit budget manifest;
-# B=100 uses the frozen train_B100 manifest like every other budget level.
-python -m smtr.marble.cli train-critic \
-  --train-records artifacts/marble/paired/train/paired_records.jsonl \
-  --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --feature-block full \
-  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
-  --experiment-mode formal \
-  --output artifacts/marble/checkpoints/smtr_full.joblib
-
-python -m smtr.marble.cli train-critic \
-  --train-records artifacts/marble/paired/train/paired_records.jsonl \
-  --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --feature-block global_transfer \
-  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
-  --experiment-mode formal \
-  --output artifacts/marble/checkpoints/global_transfer.joblib
-
-python -m smtr.marble.cli train-critic \
-  --train-records artifacts/marble/paired/train/paired_records.jsonl \
-  --validation-records artifacts/marble/paired/validation/paired_records.jsonl \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --feature-block no_compatibility_interaction \
-  --budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
-  --experiment-mode formal \
-  --output artifacts/marble/checkpoints/smtr_no_compatibility.joblib
-
-# Split audit: must pass (exit code 0) before any formal evaluation. The
-# manifest flags bind the manifests into the audit artifact by digest.
-python -m smtr.marble.cli audit-splits \
-  --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
-  --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
-  --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --train-budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
-  --test-candidate-manifest artifacts/marble/candidates/test_candidates.json \
-  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --checkpoint-global-transfer artifacts/marble/checkpoints/global_transfer.joblib \
-  --checkpoint-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
-  --methods smtr global_transfer_critic smtr_no_compatibility_interaction \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --experiment-mode formal \
-  --output artifacts/marble/eval/split_audit.json
-```
-
-## Stage C: Test Paired Evaluation
-
-```bash
-python -m smtr.marble.cli build-database-candidates \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split test \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --output artifacts/marble/candidates/test_candidates.json
-
-python -m smtr.marble.cli generate-database-paired-records \
-  --marble-root /path/to/MARBLE \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split test \
-  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --generation-seeds 0 1 2 3 4 \
-  --experiment-mode formal \
-  --output artifacts/marble/paired/test
-
-python -m smtr.marble.cli run-paired-decision-evaluation \
-  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
-  --paired-records artifacts/marble/paired/test/paired_records.jsonl \
-  --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
-  --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
-  --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --checkpoint-global-transfer artifacts/marble/checkpoints/global_transfer.joblib \
-  --checkpoint-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
-  --methods b0_no_memory semantic_top1 receiver_compatible_top1 global_transfer_critic smtr_no_compatibility_interaction smtr_no_risk smtr \
-  --train-budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
-  --experiment-mode formal \
-  --output artifacts/marble/eval/paired_test
-```
-
-## Stage D: End-to-End MARBLE Evaluation
-
-```bash
-python -m smtr.marble.cli run-marble-evaluation \
-  --marble-root /path/to/MARBLE \
-  --dataset-manifest artifacts/marble/manifests/dataset.json \
-  --split-manifest artifacts/marble/manifests/splits.json \
-  --split test \
-  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --checkpoint-global-transfer artifacts/marble/checkpoints/global_transfer.joblib \
-  --checkpoint-no-compatibility-interaction artifacts/marble/checkpoints/smtr_no_compatibility.joblib \
-  --methods b0_no_memory semantic_top1 receiver_compatible_top1 global_transfer_critic smtr_no_compatibility_interaction smtr_no_risk smtr \
-  --generation-seeds 0 1 2 3 4 \
-  --train-budget-candidate-manifest artifacts/marble/candidates/train_candidates_budget100.json \
-  --experiment-mode formal \
-  --split-audit artifacts/marble/eval/split_audit.json \
-  --output artifacts/marble/eval/end_to_end_test
-```
-
-Formal protocol gates (enforced inside the function API, not only the CLI):
-
-- `--generation-seeds` has no default; formal runs need at least 5 unique seeds, pilots at least 3 (`smtr.evaluation.experiment_protocol.validate_generation_seed_protocol`).
-- `--split-audit` is mandatory in formal mode; the audit must have passed and its digests must match the current dataset manifest, split manifest, memory pool and checkpoint (`smtr.evaluation.split_audit_validation.validate_split_audit_artifact`).
-- `--train-budget-candidate-manifest` is mandatory in formal mode for both paired and end-to-end evaluation; the audit independently recomputes the effective training digest and edge count from it and never trusts checkpoint-declared values (`smtr.marble.artifact_digests.candidate_manifest_digest`).
-- The result metadata records `seed_protocol_passed`, `split_audit_verified`, `split_audit_digest` and `split_integrity_passed`.
-
-## Integrity Audit
-
-```bash
-python -m smtr.marble.cli integrity-audit \
-  --candidate-manifest artifacts/marble/candidates/test_candidates.json \
-  --paired-records artifacts/marble/paired/test/paired_records.jsonl \
-  --memory-pool artifacts/marble/memory/database_memories.jsonl \
-  --paired-eval-dir artifacts/marble/eval/paired_test \
-  --end-to-end-eval-dir artifacts/marble/eval/end_to_end_test \
-  --feature-audit artifacts/marble/checkpoints/smtr_full.feature_audit.json \
-  --train-paired-records artifacts/marble/paired/train/paired_records.jsonl \
-  --validation-paired-records artifacts/marble/paired/validation/paired_records.jsonl \
-  --test-paired-records artifacts/marble/paired/test/paired_records.jsonl \
-  --checkpoint-full artifacts/marble/checkpoints/smtr_full.joblib \
-  --output artifacts/marble/eval/integrity_summary.json
-```
-
-## Important Metric Distinctions
-
-- **`paired_policy_success_rate`**: computed from paired intervention replay (share/withhold potential outcomes)
-- **`team_success_rate`**: computed ONLY from real end-to-end MARBLE runs with native evaluator
-
-These two metrics must never be conflated.
-
-## Methods
-
-Formal main table (清单 P0-2, writer-agnostic):
-
-| Method | Description |
-|--------|-------------|
-| B0-NoMemory | Never share any memory |
-| B1-SemanticTop1 | Share top-1 by task-memory semantic similarity only |
-| B2-ReceiverCompatibleTop1 | Share top-1 by relevance + memory–receiver tool/capability compatibility (no paired labels) |
-| B3-GlobalTransferCritic | Critic without receiver identity, roles or interaction features (task + memory marginals only) |
-| B4-SMTR-no-compatibility-interaction | Memory and receiver marginals kept, memory–receiver compatibility interaction features removed |
-| B5-SMTR-no-risk | Full critic, ignore η̂ constraint (only τ̂>0) |
-| SMTR | Full router: τ̂>0 ∧ calibrated η̂≤ε★ with memory–receiver compatibility interaction features |
-
-No method consumes writer/source-agent identity: it exists only in
-`payload.provenance` for split auditing and reproducibility. Formal
-pipelines reject writer-aware checkpoints (wrong feature block
-or `writer_features_used=True` checkpoint metadata).
-
-AllShare and FactualSuccess were removed from the formal table: AllShare
-is behaviorally identical to a top-1 heuristic under the v1 single-memory
-action space, and FactualSuccess has no reliable historical aggregates.
-
-## Running Tests
-
-```bash
-pytest -q tests/core tests/memory tests/router tests/marble tests/evaluation
-```
+Lineage, freeze points and result reuse policy:
+[`docs/experiment_lineage/rima_canonical_migration.md`](docs/experiment_lineage/rima_canonical_migration.md).

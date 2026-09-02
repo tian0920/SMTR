@@ -416,6 +416,20 @@ def _build_engine_config(
     # LLM model (critical for agent execution)
     config["llm"] = _configured_litellm_model()
 
+    # Per-agent LLM override: raw task JSONLs hardcode per-agent models
+    # (e.g. gpt-4o / gpt-3.5-turbo) and the MARBLE engine prefers the
+    # per-agent value over the global config (``agent_config.get("llm",
+    # llm)``). Those model names do not exist on the configured endpoint
+    # (e.g. DashScope), causing every agent call to fail with
+    # ``litellm.NotFoundError: Model not exist`` after 5 retries.
+    # Force all agents onto the configured model so execution and
+    # evaluation use one consistent, available backbone.
+    agents_cfg = config.get("agents")
+    if isinstance(agents_cfg, list):
+        for agent_cfg in agents_cfg:
+            if isinstance(agent_cfg, dict):
+                agent_cfg["llm"] = config["llm"]
+
     # Coordinate mode: engine requires star/graph/chain/tree
     if not config.get("coordinate_mode"):
         config["coordinate_mode"] = "graph"

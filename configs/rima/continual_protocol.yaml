@@ -1,0 +1,69 @@
+# RIMA canonical continual protocol (Phase 29; frozen at Phase 36).
+#
+# This is the single canonical configuration for the formal RIMA
+# experiments. Legacy SMTR-v1 configs (marble_3receiver.yaml,
+# marble_receiver3_main.yaml, ...) remain in configs/ for historical
+# reproducibility only and are NOT part of the formal path.
+
+method_set:
+  - no_memory
+  - full_memory
+  - retrieval
+  - reflexion
+  - rima_uniform
+  - rima_receiver
+
+primary_metric: official_task_score
+secondary_metric: coordination_score
+
+outcome:
+  evaluator: official_metric          # Phase 1: official Task Score only
+  team_success: diagnostic_only       # never used for admission
+  invalid_policy: fail_closed         # Phase 27: delta=None, never 0
+
+admission:
+  rule: "tau_hat > 0"                 # Eq. 8 — the ONLY formal gate
+  decision_source: frozen_transfer_critic
+  multi_memory: true                  # admit ALL positive-tau memories
+  self_transfer: excluded_and_counted
+  risk_gate: disabled                 # Phase 28: epsilon_star/eta are legacy
+
+memory:
+  pool: shared_memory_pool            # M^t, historical only (task < t)
+  knowledge: receiver_knowledge_state # K_r, per-receiver, never broadcast
+  routing_card_vs_payload: separated  # critic sees routing card only
+  sanitization: fail_closed
+
+critic:
+  train_path: experiments/rima/train_critic.py
+  mechanism_eval_path: experiments/rima/run_mechanism_eval.py
+  freeze_before_continual: required
+  split: task_level
+  forbidden_features: [answer, ground_truth, score, payload]
+
+receivers:
+  count: 3
+  selection: deterministic_hash       # receiver_topology.select_receivers
+  exclusion_policy: default
+
+protocol:
+  lifecycle:
+    - "M_t contains only memories from tasks < t"
+    - "retrieve C_r^t per receiver (historical only)"
+    - "frozen critic predicts tau_hat(m, r | x_t)"
+    - "admit all tau_hat > 0 into K_r"
+    - "simultaneous multi-receiver execution (no broadcast)"
+    - "observe official Task Score"
+    - "extract sanitized memories into M_{t+1}"
+  scenario_reset: true
+  task_order: fixed_seed
+  intervention_in_formal_path: forbidden   # Phase 25
+
+cost_protocol:                          # Phase 25-26
+  offline: intervention_collection + critic_training
+  online: frozen_critic_inference_only
+  report: separately
+
+budget_experiment:                      # Phase 26
+  interpretation: critic_supervision_budget   # NOT execution budget
+  levels: [0.25, 0.50, 0.75, 1.00]

@@ -160,6 +160,22 @@ class OnlineValidationRecord:
 class OnlineReceiverInterventionEvaluator:
     """Online TCI: real expose/withhold rollouts per (memory, receiver).
 
+    .. deprecated:: RIMA canonical refactor (2026-08-31)
+        Demoted per Phase 4 of the RIMA migration: this evaluator is now
+        ``MatchedInterventionCollector`` / ``HeldoutInterventionEvaluator``
+        semantics. Legal uses ONLY:
+
+        1. training intervention collection,
+        2. validation intervention collection,
+        3. test mechanism evaluation,
+        4. oracle upper bound.
+
+        Observed deltas MUST NOT drive formal admission; formal admission
+        uses the frozen transfer critic (``decision_source ==
+        "frozen_transfer_critic"``). See
+        ``smtr.rima.intervention_collection`` and
+        ``docs/experiment_lineage/rima_canonical_migration.md``.
+
     Uses **official MultiAgentBench normalized Task Score** as the outcome
     signal. Binary ``team_success`` is recorded for diagnostic logging
     only and is NOT used for delta computation.
