@@ -35,7 +35,12 @@ from smtr.rima.features import (  # noqa: E402
     RimaFeatureEncoder,
 )
 from smtr.rima.splits import task_level_split, write_split_audit, audit_split_leakage, SplitLeakageError  # noqa: E402
+from smtr.rima.transfer_policy import (  # noqa: E402
+    TransferPolicy,
+    compute_gamma,
+)
 from smtr.router.official_score_transfer_critic import (  # noqa: E402
+    BootstrapOfficialScoreTransferCritic,
     MatchedInterventionExample,
     OfficialScoreTransferCritic,
 )
@@ -122,6 +127,15 @@ def main(argv: list[str] | None = None) -> int:
         help="relax memory-provenance audit to WARN (pilot data too small "
              "for strict task-level + provenance isolation)",
     )
+    # RIMA-v2 bootstrap mode (§12)
+    parser.add_argument(
+        "--critic-mode", default="point", choices=["point", "bootstrap"],
+        help="point (default, legacy) or bootstrap (RIMA-v2)",
+    )
+    parser.add_argument("--n-bootstrap", type=int, default=31)
+    parser.add_argument("--beta", type=float, default=1.64)
+    parser.add_argument("--delta", type=float, default=0.0)
+    parser.add_argument("--gamma-quantile", type=float, default=0.75)
     args = parser.parse_args(argv)
 
     out_dir = Path(args.output_dir)
@@ -179,6 +193,104 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     report: dict[str, Any] = {"loss": args.loss, "seed": args.seed}
+
+    # ---------------------------------------------------------------
+    # Bootstrap mode (RIMA-v2 §12)
+    # ---------------------------------------------------------------
+    if args.critic_mode == "bootstrap":
+        encoder = RimaFeatureEncoder(n_features=args.n_features, include_receiver=True)
+        critic = BootstrapOfficialScoreTransferCritic(
+            encoder=encoder,
+            n_bootstrap=args.n_bootstrap,
+            seed=args.seed,
+            loss=args.loss,
+        )
+        stats = critic.fit(train)
+        critic.freeze()
+
+        ckpt_name = "critic_receiver_bootstrap.joblib"
+        ckpt_path = out_dir / ckpt_name
+        sha = critic.save(str(ckpt_path))
+
+        # Compute gamma from TRAIN split only (§10)
+        gamma, positive_support = compute_gamma(
+            train,
+            quantile=args.gamma_quantile,
+            delta=args.delta,
+        )
+
+        # Write transfer_policy.json (§11)
+        policy = TransferPolicy(
+            beta=args.beta,
+            delta=args.delta,
+            gamma=gamma,
+            gamma_quantile=args.gamma_quantile,
+            gamma_positive_support=positive_support,
+            gamma_source_split="train",
+            critic_checkpoint_sha256=sha,
+        )
+        policy_dict = {
+            "schema_version": "rima_transfer_policy_v1",
+            "beta": policy.beta,
+            "delta": policy.delta,
+            "gamma": policy.gamma,
+            "gamma_quantile": policy.gamma_quantile,
+            "gamma_definition": "q75_of_positive_observed_train_tau",
+            "gamma_source_split": policy.gamma_source_split,
+            "gamma_positive_support": policy.gamma_positive_support,
+            "critic_checkpoint_sha256": policy.critic_checkpoint_sha256,
+            "bootstrap_members": args.n_bootstrap,
+            "bootstrap_cluster_unit": "task_id",
+        }
+        with open(out_dir / "transfer_policy.json", "w") as f:
+            json.dump(policy_dict, f, indent=2)
+
+        # Validation on held-out split
+        pairs = []
+        for ex in (validation or splits["test"]):
+            dist = critic.predict_distribution(ex)
+            pred = critic.predict_one(ex)
+            observed = (
+                None
+                if ex.official_expose_score is None or ex.official_withhold_score is None
+                else ex.official_expose_score - ex.official_withhold_score
+            )
+            pairs.append(
+                {
+                    "predicted_tau": pred.tau_hat,
+                    "predicted_sigma": dist.sigma_tau,
+                    "predicted_lcb": (
+                        pred.tau_hat - args.beta * dist.sigma_tau
+                        if pred.tau_hat is not None and dist.sigma_tau is not None
+                        else None
+                    ),
+                    "observed_delta": observed,
+                    "memory_id": ex.memory_id,
+                    "receiver_id": ex.receiver_id,
+                }
+            )
+        val_report = validate_critic(pairs)
+
+        report["critic_receiver_bootstrap"] = {
+            "checkpoint": str(ckpt_path),
+            "critic_checkpoint_sha256": sha,
+            "training_stats": stats,
+            "frozen": True,
+            "validation": val_report.to_dict(),
+            "transfer_policy": policy_dict,
+        }
+        print(f"[bootstrap] sha256={sha[:16]} gamma={gamma:.4f} "
+              f"positive_support={positive_support}")
+        print(f"[bootstrap] validation={val_report.to_dict()}")
+
+        with open(out_dir / "training_report.json", "w") as f:
+            json.dump(report, f, indent=2)
+        print(f"Wrote {out_dir}/training_report.json")
+        return 0
+
+    # ---------------------------------------------------------------
+    # Point mode (legacy, unchanged)
+    # ---------------------------------------------------------------
     for name, include_receiver in (
         ("receiver", True),
         *(() if args.skip_uniform else (("uniform", False),)),

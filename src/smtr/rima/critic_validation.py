@@ -44,6 +44,11 @@ class CriticValidationReport:
     negative_recall: float | None = None
     receiver_ranking_accuracy: float | None = None
     n_ranking_pairs: int = 0
+    # RIMA-v2 uncertainty diagnostics (§13)
+    lcb_coverage: float | None = None
+    mean_sigma: float | None = None
+    median_sigma: float | None = None
+    sigma_absolute_error_correlation: float | None = None
     extras: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -61,6 +66,10 @@ class CriticValidationReport:
             "negative_recall": self.negative_recall,
             "receiver_ranking_accuracy": self.receiver_ranking_accuracy,
             "n_ranking_pairs": self.n_ranking_pairs,
+            "lcb_coverage": self.lcb_coverage,
+            "mean_sigma": self.mean_sigma,
+            "median_sigma": self.median_sigma,
+            "sigma_absolute_error_correlation": self.sigma_absolute_error_correlation,
         }
         out.update(self.extras)
         return out
@@ -150,4 +159,49 @@ def validate_critic(
     report.n_ranking_pairs = ranking_total
     if ranking_total:
         report.receiver_ranking_accuracy = ranking_correct / ranking_total
+
+    # RIMA-v2 uncertainty diagnostics (§13)
+    _compute_uncertainty_diagnostics(report, valid)
+
     return report
+
+
+def _compute_uncertainty_diagnostics(
+    report: CriticValidationReport,
+    valid: list[dict[str, Any]],
+) -> None:
+    """Compute uncertainty diagnostics if predicted_sigma is present."""
+    has_sigma = [p for p in valid if p.get("predicted_sigma") is not None]
+    if not has_sigma:
+        return
+
+    sigmas = np.array([p["predicted_sigma"] for p in has_sigma], dtype=float)
+    report.mean_sigma = float(sigmas.mean())
+    report.median_sigma = float(np.median(sigmas))
+
+    # LCB coverage: I[observed_tau >= LCB]
+    has_lcb = [
+        p for p in has_sigma
+        if p.get("predicted_lcb") is not None and p.get("observed_delta") is not None
+    ]
+    if has_lcb:
+        lcbs = np.array([p["predicted_lcb"] for p in has_lcb], dtype=float)
+        obs = np.array([p["observed_delta"] for p in has_lcb], dtype=float)
+        covered = (obs >= lcbs).sum()
+        report.lcb_coverage = float(covered / len(has_lcb))
+
+    # sigma-absolute-error correlation: corr(sigma, |mu - obs|)
+    has_both = [
+        p for p in has_sigma
+        if p.get("predicted_tau") is not None and p.get("observed_delta") is not None
+    ]
+    if len(has_both) >= 3:
+        s = np.array([p["predicted_sigma"] for p in has_both], dtype=float)
+        abs_err = np.array(
+            [abs(p["predicted_tau"] - p["observed_delta"]) for p in has_both],
+            dtype=float,
+        )
+        if s.std() > 0 and abs_err.std() > 0:
+            report.sigma_absolute_error_correlation = float(
+                np.corrcoef(s, abs_err)[0, 1]
+            )
