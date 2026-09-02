@@ -25,9 +25,11 @@ sys.path.insert(0, str(_PROJECT_ROOT / "src"))
 from smtr.memory.shared_memory_pool import SharedMemory, SharedMemoryPool
 from smtr.rima.features import ReceiverConditionedTransferFeatures
 from smtr.rima.transfer_controller import (
+    EpisodeTransferDecision,
     RoutingMode,
     TransferAwareMemoryController,
     TransferRoutingPlan,
+    select_episode_edge,
 )
 from smtr.rima.transfer_metrics import (
     build_curve_records,
@@ -396,3 +398,182 @@ class TestEndToEndSmoke:
                 default=None,
             )
             assert best_lcb is not None and best_lcb > 0
+
+
+# ---------------------------------------------------------------------------
+# §12: Single-receiver / single-memory causal execution tests
+# ---------------------------------------------------------------------------
+
+
+def _make_multi_receiver_setup(
+    *, mu_map: dict[str, float] | None = None
+) -> tuple[SharedMemoryPool, TransferAwareMemoryController, dict]:
+    """Helper: pool with memories from 3 agents, controller for 3 receivers."""
+    pool = SharedMemoryPool()
+    state_container = ReceiverTransferStateContainer()
+    policy = _make_policy()
+
+    # 3 memories from 3 different source agents
+    pool.add(_make_memory("m_a", source="agent_a", origin_pos=0))
+    pool.add(_make_memory("m_b", source="agent_b", origin_pos=0))
+    pool.add(_make_memory("m_c", source="agent_c", origin_pos=0))
+
+    mu_map = mu_map or {}
+
+    def fake_predict(ex: MatchedInterventionExample) -> TransferEffectDistribution:
+        if ex.source_agent_id == ex.receiver_id:
+            return TransferEffectDistribution(
+                memory_id=ex.memory_id, receiver_id=ex.receiver_id,
+                task_id=ex.task_id, mu_expose=None, mu_withhold=None,
+                mu_tau=None, sigma_tau=None, n_members=31,
+            )
+        mu = mu_map.get(f"{ex.memory_id}_{ex.receiver_id}", 0.4)
+        return TransferEffectDistribution(
+            memory_id=ex.memory_id, receiver_id=ex.receiver_id,
+            task_id=ex.task_id, mu_expose=mu + 0.1, mu_withhold=0.3,
+            mu_tau=mu, sigma_tau=0.05, n_members=31,
+        )
+
+    critic = MagicMock()
+    critic.is_frozen = True
+    critic.predict_distribution = MagicMock(side_effect=fake_predict)
+    critic.checkpoint_sha256.return_value = "test_sha"
+
+    controller = TransferAwareMemoryController(
+        critic=critic, pool=pool, transfer_states=state_container,
+        policy=policy, feature_builder=_feature_builder, context_budget=1,
+    )
+
+    task = {
+        "text": "bargaining task", "tags": ["bargaining"],
+        "agent_ids": ["agent_a", "agent_b", "agent_c"],
+    }
+    return pool, controller, task
+
+
+class TestSingleEdgeExecution:
+    """§12: At most one (receiver, memory) edge per scored episode."""
+
+    def test_episode_injects_at_most_one_receiver(self):
+        """After global edge selection, at most 1 receiver has a payload."""
+        pool, controller, task = _make_multi_receiver_setup()
+        receivers = ["agent_a", "agent_b", "agent_c"]
+
+        plans = {}
+        for rid in receivers:
+            plans[rid] = controller.plan_for_task(
+                task=task, task_id="t1", task_position=1, receiver_id=rid,
+            )
+
+        decision = select_episode_edge(plans, delta=controller.policy.delta)
+
+        # Build payloads like the runner does.
+        payloads = {rid: [] for rid in receivers}
+        if decision.selected_receiver_id is not None:
+            mem = pool.get(decision.selected_memory_id)
+            if mem is not None:
+                payloads[decision.selected_receiver_id] = [mem.procedure_payload]
+
+        n_injected = sum(bool(payloads[rid]) for rid in payloads)
+        assert n_injected <= 1
+
+    def test_episode_injects_at_most_one_memory(self):
+        """After global edge selection, total injected memories <= 1."""
+        pool, controller, task = _make_multi_receiver_setup()
+        receivers = ["agent_a", "agent_b", "agent_c"]
+
+        plans = {}
+        for rid in receivers:
+            plans[rid] = controller.plan_for_task(
+                task=task, task_id="t1", task_position=1, receiver_id=rid,
+            )
+
+        decision = select_episode_edge(plans, delta=controller.policy.delta)
+
+        payloads = {rid: [] for rid in receivers}
+        if decision.selected_receiver_id is not None:
+            mem = pool.get(decision.selected_memory_id)
+            if mem is not None:
+                payloads[decision.selected_receiver_id] = [mem.procedure_payload]
+
+        total_memories = sum(len(payloads[rid]) for rid in payloads)
+        assert total_memories <= 1
+
+    def test_global_best_receiver_memory_edge_is_selected(self):
+        """The edge with the highest LCB across all receivers is selected."""
+        # agent_b receiving m_c has the highest mu -> highest LCB
+        mu_map = {
+            "m_b_agent_a": 0.2,
+            "m_c_agent_a": 0.3,
+            "m_a_agent_b": 0.1,
+            "m_c_agent_b": 0.9,  # highest
+            "m_a_agent_c": 0.15,
+            "m_b_agent_c": 0.25,
+        }
+        pool, controller, task = _make_multi_receiver_setup(mu_map=mu_map)
+        receivers = ["agent_a", "agent_b", "agent_c"]
+
+        plans = {}
+        for rid in receivers:
+            plans[rid] = controller.plan_for_task(
+                task=task, task_id="t1", task_position=1, receiver_id=rid,
+            )
+
+        decision = select_episode_edge(plans, delta=controller.policy.delta)
+
+        assert decision.selected_receiver_id == "agent_b"
+        assert decision.selected_memory_id == "m_c"
+        assert decision.lcb is not None and decision.lcb > 0
+
+    def test_no_positive_edge_runs_no_memory(self):
+        """When no edge has LCB > delta, no memory is injected."""
+        # All edges have very low mu -> LCB <= delta=0
+        mu_map = {
+            "m_b_agent_a": -0.5,
+            "m_c_agent_a": -0.5,
+            "m_a_agent_b": -0.5,
+            "m_c_agent_b": -0.5,
+            "m_a_agent_c": -0.5,
+            "m_b_agent_c": -0.5,
+        }
+        pool, controller, task = _make_multi_receiver_setup(mu_map=mu_map)
+        receivers = ["agent_a", "agent_b", "agent_c"]
+
+        plans = {}
+        for rid in receivers:
+            plans[rid] = controller.plan_for_task(
+                task=task, task_id="t1", task_position=1, receiver_id=rid,
+            )
+
+        decision = select_episode_edge(plans, delta=controller.policy.delta)
+
+        assert decision.selected_receiver_id is None
+        assert decision.selected_memory_id is None
+        assert decision.source == "none"
+
+    def test_multi_receiver_plans_do_not_create_joint_treatment(self):
+        """Plans for multiple receivers must not create multiple treatment edges."""
+        pool, controller, task = _make_multi_receiver_setup()
+        receivers = ["agent_a", "agent_b", "agent_c"]
+
+        plans = {}
+        for rid in receivers:
+            plans[rid] = controller.plan_for_task(
+                task=task, task_id="t1", task_position=1, receiver_id=rid,
+            )
+
+        decision = select_episode_edge(plans, delta=controller.policy.delta)
+
+        payloads = {rid: [] for rid in receivers}
+        if decision.selected_receiver_id is not None:
+            mem = pool.get(decision.selected_memory_id)
+            if mem is not None:
+                payloads[decision.selected_receiver_id] = [mem.procedure_payload]
+
+        # Exactly one treatment edge at most.
+        treatment_edges = [
+            (rid, payloads[rid][0])
+            for rid in payloads
+            if payloads[rid]
+        ]
+        assert len(treatment_edges) <= 1

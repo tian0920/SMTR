@@ -45,7 +45,11 @@ from smtr.rima.features import ReceiverConditionedTransferFeatures  # noqa: E402
 from smtr.rima.metrics import compute_cost_report, summarize_rima_run  # noqa: E402
 from smtr.rima.outcome import RimaOutcomeEvaluator  # noqa: E402
 from smtr.rima.receiver_topology import ReceiverExclusionPolicy, select_receivers  # noqa: E402
-from smtr.rima.transfer_controller import TransferAwareMemoryController  # noqa: E402
+from smtr.rima.transfer_controller import (  # noqa: E402
+    EpisodeTransferDecision,
+    TransferAwareMemoryController,
+    select_episode_edge,
+)
 from smtr.rima.transfer_metrics import (  # noqa: E402
     build_curve_records,
     compute_transfer_cost,
@@ -188,6 +192,7 @@ class TransferContinualProtocol:
 
         self.records: list[dict[str, Any]] = []
         self.routing_diagnostics: list[dict[str, Any]] = []
+        self._last_episode_decision: EpisodeTransferDecision | None = None
 
     # -- baseline engine init ------------------------------------------
 
@@ -301,6 +306,9 @@ class TransferContinualProtocol:
 
         elif self.method == "rima_transfer":
             assert self.controller is not None
+            # §12: Generate plans for all candidate receivers, then
+            # select the single globally best (receiver, memory) edge.
+            receiver_plans: dict[str, Any] = {}
             for rid in receiver_ids:
                 plan = self.controller.plan_for_task(
                     task=_task_repr(task),
@@ -308,13 +316,28 @@ class TransferContinualProtocol:
                     task_position=position,
                     receiver_id=rid,
                 )
-                for mid in plan.selected_memory_ids:
-                    mem = self.pool.get(mid)
-                    if mem is not None:
-                        payloads[rid].append(mem.procedure_payload)
+                receiver_plans[rid] = plan
                 task_routing_diags.append(
                     self._build_routing_diagnostic(plan, rid, position)
                 )
+
+            # Global single-edge selection: argmax LCB across all edges.
+            episode_decision = select_episode_edge(
+                receiver_plans,
+                delta=self.controller.policy.delta,
+            )
+
+            # Reset payloads: at most one receiver gets one memory.
+            payloads = {rid: [] for rid in receiver_ids}
+            if episode_decision.selected_receiver_id is not None:
+                sel_rid = episode_decision.selected_receiver_id
+                sel_mid = episode_decision.selected_memory_id
+                mem = self.pool.get(sel_mid)
+                if mem is not None:
+                    payloads[sel_rid] = [mem.procedure_payload]
+
+            # Store episode decision for later analysis.
+            self._last_episode_decision = episode_decision
         else:
             raise ValueError(f"Unknown method: {self.method!r}")
 
@@ -360,6 +383,33 @@ class TransferContinualProtocol:
             "wall_seconds": round(time.time() - start, 2),
             "real_engine_executed": trajectory.real_engine_executed,
         }
+
+        # Episode-level single-edge decision (§12).
+        ep_dec = getattr(self, "_last_episode_decision", None)
+        if ep_dec is not None:
+            record["episode_decision"] = {
+                "selected_receiver_id": ep_dec.selected_receiver_id,
+                "selected_memory_id": ep_dec.selected_memory_id,
+                "mu_tau": ep_dec.mu_tau,
+                "sigma_tau": ep_dec.sigma_tau,
+                "lcb": ep_dec.lcb,
+                "source": ep_dec.source,
+            }
+
+        # §12 invariant: at most one receiver injected, at most one memory.
+        if self.method == "rima_transfer":
+            n_injected_receivers = sum(
+                bool(payloads[rid]) for rid in payloads
+            )
+            n_injected_memories = sum(
+                len(payloads[rid]) for rid in payloads
+            )
+            assert n_injected_receivers <= 1, (
+                f"single-edge violation: {n_injected_receivers} receivers injected"
+            )
+            assert n_injected_memories <= 1, (
+                f"single-edge violation: {n_injected_memories} memories injected"
+            )
         if task_routing_diags:
             record["routing_diagnostics"] = task_routing_diags
         self.records.append(record)

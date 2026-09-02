@@ -30,6 +30,8 @@ __all__ = [
     "RoutingMode",
     "TransferCandidateDecision",
     "TransferRoutingPlan",
+    "EpisodeTransferDecision",
+    "select_episode_edge",
     "TransferAwareMemoryController",
 ]
 
@@ -73,6 +75,75 @@ class TransferRoutingPlan:
     selected_memory_ids: list[str] = field(default_factory=list)
 
     global_retrieval_triggered: bool = False
+
+
+@dataclass
+class EpisodeTransferDecision:
+    """Episode-level single-edge transfer decision (§12).
+
+    After evaluating all receiver plans for one task, at most one
+    (receiver, memory) edge is selected for injection.
+    """
+
+    task_id: str
+
+    selected_receiver_id: str | None
+    selected_memory_id: str | None
+
+    mu_tau: float | None
+    sigma_tau: float | None
+    lcb: float | None
+
+    source: str | None
+    # known | global | none
+
+
+def select_episode_edge(
+    receiver_plans: dict[str, TransferRoutingPlan],
+    *,
+    delta: float,
+) -> EpisodeTransferDecision:
+    """Select the globally best (receiver, memory) edge across all plans.
+
+    Returns an ``EpisodeTransferDecision`` with at most one edge where
+    ``lcb > delta``.  If no eligible edge exists, all fields are None.
+    """
+    task_id: str | None = None
+    best_lcb: float | None = None
+    best_candidate: TransferCandidateDecision | None = None
+    best_source: str | None = None
+
+    for plan in receiver_plans.values():
+        if task_id is None:
+            task_id = plan.task_id
+        for c in plan.known_candidates + plan.global_candidates:
+            if not c.eligible_for_context or c.lcb is None:
+                continue
+            if best_lcb is None or c.lcb > best_lcb:
+                best_lcb = c.lcb
+                best_candidate = c
+                best_source = c.candidate_source
+
+    if best_candidate is None or best_lcb is None or best_lcb <= delta:
+        return EpisodeTransferDecision(
+            task_id=task_id or "",
+            selected_receiver_id=None,
+            selected_memory_id=None,
+            mu_tau=None,
+            sigma_tau=None,
+            lcb=None,
+            source="none",
+        )
+
+    return EpisodeTransferDecision(
+        task_id=task_id or "",
+        selected_receiver_id=best_candidate.receiver_id,
+        selected_memory_id=best_candidate.memory_id,
+        mu_tau=best_candidate.mu_tau,
+        sigma_tau=best_candidate.sigma_tau,
+        lcb=best_lcb,
+        source=best_source,
+    )
 
 
 # Type alias for the feature builder callable.
