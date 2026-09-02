@@ -1,0 +1,53 @@
+# RIMA-Transfer continual protocol (RIMA-v2 §30).
+#
+# Independent from the existing continual_protocol.yaml.
+# Supports: no_memory, retrieval, rima_receiver, rima_transfer.
+
+method_set:
+  - no_memory
+  - retrieval
+  - rima_receiver
+  - rima_transfer
+
+primary_metric: official_task_score
+
+transfer_policy:
+  beta: 1.64
+  delta: 0.0
+  gamma:
+    type: positive_observed_tau_quantile
+    quantile: 0.75
+    source_split: train
+
+memory:
+  global_pool: shared_memory_pool
+  transfer_state: receiver_transfer_state
+  known_probe_top_k: 20
+  global_explore_top_k: 5
+
+execution:
+  max_memories_per_receiver: 1
+  rank_by: lcb
+
+routing:
+  exploit_only:
+    condition: "best_known_lcb >= gamma"
+  exploit_explore:
+    condition: "delta < best_known_lcb < gamma"
+  explore_only:
+    condition: "best_known_lcb <= delta or no_valid_known_candidate"
+
+critic:
+  type: bootstrap_official_score_transfer
+  n_bootstrap: 31
+  bootstrap_cluster_unit: task_id
+  freeze_before_continual: required
+
+protocol:
+  intervention_in_formal_path: forbidden
+  online_critic_refit: forbidden
+  current_task_memory_visibility: forbidden
+  self_transfer: forbidden
+
+cost:
+  separate_global_retrieval_and_critic_calls: true
