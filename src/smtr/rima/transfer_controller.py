@@ -31,7 +31,9 @@ __all__ = [
     "TransferCandidateDecision",
     "TransferRoutingPlan",
     "EpisodeTransferDecision",
+    "RoutingSemanticsLog",
     "select_episode_edge",
+    "build_routing_semantics_log",
     "TransferAwareMemoryController",
 ]
 
@@ -143,6 +145,58 @@ def select_episode_edge(
         sigma_tau=best_candidate.sigma_tau,
         lcb=best_lcb,
         source=best_source,
+    )
+
+
+@dataclass(frozen=True)
+class RoutingSemanticsLog:
+    """Immutable log of one task's full routing semantics (§17.1-17.2).
+
+    Separates two levels of selection:
+
+    * **Receiver-level** (``receiver_plans_generated``,
+      ``candidate_receivers_considered``): how many receivers had plans
+      and candidates generated.
+    * **Episode-level** (``episode_selected_*``): the single
+      (receiver, memory) edge chosen for injection.
+
+    ``joint_exposure_count`` must always be 0 — the system never
+    jointly exposes multiple memories to one receiver.
+    """
+
+    task_id: str
+
+    # Episode-level (§17.2)
+    episode_selected_receiver: str | None
+    episode_selected_memory: str | None
+    episode_selected_lcb: float | None
+
+    # Receiver-level (§17.1)
+    candidate_receivers_considered: int
+    receiver_plans_generated: int
+
+    # Invariant: must be 0
+    joint_exposure_count: int = 0
+
+
+def build_routing_semantics_log(
+    receiver_plans: dict[str, "TransferRoutingPlan"],
+    episode_decision: "EpisodeTransferDecision",
+) -> RoutingSemanticsLog:
+    """Build an immutable routing semantics log from plans + decision (§17)."""
+    receivers_with_candidates = sum(
+        1
+        for plan in receiver_plans.values()
+        if plan.known_candidates or plan.global_candidates
+    )
+    return RoutingSemanticsLog(
+        task_id=episode_decision.task_id,
+        episode_selected_receiver=episode_decision.selected_receiver_id,
+        episode_selected_memory=episode_decision.selected_memory_id,
+        episode_selected_lcb=episode_decision.lcb,
+        candidate_receivers_considered=receivers_with_candidates,
+        receiver_plans_generated=len(receiver_plans),
+        joint_exposure_count=0,
     )
 
 

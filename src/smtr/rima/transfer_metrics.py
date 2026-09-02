@@ -15,6 +15,9 @@ __all__ = [
     "compute_transfer_routing_metrics",
     "compute_transfer_cost",
     "build_curve_records",
+    "compute_episode_metrics",
+    "compute_continual_learning_metrics",
+    "compute_three_way_cost",
 ]
 
 
@@ -190,4 +193,156 @@ def compute_transfer_cost(
             "global_retrieval_avoided": avoided,
             "online_intervention_episodes": 0,
         }
+    }
+
+
+# ---------------------------------------------------------------------------
+# §17.2 — Episode-level metrics
+# ---------------------------------------------------------------------------
+
+
+def compute_episode_metrics(
+    semantics_logs: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
+    """Episode-level selection metrics (§17.2).
+
+    Aggregates ``RoutingSemanticsLog`` entries across all tasks.
+
+    Parameters
+    ----------
+    semantics_logs : iterable of routing semantics log dicts
+        Each dict must contain: ``episode_selected_receiver``,
+        ``episode_selected_memory``, ``episode_selected_lcb``,
+        ``candidate_receivers_considered``,
+        ``receiver_plans_generated``, ``joint_exposure_count``.
+
+    Returns
+    -------
+    dict with episode-level selection statistics.
+    """
+    logs = list(semantics_logs)
+    n = len(logs)
+    if n == 0:
+        return {
+            "n_episodes": 0,
+            "selection_rate": 0.0,
+            "mean_candidate_receivers_considered": None,
+            "mean_receiver_plans_generated": None,
+            "joint_exposure_violations": 0,
+        }
+
+    selected = sum(
+        1 for log in logs if log.get("episode_selected_memory") is not None
+    )
+    joint_violations = sum(
+        1 for log in logs if log.get("joint_exposure_count", 0) != 0
+    )
+
+    candidate_receivers = [
+        log.get("candidate_receivers_considered", 0) for log in logs
+    ]
+    plans_generated = [
+        log.get("receiver_plans_generated", 0) for log in logs
+    ]
+
+    def _safe_mean(vals: list) -> float | None:
+        return sum(vals) / len(vals) if vals else None
+
+    return {
+        "n_episodes": n,
+        "selection_rate": selected / n,
+        "mean_candidate_receivers_considered": _safe_mean(candidate_receivers),
+        "mean_receiver_plans_generated": _safe_mean(plans_generated),
+        "joint_exposure_violations": joint_violations,
+    }
+
+
+# ---------------------------------------------------------------------------
+# §17.3 — Continual-learning metrics
+# ---------------------------------------------------------------------------
+
+
+def compute_continual_learning_metrics(
+    *,
+    causal_probe_count: int = 0,
+    causal_probe_episode_count: int = 0,
+    causal_observed_edge_count: int = 0,
+    predicted_only_state_size: int = 0,
+    causal_observed_state_size: int = 0,
+    online_critic_refit_count: int = 0,
+    critic_version: int = 0,
+    online_causal_evidence_used: int = 0,
+) -> dict[str, Any]:
+    """True continual-learning metrics (§17.3).
+
+    These metrics distinguish predicted-only state (critic inference)
+    from causal-observed state (matched interventions) and track the
+    online learning loop.
+
+    All parameters default to 0 for a frozen run.
+    """
+    return {
+        "causal_probe_count": causal_probe_count,
+        "causal_probe_episode_count": causal_probe_episode_count,
+        "causal_observed_edge_count": causal_observed_edge_count,
+        "predicted_only_state_size": predicted_only_state_size,
+        "causal_observed_state_size": causal_observed_state_size,
+        "online_critic_refit_count": online_critic_refit_count,
+        "critic_version": critic_version,
+        "online_causal_evidence_used": online_causal_evidence_used,
+    }
+
+
+# ---------------------------------------------------------------------------
+# §17.4 — Three-way cost breakdown
+# ---------------------------------------------------------------------------
+
+
+def compute_three_way_cost(
+    routing_diagnostics: Iterable[dict[str, Any]],
+    *,
+    post_task_probe_expose_episodes: int = 0,
+    post_task_probe_control_episodes: int = 0,
+) -> dict[str, Any]:
+    """Three-way cost breakdown (§17.4).
+
+    Separates:
+
+    * **Retrieval cost**: global_retrieval_calls, known_retrieval_calls
+    * **Model cost**: known_critic_predictions, global_critic_predictions
+    * **Environment-learning cost**: post_task_probe_expose_episodes,
+      post_task_probe_control_episodes
+
+    Do NOT just report “global retrieval count dropped” — the cost
+    might have shifted to critic predictions or causal probes.
+    """
+    diags = list(routing_diagnostics)
+
+    # Retrieval cost
+    global_retrieval_calls = sum(
+        1 for d in diags if d.get("global_retrieval_triggered")
+    )
+    known_retrieval_calls = len(diags)  # one known recall per (task, receiver)
+
+    # Model cost
+    known_critic_predictions = sum(
+        d.get("n_known_candidates_considered", 0) for d in diags
+    )
+    global_critic_predictions = sum(
+        d.get("n_global_candidates_considered", 0) for d in diags
+    )
+
+    return {
+        "retrieval_cost": {
+            "global_retrieval_calls": global_retrieval_calls,
+            "known_retrieval_calls": known_retrieval_calls,
+        },
+        "model_cost": {
+            "known_critic_predictions": known_critic_predictions,
+            "global_critic_predictions": global_critic_predictions,
+        },
+        "environment_learning_cost": {
+            "post_task_probe_expose_episodes": post_task_probe_expose_episodes,
+            "post_task_probe_control_episodes": post_task_probe_control_episodes,
+        },
     }
