@@ -50,6 +50,7 @@ from smtr.memory.online_receiver_intervention import (  # noqa: E402
 )
 from smtr.memory.receiver_knowledge import ReceiverKnowledgeContainer  # noqa: E402
 from smtr.memory.shared_memory_pool import SharedMemoryPool  # noqa: E402
+from smtr.memory.shared_memory_pool import memory_task_relevance_score  # noqa: E402
 from smtr.rima.intervention_collection import (  # noqa: E402
     InterventionPurpose,
     MatchedInterventionCollector,
@@ -85,6 +86,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-candidates-per-task", type=int, default=2)
     parser.add_argument("--receiver-count", type=int, default=3)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--candidate-mode",
+        choices=["sequential", "retrieval"],
+        default="sequential",
+        help=(
+            "How to select intervention candidates from the pool. "
+            "'sequential' = first N historical memories (original). "
+            "'retrieval' = rank by task-relevance score (§53)."
+        ),
+    )
     parser.add_argument("--engine-timeout", type=int, default=1800)
     parser.add_argument("--output-dir", default="results/rima/stage_a")
     args = parser.parse_args(argv)
@@ -150,7 +161,18 @@ def main(argv: list[str] | None = None) -> int:
     for offset, task in enumerate(intervention_tasks):
         position = args.source_tasks + offset
         hist = pool.memories_before(position)  # historical-only candidates
-        cands = hist[: args.max_candidates_per_task]
+
+        # Candidate selection mode (§53 / §8 retrieval alignment)
+        if args.candidate_mode == "retrieval":
+            # Rank all historical memories by lexical relevance to this task
+            scored = [
+                (m, memory_task_relevance_score(m, task.raw_task))
+                for m in hist
+            ]
+            scored.sort(key=lambda pair: (-pair[1], pair[0].memory_id))
+            cands = [m for m, _ in scored[: args.max_candidates_per_task]]
+        else:
+            cands = hist[: args.max_candidates_per_task]
         assignments = select_receivers(
             task={**task.raw_task, "agent_ids": task.get_agent_ids()},
             task_id=task.task_id,
@@ -233,6 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         "valid_pair_rate": (len(valid) / len(records)) if records else 0.0,
         "self_transfer_excluded_count": n_self_excluded,
         "decision_source_used_for_admission": None,
+        "candidate_mode": args.candidate_mode,
     }
     with open(out_dir / "candidates.json", "w") as f:
         json.dump(candidates_by_task, f, indent=2)
