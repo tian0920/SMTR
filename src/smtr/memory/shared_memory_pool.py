@@ -17,12 +17,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterable
 
 __all__ = [
     "SharedMemory",
     "SharedMemoryPool",
     "TemporalLeakageError",
+    "memory_task_relevance_score",
 ]
 
 
@@ -57,7 +58,7 @@ class SharedMemory:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-def _relevance_score(memory: SharedMemory, task: dict[str, Any]) -> float:
+def memory_task_relevance_score(memory: SharedMemory, task: dict[str, Any]) -> float:
     """Deterministic lexical relevance between routing card and task text.
 
     Deliberately simple and dependency-free; retrieval here is the shared
@@ -71,6 +72,10 @@ def _relevance_score(memory: SharedMemory, task: dict[str, Any]) -> float:
     if not union or not task_tokens:
         return 0.0
     return len(task_tokens & union) / len(union)
+
+
+# Backward-compatible alias
+_relevance_score = memory_task_relevance_score
 
 
 class SharedMemoryPool:
@@ -134,6 +139,66 @@ class SharedMemoryPool:
         eligible = self.memories_before(current_task_position)
         scored = sorted(
             eligible,
-            key=lambda m: (-_relevance_score(m, task), m.memory_id),
+            key=lambda m: (-memory_task_relevance_score(m, task), m.memory_id),
+        )
+        return scored[: max(0, top_k)]
+
+    def rank_subset(
+        self,
+        *,
+        memory_ids: Iterable[str],
+        task: dict[str, Any],
+        receiver_id: str,
+        current_task_position: int,
+        top_k: int,
+    ) -> list[SharedMemory]:
+        """Rank a known subset of memories by relevance (cheap recall from K_r^transfer).
+
+        Only memories with ``origin_task_position < current_task_position``
+        are returned.  The *memory_ids* iterable defines the candidate set;
+        missing ids are silently skipped.
+        """
+        candidates: list[SharedMemory] = []
+        for mid in memory_ids:
+            mem = self._memories.get(mid)
+            if mem is None:
+                continue
+            if mem.origin_task_position < current_task_position:
+                candidates.append(mem)
+        scored = sorted(
+            candidates,
+            key=lambda m: (-memory_task_relevance_score(m, task), m.memory_id),
+        )
+        return scored[: max(0, top_k)]
+
+    def retrieve_unseen(
+        self,
+        task: dict[str, Any],
+        receiver_id: str,
+        top_k: int,
+        *,
+        current_task_position: int,
+        exclude_memory_ids: set[str],
+    ) -> list[SharedMemory]:
+        """Retrieve unseen (not-yet-explored) memories from the global pool.
+
+        Constraints:
+
+        * ``origin_task_position < current_task_position``  (historical only)
+        * ``memory_id not in exclude_memory_ids``          (not already in K_r)
+
+        Returns memories sorted by relevance (deterministic tie-break by id).
+        """
+        candidates = [
+            self._memories[mid]
+            for mid in self._order
+            if (
+                self._memories[mid].origin_task_position < current_task_position
+                and mid not in exclude_memory_ids
+            )
+        ]
+        scored = sorted(
+            candidates,
+            key=lambda m: (-memory_task_relevance_score(m, task), m.memory_id),
         )
         return scored[: max(0, top_k)]
