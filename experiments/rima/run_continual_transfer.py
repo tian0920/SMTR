@@ -698,6 +698,25 @@ class TransferContinualProtocol:
         self.probe_events.append(pe)
         if self._run_dir:
             _write_jsonl(self._run_dir / "probe_events.jsonl", pe)
+        # Upgrade K_r evidence type: a matched probe yields CAUSAL_OBSERVED
+        # (§13). The candidate is normally registered during planning, but
+        # register defensively before recording.
+        state = self.transfer_states.ensure(probe_rid)
+        if not state.contains(probe_cand.memory_id):
+            probe_mem = self.pool.get(probe_cand.memory_id)
+            if probe_mem is not None:
+                state.register_memory(
+                    memory_id=probe_cand.memory_id,
+                    source_agent_id=probe_mem.source_agent_id,
+                    task_id=task.task_id,
+                    task_position=position,
+                )
+        if state.contains(probe_cand.memory_id):
+            state.record_causal_observation(
+                memory_id=probe_cand.memory_id,
+                task_id=task.task_id,
+                observed_tau=evidence.observed_tau,
+            )
         # Feed to learner.
         if self.learner:
             features = self._build_probe_features(
