@@ -1,0 +1,25 @@
+# Phase 45C — Boundary Baselines: Static + Positive-Stop
+# Two additional methods, 2 scenarios, 1 fixed stream seed.
+# Uses same scenario identities and stream0 files as Phase 45B.
+# Purpose: answer Static vs Frozen and PositiveStop vs Adaptive.
+
+phase: 45C
+
+methods:
+  - rima_receiver
+  - rima_transfer_positive_stop
+
+scenarios:
+  count: 2
+
+stream_seeds: [0]
+execution_seeds: [0]
+probe_seeds: [0]
+
+n_tasks_per_stream: 25
+
+# Artifact paths (same as main pilot)
+critic_checkpoint: results/rima_transfer/critic/critic_receiver_bootstrap.joblib
+transfer_policy: results/rima_transfer/critic/transfer_policy.json
+intervention_records: results/rima/stage_a/intervention_records.json
+source_agents: results/rima/stage_a/source_agents.json

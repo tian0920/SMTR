@@ -22,9 +22,12 @@ import argparse
 import dataclasses
 import json
 import logging
+import numpy as np
 import os
 import random
+import signal
 import sys
+import time
 import traceback
 from pathlib import Path
 from typing import Any
@@ -64,17 +67,41 @@ logger = logging.getLogger("rima.pilot_matrix")
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
-    """Load pilot configuration from YAML."""
+    """Load pilot configuration from YAML.
+
+    Supports both legacy (methods_phase1/methods_phase2) and new
+    progressive funnel format (methods list).
+    """
     with open(path) as f:
         cfg = yaml.safe_load(f)
+
+    # Handle scenarios: list or {count: N}
+    raw_scenarios = cfg.get("scenarios", ["bargaining"])
+    if isinstance(raw_scenarios, dict):
+        n = raw_scenarios.get("count", 2)
+        all_scenarios = ["bargaining", "coding", "math", "web_shop", "sokoban"]
+        scenarios = all_scenarios[:n]
+    else:
+        scenarios = raw_scenarios
+
+    # Handle methods: new single list or legacy phase1/phase2
+    methods = cfg.get("methods")
+    if methods:
+        # Progressive funnel: single method list, no phase2
+        methods_p1 = methods
+        methods_p2 = cfg.get("methods_phase2", [])
+    else:
+        methods_p1 = cfg.get("methods_phase1", [])
+        methods_p2 = cfg.get("methods_phase2", [])
+
     return {
-        "scenarios": cfg.get("scenarios", ["bargaining"]),
+        "scenarios": scenarios,
         "stream_seeds": cfg.get("stream_seeds", [0]),
         "execution_seeds": cfg.get("execution_seeds", [0]),
         "probe_seeds": cfg.get("probe_seeds", [0]),
         "n_tasks_per_stream": cfg.get("n_tasks_per_stream", 30),
-        "methods_phase1": cfg.get("methods_phase1", []),
-        "methods_phase2": cfg.get("methods_phase2", []),
+        "methods_phase1": methods_p1,
+        "methods_phase2": methods_p2,
         "critic_checkpoint": cfg.get("critic_checkpoint", ""),
         "transfer_policy": cfg.get("transfer_policy", ""),
         "intervention_records": cfg.get("intervention_records", ""),
@@ -209,6 +236,11 @@ def execute_run(
 # ---------------------------------------------------------------------------
 
 
+def _should_stop(output_dir: Path) -> bool:
+    """Check if graceful stop sentinel exists."""
+    return (output_dir / "STOP_AFTER_CURRENT_STREAM").exists()
+
+
 def run_phase(
     *,
     phase_name: str,
@@ -227,6 +259,7 @@ def run_phase(
     receiver_count: int,
     output_dir: Path,
     log_dir: Path,
+    max_wall_seconds: float | None = None,
 ) -> list[dict[str, Any]]:
     """Run all combinations for one phase, returning summaries."""
     summaries: list[dict[str, Any]] = []
@@ -234,6 +267,7 @@ def run_phase(
     n_done = 0
     n_skip = 0
     n_fail = 0
+    phase_start = time.time()
 
     logger.info(
         "%s: %d runs (%d scenarios × %d streams × %d execs × %d methods)",
@@ -251,6 +285,24 @@ def run_phase(
                 continue
             for es in exec_seeds:
                 for method_id in methods:
+                    # --- Stop conditions ---
+                    if _should_stop(output_dir):
+                        logger.info(
+                            "STOP sentinel found — not starting new runs. "
+                            "Completed: %d new, %d skipped, %d failed",
+                            n_done, n_skip, n_fail,
+                        )
+                        return summaries
+                    if max_wall_seconds is not None:
+                        elapsed = time.time() - phase_start
+                        if elapsed > max_wall_seconds:
+                            logger.info(
+                                "Wall budget exceeded (%.1f h > %.1f h) "
+                                "— not starting new runs.",
+                                elapsed / 3600, max_wall_seconds / 3600,
+                            )
+                            return summaries
+
                     run_id = _build_run_id(scenario, ss, es, method_id)
                     result = execute_run(
                         run_id=run_id,
@@ -278,11 +330,52 @@ def run_phase(
                     else:
                         n_fail += 1
 
+                    # --- Update interim summary ---
+                    _write_interim_summary(
+                        output_dir, phase_name, summaries,
+                        n_done, n_skip, n_fail,
+                        time.time() - phase_start,
+                    )
+
     logger.info(
         "%s complete: %d new, %d skipped, %d failed",
         phase_name, n_done, n_skip, n_fail,
     )
     return summaries
+
+
+def _write_interim_summary(
+    output_dir: Path,
+    phase_name: str,
+    summaries: list[dict[str, Any]],
+    n_done: int,
+    n_skip: int,
+    n_fail: int,
+    elapsed_seconds: float,
+) -> None:
+    """Write interim_summary.json for early-stop analysis."""
+    per_stream: dict[str, dict[str, Any]] = {}
+    for s in summaries:
+        rid = s.get("run_id", "unknown")
+        per_stream[rid] = {
+            "mean_score": s.get("mean_task_score"),
+            "late_score": s.get("late_mean_score"),
+            "n_tasks": s.get("n_tasks_completed"),
+            "transfer_state_size": s.get("transfer_state_size_final"),
+            "pool_size_final": s.get("pool_size_final"),
+        }
+    doc = {
+        "phase": phase_name,
+        "streams_completed": n_done,
+        "streams_skipped": n_skip,
+        "streams_failed": n_fail,
+        "wall_seconds": round(elapsed_seconds, 1),
+        "per_stream": per_stream,
+        "updated_at": time.time(),
+    }
+    path = output_dir / "interim_summary.json"
+    with open(path, "w") as f:
+        json.dump(doc, f, indent=2)
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +417,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--n-tasks-override", type=int, default=None,
         help="Override n_tasks_per_stream from config.",
+    )
+    parser.add_argument(
+        "--max-wall-hours", type=float, default=None,
+        help="Stop launching new streams after this many hours. "
+             "Current stream finishes before exit.",
     )
     args = parser.parse_args(argv)
 
@@ -436,6 +534,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Phase 2: {n2} runs — {methods_p2}")
         return 0
 
+    max_wall_seconds = (
+        args.max_wall_hours * 3600 if args.max_wall_hours else None
+    )
+
     # --- Phase 1 ---
     if args.phase in ("1", "all"):
         run_phase(
@@ -455,6 +557,7 @@ def main(argv: list[str] | None = None) -> int:
             receiver_count=args.receiver_count,
             output_dir=output_dir,
             log_dir=log_dir,
+            max_wall_seconds=max_wall_seconds,
         )
 
     # --- Phase 2 ---
@@ -476,6 +579,7 @@ def main(argv: list[str] | None = None) -> int:
             receiver_count=args.receiver_count,
             output_dir=output_dir,
             log_dir=log_dir,
+            max_wall_seconds=max_wall_seconds,
         )
 
     logger.info("Pilot matrix complete. Results in %s", output_dir)

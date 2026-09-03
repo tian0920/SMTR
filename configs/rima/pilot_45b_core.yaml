@@ -1,0 +1,24 @@
+# Phase 45B — Core Comparison: Adaptive vs Frozen (paired design)
+# Two methods, 2 scenarios, 2 stream seeds, 1 execution seed.
+# Purpose: estimate continual-learning effect via Adaptive − Frozen.
+
+phase: 45B
+
+methods:
+  - rima_transfer_frozen
+  - rima_transfer_adaptive
+
+scenarios:
+  count: 2
+
+stream_seeds: [0, 1]
+execution_seeds: [0]
+probe_seeds: [0]
+
+n_tasks_per_stream: 25
+
+# Artifact paths (same as main pilot)
+critic_checkpoint: results/rima_transfer/critic/critic_receiver_bootstrap.joblib
+transfer_policy: results/rima_transfer/critic/transfer_policy.json
+intervention_records: results/rima/stage_a/intervention_records.json
+source_agents: results/rima/stage_a/source_agents.json

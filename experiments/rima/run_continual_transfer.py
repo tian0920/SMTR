@@ -579,6 +579,7 @@ class TransferContinualProtocol:
                 _write_jsonl(self._run_dir / "critic_versions.jsonl", vlog)
 
         # ---- 7. Extract memories → M_{t+1} ----
+        ev["memory_extraction_started"] = time.time()
         new_memories = extract_to_shared_memories(
             trajectory, extractor=self.extractor,
             task=task, task_position=position,
@@ -586,6 +587,7 @@ class TransferContinualProtocol:
         for m in new_memories:
             if m.memory_id not in self.pool:
                 self.pool.add(m)
+        ev["memory_extraction_finished"] = time.time()
 
     # -- routing: MethodVariant ----------------------------------------
 
