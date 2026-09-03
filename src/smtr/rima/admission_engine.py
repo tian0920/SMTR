@@ -92,7 +92,12 @@ class RimaAdmissionEngine:
         # Critic must be fitted; formal continual evaluation additionally
         # requires it frozen (Stage E must never re-fit).
         critic.predict_one  # attribute check only
-        if critic._mu1 is None or critic._mu0 is None:  # noqa: SLF001 (guard)
+        # Guard: critic must be fitted (compatible with both
+        # OfficialScoreTransferCritic and BootstrapOfficialScoreTransferCritic).
+        if hasattr(critic, 'members'):
+            if not critic.members:  # noqa: SLF001
+                raise RuntimeError("Admission requires a fitted critic.")
+        elif critic._mu1 is None or critic._mu0 is None:  # noqa: SLF001
             raise RuntimeError("Admission requires a fitted critic.")
         self.critic = critic
         self.pool = pool

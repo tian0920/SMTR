@@ -9,7 +9,7 @@ stream_seeds: [0, 1, 2]
 execution_seeds: [0, 1, 2]
 probe_seeds: [0]
 
-n_tasks_per_stream: 30
+n_tasks_per_stream: 40
 
 # Phase 1: 4 methods (core comparison)
 methods_phase1:
@@ -26,5 +26,5 @@ methods_phase2:
 # Artifact paths
 critic_checkpoint: results/rima_transfer/critic/critic_receiver_bootstrap.joblib
 transfer_policy: results/rima_transfer/critic/transfer_policy.json
-intervention_records: results/rima_transfer/intervention/intervention_records.json
-source_agents: results/rima_transfer/intervention/source_agents.json
+intervention_records: results/rima/stage_a/intervention_records.json
+source_agents: results/rima/stage_a/source_agents.json
