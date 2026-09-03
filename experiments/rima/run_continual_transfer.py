@@ -154,8 +154,10 @@ class MarbleEpisodeRunner:
             method=self._method,
             receiver_memory_payloads=payloads,
         )
+        # ``task`` arrives as a raw task dict (see PostTaskTransferProbe
+        # protocol) — pass it straight to the evaluator.
         outcome = self._evaluator.evaluate(
-            task=task.raw_task, run_result=traj.raw_output,
+            task=task, run_result=traj.raw_output,
         )
         return outcome.task_score
 
