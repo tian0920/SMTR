@@ -126,7 +126,7 @@ class TestProtocolInvariants:
         """rima_transfer with context_budget != 1 must raise ValueError."""
         critic = _make_frozen_critic()
         policy = _make_policy()
-        with pytest.raises(ValueError, match="single-memory exposure"):
+        with pytest.raises(ValueError, match="single-memory transfer requires context_budget=1"):
             TransferContinualProtocol(
                 scenario="bargaining",
                 seed=0,
@@ -155,7 +155,7 @@ class TestProtocolInvariants:
 
     def test_rima_transfer_requires_policy(self):
         """rima_transfer without transfer policy must raise RuntimeError."""
-        with pytest.raises(RuntimeError, match="transfer policy"):
+        with pytest.raises(RuntimeError, match="transfer.policy"):
             TransferContinualProtocol(
                 scenario="bargaining",
                 seed=0,
@@ -170,7 +170,7 @@ class TestProtocolInvariants:
     def test_unfrozen_critic_raises_runtime_error(self):
         """§29: fail-closed if critic is not frozen."""
         critic = _make_unfrozen_critic()
-        with pytest.raises(RuntimeError, match="not frozen"):
+        with pytest.raises(RuntimeError, match="must be frozen"):
             TransferContinualProtocol(
                 scenario="bargaining",
                 seed=0,

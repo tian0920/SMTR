@@ -185,6 +185,15 @@ class CapturingCritic:
         self.q01_calibrator = SimpleNamespace(
             method="mock_calibrator", calibration_status="mock"
         )
+        # TCI distillation provenance attributes (set by training.py).
+        self.tci_distillation_n_examples: int = 0
+        self.tci_distillation_alpha: float | None = None
+        self.tci_distillation_metrics: dict | None = None
+        self.training_mode: str = "observational"
+        self.n_observational_examples: int = 0
+        self.n_tci_examples: int = 0
+        self.tci_schema_version: str | None = None
+        self.head_support_report: dict | None = None
 
         CapturingCritic.last = self
 
@@ -197,6 +206,9 @@ class CapturingCritic:
         coverage_mode=None,
         sample_weights=None,
         bootstrap_clusters=None,
+        tci_inputs=None,
+        tci_alpha=1.0,
+        tci_effect_batch=None,
     ):
         self.fit_inputs = list(inputs)
         self.fit_labels = list(labels)
@@ -205,6 +217,9 @@ class CapturingCritic:
             "coverage_mode": coverage_mode,
             "sample_weights": sample_weights,
             "bootstrap_clusters": bootstrap_clusters,
+            "tci_inputs": tci_inputs,
+            "tci_alpha": tci_alpha,
+            "tci_effect_batch": tci_effect_batch,
         }
 
     def predict_batch(self, inputs):
