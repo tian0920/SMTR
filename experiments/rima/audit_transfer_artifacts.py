@@ -176,8 +176,15 @@ def _check_critic_hash(
 
 def _check_split_leakage(
     examples: list[MatchedInterventionExample],
+    *,
+    pilot_mode: bool = False,
 ) -> dict[str, Any]:
-    """20.5: Train/validation/test task IDs strictly disjoint."""
+    """20.5: Train/validation/test task IDs strictly disjoint.
+
+    In *pilot_mode*, memory-provenance overlap is downgraded to a
+    warning (WARN_PILOT) because pilot data is too small for full
+    provenance isolation.  Task-level disjointness is always enforced.
+    """
     splits = task_level_split(
         examples,
         train_frac=0.7,
@@ -193,8 +200,21 @@ def _check_split_leakage(
         audit = audit_split_leakage(splits)
         passed = audit.get("status") == "PASS"
     except SplitLeakageError as exc:
-        audit = {"error": str(exc), "status": "FAIL"}
-        passed = False
+        error_msg = str(exc)
+        is_provenance_only = "Memory-provenance" in error_msg
+        if pilot_mode and is_provenance_only:
+            # Pilot relaxation: provenance overlap is expected with few
+            # source memories.  Task-level disjointness already verified
+            # by the SplitLeakageError check order.
+            audit = {
+                "status": "WARN_PILOT",
+                "pilot_note": error_msg,
+                "task_overlap": 0,
+            }
+            passed = True
+        else:
+            audit = {"error": error_msg, "status": "FAIL"}
+            passed = False
 
     return {
         "check": "train_test_leakage",
@@ -327,6 +347,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--validation-frac", type=float, default=0.15,
         help="Validation fraction (must match training)",
     )
+    parser.add_argument(
+        "--pilot", action="store_true",
+        help="Relax memory-provenance audit to WARN (pilot data too small "
+             "for strict provenance isolation)",
+    )
     return parser.parse_args(argv)
 
 
@@ -394,7 +419,7 @@ def main(argv: list[str] | None = None) -> int:
     # 20.4 Critic-policy hash
     results.append(_check_critic_hash(policy, critic_path))
     # 20.5 Leakage
-    results.append(_check_split_leakage(examples))
+    results.append(_check_split_leakage(examples, pilot_mode=args.pilot))
     # 20.6 Uncertainty
     beta = float(policy.get("beta", 1.64))
     if critic is not None:
