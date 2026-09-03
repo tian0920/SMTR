@@ -4,8 +4,13 @@ Defines the routing policy parameters and computation functions for the
 continual transfer controller:
 
 * LCB (Lower Confidence Bound): ``mu - beta * sigma``
+* UCB (Upper Confidence Bound): ``mu + beta * sigma``
 * gamma: Q75 of positive observed train tau
 * delta: minimum LCB threshold for exploitation
+
+LCB gates *exploitation* (execution safety: ``LCB > delta``), while UCB
+drives *exploration* (probe candidate selection). Probe eligibility must
+NOT require ``LCB > delta`` — that would deadlock cold start.
 
 β = 1.64 is the **conservative uncertainty coefficient** (§16.1).
 We do NOT claim "95% confidence" unless empirical coverage supports it.
@@ -27,6 +32,7 @@ if TYPE_CHECKING:
 __all__ = [
     "TransferPolicy",
     "lower_confidence_bound",
+    "upper_confidence_bound",
     "observed_tau",
     "compute_gamma",
 ]
@@ -64,6 +70,19 @@ def lower_confidence_bound(
 ) -> float:
     """Compute Lower Confidence Bound: ``mu - beta * sigma``."""
     return mu - beta * sigma
+
+
+def upper_confidence_bound(
+    mu: float,
+    sigma: float,
+    beta: float,
+) -> float:
+    """Compute Upper Confidence Bound: ``mu + beta * sigma``.
+
+    Used for exploration/probe candidate selection only. Reuses the same
+    ``beta`` as LCB — no new hyperparameter.
+    """
+    return mu + beta * sigma
 
 
 def observed_tau(ex: "MatchedInterventionExample") -> float | None:

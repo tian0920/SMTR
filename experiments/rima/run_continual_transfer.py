@@ -605,11 +605,12 @@ class TransferContinualProtocol:
                 task=_task_repr(task), task_id=task.task_id,
                 task_position=position, receiver_id=rid,
             )
-            # No-uncertainty: override LCB with mu.
+            # No-uncertainty: override LCB/UCB with mu (beta*sigma := 0).
             if not self.variant.use_uncertainty:
                 for c in plan.known_candidates + plan.global_candidates:
                     if c.mu_tau is not None:
                         c.lcb = c.mu_tau
+                        c.ucb = c.mu_tau
                 if plan.best_known_lcb is not None:
                     best_mu = max(
                         (c.mu_tau for c in plan.known_candidates
@@ -627,6 +628,7 @@ class TransferContinualProtocol:
         )
         if not self.variant.use_uncertainty and episode_decision.mu_tau is not None:
             episode_decision.lcb = episode_decision.mu_tau
+            episode_decision.ucb = episode_decision.mu_tau
         payloads.update({rid: [] for rid in receiver_ids})
         if episode_decision.selected_receiver_id is not None:
             sr = episode_decision.selected_receiver_id
@@ -794,12 +796,19 @@ class TransferContinualProtocol:
                     sel_lcb = c.lcb
                     break
         policy = self._policy
+        # Strict state semantics (§ Phase 6): len(state) includes
+        # PREDICTED_ONLY registrations; causal state counts only edges
+        # with CAUSAL_OBSERVED evidence.
+        n_predicted = len(state.predicted_only_entries()) if state else 0
+        n_causal = len(state.causal_observed_entries()) if state else 0
         return {
             "receiver_id": receiver_id,
             "task_position": position,
             "routing_mode": plan.routing_mode,
             "transfer_state_size_before": len(state) if state else 0,
             "transfer_state_size_after": len(state) if state else 0,
+            "transfer_state_predicted_only_after": n_predicted,
+            "transfer_state_causal_observed_after": n_causal,
             "n_known_candidates_considered": len(plan.known_candidates),
             "n_global_candidates_considered": len(plan.global_candidates),
             "global_retrieval_triggered": plan.global_retrieval_triggered,

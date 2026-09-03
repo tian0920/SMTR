@@ -41,14 +41,17 @@ def _make_candidate(
     lcb: float | None = 0.5,
     eligible: bool = True,
 ) -> TransferCandidateDecision:
+    mu = 0.6 if lcb is not None else None
+    sigma = 0.1 if lcb is not None else None
     return TransferCandidateDecision(
         memory_id=memory_id,
         receiver_id=receiver_id,
         task_id=task_id,
         candidate_source=source,
-        mu_tau=0.6 if lcb is not None else None,
-        sigma_tau=0.1 if lcb is not None else None,
+        mu_tau=mu,
+        sigma_tau=sigma,
         lcb=lcb,
+        ucb=(mu + 1.64 * sigma) if lcb is not None else None,
         eligible_for_context=eligible,
         selected_for_context=False,
         status="positive" if eligible else "negative",

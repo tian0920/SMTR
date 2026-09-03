@@ -16,7 +16,11 @@ from typing import Any, Callable
 
 from smtr.memory.shared_memory_pool import SharedMemory, SharedMemoryPool
 from smtr.rima.features import ReceiverConditionedTransferFeatures
-from smtr.rima.transfer_policy import TransferPolicy, lower_confidence_bound
+from smtr.rima.transfer_policy import (
+    TransferPolicy,
+    lower_confidence_bound,
+    upper_confidence_bound,
+)
 from smtr.rima.transfer_state import (
     ReceiverTransferState,
     ReceiverTransferStateContainer,
@@ -55,6 +59,7 @@ class TransferCandidateDecision:
     mu_tau: float | None
     sigma_tau: float | None
     lcb: float | None
+    ucb: float | None
 
     eligible_for_context: bool
     selected_for_context: bool
@@ -299,6 +304,7 @@ class TransferAwareMemoryController:
                             mu_tau=None,
                             sigma_tau=None,
                             lcb=None,
+                            ucb=None,
                             eligible_for_context=False,
                             selected_for_context=False,
                             status="self_transfer_excluded",
@@ -410,6 +416,7 @@ class TransferAwareMemoryController:
                         mu_tau=None,
                         sigma_tau=None,
                         lcb=None,
+                        ucb=None,
                         eligible_for_context=False,
                         selected_for_context=False,
                         status="self_transfer_excluded",
@@ -418,6 +425,9 @@ class TransferAwareMemoryController:
                 continue
 
             lcb = lower_confidence_bound(dist.mu_tau, dist.sigma_tau, self.policy.beta)
+            ucb = upper_confidence_bound(dist.mu_tau, dist.sigma_tau, self.policy.beta)
+            # Execution eligibility gates ONLY on LCB (exploitation safety).
+            # Probe eligibility is decoupled and uses UCB (§14.5 cold start).
             eligible = lcb > self.policy.delta
 
             status = "positive" if eligible else "negative"
@@ -443,6 +453,7 @@ class TransferAwareMemoryController:
                     mu_tau=dist.mu_tau,
                     sigma_tau=dist.sigma_tau,
                     lcb=lcb,
+                    ucb=ucb,
                     eligible_for_context=eligible,
                     selected_for_context=False,
                     status=status,

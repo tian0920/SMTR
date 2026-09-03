@@ -242,6 +242,53 @@ def main(argv: list[str] | None = None) -> int:
             "bootstrap_members": args.n_bootstrap,
             "bootstrap_cluster_unit": "task_id",
         }
+
+        # ---- Phase 12/14: low-support warnings (artifact flags only) ----
+        # Warnings never modify beta/delta/gamma automatically.
+        warnings_list: list[str] = []
+
+        # Phase 12: gamma Q75 is statistically meaningless with very few
+        # positive edges. Flag it; do NOT change gamma.
+        GAMMA_LOW_SUPPORT_THRESHOLD = 5
+        gamma_low_support = positive_support < GAMMA_LOW_SUPPORT_THRESHOLD
+        policy_dict["gamma_low_support_warning"] = gamma_low_support
+        if gamma_low_support:
+            warnings_list.append("GAMMA_LOW_SUPPORT")
+
+        # Phase 14: critic training support audit.
+        valid_train = [
+            ex for ex in train
+            if ex.official_expose_score is not None
+            and ex.official_withhold_score is not None
+        ]
+        n_valid_edges = len(valid_train)
+        task_families = {ex.task_id for ex in valid_train}
+        n_positive_edges = sum(
+            1 for ex in valid_train
+            if (ex.official_expose_score - ex.official_withhold_score) > 0
+        )
+        # Minimum support targets (Phase 23-25): >=60 valid edges,
+        # >=15 task families, >=15 positive edges.
+        CRITIC_MIN_EDGES, CRITIC_MIN_FAMILIES, CRITIC_MIN_POSITIVES = 60, 15, 15
+        critic_underpowered = (
+            n_valid_edges < CRITIC_MIN_EDGES
+            or len(task_families) < CRITIC_MIN_FAMILIES
+            or n_positive_edges < CRITIC_MIN_POSITIVES
+        )
+        policy_dict["critic_low_support_warning"] = critic_underpowered
+        policy_dict["critic_status"] = (
+            "UNDERPOWERED" if critic_underpowered else "OK"
+        )
+        policy_dict["dataset_support"] = {
+            "n_valid_edges": n_valid_edges,
+            "n_task_families": len(task_families),
+            "n_positive_edges": n_positive_edges,
+            "n_negative_edges": n_valid_edges - n_positive_edges,
+        }
+        policy_dict["warnings"] = warnings_list
+        for w in warnings_list:
+            print(f"WARNING: {w}", file=sys.stderr)
+
         with open(out_dir / "transfer_policy.json", "w") as f:
             json.dump(policy_dict, f, indent=2)
 

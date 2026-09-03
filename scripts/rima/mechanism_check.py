@@ -147,7 +147,14 @@ def metric_c_causal_state(
     early: range,
     late: range,
 ) -> dict[str, Any]:
-    """Sum of transfer_state_size_after across receivers."""
+    """Sum of causal-observed state size across receivers.
+
+    Uses ``transfer_state_causal_observed_after`` (edges with
+    CAUSAL_OBSERVED evidence only). Deliberately does NOT fall back to
+    ``transfer_state_size_after``: that field also counts PREDICTED_ONLY
+    registrations and previously inflated |K^causal| when probe count
+    was zero.
+    """
     by_pos: dict[int, list[dict]] = {}
     for d in routing_diags:
         pos = d.get("task_position", -1)
@@ -157,9 +164,12 @@ def metric_c_causal_state(
         sizes = []
         for pos in positions:
             group = by_pos.get(pos, [])
-            if group:
+            if group and all(
+                "transfer_state_causal_observed_after" in d for d in group
+            ):
                 sizes.append(sum(
-                    d.get("transfer_state_size_after", 0) for d in group
+                    d.get("transfer_state_causal_observed_after", 0)
+                    for d in group
                 ))
         return _mean_of(sizes)
 

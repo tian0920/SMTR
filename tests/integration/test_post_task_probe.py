@@ -73,14 +73,17 @@ def _make_candidate(
     lcb: float,
     eligible: bool = True,
 ) -> TransferCandidateDecision:
+    mu = lcb + 0.1
+    sigma = 0.05
     return TransferCandidateDecision(
         memory_id=memory_id,
         receiver_id=receiver_id,
         task_id="t1",
         candidate_source="global",
-        mu_tau=lcb + 0.1,
-        sigma_tau=0.05,
+        mu_tau=mu,
+        sigma_tau=sigma,
         lcb=lcb,
+        ucb=mu + 1.64 * sigma,
         eligible_for_context=eligible,
         selected_for_context=False,
         status="positive" if lcb > 0 else "negative",
@@ -100,8 +103,8 @@ def test_probe_selection_no_global_returns_none():
     assert result is None
 
 
-def test_probe_selection_returns_highest_lcb_global():
-    """Must select the global candidate with highest LCB."""
+def test_probe_selection_returns_highest_ucb_global():
+    """Must select the global candidate with highest UCB."""
     c1 = _make_candidate("m1", "r1", lcb=0.3)
     c2 = _make_candidate("m2", "r1", lcb=0.5)
     c3 = _make_candidate("m3", "r1", lcb=0.4)
@@ -112,16 +115,41 @@ def test_probe_selection_returns_highest_lcb_global():
     )
     assert result is not None
     assert result.memory_id == "m2"
-    assert result.lcb == pytest.approx(0.5)
+    assert result.ucb == pytest.approx(0.5 + 0.1 + 1.64 * 0.05)
 
 
-def test_probe_selection_ineligible_skipped():
-    """Ineligible candidates must be skipped."""
-    c1 = _make_candidate("m1", "r1", lcb=0.5, eligible=False)
-    c2 = _make_candidate("m2", "r1", lcb=0.3, eligible=True)
+def test_probe_selection_execution_ineligible_still_probeable():
+    """Execution-ineligible (LCB <= delta) candidates remain probeable.
+
+    This is the cold-start fix: probe eligibility is decoupled from the
+    execution gate ``LCB > delta``.
+    """
+    c1 = _make_candidate("m1", "r1", lcb=0.5, eligible=True)
+    # c2 has negative LCB (execution-blocked) but the highest UCB.
+    c2 = _make_candidate("m2", "r1", lcb=-0.4, eligible=False)
+    c2.ucb = 0.9
 
     result = ProbeSelectionPolicy.select(
         RoutingMode.EXPLOIT_EXPLORE,
+        [c1, c2],
+    )
+    assert result is not None
+    assert result.memory_id == "m2"
+
+
+def test_probe_selection_skips_self_transfer():
+    """Self-transfer-excluded candidates must never be probed."""
+    c1 = TransferCandidateDecision(
+        memory_id="m1", receiver_id="r1", task_id="t1",
+        candidate_source="global",
+        mu_tau=None, sigma_tau=None, lcb=None, ucb=None,
+        eligible_for_context=False, selected_for_context=False,
+        status="self_transfer_excluded",
+    )
+    c2 = _make_candidate("m2", "r1", lcb=-0.2, eligible=False)
+
+    result = ProbeSelectionPolicy.select(
+        RoutingMode.EXPLORE_ONLY,
         [c1, c2],
     )
     assert result is not None
@@ -159,7 +187,7 @@ def test_select_probe_candidate_across_receivers():
     })
 
     # r3 is EXPLOIT_ONLY, so m3 should not be selected
-    # r2 has higher LCB (0.6) than r1 (0.4)
+    # r2 has higher UCB than r1
     assert rid == "r2"
     assert candidate is not None
     assert candidate.memory_id == "m2"

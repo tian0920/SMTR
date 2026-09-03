@@ -7,10 +7,14 @@ This module implements forward-only post-task causal probing:
 2. Run matched expose/withhold episodes to collect causal evidence.
 3. Return OnlineTransferEvidence that may only affect future tasks.
 
-Probe selection policy (§14.5):
+Probe selection policy (§14.5, cold-start fix):
     - Only probe when routing_mode != EXPLOIT_ONLY
     - Only probe when global_candidates is non-empty
-    - Select the global candidate with highest LCB
+    - Probe eligibility requires ONLY a valid prediction (mu/sigma/ucb
+      present) and non-self-transfer — it does NOT require ``LCB > delta``.
+      Requiring the execution gate here deadlocks cold start.
+    - Select the candidate with highest UCB = mu + beta * sigma
+      (exploration targets potential value / uncertainty, not reliability).
     - At most 1 candidate edge per task
 
 Shared control (§14.4):
@@ -34,11 +38,17 @@ __all__ = [
 
 
 class ProbeSelectionPolicy:
-    """Deterministic probe candidate selection (§14.5).
+    """Deterministic probe candidate selection (§14.5, cold-start fix).
 
-    Selects the global candidate with highest LCB when:
+    Probe eligibility is fully decoupled from execution eligibility:
+    a candidate is probeable iff it has a valid prediction (ucb is not
+    None) and is not self-transfer-excluded. The ``LCB > delta`` gate is
+    deliberately NOT applied — that gate answers "safe enough to use",
+    while probing answers "worth learning about".
+
+    Selects the global candidate with highest UCB when:
     - routing_mode != EXPLOIT_ONLY
-    - global_candidates is non-empty
+    - global_candidates contains at least one valid prediction
     """
 
     @staticmethod
@@ -55,16 +65,25 @@ class ProbeSelectionPolicy:
         if not global_candidates:
             return None
 
-        # Filter to eligible candidates with valid LCB
-        eligible = [
+        # Probeable = valid prediction + not self-transfer. No LCB gate.
+        probeable = [
             c for c in global_candidates
-            if c.eligible_for_context and c.lcb is not None
+            if c.ucb is not None
+            and c.status != "self_transfer_excluded"
         ]
-        if not eligible:
+        if not probeable:
             return None
 
-        # Select highest LCB
-        return max(eligible, key=lambda c: c.lcb)
+        # Select by max UCB; deterministic tie-break by sigma, mu, id.
+        return max(
+            probeable,
+            key=lambda c: (
+                c.ucb,
+                c.sigma_tau if c.sigma_tau is not None else float("-inf"),
+                c.mu_tau if c.mu_tau is not None else float("-inf"),
+                c.memory_id,
+            ),
+        )
 
 
 def select_probe_candidate(
@@ -77,7 +96,7 @@ def select_probe_candidate(
     """
     best_receiver: str | None = None
     best_candidate: TransferCandidateDecision | None = None
-    best_lcb: float | None = None
+    best_ucb: float | None = None
 
     for rid, plan in receiver_plans.items():
         if plan.routing_mode == RoutingMode.EXPLOIT_ONLY:
@@ -89,11 +108,11 @@ def select_probe_candidate(
             plan.routing_mode,
             plan.global_candidates,
         )
-        if candidate is None:
+        if candidate is None or candidate.ucb is None:
             continue
 
-        if best_lcb is None or candidate.lcb > best_lcb:
-            best_lcb = candidate.lcb
+        if best_ucb is None or candidate.ucb > best_ucb:
+            best_ucb = candidate.ucb
             best_candidate = candidate
             best_receiver = rid
 
