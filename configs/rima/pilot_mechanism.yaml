@@ -1,0 +1,30 @@
+# Pilot mechanism configuration (Phase 23-24)
+# Orchestrates the full pilot matrix: scenario × stream × exec × method
+
+scenarios:
+  - bargaining
+  - coding
+
+stream_seeds: [0, 1, 2]
+execution_seeds: [0, 1, 2]
+probe_seeds: [0]
+
+n_tasks_per_stream: 30
+
+# Phase 1: 4 methods (core comparison)
+methods_phase1:
+  - rima_receiver
+  - rima_transfer_frozen
+  - rima_transfer_adaptive
+  - rima_transfer_positive_stop
+
+# Phase 2: +2 ablation/baseline (requires Phase 1 adaptive results)
+methods_phase2:
+  - rima_static_same_probe_budget
+  - rima_transfer_no_uncertainty
+
+# Artifact paths
+critic_checkpoint: results/rima_transfer/critic/critic_receiver_bootstrap.joblib
+transfer_policy: results/rima_transfer/critic/transfer_policy.json
+intervention_records: results/rima_transfer/intervention/intervention_records.json
+source_agents: results/rima_transfer/intervention/source_agents.json
