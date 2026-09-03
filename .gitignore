@@ -51,6 +51,7 @@ results/marble/*/engine_logs/
 
 # RIMA experiment results (regenerable)
 results/rima/
+results/rima_transfer/
 
 # Temporary scripts
 scripts/_tmp_*.py
