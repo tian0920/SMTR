@@ -141,12 +141,10 @@ class MarbleEpisodeRunner:
     ) -> float:
         """Run one MARBLE episode and return the official task score."""
         payloads: dict[str, list[str]] | None = None
-        rids: list[str] | None = None
         if memory_id is not None:
             mem = self._pool_lookup(memory_id)
             if mem is not None:
                 payloads = {receiver_id: [mem.procedure_payload]}
-                rids = [receiver_id]
         mt = self._current_marble_task
         if mt is None:
             raise RuntimeError("MarbleTask not set on episode runner")
@@ -154,7 +152,6 @@ class MarbleEpisodeRunner:
             mt,
             seed=generation_seed,
             method=self._method,
-            receiver_agent_ids=rids,
             receiver_memory_payloads=payloads,
         )
         outcome = self._evaluator.evaluate(

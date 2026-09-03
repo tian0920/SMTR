@@ -317,7 +317,6 @@ class ContinualProtocol:
             seed=self.seed,
             method=self.method,
             memory_payloads=None,
-            receiver_agent_ids=receiver_ids if any(payloads.values()) else None,
             receiver_memory_payloads=payloads if any(payloads.values()) else None,
         )
 
