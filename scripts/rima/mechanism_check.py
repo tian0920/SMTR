@@ -257,7 +257,13 @@ def metric_e_critic_chronology(
     critic_versions: list[dict],
     n_tasks: int,
 ) -> dict[str, Any]:
-    """All critic_trained_through_position < current_task_position."""
+    """No future-data leak: trained_through <= refit task_position.
+
+    A refit fires AFTER the task at ``task_position`` completes, so it may
+    legitimately include that task's evidence (trained_through == position).
+    The new version only applies from the next task, so forward-only is
+    violated only when trained_through > task_position.
+    """
     violations = 0
     total_checks = 0
 
@@ -266,7 +272,7 @@ def metric_e_critic_chronology(
         task_pos = entry.get("task_position")
         if trained_through is not None and task_pos is not None:
             total_checks += 1
-            if trained_through >= task_pos:
+            if trained_through > task_pos:
                 violations += 1
 
     if total_checks == 0:
@@ -275,7 +281,7 @@ def metric_e_critic_chronology(
             "violations": 0,
             "total_checks": 0,
             "direction": "INSUFFICIENT_DATA",
-            "requirement": "trained_through < current_task_position",
+            "requirement": "trained_through <= refit_task_position",
         }
 
     direction = "PASS" if violations == 0 else "FAIL"
@@ -284,7 +290,7 @@ def metric_e_critic_chronology(
         "violations": violations,
         "total_checks": total_checks,
         "direction": direction,
-        "requirement": "trained_through < current_task_position",
+        "requirement": "trained_through <= refit_task_position",
     }
 
 

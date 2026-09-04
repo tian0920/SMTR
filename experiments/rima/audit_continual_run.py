@@ -183,7 +183,11 @@ def check_critic_version_chronology(
     1. Within each task: selection_critic_version ≤ post_task_critic_version
        (post_task version = version after any refit at that task position)
     2. Across tasks: selection_critic_version at task t+1 ≥ version at task t
-    3. Each refit's trained_through < the task_position where it refitted
+    3. Each refit's trained_through <= the task_position where it refitted
+       (a refit fires after that task completes and may include its own
+       evidence; the new version only applies from task_position + 1, so
+       trained_through == refit position is legitimate forward-only
+       behaviour — only trained_through > refit position leaks the future)
     """
     failures: list[str] = []
 
@@ -197,12 +201,15 @@ def check_critic_version_chronology(
             version_at_position[tp] = max(
                 version_at_position.get(tp, -1), ver
             )
-            # Sub-check: trained_through < task_position of refit.
-            if trained is not None and trained >= tp:
+            # Sub-check: trained_through <= task_position of refit.
+            # A refit happens AFTER the task at ``tp`` completes, so it may
+            # legitimately include that task's evidence; only a strictly
+            # larger trained_through means future data leaked.
+            if trained is not None and trained > tp:
                 failures.append(
                     f"  critic refit at task_position={tp}: "
-                    f"trained_through={trained} >= refit position "
-                    f"(forward-only violation)"
+                    f"trained_through={trained} > refit position "
+                    f"(future-data leak)"
                 )
 
     # Track version across tasks.

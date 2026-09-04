@@ -3,8 +3,8 @@
 # Waits for DONE, then runs: audit → timing → mechanism check → Gate A
 set -e
 
-RUN_DIR="results/rima_transfer/pilot/45a_adaptive/bargaining__stream0__exec0__methodrima_transfer_adaptive"
-OUT_DIR="results/rima_transfer/pilot/45a_adaptive"
+RUN_DIR="results/rima_transfer/pilot/45a_adaptive_v2/bargaining__stream0__exec0__methodrima_transfer_adaptive"
+OUT_DIR="results/rima_transfer/pilot/45a_adaptive_v2"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 echo "=== Phase 45A Post-Completion Pipeline ==="
