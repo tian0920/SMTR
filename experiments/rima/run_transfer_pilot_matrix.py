@@ -106,6 +106,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
         "transfer_policy": cfg.get("transfer_policy", ""),
         "intervention_records": cfg.get("intervention_records", ""),
         "source_agents": cfg.get("source_agents", ""),
+        "split_manifest": cfg.get("split_manifest", ""),
     }
 
 
@@ -467,6 +468,25 @@ def main(argv: list[str] | None = None) -> int:
     base_examples: list[MatchedInterventionExample] = []
     source_agent_ids: dict[str, str] = {}
     if cfg["intervention_records"]:
+        if not cfg["split_manifest"]:
+            logger.error(
+                "FATAL: intervention_records requires split_manifest "
+                "(learner base examples must be TRAIN-only, P0-9)",
+            )
+            return 1
+        sm_path = project_root / cfg["split_manifest"]
+        if not sm_path.exists():
+            logger.error(
+                "FATAL: split manifest not found: %s", sm_path,
+            )
+            return 1
+        with open(sm_path) as f:
+            manifest = json.load(f)
+        allowed = set(
+            manifest.get("train_valid_edge_ids")
+            or manifest.get("train_edge_ids")
+            or []
+        )
         ir = project_root / cfg["intervention_records"]
         sa_path = (
             (project_root / cfg["source_agents"])
@@ -476,10 +496,28 @@ def main(argv: list[str] | None = None) -> int:
             base_examples, source_agent_ids = build_base_examples(
                 str(ir),
                 str(sa_path) if sa_path and sa_path.exists() else None,
+                allowed_edge_ids=allowed,
+            )
+            # P0-11/P0-12 startup audit: base examples must be exactly
+            # the valid TRAIN edges and their tasks must not touch
+            # val/test.
+            base_task_ids = {ex.task_id for ex in base_examples}
+            train_task_ids = set(manifest.get("train_task_ids", []))
+            held_out = set(
+                manifest.get("validation_task_ids", [])
+            ) | set(manifest.get("test_task_ids", []))
+            assert base_task_ids <= train_task_ids, (
+                "P0-12 violation: base tasks outside TRAIN split: "
+                f"{sorted(base_task_ids - train_task_ids)}"
+            )
+            assert not (base_task_ids & held_out), (
+                "P0-12 violation: base tasks overlap held-out splits: "
+                f"{sorted(base_task_ids & held_out)}"
             )
             logger.info(
-                "Loaded %d base examples from %s",
-                len(base_examples), ir,
+                "Loaded %d TRAIN-only base examples from %s "
+                "(split manifest: %s)",
+                len(base_examples), ir, sm_path,
             )
         else:
             logger.warning("Intervention records not found: %s", ir)

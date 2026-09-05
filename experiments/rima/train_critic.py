@@ -105,6 +105,42 @@ def record_to_example(
     )
 
 
+def edge_id_of(ex: MatchedInterventionExample) -> str:
+    """Canonical edge identifier: ``task_id::receiver_id::memory_id`` (P0-10)."""
+    return f"{ex.task_id}::{ex.receiver_id}::{ex.memory_id}"
+
+
+def build_split_manifest(
+    splits: dict[str, list[MatchedInterventionExample]], *, seed: int
+) -> dict[str, Any]:
+    """Build the split manifest (P0-10) for downstream TRAIN-only audits.
+
+    Consumed by ``run_continual_transfer.py --split-manifest`` to restrict
+    adaptive-learner base examples strictly to the TRAIN split (P0-9).
+    """
+
+    def _task_ids(split: list[MatchedInterventionExample]) -> list[str]:
+        return sorted({str(ex.task_id) for ex in split})
+
+    valid_train = [
+        ex for ex in splits["train"]
+        if ex.official_expose_score is not None
+        and ex.official_withhold_score is not None
+    ]
+    return {
+        "schema_version": "rima_split_manifest_v1",
+        "seed": seed,
+        "train_task_ids": _task_ids(splits["train"]),
+        "validation_task_ids": _task_ids(splits["validation"]),
+        "test_task_ids": _task_ids(splits["test"]),
+        "train_edge_ids": sorted(edge_id_of(ex) for ex in splits["train"]),
+        "train_valid_edge_ids": sorted(
+            edge_id_of(ex) for ex in valid_train
+        ),
+        "n_valid_train_edges": len(valid_train),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="RIMA critic training (Stage B-C)")
     parser.add_argument("--records", required=True, help="intervention records JSON")
@@ -187,6 +223,17 @@ def main(argv: list[str] | None = None) -> int:
             json.dump(audit, _f, indent=2)
     print(f"Split: {audit['split_sizes']} — leakage audit {audit['status']}")
 
+    # P0-10: persist the split manifest so continual runs can restrict
+    # learner base examples strictly to the TRAIN split (P0-9/P0-12).
+    split_manifest = build_split_manifest(splits, seed=args.seed)
+    with open(out_dir / "split_manifest.json", "w") as f:
+        json.dump(split_manifest, f, indent=2)
+    print(
+        f"Wrote {out_dir}/split_manifest.json "
+        f"(train_edges={len(split_manifest['train_edge_ids'])}, "
+        f"valid={split_manifest['n_valid_train_edges']})"
+    )
+
     train, validation = splits["train"], splits["validation"]
     if not train:
         print("FATAL: empty training split", file=sys.stderr)
@@ -240,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
             "gamma_positive_support": policy.gamma_positive_support,
             "critic_checkpoint_sha256": policy.critic_checkpoint_sha256,
             "bootstrap_members": args.n_bootstrap,
-            "bootstrap_cluster_unit": "task_id",
+            "bootstrap_cluster_unit": "(task_id, receiver_id)",
         }
 
         # ---- Phase 12/14: low-support warnings (artifact flags only) ----

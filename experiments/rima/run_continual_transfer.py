@@ -303,17 +303,52 @@ class TransferContinualProtocol:
         self.transfer_states = ReceiverTransferStateContainer()
         self._current_task: MarbleTask | None = None
 
+        # --- Continual learner (§15): created BEFORE the controller so
+        # the adaptive controller can adopt the learner's current critic
+        # and later hot-swaps reach routing (P0 wiring fix). ---
+        self.learner: ContinualTransferLearner | None = None
+        if self.variant and self.variant.use_critic_update:
+            if critic_receiver is not None:
+                self.learner = ContinualTransferLearner(
+                    base_examples=list(base_examples or []),
+                    # Reuse the checkpoint's encoder/config exactly so
+                    # online refits stay comparable with the initial
+                    # critic (no secret second encoder).
+                    encoder=critic_receiver.encoder,
+                    source_agent_ids=dict(source_agent_ids or {}),
+                    n_bootstrap=critic_receiver.n_bootstrap,
+                    seed=critic_receiver.seed,
+                    loss=critic_receiver.loss,
+                    receiver_conditioned=(
+                        critic_receiver.receiver_conditioned
+                    ),
+                    initial_critic=critic_receiver,
+                )
+            else:
+                self.learner = ContinualTransferLearner(
+                    base_examples=list(base_examples or []),
+                    encoder=RimaFeatureEncoder(),
+                    source_agent_ids=dict(source_agent_ids or {}),
+                )
+
         # --- Controller / engine setup ---
         self.controller: TransferAwareMemoryController | None = None
         self.engine: RimaAdmissionEngine | None = None
         self._use_transfer_state = False
         self._use_controller = False
 
+        controller_critic = (
+            self.learner.current_critic
+            if self.learner is not None
+            and self.learner.current_critic is not None
+            else critic_receiver
+        )
+
         if self.variant:
             self._use_transfer_state = self.variant.use_transfer_state
             need_ctrl = self.variant.use_transfer_state or self.variant.conditional_global_retrieval
             if need_ctrl:
-                self._init_controller(critic_receiver)
+                self._init_controller(controller_critic)
                 self._use_controller = True
             elif critic_receiver and self.method in ("rima_receiver",):
                 self._init_engine(critic_receiver)
@@ -323,16 +358,6 @@ class TransferContinualProtocol:
             self._use_transfer_state = True
         elif method == "rima_receiver":
             self._init_engine(critic_receiver)
-
-        # --- Continual learner (§15) ---
-        self.learner: ContinualTransferLearner | None = None
-        if self.variant and self.variant.use_critic_update:
-            encoder = RimaFeatureEncoder()
-            self.learner = ContinualTransferLearner(
-                base_examples=list(base_examples or []),
-                encoder=encoder,
-                source_agent_ids=dict(source_agent_ids or {}),
-            )
 
         # --- Post-task probe (§14) ---
         self.probe: PostTaskTransferProbe | None = None
@@ -352,6 +377,10 @@ class TransferContinualProtocol:
         self.routing_events: list[dict[str, Any]] = []
         self.probe_events: list[dict[str, Any]] = []
         self.critic_version_log: list[dict[str, Any]] = []
+        # Fixed candidate set for refit-time prediction-delta logging:
+        # every previously probed candidate, so criterion 4 (same
+        # candidate v1 vs v2 prediction change) is directly observable.
+        self._probe_candidate_cache: list[dict[str, Any]] = []
         self._last_episode_decision: EpisodeTransferDecision | None = None
         self._last_receiver_plans: dict[str, Any] = {}
 
@@ -563,8 +592,42 @@ class TransferContinualProtocol:
         # ---- 6. Critic refit (§15) ----
         if self.learner and self.learner.should_refit():
             ev["critic_refit_started"] = time.time()
-            self.learner.maybe_refit()
+            # Snapshot the pre-refit critic so we can log v1-vs-v2
+            # prediction deltas on the fixed probed-candidate set.
+            old_critic = self.learner.current_critic
+            old_version = self.learner.critic_version
+            refitted = self.learner.maybe_refit()
             ev["critic_refit_finished"] = time.time()
+            if refitted:
+                # Hot-swap: routing must use the refitted critic from the
+                # NEXT task on (forward-only; refit happens post-probe).
+                assert self.learner.current_critic is not None
+                assert self.controller is not None
+                self.controller.set_critic(
+                    self.learner.current_critic,
+                    version=self.learner.critic_version,
+                    trained_through=(
+                        self.learner
+                        .critic_trained_through_task_position
+                    ),
+                )
+                # Persist the refitted critic for offline audit and log
+                # per-candidate prediction deltas (old vs new critic on
+                # the SAME candidate set).
+                if self._run_dir:
+                    self.learner.current_critic.save(
+                        str(
+                            self._run_dir
+                            / f"critic_v{self.learner.critic_version}.joblib"
+                        ),
+                    )
+                self._log_refit_prediction_deltas(
+                    old_critic=old_critic,
+                    old_version=old_version,
+                    new_version=self.learner.critic_version,
+                    task=task,
+                    position=position,
+                )
             vlog = {
                 "task_position": position,
                 "critic_version": self.learner.critic_version,
@@ -598,6 +661,18 @@ class TransferContinualProtocol:
     ) -> None:
         assert self.controller is not None
         assert self.variant is not None
+        # P0-5 hard identity invariant: adaptive routing must use the
+        # learner's current critic, never a stale controller copy.
+        if (
+            self.learner is not None
+            and self.learner.current_critic is not None
+        ):
+            assert (
+                self.controller.critic is self.learner.current_critic
+            ), (
+                "Adaptive routing critic is stale: controller is not "
+                "using learner.current_critic"
+            )
         receiver_plans: dict[str, Any] = {}
         for rid in receiver_ids:
             plan = self.controller.plan_for_task(
@@ -689,12 +764,29 @@ class TransferContinualProtocol:
         )
         if probe_rid is None or probe_cand is None:
             return
+        # P1-1: freeze the PRE-probe prediction before the probe runs
+        # (and before any refit can see this evidence).
+        pre_probe_log: dict[str, Any] = {
+            "predicted_mu_pre_probe": probe_cand.mu_tau,
+            "predicted_sigma_pre_probe": probe_cand.sigma_tau,
+            "predicted_lcb_pre_probe": probe_cand.lcb,
+            "predicted_ucb_pre_probe": probe_cand.ucb,
+            "critic_version_pre_probe": (
+                self.learner.critic_version if self.learner else 1
+            ),
+            "critic_trained_through_pre_probe": (
+                self.learner.critic_trained_through_task_position
+                if self.learner
+                else -1
+            ),
+        }
         evidence = self.probe.collect(
             task=task.raw_task, task_id=task.task_id,
             task_position=position, receiver_id=probe_rid,
             memory_id=probe_cand.memory_id,
         )
         pe = _evidence_to_dict(evidence)
+        pe.update(pre_probe_log)
         self.probe_events.append(pe)
         if self._run_dir:
             _write_jsonl(self._run_dir / "probe_events.jsonl", pe)
@@ -729,8 +821,88 @@ class TransferContinualProtocol:
             self.learner.add_online_evidence(
                 evidence, features=features, source_agent_id=src,
             )
+        # Cache the probed candidate for refit-time delta logging.
+        self._probe_candidate_cache.append({
+            "memory_id": probe_cand.memory_id,
+            "receiver_id": probe_rid,
+            "task_id": task.task_id,
+            "task_position": position,
+            "predicted_mu_pre_probe": probe_cand.mu_tau,
+        })
 
 
+
+    # -- refit-time prediction delta logging --------------------------
+
+    def _log_refit_prediction_deltas(
+        self,
+        *,
+        old_critic: BootstrapOfficialScoreTransferCritic | None,
+        old_version: int,
+        new_version: int,
+        task: MarbleTask,
+        position: int,
+    ) -> None:
+        """Log v_old vs v_new predictions on the fixed probed-candidate set.
+
+        Makes criterion 4 ("same/similar candidate prediction changed
+        between critic versions") directly observable even when the probe
+        sampler never re-selects a previously probed candidate.
+        Features are rebuilt with the controller's own feature_builder so
+        the predictions match what routing would compute.
+        """
+        new_critic = self.learner.current_critic if self.learner else None
+        if (
+            old_critic is None
+            or new_critic is None
+            or self.controller is None
+            or not self._probe_candidate_cache
+        ):
+            return
+        for entry in self._probe_candidate_cache:
+            mem = self.pool.get(entry["memory_id"])
+            if mem is None:
+                continue
+            features = self.controller.feature_builder(
+                mem,
+                entry["receiver_id"],
+                _task_repr(task),
+                entry["task_id"],
+            )
+            example = MatchedInterventionExample(
+                task_id=entry["task_id"],
+                memory_id=mem.memory_id,
+                receiver_id=entry["receiver_id"],
+                source_agent_id=mem.source_agent_id,
+                official_expose_score=None,
+                official_withhold_score=None,
+                features=features,
+            )
+            d_old = old_critic.predict_distribution(example)
+            d_new = new_critic.predict_distribution(example)
+            delta_mu = (
+                d_new.mu_tau - d_old.mu_tau
+                if d_old.mu_tau is not None and d_new.mu_tau is not None
+                else None
+            )
+            row = {
+                "refit_task_position": position,
+                "critic_version_pre": old_version,
+                "critic_version_post": new_version,
+                "memory_id": entry["memory_id"],
+                "receiver_id": entry["receiver_id"],
+                "probe_task_id": entry["task_id"],
+                "probe_task_position": entry["task_position"],
+                "mu_pre": d_old.mu_tau,
+                "mu_post": d_new.mu_tau,
+                "delta_mu": delta_mu,
+                "sigma_pre": d_old.sigma_tau,
+                "sigma_post": d_new.sigma_tau,
+            }
+            if self._run_dir:
+                _write_jsonl(
+                    self._run_dir / "refit_prediction_deltas.jsonl", row,
+                )
 
     # -- record builder ------------------------------------------------
 
@@ -779,6 +951,24 @@ class TransferContinualProtocol:
             record["critic_trained_through"] = (
                 self.learner.critic_trained_through_task_position
             )
+        # P0-6: also record the critic the controller ACTUALLY routed with,
+        # and hard-check it matches the learner's current version.
+        if self.controller is not None and self._use_controller:
+            record["controller_critic_version"] = (
+                self.controller.critic_version
+            )
+            record["controller_critic_trained_through"] = (
+                self.controller.critic_trained_through
+            )
+            if self.learner:
+                assert (
+                    record["selection_critic_version"]
+                    == record["controller_critic_version"]
+                ), (
+                    "controller critic version desynced from learner: "
+                    f"{record['selection_critic_version']} vs "
+                    f"{record['controller_critic_version']}"
+                )
         return record
 
     # -- routing diagnostic builder (§33) ------------------------------
@@ -836,6 +1026,11 @@ class TransferContinualProtocol:
             "beta": policy.beta if policy else None,
             "delta": policy.delta if policy else None,
             "gamma": policy.gamma if policy else None,
+            "controller_critic_version": (
+                self.controller.critic_version
+                if self.controller is not None
+                else None
+            ),
             "selected_memory_id": sel_mid,
             "selected_source": sel_source,
             "selected_mu": sel_mu,
@@ -917,14 +1112,27 @@ class TransferContinualProtocol:
 def build_base_examples(
     records_path: str,
     source_agents_path: str | None = None,
+    allowed_edge_ids: set[str] | None = None,
 ) -> tuple[list[MatchedInterventionExample], dict[str, str]]:
-    """Build base training examples from intervention records."""
+    """Build base training examples from intervention records.
+
+    When ``allowed_edge_ids`` is given (from the split manifest, P0-9),
+    only edges whose ``task_id::receiver_id::memory_id`` key is allowed
+    are kept — this restricts the adaptive learner's base dataset
+    strictly to the TRAIN split.
+    """
     recs = load_records(Path(records_path))
     sa: dict[str, str] = {}
     if source_agents_path:
         with open(source_agents_path) as f:
             sa = json.load(f)
     examples = [record_to_example(r, source_agent_ids=sa) for r in recs]
+    if allowed_edge_ids is not None:
+        examples = [
+            ex for ex in examples
+            if f"{ex.task_id}::{ex.receiver_id}::{ex.memory_id}"
+            in allowed_edge_ids
+        ]
     return examples, sa
 
 
@@ -962,6 +1170,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--intervention-records", type=str, default=None,
                    help="Intervention records for learner base examples.")
     p.add_argument("--source-agents", type=str, default=None)
+    p.add_argument("--split-manifest", type=str, default=None,
+                   help="split_manifest.json from train_critic.py; "
+                        "restricts learner base examples to the TRAIN "
+                        "split (P0-9/P0-12).")
     p.add_argument("--known-probe-top-k", type=int, default=20)
     p.add_argument("--global-explore-top-k", type=int, default=5)
     p.add_argument("--engine-timeout", type=int, default=1800)
@@ -999,8 +1211,47 @@ def main(argv: list[str] | None = None) -> int:
     base_examples: list[MatchedInterventionExample] = []
     source_agent_ids: dict[str, str] = {}
     if args.intervention_records:
+        if not args.split_manifest:
+            print(
+                "FATAL: --intervention-records requires --split-manifest "
+                "(learner base examples must be TRAIN-only, P0-9)",
+                file=sys.stderr,
+            )
+            return 1
+        with open(args.split_manifest) as f:
+            manifest = json.load(f)
+        allowed = set(
+            manifest.get("train_valid_edge_ids")
+            or manifest.get("train_edge_ids")
+            or []
+        )
         base_examples, source_agent_ids = build_base_examples(
             args.intervention_records, args.source_agents,
+            allowed_edge_ids=allowed,
+        )
+        # P0-11/P0-12 startup audit: base examples must be exactly the
+        # valid TRAIN edges and their tasks must not touch val/test.
+        base_task_ids = {ex.task_id for ex in base_examples}
+        train_task_ids = set(manifest.get("train_task_ids", []))
+        held_out = set(
+            manifest.get("validation_task_ids", [])
+        ) | set(manifest.get("test_task_ids", []))
+        assert base_task_ids <= train_task_ids, (
+            f"P0-12 violation: base tasks outside TRAIN split: "
+            f"{sorted(base_task_ids - train_task_ids)}"
+        )
+        assert not (base_task_ids & held_out), (
+            f"P0-12 violation: base tasks overlap held-out splits: "
+            f"{sorted(base_task_ids & held_out)}"
+        )
+        expected_n = manifest.get("n_valid_train_edges")
+        assert expected_n is None or len(base_examples) == expected_n, (
+            f"P0-11 violation: {len(base_examples)} base examples != "
+            f"n_valid_train_edges={expected_n} (TRAIN support mismatch)"
+        )
+        logger.info(
+            "base examples: n=%d tasks=%d (TRAIN-only, audit passed)",
+            len(base_examples), len(base_task_ids),
         )
 
     loader = MarbleTaskLoader()

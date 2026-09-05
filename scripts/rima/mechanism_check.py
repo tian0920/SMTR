@@ -5,8 +5,9 @@ Usage::
     python scripts/rima/mechanism_check.py \
         results/rima_transfer/pilot/phase45a/bargaining__stream0__exec0__methodrima_transfer_adaptive
 
-Reads tasks.jsonl, routing.jsonl (if present), critic_versions.jsonl
-(if present) and evaluates the five mechanism metrics for Gate A.
+Reads tasks.jsonl, routing.jsonl (if present), probe_events.jsonl
+(if present) and critic_versions.jsonl (if present) and evaluates the
+five mechanism metrics for Gate A.
 
 Output: ``mechanism_check.json`` in the same directory.
 """
@@ -193,49 +194,52 @@ def metric_c_causal_state(
 # ----- Metric D: Transfer MAE -----
 
 def metric_d_transfer_mae(
-    routing_diags: list[dict],
-    task_records: list[dict],
-    early: range,
-    late: range,
+    probe_events: list[dict],
+    n_tasks: int,
 ) -> dict[str, Any]:
-    """Transfer prediction MAE: |mu_pre_probe - tau_obs|.
+    """Transfer prediction MAE: |mu_pre_probe - tau_obs| (P1-2).
 
-    For each task where we have both a selected_mu (critic prediction)
-    and a task_score (observed outcome), compute MAE.
+    Defined over ALL valid probe events — it does NOT require
+    execution injection. Each probe event must carry the P1-1
+    pre-probe fields (``predicted_mu_pre_probe``).
     """
-    # Build score lookup by position
-    scores_by_pos: dict[int, float] = {}
-    for r in task_records:
-        pos = r.get("task_position")
-        score = r.get("task_score")
-        if pos is not None and score is not None:
-            scores_by_pos[pos] = score
+    pairs = [
+        (float(ev["predicted_mu_pre_probe"]), float(ev["observed_tau"]),
+         ev.get("task_position"))
+        for ev in probe_events
+        if ev.get("predicted_mu_pre_probe") is not None
+        and ev.get("observed_tau") is not None
+    ]
 
-    # Build prediction lookup by position
-    by_pos: dict[int, list[dict]] = {}
-    for d in routing_diags:
-        pos = d.get("task_position", -1)
-        by_pos.setdefault(pos, []).append(d)
+    if not pairs:
+        return {
+            "metric": "D_transfer_mae",
+            "early_mae": None,
+            "late_mae": None,
+            "direction": "INSUFFICIENT_DATA",
+            "note": (
+                "No probe events carry predicted_mu_pre_probe "
+                "(runs before the P1-1 fix)"
+                if probe_events
+                else "No probe events found"
+            ),
+            "requirement": "MAE_late < MAE_early",
+        }
 
-    def _mae(positions: range) -> float | None:
-        errors = []
-        for pos in positions:
-            group = by_pos.get(pos, [])
-            obs = scores_by_pos.get(pos)
-            if not group or obs is None:
-                continue
-            # Take best predicted mu across receivers
-            mus = [
-                d.get("selected_mu") for d in group
-                if d.get("selected_mu") is not None
-            ]
-            if mus:
-                best_mu = max(mus)
-                errors.append(abs(best_mu - obs))
+    early, _middle, late = _split_windows(n_tasks)
+    early_set, late_set = set(early), set(late)
+
+    def _mae(window: set[int]) -> float | None:
+        errors = [
+            abs(mu - tau)
+            for mu, tau, pos in pairs
+            if pos is not None and pos in window
+        ]
         return _mean_of(errors)
 
-    early_mae = _mae(early)
-    late_mae = _mae(late)
+    early_mae = _mae(early_set)
+    late_mae = _mae(late_set)
+    overall_mae = _mean_of([abs(mu - tau) for mu, tau, _pos in pairs])
 
     if early_mae is not None and late_mae is not None:
         direction = "PASS" if late_mae < early_mae else "FAIL"
@@ -244,6 +248,8 @@ def metric_d_transfer_mae(
 
     return {
         "metric": "D_transfer_mae",
+        "n_valid_probes": len(pairs),
+        "overall_mae": overall_mae,
         "early_mae": early_mae,
         "late_mae": late_mae,
         "direction": direction,
@@ -341,6 +347,7 @@ def mechanism_check(stream_dir: str | Path) -> dict:
     stream_dir = Path(stream_dir)
     task_records = _load_jsonl(stream_dir / "tasks.jsonl")
     routing_diags = _load_jsonl(stream_dir / "routing.jsonl")
+    probe_events = _load_jsonl(stream_dir / "probe_events.jsonl")
     critic_versions = _load_jsonl(stream_dir / "critic_versions.jsonl")
 
     n_tasks = len(task_records)
@@ -385,16 +392,18 @@ def mechanism_check(stream_dir: str | Path) -> dict:
         metrics.append(metric_a_global_exploration(routing_diags, early, late))
         metrics.append(metric_b_known_reuse(routing_diags, early, late))
         metrics.append(metric_c_causal_state(routing_diags, early, late))
-        metrics.append(metric_d_transfer_mae(routing_diags, task_records, early, late))
     else:
-        # No routing diagnostics — cannot compute A-D
+        # No routing diagnostics — cannot compute A-C
         for name in ["A_global_exploration", "B_known_reuse",
-                      "C_causal_state_growth", "D_transfer_mae"]:
+                      "C_causal_state_growth"]:
             metrics.append({
                 "metric": name,
                 "direction": "INSUFFICIENT_DATA",
                 "note": "No routing.jsonl found",
             })
+
+    # Metric D depends only on probe events (P1-2), never on injection.
+    metrics.append(metric_d_transfer_mae(probe_events, n_tasks))
 
     # Metric E always available if critic_versions exists
     metrics.append(metric_e_critic_chronology(critic_versions, n_tasks))

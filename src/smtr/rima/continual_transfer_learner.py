@@ -100,6 +100,11 @@ class ContinualTransferLearner:
         receiver_conditioned: whether to include receiver features.
         refit_every_new_edges: trigger refit after this many new
             valid causal edges (default 5).
+        initial_critic: optional pre-trained, frozen critic to adopt as
+            version 1 (e.g. the same checkpoint the controller uses).
+            When provided, the learner does NOT secretly retrain its own
+            initial model; ``current_critic`` starts identical to the
+            controller's critic.
     """
 
     def __init__(
@@ -113,6 +118,7 @@ class ContinualTransferLearner:
         loss: str = "huber",
         receiver_conditioned: bool = True,
         refit_every_new_edges: int = DEFAULT_REFIT_EVERY_NEW_EDGES,
+        initial_critic: BootstrapOfficialScoreTransferCritic | None = None,
     ) -> None:
         self.base_training_examples: list[MatchedInterventionExample] = list(
             base_examples
@@ -136,8 +142,14 @@ class ContinualTransferLearner:
         # Track the max task_position seen across online evidence.
         self._max_online_task_position: int = -1
 
-        # Fit initial critic if base examples are available.
-        if self.base_training_examples:
+        # Initial critic: either adopt the provided frozen checkpoint
+        # verbatim, or fit one on base examples and freeze it.
+        if initial_critic is not None:
+            if not initial_critic.is_frozen:
+                raise RuntimeError("initial_critic must be frozen")
+            self.current_critic = initial_critic
+            self.critic_version = 1
+        elif self.base_training_examples:
             self._fit_initial_critic()
 
     # ------------------------------------------------------------------

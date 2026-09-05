@@ -40,7 +40,7 @@ routing:
 critic:
   type: bootstrap_official_score_transfer
   n_bootstrap: 31
-  bootstrap_cluster_unit: task_id
+  bootstrap_cluster_unit: "(task_id, receiver_id)"
   freeze_before_continual: required
 
 protocol:

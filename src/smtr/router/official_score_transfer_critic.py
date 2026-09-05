@@ -376,7 +376,7 @@ class BootstrapOfficialScoreTransferCritic:
                 "receiver_conditioned": self.receiver_conditioned,
                 "n_bootstrap": self.n_bootstrap,
                 "seed": self.seed,
-                "bootstrap_cluster_unit": "task_id",
+                "bootstrap_cluster_unit": "(task_id, receiver_id)",
                 "training_stats": self._training_stats,
                 "frozen": self._frozen,
             },

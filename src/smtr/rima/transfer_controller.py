@@ -238,6 +238,8 @@ class TransferAwareMemoryController:
         context_budget: int = 1,
     ) -> None:
         self.critic = critic
+        self.critic_version: int = 1
+        self.critic_trained_through: int = -1
         self.pool = pool
         self.transfer_states = transfer_states
         self.policy = policy
@@ -245,6 +247,35 @@ class TransferAwareMemoryController:
         self.known_probe_top_k = known_probe_top_k
         self.global_explore_top_k = global_explore_top_k
         self.context_budget = context_budget
+
+    # ------------------------------------------------------------------
+    # Critic hot-swap (adaptive variant, §15)
+    # ------------------------------------------------------------------
+
+    def set_critic(
+        self,
+        critic: BootstrapOfficialScoreTransferCritic,
+        *,
+        version: int,
+        trained_through: int,
+    ) -> None:
+        """Hot-swap the routing critic to a freshly refitted checkpoint.
+
+        All critic updates must go through this setter so that the
+        controller's routing decisions provably use the learner's
+        ``current_critic`` (never assign ``controller.critic`` directly).
+
+        Args:
+            critic: the new frozen critic.
+            version: critic version counter of the new critic.
+            trained_through: max task_position of evidence incorporated.
+        """
+        if not critic.is_frozen:
+            raise RuntimeError("controller critic must be frozen")
+
+        self.critic = critic
+        self.critic_version = version
+        self.critic_trained_through = trained_through
 
     # ------------------------------------------------------------------
     # Core algorithm (§18-25)

@@ -1,9 +1,10 @@
-# Phase 19 — Cold-Start Real Smoke (8 tasks)
-# Verifies the cold-start probe fix (rima-transfer-v0.6.0-coldstart):
-# probe loop must bootstrap even when all LCB < delta.
-# Uses the same frozen stream0 prefix as Phase 45A (first 8 of 30 tasks).
+# Phase 45A pre-v3 smoke — 8-task real adaptive sanity
+# Gate before re-burning a 30-task stream (P0 revision directive):
+#   probe_count >= 5, refit_count >= 1, controller critic version
+#   increases after refit, v1-vs-v2 prediction change observed,
+#   runtime causal audit passes. LCB > 0 NOT required.
 
-phase: coldstart_smoke
+phase: 45A_smoke8
 
 methods:
   - rima_transfer_adaptive
@@ -17,7 +18,7 @@ probe_seeds: [0]
 
 n_tasks_per_stream: 8
 
-# Artifact paths (same as Phase 45A)
+# Artifact paths (same as main pilot)
 critic_checkpoint: results/rima_transfer/critic/critic_receiver_bootstrap.joblib
 transfer_policy: results/rima_transfer/critic/transfer_policy.json
 intervention_records: results/rima/stage_a/intervention_records.json
